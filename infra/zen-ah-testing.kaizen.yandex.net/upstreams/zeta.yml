@@ -1,0 +1,66 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - comunodi
+      groups: []
+labels:
+  order: '10000000'
+---
+#{ "order": "10000000" }
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      host: '(.*)\\.ah\\.zeta\\.(.*)'
+  modules:
+    - shared:
+        uuid: zeta
+    - headers:
+        # Stoker doesn't work correctly with gzip content encoding, see YAPPY-854
+        copy:
+          Host: 'X-Zeta-Host'
+          Content-Encoding: 'X-Content-Encoding'
+        delete: 'Content-Encoding'
+    - rewrite:
+        actions:
+          - regexp: '^m\\.(.*)'
+            header_name: 'Host'
+            rewrite: '%1'
+          - regexp: '^(.*)\\.ah\\.(crowd)?zeta\\.(.*)'
+            header_name: 'Host'
+            rewrite: 'zeta-%1.zen-ah-testing.kaizen.yandex.net'
+    - rpcrewrite:
+        host: 'bolver.dz.yandex-team.ru'
+        url: '/proxy'
+        dry_run: false
+        rpc_success_header: 'X-Metabalancer-Answered'
+        rpc:
+          modules:
+            - balancer2:
+                connection_attempts: 2
+                attempts: 2
+                attempts_rate_limiter:
+                  limit: 0.2
+                unique_policy: {}
+                rr: {}
+                generated_proxy_backends:
+                  proxy_options:
+                    backend_timeout: 300ms
+                    connect_timeout: 70ms
+                  include_backends:
+                    type: BY_ID
+                    ids: [bolver-zen]
+    - rewrite:
+        actions:
+          - regexp: '^(.*)$'
+            split: 'cgi'
+            rewrite: '%1&waitall=10000'
+    - headers:
+        # Stoker doesn't work correctly with gzip content encoding, see YAPPY-854
+        copy:
+          X-Content-Encoding: 'Content-Encoding'
+          X-Zeta-Host: 'Host'
+        delete: 'X-Content-Encoding'
+    - shared:
+        uuid: testing_http_adapter

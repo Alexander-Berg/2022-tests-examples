@@ -1,0 +1,86 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - my34
+      groups: []
+labels:
+  order: '10000000'
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      path: '(/sshub)?/api/subscription.*'
+  modules:
+    - report:
+        uuid: sshub
+        ranges: default
+    - balancer2:
+        attempts: 2
+        rr: {weights_file: ./controls/traffic_control.weights}        
+        unique_policy: {}
+        backends:
+          - weight: 1
+            name: sshub_man
+            modules:
+              - report: {ranges: default, uuid: sshub_requests_to_man}
+              - balancer2:
+                  attempts: 2
+                  attempts_rate_limiter:
+                    limit: 0.1
+                    coeff: 0.99
+                  connection_attempts: 7
+                  rr: {}
+                  generated_proxy_backends:
+                    proxy_options:
+                      backend_timeout: 1s
+                      keepalive_count: 10
+                    include_backends:
+                      type: BY_ID
+                      ids: [garage-sshub-testing-man]
+          - weight: 1
+            name: sshub_sas
+            modules:
+              - report: {ranges: default, uuid: sshub_requests_to_sas}
+              - balancer2:
+                  attempts: 2
+                  attempts_rate_limiter:
+                    limit: 0.1
+                    coeff: 0.99
+                  connection_attempts: 7
+                  rr: {}
+                  generated_proxy_backends:
+                    proxy_options:
+                      backend_timeout: 1s
+                      keepalive_count: 10
+                    include_backends:
+                      type: BY_ID
+                      ids: [garage-sshub-testing-sas]
+          - weight: 1
+            name: sshub_vla
+            modules:
+              - report: {ranges: default, uuid: sshub_requests_to_vla}
+              - balancer2:
+                  attempts: 2
+                  attempts_rate_limiter:
+                    limit: 0.1
+                    coeff: 0.99
+                  connection_attempts: 7
+                  rr: {}
+                  generated_proxy_backends:
+                    proxy_options:
+                      backend_timeout: 1s
+                      keepalive_count: 10
+                    include_backends:
+                      type: BY_ID
+                      ids: [garage-sshub-testing-vla]
+          - weight: -1
+            name: sshub_devnull
+            modules:
+              - report: {ranges: default, uuid: sshub_requests_to_devnull}
+              - errordocument:
+                  status: 204
+        on_error:
+          errordocument:
+            status: 504
+            content: "Service unavailable"

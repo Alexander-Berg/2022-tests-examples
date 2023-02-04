@@ -1,0 +1,46 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - kasharin
+      groups: []
+labels:
+  order: '9000000'
+---
+regexp_section:
+  matcher:
+    match_or:
+      - match_fsm:
+          uri: '/proxy(.*)?'
+      - match_fsm:
+          uri: '/proxy'
+  modules:
+     - headers:
+        create_func:
+          X-Original-URL: location
+          X-Forwarded-Proto: scheme
+     - report:
+         uuid: nginx_proxy
+         ranges: default
+     - balancer2:
+         connection_attempts: 2
+         attempts: 2
+         unique_policy: {}
+         attempts_rate_limiter:
+           limit: 0.15
+         active:
+            delay: '5s'
+            request: 'GET /proxy-ping HTTP/1.1\r\nHost: infra.test.browser.yandex-team.ru\r\n\r\n'
+         generated_proxy_backends:
+           proxy_options:
+              backend_timeout: 900s
+              connect_timeout: 70ms
+              keepalive_count: 20
+              keepalive_timeout: "60s"
+           include_backends:
+             type: BY_ID
+             ids: [nginx-proxy]
+         on_error:
+           errordocument:
+             status: 504
+             content: "Service unavailable"

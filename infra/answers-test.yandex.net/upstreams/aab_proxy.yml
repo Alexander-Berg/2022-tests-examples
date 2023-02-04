@@ -1,0 +1,62 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - semyonmo
+      groups: []
+labels:
+  order: 01800100
+---
+regexp_section:
+  matcher:
+    match_or:
+      - match_fsm:
+          uri: '/q/_crpd.*'
+      - match_fsm:
+          uri: '/_crpd.*'
+      - match_fsm: {cookie: 'qad=1', surround: True}
+      - match_fsm: {cookie: 'prodqad=1', surround: True}
+  modules:
+    - shared:
+        uuid: cryprox_proxy_section
+    - regexp:
+        sections:
+          q_testing:
+            matcher:
+              match_and:
+                - match_fsm: {uri: '/q.*'}
+            modules:
+              - headers:
+                  create:
+                    x-aab-partnertoken: !f get_str_env_var("AWACS_Q_AAB_TOKEN")
+                    X-forwarded-Proto: https
+              - shared:
+                  uuid: aab_common_test
+              - report:
+                  uuid: aab_test
+                  ranges: default
+              - balancer2:
+                  attempts: 1
+                  rr: {}
+                  timeout_policy:
+                    timeout: 5000ms
+                    simple_policy: {}
+                  generated_proxy_backends:
+                    proxy_options:
+                      backend_timeout: 5000ms
+                      connect_timeout: 100ms
+                      fail_on_5xx: true
+                      status_code_blacklist: ["4xx"]
+                    instances:
+                      - weight: 1
+                        host: cryprox-test.yandex.net
+                        port: 80
+                  on_error:
+                    shared:
+                      uuid: backends
+          default:
+            matcher: {}
+            modules:
+              - shared:
+                  uuid: backends
+

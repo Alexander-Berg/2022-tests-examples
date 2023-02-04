@@ -1,0 +1,68 @@
+---
+regexp_path_section:
+  pattern: '/pcode-dynamic(/.*)?'
+  modules:
+    - report:
+        uuid: 'yastatic_net_s3_pcode-dynamic'
+        ranges: 'default'
+    - shared:
+        uuid: yastatic_net_s3_pcode-dynamic
+    - headers:
+        create:
+            'Host': 'pcode.s3.yandex.net'
+    - rewrite:
+        actions:
+          - regexp: '/pcode-dynamic/(.*)'
+            rewrite: '/dynamic/%1'
+    - response_headers:
+        create:
+            Cache-Control: 'public, max-age=3600'
+            Strict-Transport-Security: 'max-age=43200000; includeSubDomains;'
+            Access-Control-Allow-Origin: '*'
+            Timing-Allow-Origin: '*'
+        create_func:
+            Expires: 'time:+1h'
+    - regexp:
+        sections:
+          br_section:
+              matcher:
+                match_fsm:
+                    header:
+                      name: 'accept-encoding'
+                      value: '(.*,\\s*|)br(\\s*;\\s*q\\s*=\\s*(1|0\\.0*[1-9]).*|\\s*,.*|)'
+              modules:
+              - rewrite:
+                  actions:
+                    - regexp: '([^\\?]+)(.*)'
+                      rewrite: '%1.br'
+              - response_headers:
+                  create:
+                    Content-Encoding: br
+              - shared:
+                  uuid: 'yastatic_net_s3_pcode-dynamic_common'
+          gzip_section:
+              matcher:
+                match_fsm:
+                    header:
+                      name: 'accept-encoding'
+                      value: '(.*,\\s*|)gzip(\\s*;\\s*q\\s*=\\s*(1|0\\.0*[1-9]).*|\\s*,.*|)'
+              modules:
+              - rewrite:
+                  actions:
+                    - regexp: '([^\\?]+)(.*)'
+                      rewrite: '%1.gz'
+              - response_headers:
+                  create:
+                    Content-Encoding: gzip
+              - shared:
+                  uuid: 'yastatic_net_s3_pcode-dynamic_common'
+          default:
+              matcher: {}
+              modules:
+              - shared:
+                  uuid: 'yastatic_net_s3_pcode-dynamic_common'
+              - headers:
+                  delete:
+                    'authorization|accept-encoding'
+              - shared:
+                  uuid: 'yastatic_s3_cached_shared'

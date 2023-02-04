@@ -1,0 +1,45 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - next0
+      groups: []
+labels:
+  order: '00100000'
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      uri: '/wizard/advertiser_info/.*'
+  modules:
+    - rewrite:
+        actions:
+          - regexp: '.*'
+            header_name: Host
+            rewrite: 'frontend.s3.mds.yandex.net'
+          - regexp: '.*'
+            rewrite: '/advertiser-page/v1.32.0-a9dbcf26332a41c24f592b9831d4e46a00de372f.0/index.html'
+    - response_headers:
+        create:
+          Content-Security-Policy: "default-src 'none';base-uri 'none';font-src yastatic.net;script-src 'unsafe-inline' yandex.ru mc.yandex.ru social.yandex.ru yastatic.net;style-src 'unsafe-inline' yastatic.net;img-src 'self' data: yandex.st mc.yandex.ru www.tns-counter.ru *.verify.yandex.ru *.captcha.yandex.net yastatic.net yandex.ru favicon.yandex.net an.yandex.ru avatars.mds.yandex.net;connect-src 'self' favicon.yandex.net mc.yandex.md mc.yandex.ru yastatic.net yandex.ru an.yandex.ru;frame-src yastatic.net forms.yandex.ru;object-src 'none';report-uri https://csp.yandex.net/csp?from=advertiser-page&version=1.27.0"
+          x-frame-options: DENY
+          x-content-type-options: nosniff
+          Cache-Control: no-cache
+        delete: 'Access-Control-Allow-Origin'
+    - balancer2:
+        rr: {}
+        attempts: 2
+        attempts_rate_limiter:
+          limit: 0.1
+          coeff: 0.99
+        generated_proxy_backends:
+          proxy_options:
+            connect_timeout: 100ms
+            backend_timeout: 10s
+          instances:
+            - host: frontend.s3.mds.yandex.net
+              port: 80
+              weight: 1
+        on_error:
+          modules:
+            - errordocument: {content: Gateway Timeout, status: 504}

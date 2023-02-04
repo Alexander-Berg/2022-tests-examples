@@ -1,0 +1,151 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Кластер: масштабирование карты по клику
+
+Description:
+Проверка работы опции запрета масштабирования по клику.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+clusterer
+
+Estimated time:
+120000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Дождаться полной прогрузки и осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан Европейской части России, при этом над Санкт-Петербургом несколько красных кластерных меток внутри со значением кластеризации.
+  Сверху имеется кнопка "clickZoom".
+
+Step:
+  Action:
+  Выполнить клик в кластерную метку.
+
+  Expectation:
+  Происходит смена спана с призумом.
+  В контейнере появляется спан с более мелкими метками кластеров, метками коллекций (зеленые метки с надписью "Point", синие метки коллекций).
+
+Step:
+  Action:
+  Выполнить 3 клика в контрол масштабирования "-".
+  
+  Expectation:
+  Происходит корректный отзум, карта не мигает, не пропадает.
+  При отзуме метки коллекций и метки кластеров схлопываются в кластерные метки с увеличенным значением кластеризации.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "clickZoom".
+  Выполнить клик в кластерную метку.
+
+  Expectation:
+  Под контейнером с картой появился текст: true.
+  Происходит смена спана с призумом.
+  В контейнере появляется спан с более мелкими метками кластеров, метками коллекций (зеленые метки с надписью "Point", синие метки коллекций).
+
+Step:
+  Action:
+  Выполнить 3 клика в контрол масштабирования "-".
+  
+  Expectation:
+  Происходит корректный отзум, карта не мигает, не пропадает.
+  При отзуме метки коллекций и метки кластеров схлопываются в кластерные метки с увеличенным значением кластеризации.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "clickZoom".
+  Выполнить клик в кластерную метку.
+
+  Expectation:
+  Под контейнером с картой появился текст: false.
+  Происходит смещение спана карты. Со спана карты пропадает метка кластера, на ее месте открывается балун с двумя колонками.
+  В левой колонке балуна список меток, в правой колонке заголовок и тело метки.
+-->
+<html>
+<head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script src="https://yandex.st/jquery/1.6.4/jquery.min.js" type="text/javascript"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            var map = myMap = new ymaps.Map('map', {
+                center: [59.96343157514998, 30.317977733422868],
+                zoom: 7,
+                // Добавим к стандартным поведениям карты зум колесом мыши.
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl', 'zoomControl']
+            });
+
+            addGrid(map);
+            var log = new Log();
+
+            var clusterer = new ymaps.Clusterer({preset: 'islands#redClusterIcons'});
+            var i = 0;
+            var placemarksNumber = 200;
+            var bounds = myMap.getBounds();
+            var newPlacemarks = createGeoObjects(placemarksNumber, bounds);
+
+            map.geoObjects.add(clusterer);
+            clusterer.add(newPlacemarks);
+
+            var clickZoomButton = new ymaps.control.Button({data: {content: 'clickZoom'}, options: {selectOnClick: true}});
+            clickZoomButton.events
+                    .add('select', function () {
+                        clusterer.options.set('clusterDisableClickZoom', true);
+                        log.info(clusterer.options.get('clusterDisableClickZoom'))
+                    })
+                    .add('deselect', function () {
+                        clusterer.options.set('clusterDisableClickZoom', false);
+                        log.info(clusterer.options.get('clusterDisableClickZoom'))
+                    });
+            map.controls.add(clickZoomButton, {top: 5, left: 5});
+
+            // change map zoom
+            setTimeout(function () {
+                map.setZoom(4)
+            }, 1000);
+
+            function createGeoObjects(number, bounds) {
+                var placemarks = [];
+                // Создаем нужное количество меток
+                for (var i = 0; i < number; i++) {
+                    // Генерируем координаты метки случайным образом.
+                    coordinates = getRandomCoordinates(bounds);
+                    // Создаем метку со случайными координатами.
+                    if (Math.random() > 0.5) {
+                        myPlacemark = new ymaps.Placemark(coordinates, {
+                            balloonContent: i, hintContent: i, clusterCaption: i}, {});
+                    } else {
+                        myPlacemark = new ymaps.Placemark(coordinates, {
+                            balloonContent: i, hintContent: i, iconContent: 'point', clusterCaption: 'point ' + i}, {preset: 'islands#greenStretchyIcon'});
+                    }
+                    placemarks.push(myPlacemark);
+                }
+                return placemarks;
+            }
+
+            function getRandomCoordinates(bounds) {
+                var size = [bounds[1][0] - bounds[0][0], bounds[1][1] - bounds[0][1]];
+                return [Math.random() * size[0] + bounds[0][0], Math.random() * size[1] + bounds[0][1]];
+            }
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

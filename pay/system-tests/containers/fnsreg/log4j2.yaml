@@ -1,0 +1,92 @@
+Configuration:
+  status: debug
+
+  Properties:
+    Property:
+      - name: appname
+        value: ${env:APPLICATION_NAME}
+      - name: logdir
+        value: /var/log/${env:APPLICATION_NAME}
+      - name: deploy_box
+        value: ${env:DEPLOY_BOX_ID:-local_box}
+      - name: deploy_unit
+        value: ${env:DEPLOY_UNIT_ID:-local_unit}
+      - name: deploy_pod
+        value: ${env:DEPLOY_POD_ID:-local_pod}
+      - name: host_dc
+        value: ${env:DEPLOY_NODE_DC:-unknown}
+
+  Appenders:
+    UnifiedAgent:
+      - name: UnifiedAgent
+        host: localhost
+        port: 12500
+        messageMetaEnabled: false
+        PatternLayout:
+          pattern: '{"timestamp": "%date{yyyy-MM-dd''T''HH:mm:ss.SSSZ}", "dc": "${host_dc}", "thread": "%thread", "level": "%level", "logger": "%logger", "requestId": "%X{rid}", "MDC": "%MDC", "message": "%enc{%message}{JSON}", "stacktrace": "%enc{%throwable}{JSON}"}%n'
+        AgentProperty:
+          - name: MaxInflightBytes
+            value: 1024
+          - name: GrpcMaxMessageSize
+            value: 512
+          - name: GrcpReconnectDelay
+            value: PT10S
+          - name: CloseTimeout
+            value: PT5S
+          - name: ExcludePackages
+            value: ru.yandex.logbroker.agent.internal
+          - name: MaxStackTraceDepth
+            value: 500
+        SessionMetaItem:
+          - name: deploy_box
+            value: ${deploy_box}
+          - name: deploy_workload
+            value: ${deploy_unit}
+          - name: deploy_container_id
+            value: ${deploy_pod}
+          - name: deploy_logger_name
+            value: ${deploy_pod}
+
+    RollingRandomAccessFile:
+      - name: Plain
+        append: true
+        immediateFlush: false
+        fileName: ${logdir}/${appname}.log
+        filePattern: ${logdir}/${appname}.log.%i
+        PatternLayout:
+          pattern: "[%-5level] %d{yyyy-MM-dd HH:mm:ss.SSS} [rid=%X{rid}] [MDC=%MDC] %c{1} - %msg%n"
+        Policies:
+          SizeBasedTriggeringPolicy:
+            size: 1GB
+        DefaultRolloverStrategy:
+          max: 10
+          Delete:
+            basePath: ${logdir}
+            maxDepth: 1
+            IfFileName:
+              glob: "${appname}.log.*"
+            IfLastModified:
+              age: 7d
+            IfAny:
+              IfAccumulatedFileSize:
+                exceeds: 5GB
+              IfAccumulatedFileCount:
+                exceeds: 5
+    Console:
+      name: Console
+      target: SYSTEM_OUT
+      PatternLayout:
+        pattern: "%d{HH:mm:ss.SSS} [%t] %-5level %logger{36} - %msg%n"
+  Loggers:
+    Root:
+      level: trace
+      AppenderRef:
+        # use for debug purpose only
+        - ref: Console
+        - ref: UnifiedAgent
+        - ref: Plain
+    Logger:
+      - name: ru.yandex.logbroker.agent.internal
+        level: 'OFF'
+      - name: io.grpc.netty.NettyClientHandler
+        level: 'OFF'

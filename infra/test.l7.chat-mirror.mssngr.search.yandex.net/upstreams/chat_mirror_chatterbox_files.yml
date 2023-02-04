@@ -1,0 +1,102 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - deligor
+      groups:
+      - svc_mssngrbackend_administration
+labels:
+  order: '10000001'
+---
+regexp_section:
+    matcher:
+        match_fsm:
+            uri: '/api/chatterbox/download_attachment'
+    modules:
+        - report: {ranges: default, uuid: chat_mirror}
+        - report: {ranges: default, uuid: chat_mirror_chatterbox_requests}
+        - report: {ranges: default, uuid: chat_mirror_files}
+        - threshold:
+            lo_bytes: 307200
+            hi_bytes: 716800
+            pass_timeout: 60s
+            recv_timeout: 10s
+        - shared:
+            uuid: chat_mirror_files
+        - stats_eater: {}
+        - balancer2:
+            attempts: 3
+            rr: {weights_file: ./controls/traffic_control.weights}
+            backends:
+                - weight: 1
+                  name: chatmirror_man
+                  modules:
+                    - report: {ranges: default, uuid: chat_mirror_requests_to_man}
+                    - balancer2:
+                        attempts: 2
+                        connection_attempts: 5
+                        attempts_rate_limiter:
+                            limit: 0.2
+                        active:
+                            delay: '5s'
+                            request: 'GET /admin?action=ping&from=slb HTTP/1.1\r\nHost: test.l7.chat-mirror.mssngr.search.yandex.net\r\n\r\n'
+                        generated_proxy_backends:
+                            proxy_options:
+                                backend_timeout: 600s
+                                connect_timeout: 50ms
+                                keepalive_count: 20
+                                keepalive_timeout: "60s"
+                                status_code_blacklist_exceptions: ["503"]
+                            include_backends:
+                                type: BY_ID
+                                ids: [testing-mssngr-chat-mirror-man]
+                - weight: 1
+                  name: chatmirror_sas
+                  modules:
+                    - report: {ranges: default, uuid: chat_mirror_requests_to_sas}
+                    - balancer2:
+                        attempts: 2
+                        connection_attempts: 5
+                        attempts_rate_limiter:
+                            limit: 0.2
+                        active:
+                            delay: '5s'
+                            request: 'GET /admin?action=ping&from=slb HTTP/1.1\r\nHost: test.l7.chat-mirror.mssngr.search.yandex.net\r\n\r\n'
+                        generated_proxy_backends:
+                            proxy_options:
+                                backend_timeout: 600s
+                                connect_timeout: 50ms
+                                keepalive_count: 20
+                                keepalive_timeout: "60s"
+                                status_code_blacklist_exceptions: ["503"]
+                            include_backends:
+                                type: BY_ID
+                                ids: [testing-mssngr-chat-mirror-sas]
+                - weight: 1
+                  name: chatmirror_vla
+                  modules:
+                    - report: {ranges: default, uuid: chat_mirror_requests_to_vla}
+                    - balancer2:
+                        attempts: 2
+                        connection_attempts: 5
+                        attempts_rate_limiter:
+                            limit: 0.2
+                        active:
+                            delay: '5s'
+                            request: 'GET /admin?action=ping&from=slb HTTP/1.1\r\nHost: test.l7.chat-mirror.mssngr.search.yandex.net\r\n\r\n'
+                        generated_proxy_backends:
+                            proxy_options:
+                                backend_timeout: 600s
+                                connect_timeout: 50ms
+                                keepalive_count: 20
+                                keepalive_timeout: "60s"
+                                status_code_blacklist_exceptions: ["503"]
+                            include_backends:
+                                type: BY_ID
+                                ids: [testing-mssngr-chat-mirror-vla]
+                - weight: -1
+                  name: chatmirror_devnull
+                  modules:
+                    - report: {ranges: default, uuid: chat_mirror_requests_to_devnull}
+                    - errordocument:
+                        status: 200

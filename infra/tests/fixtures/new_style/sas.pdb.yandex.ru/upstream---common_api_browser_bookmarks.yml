@@ -1,0 +1,151 @@
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      uri: '(/collections)?/api/v1.0/browser/bookmarks(/.*)?'
+  modules:
+    - report:
+        uuid: api_browser_bookmarks
+        ranges: default
+    - icookie:
+        use_default_keys: true
+        domains: [".yandex.ru", ".yandex.by", ".yandex.com", ".yandex.com.tr", ".yandex.kz", ".yandex.ua", ".yandex.uz"]
+    - regexp:
+        sections:
+          post_method:
+            matcher:
+              match_fsm: {match: POST.*}
+            modules:
+            - balancer2:
+                attempts: 1
+                rr: {weights_file: ./controls/traffic_control.weights}
+                backends:
+                - weight: 1
+                  name: api_sas
+                  modules:
+                    - report: {ranges: default, uuid: requests_api_browser_bookmarks_to_sas}
+                    - balancer2:
+                        attempts: 1
+                        active:
+                          steady: false
+                          request: 'GET /health/ HTTP/1.1\nHost: collections.yandex.ru\n\n'
+                          delay: 10s
+                        generated_proxy_backends:
+                          proxy_options:
+                            backend_timeout: 60s
+                            keepalive_count: 1
+                            fail_on_5xx: false
+                          include_backends:
+                            type: BY_ID
+                            ids: [pdb_backend_production_upload_sas]
+                - weight: 1
+                  name: api_man
+                  modules:
+                    - report: {ranges: default, uuid: requests_api_browser_bookmarks_to_man}
+                    - balancer2:
+                        attempts: 1
+                        active:
+                          steady: false
+                          request: 'GET /health/ HTTP/1.1\nHost: collections.yandex.ru\n\n'
+                          delay: 10s
+                        generated_proxy_backends:
+                          proxy_options:
+                            backend_timeout: 60s
+                            keepalive_count: 1
+                            fail_on_5xx: false
+                          include_backends:
+                            type: BY_ID
+                            ids: [pdb_backend_production_upload_man]
+                - weight: 1
+                  name: api_vla
+                  modules:
+                    - report: {ranges: default, uuid: requests_api_browser_bookmarks_to_vla}
+                    - balancer2:
+                        attempts: 1
+                        active:
+                          steady: false
+                          request: 'GET /health/ HTTP/1.1\nHost: collections.yandex.ru\n\n'
+                          delay: 10s
+                        generated_proxy_backends:
+                          proxy_options:
+                            backend_timeout: 60s
+                            keepalive_count: 1
+                            fail_on_5xx: false
+                          include_backends:
+                            type: BY_ID
+                            ids: [pdb_backend_production_upload_vla]
+                - weight: -1
+                  name: api_devnull
+                  modules:
+                    - report:
+                        uuid: requests_api_browser_bookmarks_to_devnull
+                        ranges: 1ms
+                    - errordocument:
+                        status: 204
+                on_error:
+                  modules:
+                  - errordocument: {content: Internal Server Error, status: 500}
+          default:
+            matcher: {}
+            modules:
+            - balancer2:
+                attempts: 1
+                attempts_file: './controls/api_content.attempts'
+                rr: {weights_file: ./controls/traffic_control.weights}
+                backends:
+                - weight: 1
+                  name: api_sas
+                  modules:
+                    - report: {ranges: default, uuid: requests_api_browser_bookmarks_to_sas}
+                    - balancer2:
+                        attempts: 1
+                        weighted2: {}
+                        generated_proxy_backends:
+                          proxy_options:
+                            backend_timeout: 15s
+                            keepalive_count: 1
+                            fail_on_5xx: false
+                          include_backends:
+                            type: BY_ID
+                            ids: [pdb_backend_production_upload_sas]
+                - weight: 1
+                  name: api_man
+                  modules:
+                    - report: {ranges: default, uuid: requests_api_browser_bookmarks_to_man}
+                    - balancer2:
+                        attempts: 1
+                        weighted2: {}
+                        generated_proxy_backends:
+                          proxy_options:
+                            backend_timeout: 15s
+                            keepalive_count: 1
+                            fail_on_5xx: false
+                          include_backends:
+                            type: BY_ID
+                            ids: [pdb_backend_production_upload_man]
+                - weight: 1
+                  name: api_vla
+                  modules:
+                    - report: {ranges: default, uuid: requests_api_browser_bookmarks_to_vla}
+                    - balancer2:
+                        attempts: 1
+                        weighted2: {}
+                        generated_proxy_backends:
+                          proxy_options:
+                            backend_timeout: 15s
+                            keepalive_count: 1
+                            fail_on_5xx: false
+                          include_backends:
+                            type: BY_ID
+                            ids: [pdb_backend_production_upload_vla]
+                - weight: -1
+                  name: api_devnull
+                  modules:
+                    - report:
+                        uuid: requests_api_browser_bookmarks_to_devnull
+                        ranges: 1ms
+                    - errordocument:
+                        status: 204
+                on_error:
+                  modules:
+                  - errordocument: {content: Internal Server Error, status: 500}

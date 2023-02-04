@@ -1,0 +1,157 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - lazuka23
+      groups: []
+labels:
+  order: '10000000'
+---
+regexp_section:
+    matcher:
+        match_method: 
+            methods: ["get", "post"]
+    modules:
+        -   shared:
+                uuid: engine_common
+        -   report:
+                uuid: engine_handler
+                ranges: "100ms,150ms,200ms,300ms,400ms,500ms,750ms,1000ms,1500ms,2000ms,2500ms,3000ms"
+                backend_time_ranges: "100ms,150ms,200ms,300ms,400ms,500ms,750ms,1000ms,1500ms,2000ms,2500ms,3000ms"
+                outgoing_codes: ["200", "204", "301", "302", "307", "400", "401", "402", "403", "404", "405", "429", "500", "501", "502", "503", "504", "505", "506"]
+        -   response_headers:
+                create:
+                    X-Content-Type-Options: "nosniff"
+        -   headers:
+                delete: "Connection"
+                create_func:
+                    X-L7-Real-IP: "realip"
+                    X-Balancer-IP: "localip"
+                create_func_weak:
+                    X-Forwarded-Proto: "scheme"
+        -   balancer2:
+                attempts: 3
+                timeout_policy:
+                    timeout: "3s"
+                    unique_policy: {}
+                weighted2:
+                    min_weight: 0.8
+                    max_weight: 1.2
+                    plus_diff_per_sec: 0.05
+                    minus_diff_per_sec: 0.05
+                    history_time: "15s"
+                    feedback_time: "100s"
+                    slow_reply_time: "900ms"
+                    weights_file: ./controls/traffic_control.weights
+                disable_attempts_rate_limiter: true
+                backends:
+                    -   weight: 1
+                        name: bygeo_iva
+                        modules:
+                            -   report:
+                                    uuid: engine_handler_iva
+                                    ranges: default
+                            -   balancer2:
+                                    attempts: 3
+                                    connection_attempts: 3
+                                    disable_attempts_rate_limiter: true
+                                    dynamic:
+                                        max_pessimized_share: 0.35
+                                        min_pessimization_coeff: 0.0
+                                        weight_increase_step: 0.1
+                                        history_interval: "5s"
+                                        active:
+                                            request: "GET /ping HTTP/1.1\\r\\nHost: ads.adfox.ru\\r\\n\\r\\n"
+                                            delay: "1s"
+                                            use_backend_weight: false
+                                            weight_normalization_coeff: 1
+                                    generated_proxy_backends:
+                                        proxy_options:
+                                            backend_timeout: "2800ms"
+                                            connect_timeout: "30ms"
+                                            keepalive_count: 8
+                                            keepalive_timeout: "55s"
+                                            fail_on_5xx: true
+                                            status_code_blacklist: ["5xx"]
+                                            status_code_blacklist_exceptions: ["500"]
+                                        include_backends:
+                                            type: "BY_ID"
+                                            ids:
+                                                - "engine-backend-iva"
+                    -   weight: 1
+                        name: bygeo_sas
+                        modules:
+                            -   report:
+                                    uuid: engine_handler_sas
+                                    ranges: default
+                            -   balancer2:
+                                    attempts: 3
+                                    connection_attempts: 3
+                                    disable_attempts_rate_limiter: true
+                                    dynamic:
+                                        max_pessimized_share: 0.35
+                                        min_pessimization_coeff: 0.0
+                                        weight_increase_step: 0.1
+                                        history_interval: "5s"
+                                        active:
+                                            request: "GET /ping HTTP/1.1\\r\\nHost: ads.adfox.ru\\r\\n\\r\\n"
+                                            delay: "1s"
+                                            use_backend_weight: false
+                                            weight_normalization_coeff: 1
+                                    generated_proxy_backends:
+                                        proxy_options:
+                                            backend_timeout: "2800ms"
+                                            connect_timeout: "30ms"
+                                            keepalive_count: 8
+                                            keepalive_timeout: "55s"
+                                            fail_on_5xx: true
+                                            status_code_blacklist: ["5xx"]
+                                            status_code_blacklist_exceptions: ["500"]
+                                        include_backends:
+                                            type: "BY_ID"
+                                            ids:
+                                                - "engine-backend-sas"
+                    -   weight: 1
+                        name: bygeo_vla
+                        modules:
+                            -   report:
+                                    uuid: engine_handler_vla
+                                    ranges: default
+                            -   balancer2:
+                                    attempts: 3
+                                    connection_attempts: 3
+                                    disable_attempts_rate_limiter: true
+                                    dynamic:
+                                        max_pessimized_share: 0.35
+                                        min_pessimization_coeff: 0.0
+                                        weight_increase_step: 0.1
+                                        history_interval: "5s"
+                                        active:
+                                            request: "GET /ping HTTP/1.1\\r\\nHost: ads.adfox.ru\\r\\n\\r\\n"
+                                            delay: "1s"
+                                            use_backend_weight: false
+                                            weight_normalization_coeff: 1
+                                    generated_proxy_backends:
+                                        proxy_options:
+                                            backend_timeout: "2800ms"
+                                            connect_timeout: "30ms"
+                                            keepalive_count: 8
+                                            keepalive_timeout: "55s"
+                                            fail_on_5xx: true
+                                            status_code_blacklist: ["5xx"]
+                                            status_code_blacklist_exceptions: ["500"]
+                                        include_backends:
+                                            type: "BY_ID"
+                                            ids:
+                                                - "engine-backend-vla"
+                    -   weight: -1
+                        name: bygeo_devnull
+                        modules:
+                            -   report:
+                                    uuid: devnull_handler
+                                    ranges: "50ms"
+                            -   errordocument:
+                                    status: 503
+                on_error:
+                    errordocument:
+                        status: 500

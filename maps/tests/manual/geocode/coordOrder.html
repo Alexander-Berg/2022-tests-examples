@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<!--
+Title:
+Геокод: возвращение результатов при запросе координат
+
+Description:
+Проверка возвращения результатов при запросе координат.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+regress
+
+Estimated time:
+90000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно, со спаном мира, на спане карты на территории России несколько меток коллекции. 
+  Сверху слева кнопка "coordOrder".
+ 
+Step:
+  Action:
+  Выполнить клик в кнопку "coordOrder".
+
+  Expectation:
+  По клику метки в России пропадают, на территории Ирана появляются метки коллекций.
+ 
+Step:
+  Action:
+  Выполнить клик в кнопку "coordOr...".
+
+  Expectation:
+  По клику метки в Иране пропадают, в России появляются метки аналогично первого шага.
+-->
+<html>
+<head>
+    <title>API 2.0</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <script src="../helper.js"></script>
+    <script type=text/javascript>
+        Api('init');
+        function init(ymaps) {
+            var myMap = new ymaps.Map('map', {
+                center: [46.87759261937392, 10.93571358881146],
+                zoom: 1,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+            console.log("Результаты будут отображаться в России и Иране");
+            var coordOrder, withoutcoordOrder;
+            ymaps.geocode([55.744828, 37.603423], {searchCoordOrder: 'longlat'}).then(function (res) {
+                coordOrder = res.geoObjects;
+            });
+            ymaps.geocode([55.744828, 37.603423], {searchCoordOrder: 'latlong'}).then(function (res) {
+                withoutcoordOrder = res.geoObjects;
+                myMap.geoObjects.add(withoutcoordOrder);
+            });
+            var addButton = new ymaps.control.Button({data: {content: 'coordOrder'}, options: {selectOnClick: true}});
+            addButton.events.add('select', function () {
+                myMap.geoObjects.remove(withoutcoordOrder);
+                myMap.geoObjects.add(coordOrder);
+            })
+                    .add('deselect', function () {
+                        myMap.geoObjects.remove(coordOrder);
+                        myMap.geoObjects.add(withoutcoordOrder);
+                    });
+            myMap.controls.add(addButton);
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+<p><a href="https://tech.yandex.ru/maps/archive/doc/jsapi/2.0/ref/reference/geocode-docpage/" target="_blank">Docs</a></p>
+</body>
+</html>

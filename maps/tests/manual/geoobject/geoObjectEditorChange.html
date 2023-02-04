@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<!--
+Title:
+Геообъект: проверка событий, связанных с редактором
+
+Description:
+Проверка событий, связанных с редактором.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+regress
+
+Estimated time:
+300000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно, со спаном Московской области.
+  На спане карты два ряда объектов: метка, линия, многоугольник. Верхний ряд синего цвета, нижний - зеленого.
+  Сверху имеются кнопки "polyline", "polygon", "placemark", "editor".
+
+Step:
+  Action:
+  Открыть инструменты разработчика командами: Windows: Ctrl + Shift + I если у вас MacOS: ⌥ + ⌘ + I, вкладку Console.
+  Выполнить клик в кнопку "polyline". 
+
+  Expectation:
+  На синей линии появились метки редактирования объекта, к курсору от левой вершины линии прилипает пунктирная синяя линия.
+  В консоли появляется строки событий: editorstatechange; editorstatechange.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "polyline". 
+
+  Expectation:
+  Курсор - рука, пунктирная линия отлипает, метки редактирования не пропадают с линии.
+  В консоли появляется строка событий: editorstatechange.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "polygon". 
+
+  Expectation:
+  На синем многоугольнике появились метки редактирования объекта, к курсору от нижней и верхней вершин многоугольника прилипают пунктирные синии линии.
+  В консоли появляется строки событий: editorstatechange; editorstatechange.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "polygon". 
+
+  Expectation:
+  Курсор - рука, пунктирные линии отлипают, метки редактирования не пропадают с многоугольника.
+  В консоли появляется строка событий: editorstatechange.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "placemark", затем клик в любое место на спане карты. 
+
+  Expectation:
+  Спан карты, объекты без изменений.
+  По клику в "placemark" в консоли появляется строки событий: editorstatechange; editorstatechange.
+  При клике в спан синяя метка коллекции пропадает со своего места и появляется в месте клика.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "placemark". 
+
+  Expectation:
+  Спан карты, объекты без изменений.
+  В консоли появляется строка событий: editorstatechange.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "editor". 
+
+  Expectation:
+  На зеленом многоугольнике и линии появляются метки редактирования объектов.
+  В консоли появляются множество строк событий: editorstatechange.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "editor". 
+
+  Expectation:
+  На всех объектах пропадают метки редактирования объектов.
+  В консоли появляются множество строк событий: editorstatechange.
+-->
+<html>
+<head>
+    <title>API 2.0</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <script src="../helper.js"></script>
+    <script src="geoCS.js"></script>
+    <script type=text/javascript>
+        Api('init');
+        function init(ymaps) {
+            
+            var myMap = new ymaps.Map('map', {
+                center: [55.73259667357658, 37.70153663432529],
+                zoom: 9,
+                behaviors: ['default', 'scrollZoom']
+            });
+            geoCSSource(ymaps, myMap, this);
+            var editorButton = new ymaps.control.Button({data: {content: 'editor'}}, {selectOnClick: true});
+            editorButton.events
+                    .add('select', function () {
+                        polyline.editor.startEditing();
+                        geoObjectPolyline.editor.startEditing();
+                        polygon.editor.startEditing();
+                        geoObjectPolygon.editor.startEditing();
+                        placemark.editor.startEditing();
+                        geoObjectPlacemark.editor.startEditing();
+                    })
+                    .add('deselect', function () {
+                        polyline.editor.stopEditing();
+                        geoObjectPolyline.editor.stopEditing();
+                        polygon.editor.stopEditing();
+                        geoObjectPolygon.editor.stopEditing();
+                        placemark.editor.stopEditing();
+                        geoObjectPlacemark.editor.stopEditing();
+                    });
+            var placemarkButton = new ymaps.control.Button({data: {content: 'placemark'}}, {selectOnClick: true});
+            placemarkButton.events
+                    .add('select', function () {
+                        placemark.editor.startDrawing(); //TODO: разобраться почему по startDrawing кидается два события editorstatechange
+                    })
+                    .add('deselect', function () {
+                        placemark.editor.stopDrawing();
+                    });
+            var polylineButton = new ymaps.control.Button({data: {content: 'polyline'}}, {selectOnClick: true});
+            polylineButton.events
+                    .add('select', function () {
+                        polyline.editor.startDrawing();
+                    })
+                    .add('deselect', function () {
+                        polyline.editor.stopDrawing();
+                    });
+            var polygonButton = new ymaps.control.Button({data: {content: 'polygon'}}, {selectOnClick: true});
+            polygonButton.events
+                    .add('select', function () {
+                        polygon.editor.startDrawing();
+                    })
+                    .add('deselect', function () {
+                        polygon.editor.stopDrawing();
+                    });
+            geoObjectPlacemark.events
+                    .add('editorstatechange', function (e) {
+                        console.log('editorstatechange')
+                    });
+            geoObjectPolyline.events
+                    .add('editorstatechange', function (e) {
+                        console.log('editorstatechange')
+                    });
+            geoObjectPolygon.events
+                    .add('editorstatechange', function (e) {
+                        console.log('editorstatechange')
+                    });
+            geoObjectRectangle.events
+                    .add('editorstatechange', function (e) {
+                        console.log('editorstatechange')
+                    });
+            geoObjectCircle.events
+                    .add('editorstatechange', function (e) {
+                        console.log('editorstatechange')
+                    });
+            placemark.events
+                    .add('editorstatechange', function (e) {
+                        console.log('editorstatechange')
+                    });
+            polyline.events
+                    .add('editorstatechange', function (e) {
+                        console.log('editorstatechange')
+                    });
+            polygon.events
+                    .add('editorstatechange', function (e) {
+                        console.log('editorstatechange')
+                    });
+            rectangle.events
+                    .add('editorstatechange', function (e) {
+                        console.log('editorstatechange')
+                    });
+            circle.events
+                    .add('editorstatechange', function (e) {
+                        console.log('editorstatechange');
+                    });
+            myMap.geoObjects
+                    .add(geoObjectPlacemark)
+                    .add(geoObjectPolyline)
+                    .add(geoObjectPolygon)
+                    .add(geoObjectRectangle)
+                    .add(geoObjectRectangle)
+                    .add(geoObjectCircle)
+                    .add(placemark)
+                    .add(polyline)
+                    .add(polygon)
+                    .add(rectangle)
+                    .add(circle);
+            myMap.controls
+                    .add(editorButton)
+                    .add(placemarkButton)
+                    .add(polygonButton)
+                    .add(polylineButton);
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+<p><a href="https://tech.yandex.ru/maps/archive/doc/jsapi/2.0/ref/reference/GeoObject-docpage" target="_blank">Docs</a></p>
+</body>
+</html>

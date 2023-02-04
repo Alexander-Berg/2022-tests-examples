@@ -1,0 +1,59 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - robot-maps-sandbox
+      groups:
+      - svc_maps-infra
+      - svc_maps-core-firmware-storage
+      - svc_maps-duty-dataprod
+      - svc_vops_maps
+      - svc_maps-duty-mrc
+labels:
+  balancer_deployer_commit_id: '8647004'
+  balancer_deployer_commit_order: '8647004'
+  balancer_deployer_sign: 5f16f0a07ba465f9e6f0c98c6ca870a1
+  digest: c03a353f23909f6b52b2224f72ab1e1d
+  order: '99999999'
+---
+regexp_section:
+  matcher: {}
+  modules:
+    - report:
+        uuid: 'default'
+        ranges: default
+    - threshold:
+        lo_bytes: 734003
+        hi_bytes: 838860
+        pass_timeout: 10s
+        recv_timeout: 1s
+    - headers:
+        append_func:
+          X-Forwarded-For: realip
+        create_func_weak:
+          X-Real-IP: realip
+          X-Source-Port-Y: realport
+        create:
+          Host: 'core-firmware-storage.testing.maps.yandex.net'
+          X-Ya-Backend-Timeout-Ms: '300000'
+    - balancer2:
+        attempts: 3
+        active:
+          steady: true
+          delay: '10s'
+          request: 'GET /ping HTTP/1.1\nHost: core-firmware-storage.testing.maps.yandex.net\r\n\r\n'
+        attempts_rate_limiter:
+          limit: 0.34
+        generated_proxy_backends:
+          proxy_options:
+            connect_timeout: 70ms
+            backend_timeout: 300s
+            keepalive_count: 100
+            fail_on_5xx: true
+          include_backends:
+            type: BY_ID
+            ids: [maps_core_firmware_storage_testing_sas]
+        on_error:
+          errordocument:
+            status: 504
+            content: "Service unavailable"

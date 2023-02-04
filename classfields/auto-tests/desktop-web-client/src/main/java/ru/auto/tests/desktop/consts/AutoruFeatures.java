@@ -1,0 +1,93 @@
+package ru.auto.tests.desktop.consts;
+
+/**
+ * @author kurau (Yuri Kalinin)
+ */
+public class AutoruFeatures {
+
+    public static final String ADD_OFFER = "Добавление объявления";
+    public static final String AGENCY_CABINET = "Кабинет агента";
+    public static final String AMP = "AMP";
+    public static final String AUCTION = "Авто.ру Выкуп";
+    public static final String AUCTION_IN_USED = "Аукцион в б/у";
+    public static final String AUCTION_BANNER = "Баннер аукциона";
+    public static final String AUTH = "Авторизация";
+    public static final String AUTOBIDDER = "Автобидер";
+    public static final String AUTOSTRATEGY = "Автостратегии";
+    public static final String BACK_ON_SALE = "Снова в продаже";
+    public static final String BANNERS = "Рекламные баннеры";
+    public static final String BEST_OFFER = "Подбор дилеров с лучшими предложениями";
+    public static final String BOOKING = "Бронирование";
+    public static final String BREADCRUMBS = "Хлебные крошки";
+    public static final String BUYOUT = "Лендинг выкупа";
+    public static final String CABINET_DEALER = "Кабинет дилера";
+    public static final String CATALOG = "Каталог";
+    public static final String CATALOG_NEW = "Каталог (новый)";
+    public static final String CALLBACK = "Обратный звонок";
+    public static final String CALLS = "Звонки";
+    public static final String CERTIFICATION = "Сертификация";
+    public static final String CHAT = "Чат";
+    public static final String COMPARE = "Сравнение";
+    public static final String COMPLAIN = "Жалобы";
+    public static final String CREDITS = "Кредиты";
+    public static final String C2B_AUCTION = "Аукцион частников";
+    public static final String SAFE_DEAL = "Безопасная сделка";
+    public static final String DEALERS = "Дилеры";
+    public static final String DREAM_CAR = "Машина мечты";
+    public static final String EX_CAR = "Бывшая машина";
+    public static final String ELECTRO = "Электромобили";
+    public static final String FAVORITES = "Избранное";
+    public static final String FILTERS = "Фильтры";
+    public static final String FOOTER = "Футер";
+    public static final String FORECAST_TABLE = "Таблица «Прогноз распределения»";
+    public static final String FORMS = "Форма добавления мото, комТС, отзывов";
+    public static final String GARAGE = "Гараж";
+    public static final String GALLERY = "Галерея";
+    public static final String GEO = "Гео";
+    public static final String GOSUSLUGI = "Госуслуги";
+    public static final String GROUP = "Групповая карточка";
+    public static final String HEADER = "Шапка";
+    public static final String LISTING = "Листинг";
+    public static final String LK = "Личный кабинет";
+    public static final String LK_NEW = "Новый личный кабинет";
+    public static final String LANDING_NEW_CARS = "Лэндинг новых авто";
+    public static final String MAG = "Журнал";
+    public static final String MAIN = "Главная страница";
+    public static final String METRICS = "Метрики";
+    public static final String MULTIPOSTING = "Мультипостинг";
+    public static final String MY_OFFERS_PRIVATE = "Мои объявления частника";
+    public static final String MY_OFFERS_RESELLER = "Мои объявления перекупа";
+    public static final String NEW_TRUST = "Новый траст";
+    public static final String NOTES = "Заметки";
+    public static final String PAGER = "Пагинация";
+    public static final String POFFER = "Форма добавления легковых";
+    public static final String POFFER_VAS_LANDING = "Лендинг с услугами после редактирования";
+    public static final String BETA_POFFER = "Новая форма добавления легковых";
+    public static final String PRICE_REPORT = "Отчёт по ценам";
+    public static final String PROMOS_BLOCK = "Блок «Акции и скидки»";
+    public static final String PROMOS_PAGE = "Лендинг «Акции и скидки»";
+    public static final String PROMO = "Промо";
+    public static final String PROMOCODES = "Промокоды";
+    public static final String RELATED = "Похожие";
+    public static final String REVIEW = "Карточка отзыва";
+    public static final String REVIEWS = "Отзывы";
+    public static final String RESELLER_PUBLIC_PROFILE = "Публичный профиль перекупа";
+    public static final String SALES = "Карточка объявления";
+    public static final String SALES_WIGET = "Виджет карусели с объявлениями";
+    public static final String SAVE_SEARCHES = "Сохранённые поиски";
+    public static final String SEARCHLINE = "Строка поиска";
+    public static final String SIDEBAR = "Сайдбар";
+    public static final String SHARE = "Поделяшки";
+    public static final String SHIVA = "Шива";
+    public static final String SORT = "Сортировки";
+    public static final String SPECIAL = "Спецпредложения";
+    public static final String STATS = "Статистика";
+    public static final String TEXTBOOK = "Учебник";
+    public static final String TRADEIN = "Трейд-ин";
+    public static final String VAS = "VAS";
+    public static final String VIDEO = "Видео";
+    public static final String VIN = "Отчёты по VIN";
+    public static final String VIN_WIDGET = "Виджет поиска отчетов по VIN";
+    public static final String DEALER_CARD = "Карточка дилера";
+
+}

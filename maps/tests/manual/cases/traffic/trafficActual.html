@@ -1,0 +1,127 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Пробки: проверка данных актуальных пробок
+
+Description:
+Проверка данных актуальных пробок.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components:
+traffic
+
+Estimated time:
+120000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть страницу и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно со спаном Москвы, с включенным слоем пробок и слоем ДС.
+  На карте линии пробок, метки ДС, сверху кнопки "level", "localtime", "timestamp", "isotime", "delete".
+  Через 2 секунды под контейнером появляется блок данных из 4 строк(дата и время, таймстемп, время, балл пробок).
+
+Step:
+  Action:
+  Последовательно выполнить клик в кнопки "isotime", "timestamp", "localtime", "level". 
+
+  Expectation:
+  Под контейнером с картой появляются аналогичные строки с данными(дата и время, таймстемп, время, балл пробок).
+  Строки должны совпадать с предыдущими.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "delete". 
+
+  Expectation:
+  Слой пробок и слой ДС исчезают с карты, карта отображается корректно.
+-->
+<html>
+<head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var myMap = new ym.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 10,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+            __log__("Проверка состояния actualProvider");
+            var actualProvider = new ymaps.traffic.provider.Actual({}, {infoLayerShown: true});
+            actualProvider.setMap(myMap);
+
+            myMap.layers.options.set({
+                trafficJamOpenBalloonOnClick: false,
+                trafficInfoOpenBalloonOnClick: false
+            });
+
+            var actualTrafficButton = new ymaps.control.TrafficControl({
+                shown: false
+            });
+
+            function updateProvider() {
+                actualTrafficButton.getProvider('traffic#actual').update();
+            }
+
+            var trafficButton = new ymaps.control.Button({data: {content: 'isotime'}, options: {selectOnClick: false}});
+            var timestampButton = new ymaps.control.Button({data: {content: 'timestamp'}, options: {selectOnClick: false}});
+            var localtimeButton = new ymaps.control.Button({data: {content: 'localtime'}, options: {selectOnClick: false}});
+            var levelButton = new ymaps.control.Button({data: {content: 'level'}, options: {selectOnClick: false}});
+            var deleteButton = new ymaps.control.Button({data: {content: 'delete'}, options: {selectOnClick: false}})
+
+            trafficButton.events.add('click', function () {
+                log.info(actualProvider.state.get('isotime'));
+            });
+
+            timestampButton.events.add('click', function () {
+                log.info(actualProvider.state.get('timestamp'));
+            });
+
+            localtimeButton.events.add('click', function () {
+                log.info(actualProvider.state.get('localtime'));
+            });
+
+            levelButton.events.add('click', function () {
+                log.info(actualProvider.state.get('level'));
+            });
+
+            deleteButton.events.add('click', function () {
+                actualProvider.setMap(null);
+            });
+
+            myMap.controls.add(actualTrafficButton);
+            myMap.controls.add(trafficButton, {float: 'left'});
+            myMap.controls.add(timestampButton, {float: 'left'});
+            myMap.controls.add(localtimeButton, {float: 'left'});
+            myMap.controls.add(levelButton, {float: 'left'});
+            myMap.controls.add(deleteButton, {float: 'right'});
+
+            setTimeout(function () {
+                log.info(actualProvider.state.get('isotime'));
+                log.info(actualProvider.state.get('timestamp'));
+                log.info(actualProvider.state.get('localtime'));
+                log.info(actualProvider.state.get('level'));
+            }, 2000);
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

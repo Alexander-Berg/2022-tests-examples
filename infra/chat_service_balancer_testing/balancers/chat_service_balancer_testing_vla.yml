@@ -1,0 +1,94 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - nanny-robot
+      - xpahos
+      groups: []
+config_transport:
+  nanny_static_file:
+    service_id: rtc_balancer_chat_service_balancer_testing_vla
+    instance_tags:
+      ctype: prod
+      itype: balancer
+      prj: chat-ws
+---
+instance_macro:
+  sd: {}
+  unistat: {}
+  workers: !f get_workers()
+  tcp_listen_queue: 128
+  maxconn: 5000
+  sections:
+    admin:
+      ips: [127.0.0.1, '::1']
+      ports:
+        - !f get_port_var('port')
+      modules:
+        - http: {}
+        - admin: {}
+    http_section:
+      ips: ['*']
+      ports:
+        - 80
+        - !f get_port_var('port')
+      extended_http_macro:
+        modules:
+          - headers:
+              create_func:
+                X-Start-Time: starttime
+                X-Req-Id: reqid
+                X-Request-Id: reqid
+                X-Forwarded-For: realip
+                X-Forwarded-For-Y: realip
+                X-Source-Port-Y: realport
+                X-Yandex-RandomUID: yuid
+          - regexp:
+              include_upstreams:
+                filter:
+                  any: true
+                order:
+                  label:
+                    name: order
+    https_section:
+      ips: ['*']
+      ports:
+        - 443
+      extended_http_macro:
+        enable_ssl: true
+        ssl_sni_contexts:
+          dev-2.chat-testing.ws.search.yandex.net:
+            cert: !c dev-2.chat_service_balancer_testing
+            servername_regexp: '(api\\.chat\\.dev-2\\.common\\.yandex\\.ru|chat\\.ws\\.dev-2\\.common\\.yandex\\.ru|chats-2\\.messenger\\.test\\.yandex\\.ru)'
+          floyd.dev.chat-testing.ws.search.yandex.net:
+            cert: !c floyd_dev_chat_service_balancer_testing
+            servername_regexp: '(test\\.floyd\\.chats\\.yandex\\.ru|ya-health\\.floyd\\.chats\\.common\\.yandex\\.ru)'
+          dev.chat-testing.ws.search.yandex.net:
+            cert: !c dev.chat_service_balancer_testing
+            servername_regexp: '(api\\.chat\\.dev\\.common\\.yandex\\.ru|chat\\.ws\\.dev\\.common\\.yandex\\.ru|chats\\.messenger\\.test\\.yandex\\.ru|chat-internal-dev\\.yandex\\.net)'
+          _.chat.ws.test.common.yandex.ru:
+            cert: !c _.chat.ws.test.common.yandex.ru
+            servername_regexp: '(api\\.chat|chat\\.ws)\\.test\\.common\\.yandex\\.(az|by|co.il|com.am|com.ge|com.tr|ee|fr|kg|kz|lt|lv|md|ru|tj|tm|ua|uz)'
+          chat-testing.ws.search.yandex.net:
+            cert: !c chat-testing.ws.search.yandex.net
+            servername_regexp: default
+        modules:
+          - headers:
+              create:
+                X-Yandex-HTTPS: yes
+              create_func:
+                X-Start-Time: starttime
+                X-Req-Id: reqid
+                X-Request-Id: reqid
+                X-Forwarded-For: realip
+                X-Forwarded-For-Y: realip
+                X-Source-Port-Y: realport
+                X-Yandex-RandomUID: yuid
+                X-Yandex-HTTPS-Info: ssl_handshake_info
+          - regexp:
+              include_upstreams:
+                filter:
+                  any: true
+                order:
+                  label:
+                    name: order

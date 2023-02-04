@@ -1,0 +1,81 @@
+---
+regexp_section:
+  matcher:
+    match_and:
+      - match_fsm:
+            host: '(m\\.)?yandexsport\\.[^.]+'
+      - match_or:
+        - match_fsm:
+            uri: '/login-status\\.html'
+  modules:
+      - antirobot_macro:
+            attempts: 5
+      - geobase_macro: {}
+      - rewrite: 
+          actions:
+            - header_name: Host
+              regexp: .*
+              rewrite: yandex.ru
+      - balancer2:
+            attempts: 2
+            attempts_file: ./controls/news.attempts
+            watermark_policy:
+                lo: 0.5
+                hi: 0.6
+                unique_policy: {}
+            rr: {weights_file: ./controls/traffic_control.weights}
+            backends:
+                - weight: 1
+                  name: morda_sas
+                  modules:
+                    - report: {ranges: default, uuid: requests_news_to_sas}
+                    - balancer2:
+                        attempts: !f count_backends()
+                        weighted2: {}
+                        timeout_policy:
+                            timeout: 500ms
+                            unique_policy: {}
+                        generated_proxy_backends:
+                            proxy_options:
+                                backend_timeout: 5000ms
+                                connect_timeout: 50ms
+                                status_code_blacklist: ["204"]
+                            include_backends:
+                                type: BY_ID
+                                ids: [morda-sas]
+                - weight: 1
+                  name: morda_man
+                  modules:
+                    - report: {ranges: default, uuid: requests_morda_to_man}
+                    - balancer2:
+                        attempts: !f count_backends()
+                        weighted2: {}
+                        timeout_policy:
+                            timeout: 500ms
+                            unique_policy: {}
+                        generated_proxy_backends:
+                            proxy_options:
+                                backend_timeout: 5000ms
+                                connect_timeout: 50ms
+                                status_code_blacklist: ["204"]
+                            include_backends:
+                                type: BY_ID
+                                ids: [morda-man]
+                - weight: 1
+                  name: morda_vla
+                  modules:
+                    - report: {ranges: default, uuid: requests_morda_to_vla}
+                    - balancer2:
+                        attempts: !f count_backends()
+                        weighted2: {}
+                        timeout_policy:
+                            timeout: 500ms
+                            unique_policy: {}
+                        generated_proxy_backends:
+                            proxy_options:
+                                backend_timeout: 5000ms
+                                connect_timeout: 50ms
+                                status_code_blacklist: ["204"]
+                            include_backends:
+                                type: BY_ID
+                                ids: [morda-vla]

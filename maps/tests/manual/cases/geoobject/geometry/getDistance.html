@@ -1,0 +1,93 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Геообъект: метод возвращения кратчайшего расстояния между двумя заданными точками
+
+Description:
+Проверка метода возвращения кратчайшего расстояния между двумя заданными точками.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+geoobject
+
+Estimated time:
+60000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан Ирана(города Исфахан, Шираз и др.), на спане диагональная синяя линия из верхнего правого угла к нижнему левому углу.
+  При загрузке под контейнером с картой появляются блок: "before: geometry.LineString: геометрия должна быть добавлена на карту.", блок "after: getDistance() - 438014.8009240277 = 438014.8009240277; getDistance(0, 1): 146647.1994171469; getDistance(2, 3): 145357.8530205995".
+  Спустя 2 секунды после загрузки, внизу также появляется строка: "geometry.LineString: выход за пределы массива точек".
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var map = myMap = new ym.Map('map', {
+                center: [31, 51],
+                zoom: 12,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+
+            log.info('Polyline has 4 points: [30, 50], [31, 51], [32, 52], [33, 53]');
+            log.info('Distance cannot be counted if object is not added to map.');
+            log.info('');
+
+            var lineStringGeometry = new ymaps.geometry.LineString([
+                [30, 50],
+                [31, 51],
+                [32, 52],
+                [33, 53]
+            ]);
+            var geoObj = new ymaps.GeoObject({ geometry: lineStringGeometry });
+
+            log.info('before:');
+            try {
+                log.info(geoObj.geometry.getDistance());
+            } catch (err) {
+                log.info(err.message)
+            }
+            map.geoObjects.add(geoObj);
+            map.setBounds(geoObj.geometry.getBounds());
+
+            log.info('');
+            log.info('after:');
+            var sum = geoObj.geometry.getDistance(0, 1) + geoObj.geometry.getDistance(1, 2) + geoObj.geometry.getDistance(2, 3);
+            log.info('getDistance(): ' + geoObj.geometry.getDistance() + ' = ' + sum);
+            log.info('getDistance(0, 1): ' + geoObj.geometry.getDistance(0, 1));
+            log.info('getDistance(2, 3): ' + geoObj.geometry.getDistance(2, 3));
+
+            setTimeout(function () {
+                try {
+                    log.info('getDistance(20, 21): ' + geoObj.geometry.getDistance(20, 21));
+                } catch (err) {
+                    log.info(err.message)
+                }
+            }, 2000)
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

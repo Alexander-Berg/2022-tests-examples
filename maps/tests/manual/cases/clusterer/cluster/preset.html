@@ -1,0 +1,103 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Кластер: применение пресета к рандомным кластерам
+
+Description:
+Проверка работы применения пресета по таймауту к кластерным меткам.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+clusterer
+
+Estimated time:
+30000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан Северо-Западного региона.
+  На спане множество синих кластерных меток, также имеются синие метки коллекций "Point".
+  Через секунду после загрузки карты две кластерные метки меняют пресет на 1) красная метка в центре с белым кругом и значением; 2) красная метка в центре с красный кругом со значением.
+-->
+<html>
+<head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script src="https://yandex.st/jquery/1.6.4/jquery.min.js" type="text/javascript"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            var map = myMap = new ymaps.Map('map', {
+                center: [59.96343157514998, 30.317977733422868],
+                zoom: 7,
+                // Добавим к стандартным поведениям карты зум колесом мыши.
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            addGrid(map);
+            var log = new Log();
+
+            log.info('redClusterIcons and invertedRedClusterIcons presets must be applied to two clusters');
+
+            var clusterer = new ymaps.Clusterer({preset: 'islands#blueClusterIcons', disableClickZoom: true});
+            var i = 0;
+            var placemarksNumber = 200;
+            var bounds = map.getBounds();
+            var newPlacemarks = createGeoObjects(placemarksNumber, bounds);
+
+            map.geoObjects.add(clusterer);
+            clusterer.add(newPlacemarks);
+
+            var object0State = clusterer.getObjectState(newPlacemarks[0]);
+            var object50State = clusterer.getObjectState(newPlacemarks[50]);
+
+            //preset
+            setTimeout(function () {
+                object0State.cluster.options.set('preset', 'islands#redClusterIcons');
+                object50State.cluster.options.set('preset', 'islands#invertedRedClusterIcons');
+
+            }, 1000);
+
+            function createGeoObjects(number, bounds) {
+                var placemarks = [];
+                // Создаем нужное количество меток
+                for (var i = 0; i < number; i++) {
+                    // Генерируем координаты метки случайным образом.
+                    coordinates = getRandomCoordinates(bounds);
+                    // Создаем метку со случайными координатами.
+                    if (Math.random() > 0.5) {
+                        myPlacemark = new ymaps.Placemark(coordinates, {
+                            balloonContent: i, hintContent: i, clusterCaption: i}, {});
+                    } else {
+                        myPlacemark = new ymaps.Placemark(coordinates, {
+                            balloonContent: i, hintContent: i, iconContent: 'point', clusterCaption: 'point ' + i}, {preset: 'islands#blueStretchyIcon'});
+                    }
+                    placemarks.push(myPlacemark);
+                }
+                return placemarks;
+            }
+
+            function getRandomCoordinates(bounds) {
+                var size = [bounds[1][0] - bounds[0][0], bounds[1][1] - bounds[0][1]];
+                return [Math.random() * size[0] + bounds[0][0], Math.random() * size[1] + bounds[0][1]];
+            }
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

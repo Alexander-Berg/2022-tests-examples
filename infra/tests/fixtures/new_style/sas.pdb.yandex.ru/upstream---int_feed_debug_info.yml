@@ -1,0 +1,90 @@
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      uri: '/pdb/hot_feed/quality_debug_info(/.*)?'
+  modules:
+    - report:
+        uuid: feed_debug_info
+        ranges: default
+    - balancer2:
+        attempts: 1
+        by_name_policy:
+          name: !f get_geo("hotfeed_", "random")
+          unique_policy: {}
+        rr:
+          weights_file: './controls/traffic_control.weights'
+        backends:
+        - weight: 1
+          name: hotfeed_sas
+          modules:
+            - report:
+                ranges: default
+                uuid: requests_feed_debug_info_to_sas
+            - balancer2:
+                attempts: 2
+                active:
+                  steady: false
+                  request: 'GET /health HTTP/1.1\r\nHost: pdb.yandex.ru\r\n\r\n'
+                  delay: 16s
+                generated_proxy_backends:
+                  proxy_options:
+                    backend_timeout: 2s
+                    connect_timeout: 35ms
+                    keepalive_count: 1
+                  include_backends:
+                    type: BY_ID
+                    ids: [pdb_feed_reader_prod_sas]
+        - weight: 1
+          name: hotfeed_man
+          modules:
+            - report:
+                ranges: default
+                uuid: requests_feed_debug_info_to_man
+            - balancer2:
+                attempts: 2
+                active:
+                  steady: false
+                  request: 'GET /health HTTP/1.1\r\nHost: pdb.yandex.ru\r\n\r\n'
+                  delay: 16s
+                generated_proxy_backends:
+                  proxy_options:
+                    backend_timeout: 2s
+                    connect_timeout: 35ms
+                    keepalive_count: 1
+                  include_backends:
+                    type: BY_ID
+                    ids: [pdb_feed_reader_prod_man]
+        - weight: 1
+          name: hotfeed_vla
+          modules:
+            - report:
+                ranges: default
+                uuid: requests_feed_debug_info_to_vla
+            - balancer2:
+                attempts: 2
+                active:
+                  steady: false
+                  request: 'GET /health HTTP/1.1\r\nHost: pdb.yandex.ru\r\n\r\n'
+                  delay: 16s
+                generated_proxy_backends:
+                  proxy_options:
+                    backend_timeout: 2s
+                    connect_timeout: 35ms
+                    keepalive_count: 1
+                  include_backends:
+                    type: BY_ID
+                    ids: [pdb_feed_reader_prod_vla]
+        - weight: -1
+          name: hotfeed_devnull
+          modules:
+            - report:
+                uuid: requests_feed_debug_info_to_devnull
+                ranges: 1ms
+            - errordocument:
+                status: 204
+        on_error:
+          modules:
+          - errordocument:
+              content: 'Gateway Timeout'
+              status: 504

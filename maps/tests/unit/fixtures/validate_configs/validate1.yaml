@@ -1,0 +1,50 @@
+reactor:
+  reactions:
+  - path: /maps/analytics/legacy/nile/statadhoc-12887-maps-load-times-exps-v4-report/daily
+    project: /maps/analytics/Project
+    ttl_days: 22
+    trigger:
+      type: ARTIFACTS
+      refs:
+      - /maps/analytics/logs/cooked-bebr-log/desktop-maps/clean/1d
+      - /maps/analytics/logs/cooked-bebr-log/desktop-maps/fraud/1d
+      - /maps/analytics/logs/cooked-bebr-log/touch-maps/clean/1d
+      - /maps/analytics/logs/cooked-bebr-log/touch-maps/fraud/1d
+      relationship: USER_TIMESTAMP_EQUALITY
+    parameters:
+      workflow_id: 737b9634-4e93-49c8-a92c-82e49f98388c
+      workflow_owner: robot-maps-analytics
+      quota: geo-analytics
+      retry_policy:
+        type: UNIFORM
+        delay: 600000
+        retries: 1
+        result_cloning_policy: DO_NOT_CLONE
+    expressions:
+      globals: |-
+        global triggered = a'/maps/analytics/logs/cooked-bebr-log/desktop-maps/clean/1d'.triggered;
+        global date = triggered.data.path.splitToArtifact("/")[7];
+        global target = "maps/analytics/legacy/nile/statadhoc-12887-maps-load-times-exps-v4-report";
+    inputs:
+      globals:
+        date:
+          type: VAR
+          value: date
+          value_type: PRIMITIVE_STRING
+        target:
+          type: VAR
+          value: target
+          value_type: PRIMITIVE_STRING
+
+solomon:
+  project_id: maps-analytics
+  alerts:
+  - preset: solomon/alerts/reaction-failure
+    preset_options:
+      reaction_path: /maps/analytics/legacy/nile/statadhoc-12887-maps-load-times-exps-v4-report/daily
+      channel_id: MapsAnalyticsMonitorings
+
+juggler:
+  checks:
+  - service: /maps/analytics/legacy/nile/statadhoc-12887-maps-load-times-exps-v4-report/daily_failure
+    preset: projects/maps-analytics/juggler/check

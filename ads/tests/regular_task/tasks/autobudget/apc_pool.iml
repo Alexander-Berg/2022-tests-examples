@@ -1,0 +1,48 @@
+#vim: ft=yml
+usercode:
+  files:
+    'preprocess.py': !literal 'preprocess.py'
+ml:
+  tables:
+    input: ['matrixnet/EmptyLog']
+  preprocess_classes:
+    - '__import__("usercode.preprocess").preprocess.APCModelPreparation(use_rotation_goals=False, use_parent_banner=False, use_target_phrase=False, days_to_learn=14, round_date=True)'
+
+  split_learn_test_by: Split
+  learn_fields:
+    target:
+      name: GoalReached
+    id:
+      name: BannerID
+      # 2^63
+      max_value: 9223372036854775808
+      min_value: 0
+
+calc:
+  begin: |
+    from datetime import datetime
+    import random
+
+  mappers: |
+    [
+        Grep('r.LogID / 10000 % {task.data.folds} in ({task.data.train_folds} + {task.data.test_folds})'), # WTF?! r.LogID % 10 is NOT uniform!
+        Mapper('r.Split = 0 if r.LogID / 10000 % {task.data.folds} in {task.data.train_folds} else 1', add_fields=[('Split',int)]),
+
+        Mapper('r.HourID = datetime.fromtimestamp(r.EventTime).weekday() * 24 + datetime.fromtimestamp(r.EventTime).hour', add_fields=[('HourID',int)]),
+        Mapper(
+            '''
+                r.BannerBMCategoryID = ' '.join([str(cat if cat > 200000000 else cat + 200000000) for cat in [getattr(r, "BMCategory%dID" % n) for n in (1,2,3)] if cat is not None])
+            ''', add_fields=[('BannerBMCategoryID', str)]),
+
+        {task.data.mappers}
+    ]
+
+testing:
+  allowed:
+    false
+
+data:
+    folds: 10
+    train_folds: [1,2,3,4,5]
+    test_folds: [6,7,8,9,0]
+    mappers: ""

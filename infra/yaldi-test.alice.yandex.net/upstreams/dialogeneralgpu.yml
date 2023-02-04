@@ -1,0 +1,152 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - av-kotikov
+      groups: []
+labels:
+  order: '10000000'
+---
+regexp_section:
+    matcher:
+        match_fsm:
+            uri: '/ru-ru/dialog-general-gpu/(.*)'
+    modules:
+        - report:
+            uuid: "dialog_general_gpu"
+            ranges: "300ms,500ms,1s,2s,3s,4s,5s,10s"
+        - rewrite:
+            actions:
+                - {regexp: '/ru-ru/dialog-general-gpu/(.*)', rewrite: /%1, split: url}
+        - balancer2:
+            attempts: 1
+            connection_attempts: 2
+            rr: {weights_file: ./controls/traffic_control.weights}
+            by_name_from_header_policy:
+                hints:
+                    - {hint: 'sas', 'backend': 'dialogeneralgpu_sas'}
+                    - {hint: 'sas-pre', 'backend': 'dialogeneralgpu_sas'}
+                    - {hint: 'sas-prod', 'backend': 'dialogeneralgpu_sas'}
+                    - {hint: 'man', 'backend': 'dialogeneralgpu_man'}
+                    - {hint: 'vla', 'backend': 'dialogeneralgpu_vla'}
+                allow_zero_weights: false
+                unique_policy: {}
+            backends:
+                -   weight: 1
+                    name: dialogeneralgpu_man
+                    modules:
+                        - report: {ranges: "300ms,500ms,1s,2s,3s,4s,5s,10s", uuid: requests_dialog_general_gpu_to_man}
+                        - balancer2:
+                            attempts: 1
+                            fast_attempts: 3 # https://st.yandex-team.ru/ALICEOPS-204
+                            fast_503: true
+                            attempts_rate_limiter:
+                                limit: 0.5
+                            rr: {}
+                            generated_proxy_backends:
+                                proxy_options:
+                                    allow_connection_upgrade: true
+                                    connect_timeout: 100ms
+                                    backend_timeout: 10s
+                                    backend_read_timeout: 600s
+                                    backend_write_timeout: 600s
+                                    client_read_timeout: 600s
+                                    client_write_timeout: 600s
+                                    fail_on_5xx: true
+                                include_backends:
+                                    type: BY_ID
+                                    ids:
+                                        - dialogeneralgpu-man
+                -   weight: 1
+                    name: dialogeneralgpu_sas
+                    modules:
+                        - report: {ranges: "300ms,500ms,1s,2s,3s,4s,5s,10s", uuid: requests_dialog_general_gpu_to_sas}
+                        - balancer2:
+                            attempts: 2
+                            rr: {weights_file: ./controls/traffic_control.weights}
+                            by_name_from_header_policy:
+                                hints:
+                                    - {hint: 'sas-prod', 'backend': 'dialogeneralgpusas_stable'}
+                                    - {hint: 'sas-pre', 'backend': 'dialogeneralgpusas_prestable'}
+                                allow_zero_weights: true
+                                unique_policy: {}
+                            backends:
+                                - weight: 1
+                                  name: dialogeneralgpusas_stable
+                                  modules:
+                                    - report: {ranges: "300ms,500ms,1s,2s,3s,4s,5s,10s", uuid: requests_dialog_general_gpu_stable_to_sas}
+                                    - balancer2:
+                                        attempts: 1
+                                        fast_attempts: 3 # https://st.yandex-team.ru/ALICEOPS-204
+                                        fast_503: true
+                                        attempts_rate_limiter:
+                                            limit: 0.5
+                                        rr: {}
+                                        generated_proxy_backends:
+                                            proxy_options:
+                                                allow_connection_upgrade: true
+                                                connect_timeout: 100ms
+                                                backend_timeout: 10s
+                                                backend_read_timeout: 600s
+                                                backend_write_timeout: 600s
+                                                client_read_timeout: 600s
+                                                client_write_timeout: 600s
+                                                fail_on_5xx: true
+                                            include_backends:
+                                                type: BY_ID
+                                                ids:
+                                                    - dialogeneralgpu-sas
+                                - weight: 1
+                                  name: dialogeneralgpusas_prestable
+                                  modules:
+                                    - report: {ranges: "300ms,500ms,1s,2s,3s,4s,5s,10s", uuid: requests_dialog_general_gpu_prestable_to_sas}
+                                    - balancer2:
+                                        attempts: 1
+                                        fast_attempts: 3 # https://st.yandex-team.ru/ALICEOPS-204
+                                        fast_503: true
+                                        attempts_rate_limiter:
+                                            limit: 0.5
+                                        rr: {}
+                                        generated_proxy_backends:
+                                            proxy_options:
+                                                allow_connection_upgrade: true
+                                                connect_timeout: 100ms
+                                                backend_timeout: 10s
+                                                backend_read_timeout: 600s
+                                                backend_write_timeout: 600s
+                                                client_read_timeout: 600s
+                                                client_write_timeout: 600s
+                                                fail_on_5xx: true
+                                            include_backends:
+                                                type: BY_ID
+                                                ids:
+                                                    - dialogeneralgpu-prestable-sas
+                -   weight: 1
+                    name: dialogeneralgpu_vla
+                    modules:
+                        - report: {ranges: "300ms,500ms,1s,2s,3s,4s,5s,10s", uuid: requests_dialog_general_gpu_to_vla}
+                        - balancer2:
+                            attempts: 1
+                            fast_attempts: 3 # https://st.yandex-team.ru/ALICEOPS-204
+                            fast_503: true
+                            attempts_rate_limiter:
+                                limit: 0.5
+                            rr: {}
+                            generated_proxy_backends:
+                                proxy_options:
+                                    allow_connection_upgrade: true
+                                    connect_timeout: 100ms
+                                    backend_timeout: 10s
+                                    backend_read_timeout: 600s
+                                    backend_write_timeout: 600s
+                                    client_read_timeout: 600s
+                                    client_write_timeout: 600s
+                                    fail_on_5xx: true
+                                include_backends:
+                                    type: BY_ID
+                                    ids:
+                                        - dialogeneralgpu-vla
+            on_error:
+                errordocument:
+                    status: 504
+                    content: "Service unavailable"

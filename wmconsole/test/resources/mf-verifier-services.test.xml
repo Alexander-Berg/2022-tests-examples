@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd">
+
+    <import resource="classpath:validators.xml"/>
+
+    <!-- tanker error messages -->
+
+    <bean id="tankerProject" class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.tanker.XMLProjectLoader" factory-method="loadById">
+        <constructor-arg>
+            <bean class="ru.yandex.webmaster3.core.semantic.schema_org_information_extractor.RDFsSchemaUtils" factory-method="getContentFromResource">
+                <constructor-arg value="${tanker.project.xml}"/>
+            </bean>
+        </constructor-arg>
+        <constructor-arg type="java.lang.String" value="webmaster"/>
+    </bean>
+
+    <bean id="microtestKeySet" factory-bean="tankerProject" factory-method="getKeySet">
+        <constructor-arg type="java.lang.String" value="microtest-backend"/>
+    </bean>
+
+    <bean id="contextMap" class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.tanker.TankerUtils" factory-method="contextMap">
+        <constructor-arg ref="microtestKeySet"/>
+        <constructor-arg>
+            <list value-type="java.lang.String">
+                <value>ru</value>
+                <value>en</value>
+                <value>uk</value>
+                <value>tr</value>
+            </list>
+        </constructor-arg>
+    </bean>
+
+    <!-- tanker error messages -->
+
+    <bean id="jsonldParserFactory" class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.rdfa.jsonld.JSONLDParserFactory">
+        <property name="basicContextManager">
+            <bean class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.rdfa.jsonld.ContextManager">
+                <constructor-arg>
+                    <map>
+                        <entry key="http://schema.org/" value="schema-http.jsonld"/>
+                    </map>
+                </constructor-arg>
+            </bean>
+        </property>
+        <property name="frontEnd" ref="frontEnd"/>
+    </bean>
+
+    <bean id="frontEnd" class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.microformats.FrontEnd">
+        <property name="exceptionSerializerFactory">
+            <bean class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.exceptions.ExceptionSerializerFactory"/>
+        </property>
+        <property name="contextMap" ref="contextMap"/>
+        <property name="microdataValidators">
+            <list>
+                <bean class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.microdata.validators.OrphansMicrodataValidator"/>
+                <ref bean="microdataDeepValidator"/>
+            </list>
+        </property>
+        <property name="ogpValidators" ref="allOgpValidators"/>
+        <property name="microformatValidators" ref="allMfValidators"/>
+        <property name="rdfaValidators" ref="allRdfaValidators"/>
+        <property name="jsonldParserFactory" ref="jsonldParserFactory"/>
+        <property name="batchMicrodataValidator" ref="batchMicrodataValidator"/>
+    </bean>
+
+
+ </beans>

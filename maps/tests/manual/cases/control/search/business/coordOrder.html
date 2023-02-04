@@ -1,0 +1,170 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Контрол: поиск по тексту, поиск по координатам
+
+Description:
+Проверка работы поиска по координатам и тексту.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+control
+
+Estimated time:
+240000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан Московской области, на спане поисковый инпут с подсказкой "Адрес или объект", желтой кнопкой "Найти".
+  Над поисковым инпутом кнопки "text", "coords". 
+
+Step:
+  Action:
+  Ввести в поисковый инпут "музеи", выполнить клик в "Найти".
+
+  Expectation:
+  При вводе значений, или после ввода под инпутом выпадает саджест с поисковыми подсказками.
+  После клика в "Найти" на карте появляются синие метки организаций, под инпутом появляется панель со сниппетами организаций по запросу.
+  Справа в инпуте появляются кнопка в виде иконки из трех строк, кнопка стирания запроса - крестик.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "coords".
+
+  Expectation:
+  Кнопка "coords" меняет значение на "longlat".
+  Происходит смена спана на спан Санкт-Петербурга, в поисковом инпуте координаты, появляется саджест с подсказками, среди которых есть "Систан и Белуджистан, Иран", также имеется панель со сниппетами адресов в Санкт-Петербурге.
+  Под контейнером с картой появляется текст: "searchCoordOrder - longlat. Searching "59.975628,30.307568" (Iran)...".
+
+Step:
+  Action:
+  Выполнить клик в саджесте в "Систан и Белуджистан, Иран".
+
+  Expectation:
+  Появляется плашка загрузки: "Идет запрос к серверу", после чего происходит смена спана на спан Ирана. 
+  На карте открывается балун с карточкой "Систан и Белуджистан, Иран".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "longlat".
+
+  Expectation:
+  Кнопка "coords" меняет значение на "latlong".
+  Происходит смена спана на спан Санкт-Петербурга, в поисковом инпуте координаты, появляется саджест с подсказками, также имеется панель со сниппетами адресов в Санкт-Петербурге.
+  Под контейнером с картой появляется текст: "searchCoordOrder - latlong. Searching "59.975628,30.307568" (St.Pete)...".
+
+Step:
+  Action:
+  Выполнить клик в саджесте в первую подсказку "координаты...- Россия, Са...".
+
+  Expectation:
+  Появляется плашка загрузки: "Идет запрос к серверу", спан карты без изменений. В панели под инпутом адреса в Санкт-Петербурге.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "text".
+
+  Expectation:
+  Кнопка "coords" меняет значение на "longlat".
+  Происходит смена спана на спан Московской области, в поисковом инпуте "Москва", появляется саджест с подсказками.
+  На спане в Москве открывается балун с карточкой "Москва".
+  Под контейнером с картой появляется текст: "searchCoordOrder - longlat. Searching "москва"...".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "longlat".
+
+  Expectation:
+  Кнопка "coords" меняет значение на "latlong".
+  Спан карты не меняется в поисковом инпуте "Москва", саджест с подсказками пропадает.
+  Балун с карточкой "Москва" не пропадает.
+  Под контейнером с картой появляется текст: "searchCoordOrder - latlong. Searching "москва"...".
+-->
+<html>
+<head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            var myMap = new ym.Map('map', {
+                        center: [55.73259667357658, 37.70153663432529],
+                        zoom: 9,
+                        behaviors: ['default', 'scrollZoom'],
+                        controls: []
+                    }), bounds = new ym.Rectangle([
+                        [59.999302212190216, 30.22371063232047],
+                        [59.880094970125405, 30.44206390380444]
+                    ]),
+                    log = new Log();
+
+            addGrid(myMap);
+            //договорились что опции searchCoordOrder в новом контроле поиска нет
+            var search1 = new ymaps.control.SearchControl({
+                options: {
+                    float: 'none',
+                    size: 'large',
+                    position: {top: 45, left: 10}
+                }
+            });
+
+            var coordsButton = new ymaps.control.Button({
+                data: {content: 'coords'},
+                options: {selectOnClick: true, maxWidth: 150}
+            });
+            coordsButton.events
+                    .add('select', function () {
+                        search1.options.set('searchCoordOrder', 'longlat');
+                        coordsButton.data.set('content', 'longlat');
+                        __log__('searchCoordOrder - longlat. Searching "59.975628,30.307568" (Iran)...');
+                        search1.search('59.975628,30.307568');
+                    })
+                    .add('deselect', function () {
+                        search1.options.set('searchCoordOrder', 'latlong');
+                        coordsButton.data.set('content', 'latlong');
+                        __log__('searchCoordOrder - latlong. Searching "59.975628,30.307568" (St.Pete)...');
+                        search1.search('59.975628,30.307568');
+                    });
+
+            var requestButton = new ymaps.control.Button({
+                data: {content: 'text'},
+                options: {selectOnClick: true, maxWidth: 150}
+            });
+            requestButton.events
+                    .add('select', function () {
+                        search1.options.set('searchCoordOrder', 'longlat');
+                        requestButton.data.set('content', 'longlat');
+                        __log__('searchCoordOrder - longlat. Searching "москва"...');
+                        search1.search('москва');
+                    })
+                    .add('deselect', function () {
+                        search1.options.set('searchCoordOrder', 'latlong');
+                        requestButton.data.set('content', 'latlong');
+                        __log__('searchCoordOrder - latlong. Searching "москва"...');
+                        search1.search('москва');
+                    });
+
+            myMap.controls
+                    .add(search1, {floatIndex: 100})
+                    .add(coordsButton)
+                    .add(requestButton);
+
+            search1.options.set('provider', 'yandex#search');
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

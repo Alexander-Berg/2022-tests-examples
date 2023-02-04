@@ -1,0 +1,50 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - av-kotikov
+      groups: []
+labels:
+  order: '10000000'
+---
+regexp_section:
+    matcher:
+      match_fsm:
+        url: '/echo/(.*)'
+    modules:
+        - report: {ranges: default, uuid: wsechobackend_ws}
+        - rewrite:
+            actions:
+                - {regexp: '/echo/(.*)', rewrite: /%1, split: url}
+        - headers:
+            create_func:
+              X-Yandex-TCP-Info: tcp_info
+        - balancer2:
+            attempts: 1
+            unique_policy: {}
+            rr: {weights_file: ./controls/traffic_control.weights}
+            backends:
+                -   weight: 1
+                    name: wsechobackend_sas
+                    modules:
+                        - report: {ranges: default, uuid: wsechobackend_to_sas}
+                        - balancer2:
+                            attempts: 3
+                            attempts_rate_limiter:
+                                limit: 2
+                            fast_attempts: !f count_backends()
+                            fast_503: true
+                            unique_policy: {}
+                            active: {delay: 10s, request: 'GET /ping HTTP/1.1\nHost: uniproxy-test.alice.yandex.net\n\n'}
+                            generated_proxy_backends:
+                                proxy_options:
+                                    connect_timeout: 20ms
+                                    backend_timeout: 5s
+                                include_backends:
+                                    type: BY_ID
+                                    ids:
+                                        - ws-echo-backend-sas
+                            on_error:
+                              errordocument:
+                                status: 504
+                                content: "Service unavailable"

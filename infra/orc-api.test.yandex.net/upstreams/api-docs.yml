@@ -1,0 +1,45 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - mokosha
+      groups: []
+labels:
+  order: '10000000'
+config_mode: easy2
+---
+l7_upstream_macro:
+  version: 0.0.1
+  id: api-docs
+  matcher:
+    or_:
+      - uri_re: /
+      - uri_re: '/api-docs(.*)?'
+      - uri_re: '/api-schema(.*)?'
+      - uri_re: '/favicon(.*)?'
+      - uri_re: '/webjars(.*)?'
+  monitoring:
+    uuid: api-docs
+  headers:
+    - create: {target: X-Forwarded-For-Y, keep_existing: true, func: realip}
+    - create: {target: X-Forwarded-Host, keep_existing: true, func: host}
+    - create: {target: X-Real-IP, keep_existing: true, func: realip}
+    - create: {target: X-Request-Id, keep_existing: true, func: reqid}
+    - create: {target: X-Start-Time, keep_existing: true, func: starttime}
+    - log: {target_re: 'X-Req(.*)'}
+  flat_scheme:
+    balancer:
+      compat:
+        method: RR
+      attempts: 1
+      do_not_limit_reattempts: true
+      do_not_retry_http_responses: true
+      connect_timeout: 100ms
+      backend_timeout: 5s
+      keepalive_count: 1
+    backend_ids:
+      - orc-testing.api-unit_sas
+    on_error:
+      static:
+        status: 504
+        content: 'Service unavailable'

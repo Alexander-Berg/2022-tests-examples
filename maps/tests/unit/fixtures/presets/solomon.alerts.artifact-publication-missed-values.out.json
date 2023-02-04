@@ -1,0 +1,45 @@
+{
+    "solomon": {
+        "project_id": "maps-analytics",
+        "alerts": [
+            {
+                "id": "tools-duty-failure",
+                "projectId": "maps-analytics",
+                "name": "Reactor Artifact missed values for /maps/analytics/tools/duty",
+                "channels": [
+                    {
+                        "id": "MapsAnalyticsMonitorings",
+                        "config": {
+                            "notifyAboutStatuses": [
+                                "ALARM",
+                                "ERROR",
+                                "NO_DATA",
+                                "OK",
+                                "WARN"
+                            ],
+                            "repeatDelaySecs": 0
+                        }
+                    }
+                ],
+                "type": {
+                    "expression": {
+                        "program": "// every reaction publishes one or more artifacts\n// so we get the one of them (max, for example)\nlet source = series_max({project=\"reactor\", cluster=\"prod\", service=\"prod_push\", mode=\"usertime\", path=\"/test\", attribute=\"delay_first_sec\", sensor=\"artifact*\"});\n\nlet ALERT_THRESHOLD = 7;\n\n// check if the sensor has a history\nlet SHIFT_INTERVAL = 7d;\nlet history_data = shift(source, SHIFT_INTERVAL);\nlet history_count = count(history_data);\nlet has_history = history_count >= ALERT_THRESHOLD;\n\nlet current_data = shift(source, 2d); // don't count last calculation\nlet current_data_count = count(current_data);\nlet has_missed_values = current_data_count < ALERT_THRESHOLD;\n\nalarm_if(has_history && has_missed_values);",
+                        "checkExpression": ""
+                    }
+                },
+                "annotations": {
+                    "solomon_graph_id": "reactor-reactions-failures",
+                    "reactor_path": "/maps/analytics/tools/duty",
+                    "description": "{{#expression.has_missed_values}}Artifact /test has missed values{{/expression.has_missed_values}}",
+                    "message": "",
+                    "juggler_host": "maps-analytics",
+                    "juggler_service": "/maps/analytics/tools/duty_missed_values"
+                },
+                "windowSecs": 604800,
+                "delaySecs": 0,
+                "resolvedEmptyPolicy": "RESOLVED_EMPTY_DEFAULT",
+                "noPointsPolicy": "NO_POINTS_DEFAULT"
+            }
+        ]
+    }
+}

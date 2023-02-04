@@ -1,0 +1,170 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Макет: базовая проверка
+
+Description:
+Проверка применения макета к метке, балуну метки, кнопке закрытия балуна.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+layout
+
+Estimated time:
+120000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+  
+  Expectation:
+  Карта отобразилась корректно. 
+  На карте спан Москвы, в центре спана открыт прямоугольный балун в черной рамке, с содержимым: "Здесь может быть ваша реклама", в верхнем правом углу балуна серая кнопка с надписью "close". 
+  Сверху слева в контейнере кнопка "open".  
+  Под контейнером с картой текст: "event: open, overlay: [object Object], isOpen: true, target: [object Object]".
+
+Step:
+  Action:
+  Поводить курсором по балуну, содержимому балуна, кнопке "close".
+  
+  Expectation:
+  Курсор внутри балуна меняется на стрелку, на содержимом балуна и кнопке "close" курсор меняется на каретку.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "close".
+  
+  Expectation:
+  Балун закрывается, на спане карты голубая кастомная метка.
+  Под контейнером с картой появляется блок: "event: userclose, overlay: [object Object], isOpen: true, target: [object Object]; event: close, overlay: null, isOpen: false, target: [object Object]".
+
+Step:
+  Action:
+  Выполнить клик ПКМ по метке на спане карты.
+  
+  Expectation:
+  Открывается прямоугольный балун в черной рамке, с содержимым: "Здесь может быть ваша реклама", в верхнем правом углу балуна серая кнопка с надписью "close".
+  Под контейнером с картой появляется строка: "event: open, overlay: [object Object], isOpen: true, target: [object Object]".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "close".
+  
+  Expectation:
+  Балун закрывается, на спане карты голубая кастомная метка.
+  Под контейнером с картой появляется блок: "event: userclose, overlay: [object Object], isOpen: true, target: [object Object]; event: close, overlay: null, isOpen: false, target: [object Object]".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "open".
+  
+  Expectation:
+  Открывается прямоугольный балун в черной рамке, с содержимым: "Здесь может быть ваша реклама", в верхнем правом углу балуна серая кнопка с надписью "close".
+  Под контейнером с картой появляется строка: "event: open, overlay: [object Object], isOpen: true, target: [object Object]".
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <style>
+        #custom {
+            background-color: #FFFFFF;
+            border: 1px solid black;
+            height: 100px;
+            width: 150px;
+            margin: -80px;
+        }
+
+        #close {
+            background-color: #bbbbbb;
+            border: 1px solid black;
+            height: 10px;
+            width: 30px;
+            margin-left: 110px;
+        }
+
+        #placemark {
+            margin: -24px;
+            height: 48px;
+            width: 48px;
+            background-image: url("https://png-4.findicons.com/files/icons/2300/social_media_balloons/48/social_balloon_64.png");
+        }
+
+        #text {
+            margin-left: -60px;
+            margin-top: -30px;
+            width: 100px;
+        }
+    </style>
+    <script src="../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 10,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+
+            var BalloonLayout = ymaps.templateLayoutFactory.createClass('<div id="custom"><input id="close" ' +
+                    'value="close" onClick="balloon.events.fire(\'userclose\'); balloon.close()"></div>' +
+                    '<p id="text">$[balloonContent]</p></div>', {}, {});
+            ymaps.layout.storage.add('custom#balloon', BalloonLayout);
+
+            var PlacemarkLayout = ymaps.templateLayoutFactory.createClass('<div id="placemark"></div>', {}, {});
+            ymaps.layout.storage.add('custom#placemark', PlacemarkLayout);
+
+            var balloon,
+                    pos = map.getCenter(),
+                    options = { layout: 'custom#balloon', preventPanelMode: true };
+
+            window.balloon = balloon = new ymaps.Balloon(map);
+            balloon.setData({balloonContent: 'Здесь может быть ваша реклама'});
+            balloon.options.set(options).setParent(map.options);
+
+            balloon.events.add(['open', 'close', 'userclose'], function (e) {
+                log.info('event: ' + e.get('type') + ', overlay: ' + balloon.getOverlaySync().getMap() +
+                        ', isOpen: ' + balloon.isOpen() + ', target: ' + e.get('target'));
+                console.log(e.get('target'))
+            });
+
+            balloon.open(pos);
+
+            map.events.add('contextmenu', function(e) {
+                balloon.open(e.get('coords'))
+            });
+
+            var placemark = new ymaps.Placemark(map.getCenter(), {
+                balloonContent: 'balloon'
+            }, {
+                iconPane: 'places',
+                iconLayout: 'custom#placemark',
+                draggable: true
+            });
+
+            var openButton = new ymaps.control.Button({data: {content: 'open'}, options: {selectOnClick: false}});
+            openButton.events.add('click', function () {
+                balloon.open(pos);
+            });
+
+            map.controls.add(openButton);
+            map.geoObjects.add(placemark);
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

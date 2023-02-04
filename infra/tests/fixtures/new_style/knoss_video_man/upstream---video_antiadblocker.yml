@@ -1,0 +1,78 @@
+---
+regexp_section:
+  matcher:
+    match_and:
+      - match_not:
+          match_fsm: {host: '(sas|vla|man).yandex.ru'}
+      - match_or:
+        - match_and:
+          - match_fsm:
+              uri: '/video/_crpd/.*'
+        - match_and:
+          - match_fsm:
+              uri: '/video(/.*)?'
+          - match_not:
+              match_fsm: {uri: '/video/(touch|pad)(/.*)?'}
+          - match_or:
+              - match_fsm: {cookie: 'lastexp=1', surround: True}
+              - match_fsm: {cookie: 'bltsr=1', surround: True}
+              - match_fsm: {cookie: 'qgZTpupNMGJBM=1', surround: True}
+              - match_fsm: {cookie: 'mcBaGDt=1', surround: True}
+              - match_fsm: {cookie: 'BgeeyNoBJuyII=1', surround: True}
+              - match_fsm: {cookie: 'orrXTfJaS=1', surround: True}
+              - match_fsm: {cookie: 'FgkKdCjPqoMFm=1', surround: True}
+              - match_fsm: {cookie: 'EIXtkCTlX=1', surround: True}
+              - match_fsm: {cookie: 'JPIqApiY=1', surround: True}
+              - match_fsm: {cookie: 'KIykI=1', surround: True}
+              - match_fsm: {cookie: 'HgGedof=1', surround: True}
+              - match_fsm: {cookie: 'ancQTZw=1', surround: True}
+              - match_fsm: {cookie: 'involved=1', surround: True}
+              - match_fsm: {cookie: 'instruction=1', surround: True}
+              - match_fsm: {cookie: 'engineering=1', surround: True}
+              - match_fsm: {cookie: 'telecommunications=1', surround: True}
+              - match_fsm: {cookie: 'discussion=1', surround: True}
+              - match_fsm: {cookie: 'computer=1', surround: True}
+              - match_fsm: {cookie: 'substantial=1', surround: True}
+              - match_fsm: {cookie: 'specific=1', surround: True}
+              - match_fsm: {cookie: 'engineer=1', surround: True}
+              - match_fsm: {cookie: 'adequate=1', surround: True}
+  modules:
+    - shared:
+        uuid: video_antiadblocker_checks
+    - balancer2:
+        attempts: 1
+        rr: {weights_file: ./controls/video_antiadblock.txt}
+        simple_policy: {}
+        backends:
+          - weight: -1
+            name: video_antiadblock
+            modules:
+              - headers:
+                  create:
+                    X-AAB-PartnerToken: !f get_str_env_var("AAB_TOKEN")
+                    Y-Service: video_antiadblock
+                    X-Yandex-Service-L7-Port: '81'
+                    X-Forwarded-Proto: 'https'
+              - report:
+                  uuid: video_antiadblock
+                  ranges: default
+              - balancer2:
+                  attempts: 2
+                  simple_policy: {}
+                  rr: {}
+                  attempts_rate_limiter: {
+                    limit: 0.1
+                  }
+                  generated_proxy_backends:
+                    proxy_options:
+                      backend_timeout: 30s
+                      connect_timeout: 60ms
+                    instances:
+                      - weight: 1
+                        host: cryprox.yandex.net
+                        port: 80
+          - weight: 1
+            name: video_prod
+            modules:
+              - shared:
+                  uuid: video_prod

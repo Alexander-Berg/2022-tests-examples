@@ -1,0 +1,38 @@
+version: '2'
+
+services:
+  cron:
+    image: registry-proxy-int.noc-slb.prod.vertis.yandex.net/vertis/sentry:${SENTRY_TAG}
+    env_file: /etc/sentry/sentry.env
+    network_mode: "host"
+    command: "sentry run cron"
+
+  worker:
+    image: registry-proxy-int.noc-slb.prod.vertis.yandex.net/vertis/sentry:${SENTRY_TAG}
+    env_file: /etc/sentry/sentry.env
+    network_mode: "host"
+    command: "sentry run worker --concurrency 16"
+
+  web:
+    image: registry-proxy-int.noc-slb.prod.vertis.yandex.net/vertis/sentry:${SENTRY_TAG}
+    env_file: /etc/sentry/sentry.env
+    network_mode: "host"
+    command: "sentry run web --workers 4"
+
+  queue_exporter:
+    image: registry-proxy-int.noc-slb.prod.vertis.yandex.net/vertis/sentry:${SENTRY_TAG}
+    env_file: /etc/sentry/sentry.env
+    network_mode: "host"
+    command: "/queues-exporter.py"
+
+  statsd_exporter:
+    image: registry-proxy-int.noc-slb.prod.vertis.yandex.net/vertis/statsd-exporter:v0.12.1-vertis0
+    network_mode: "host"
+
+  healthcheck:
+    image: registry-proxy-int.noc-slb.prod.vertis.yandex.net/vertis/sentry:${SENTRY_TAG}
+    env_file: /etc/sentry/sentry.env
+    network_mode: "host"
+    command: "/sentry-healthcheck.py"
+    depends_on:
+      - web

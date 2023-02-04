@@ -1,0 +1,69 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <script src="../../../helper.js"></script>
+    <style>
+        * {
+            text-align: center
+        }
+    </style>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+
+            var myMap = new ymaps.Map("map", {
+                center: [54.83, 37.11],
+                zoom: 5
+            });
+            link(myMap);
+            // Метка, содержимое балуна которой загружается с помощью AJAX.
+            var placemark = new ymaps.Placemark([55.8, 37.72], {
+                iconContent: "Узнать адрес",
+                hintContent: "Перетащите метку и кликните, чтобы узнать адрес"
+            }, {
+                draggable: "true",
+                preset: "islands#blueStretchyIcon",
+                // Заставляем балун открываться даже если в нем нет содержимого.
+                openEmptyBalloon: true
+            });
+
+            myMap.controls.add(new ymaps.control.RouteButton());
+            myMap.controls.add(new ymaps.control.RouteEditor({options: {}}), {
+                float: 'none',
+                position: {bottom: 35, left: 10}
+            });
+            // Обрабатываем событие открытия балуна на геообъекте:
+            // начинаем загрузку данных, затем обновляем его содержимое.
+            placemark.events.add('balloonopen', function (e) {
+                placemark.properties.set('balloonContent', "Идет загрузка данных...");
+
+                // Имитация задержки при загрузке данных (для демонстрации примера).
+                setTimeout(function () {
+                    ymaps.geocode(placemark.geometry.getCoordinates(), {
+                        results: 1
+                    }).then(function (res) {
+                        var newContent = res.geoObjects.get(0) ?
+                            res.geoObjects.get(0).properties.get('name') :
+                            'Не удалось определить адрес.';
+
+                        // Задаем новое содержимое балуна в соответствующее свойство метки.
+                        placemark.properties.set('balloonContent', newContent);
+                    });
+                }, 1500);
+            });
+
+            myMap.geoObjects.add(placemark);
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div style="display:table;height:800px;text-align:center;width:850px;">
+    <div style="display:table-cell;vertical-align:middle;">
+        <div id="map" style="width:512px; height: 512px;"></div>
+    </div>
+</div>
+</body>
+</html>

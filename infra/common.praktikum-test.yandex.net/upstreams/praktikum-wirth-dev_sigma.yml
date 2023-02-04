@@ -1,0 +1,53 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - yakovlev-alex
+      groups:
+      - svc_yandexskills_administration
+labels:
+  order: '10000000'
+config_mode: easy2
+---
+l7_upstream_macro:
+  version: 0.3.0
+  id: praktikum-wirth-dev_sigma
+  matcher:
+    uri_re: /school-math(.*)
+  rewrite:
+  - target: PATH
+    pattern:
+      re: /school-math/socket/
+    replacement: /
+  headers:
+  - create:
+      target: X-Rewritten-URL
+      func: url
+  - log:
+      target_re: X-Rewritten-URL
+  - create:
+      target: Host
+      func: host
+      keep_existing: false
+  by_dc_scheme:
+    dc_balancer:
+      weights_section_id: bygeo
+      method: BY_DC_WEIGHT
+      attempts: 1
+    balancer:
+      backend_timeout: 30s
+      connect_timeout: 100ms
+      attempts: 1
+      fast_attempts: 2
+      do_not_retry_http_responses: true
+      max_reattempts_share: 0.2
+      max_pessimized_endpoints_share: 0.5
+      allow_connection_upgrade: true
+    dcs:
+    - backend_ids:
+      - praktikum-sigma-dev_sas
+      name: sas
+    on_error:
+      static:
+        status: 504
+        content: '[praktikum-wirth-dev_sigma] Service unavailable'

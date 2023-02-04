@@ -1,0 +1,97 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - pe4kin
+      groups: []
+labels:
+  order: '100'
+---
+regexp_section:
+  matcher:
+    match_and:
+      - match_not:
+          match_fsm:
+            host: 'release\\.crowdtest\\.direct\\.yandex\\.(ru|com|com\\.tr)'
+      - match_not:
+          match_fsm:
+            uri: '/wizard/(api|crowd-avatars-mds|crowd-s3|direct-crowd-s3)/(.*)?'
+      - match_or:
+          - match_fsm:
+              uri: '/wizard'
+          - match_fsm:
+              uri: '/wizard/.*'
+  modules:
+    - report:
+        uuid: uac-direct
+        ranges: default
+    - balancer2:
+        attempts: 1
+        connection_attempts: 3
+        return_last_5xx: true
+        status_code_blacklist : ["5xx"]
+        rr:
+          weights_file: ./controls/traffic_control.weights
+        backends:
+          - name: uacfrontend_iva
+            weight: 1
+            modules:
+            - balancer2:
+                rr: {}
+                attempts: 1
+                attempts_rate_limiter:
+                  limit: 0.15
+                connection_attempts: 3
+                return_last_5xx: true
+                status_code_blacklist : ["5xx"]
+                generated_proxy_backends:
+                  proxy_options:
+                    connect_timeout: 100ms
+                    backend_timeout: 300s
+                    fail_on_5xx: false
+                  include_backends:
+                    type: BY_ID
+                    ids: [uac-frontend-test-deploy-iva]
+          - name: uacfrontend_vla
+            weight: 1
+            modules:
+            - balancer2:
+                rr: {}
+                attempts: 1
+                attempts_rate_limiter:
+                  limit: 0.15
+                connection_attempts: 3
+                return_last_5xx: true
+                status_code_blacklist : ["5xx"]
+                generated_proxy_backends:
+                  proxy_options:
+                    connect_timeout: 100ms
+                    backend_timeout: 300s
+                    fail_on_5xx: false
+                  include_backends:
+                    type: BY_ID
+                    ids: [uac-frontend-test-deploy-vla]
+          - name: uacfrontend_sas
+            weight: 1
+            modules:
+            - balancer2:
+                rr: {}
+                attempts: 1
+                attempts_rate_limiter:
+                  limit: 0.15
+                connection_attempts: 3
+                return_last_5xx: true
+                status_code_blacklist : ["5xx"]
+                generated_proxy_backends:
+                  proxy_options:
+                    connect_timeout: 100ms
+                    backend_timeout: 300s
+                    fail_on_5xx: false
+                  include_backends:
+                    type: BY_ID
+                    ids: [uac-frontend-test-deploy-sas]
+        on_error:
+          modules:
+          - errordocument: 
+              status: 504
+              content: 'Service unavailable'

@@ -1,0 +1,75 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Шаблонизатор: использование цикла for in
+
+Description:
+Проверка использования цикла for in.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components:
+template
+
+Estimated time:
+30000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть страницу и элементы на ней. 
+
+  Expectation:
+  На странице блок тестовых кнопок, под которым строка "Виталий(20): улица Большая Ордынка, 40с5" и строка "OK".
+  Ошибки на странице отсутствуют.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var log = new Log();
+
+            // Получим адрес дома из имеющихся координат и выведем по шаблону
+            // всех его жильцов в формате: «имя: возраст».
+            var data = new ymaps.data.Manager({
+                users: [
+                    {name: "Виталий", age: 40},
+                    {name: "Георгий", age: 20}
+                ],
+                home: {
+                    coords: [55.736652, 37.620589],
+                    address: null
+                }
+            });
+            var template = new ymaps.Template('{% for u,user in users %}{%if u == 0 %}{{user.name}}{%else%}({{user.age}}){% endif%}{% endfor %}: {{home.address}}');
+
+            // Сделаем обратное геокодирование с помощью {@link geocode}.
+            ymaps.geocode(data.get('home.coords')).then(function (res) {
+                var address = res.geoObjects.get(0).properties.get('name');
+                // Установим в менеджер полученный адрес.
+                data.set('home.address', address);
+
+                // Соберём шаблон из имеющихся данных.
+                var result = template.build(data);
+                // Выведем результат в консоль.
+                __log__(result.text);
+                validateValue(result.text, "Виталий(20): улица Большая Ордынка, 40с5");
+                __log__('');
+            });
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+</body>
+</html>

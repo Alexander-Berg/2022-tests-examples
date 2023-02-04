@@ -1,0 +1,189 @@
+<!DOCTYPE HTML>
+<!--(skip)(description)
+
+-->
+<!--(version)
+
+-->
+<!--(commands)
+
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+    <script src="../../../helper.js"></script>
+    <script src="../geoCS.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            //ymaps = ym;
+
+            var map = myMap = new ymaps.Map('map', {
+                        center: [55.72725771214265, 37.640390506634006],
+                        zoom: 10,
+                        behaviors: ['default', 'scrollZoom'],
+                        controls: []
+                    }), log = new Log(),
+                    collection = new ymaps.GeoObjectCollection(),
+                    events = ['click', 'contextmenu', 'dblclick', 'mousedown', 'mouseenter', 'mouseleave', 'mouseup',
+                        'multitouchend', 'multitouchstart', 'wheel'],
+                    callback1 = function (e) {
+                        log.info(e.get('target').options.get('id') + ': ' + e.get('type'));
+                        console.log(e.get('target').options.get('id') + ': ' + e.get('type'))
+                    },
+                    callback2 = function (e) {
+                        log.info(e.get('type'));
+                        console.log(e.get('type'))
+                    };
+
+            geoCSSource(ym, map, this);
+            addGrid(map);
+
+            collection
+                    .add(geoObjectPlacemark)
+                    .add(geoObjectPolyline)
+                    .add(geoObjectPolygon)
+                    .add(geoObjectRectangle)
+                    .add(geoObjectCircle)
+                    .add(placemark)
+                    .add(polyline)
+                    .add(polygon)
+                    .add(rectangle)
+                    .add(circle);
+            map.geoObjects.add(collection);
+
+            collection.each(function (object) {
+                addProperties(object);
+                listenEventsOnObject(object);
+            });
+
+            //map.container.events.add(events, callback2);
+
+            var opaqueButton = new ymaps.control.Button({data: {content: 'opaque'}, options: {selectOnClick: false}});
+            var geoobjectButton = new ymaps.control.Button({data: {content: 'geoobject'}, options: {selectOnClick: false}});
+            var layerButton = new ymaps.control.Button({data: {content: 'layer'}, options: {selectOnClick: false}});
+            var transparentButton = new ymaps.control.Button({data: {content: 'transparent'}, options: {selectOnClick: false}});
+            var silentButton = new ymaps.control.Button({data: {content: 'silent'}, options: {selectOnClick: false}});
+            var valueButton = new ymaps.control.Button({data: {content: 'value'}, options: {selectOnClick: false}});
+            var draggableButton = new ymaps.control.Button({data: {content: 'draggable'}, options: {selectOnClick: true}});
+            var clearButton = new ymaps.control.Button({data: {content: 'clear'}, options: {selectOnClick: false}});
+
+            // Объект получает все DOM-события и не прокидывает их на карту.
+            // Поведения карты не будут работать при наведении или клике на объекты с данной моделью интерактивности
+            opaqueButton.events.add('click', function () {
+                collection.each(function (object) {
+                    setOption(object, 'interactivityModel', 'default#opaque');
+                });
+                log.info('interactivity: opaque');
+            });
+
+            // Объект получает все DOM-события. На карту прокидываются события 'wheel' и 'mousedown'.
+            // У события 'mousedown' выставляется флаг 'preventDefault'=true. Если на карте включены поведения 'scrollZoom' или 'magnifier',
+            // они будут работать через объекты с данной моделью интерактивности, в отличие от объектов с моделью 'default#opaque'.
+            geoobjectButton.events.add('click', function () {
+                collection.each(function (object) {
+                    setOption(object, 'interactivityModel', 'default#geoObject');
+                });
+                log.info('interactivity: geoObject');
+            });
+
+            // Объект получает все DOM-события. На карту прокидываются события 'wheel' и 'mousedown'.
+            // Если на карте включены поведения 'scrollZoom', 'drag' или 'magnifier',
+            // они будут работать через объекты с данной моделью интерактивности
+            layerButton.events.add('click', function () {
+                collection.each(function (object) {
+                    setOption(object, 'interactivityModel', 'default#layer');
+                });
+                log.info('interactivity: layer');
+            });
+
+            // Объект получает все DOM-события, а затем прокидывает их на карту.
+            transparentButton.events.add('click', function () {
+                collection.each(function (object) {
+                    setOption(object, 'interactivityModel', 'default#transparent');
+                });
+                log.info('interactivity: transparent');
+            });
+
+            // Объект перестает кидать события интерактивности, но пропускает их на карту.
+            silentButton.events.add('click', function () {
+                collection.each(function (object) {
+                    setOption(object, 'interactivityModel', 'default#silent');
+                });
+                log.info('interactivity: silent');
+            });
+
+            draggableButton.events
+                    .add('select', function () {
+                        collection.each(function (object) {
+                            setOption(object, 'draggable', true);
+                        });
+                    })
+                    .add('deselect', function () {
+                        collection.each(function (object) {
+                            setOption(object, 'draggable', false);
+                        });
+                    });
+
+            valueButton.events.add('click', function () {
+                collection.each(function (object) {
+                    defaultValue(object);
+                });
+            });
+
+            clearButton.events.add('click', function () {
+                log.clear();
+            });
+
+            myMap.events.add(events, function (e) {
+                log.info('map: ' + e.get('type'))
+            });
+
+            myMap.controls
+                    .add(opaqueButton, {float: 'left'})
+                    .add(geoobjectButton, {float: 'left'})
+                    .add(layerButton, {float: 'left'})
+                    .add(valueButton, {float: 'none', position: {bottom: 65, right: 5}})
+                    .add(transparentButton, {float: 'left'})
+                    .add(silentButton, {float: 'left'})
+                    .add(draggableButton, {float: 'right'})
+                    .add(clearButton, {float: 'none', position: {bottom: 35, right: 5}});
+
+            function addProperties(obj) {
+                obj.properties.set('balloonContent', 'balloon');
+                obj.properties.set('hintContent', 'hint')
+            }
+
+            function listenEventsOnObject(obj) {
+                obj.events.add(events, callback1);
+            }
+
+            function defaultValue(obj) {
+                log.info(obj.options.get('interactivityModel'));
+            }
+
+            function setOption(obj, option, value) {
+                obj.options.set(option, value);
+            }
+
+        }
+    </script>
+    <style>
+        html, body, #map {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+    </style>
+</head>
+<body>
+<div id="map"></div>
+</body>
+</html>

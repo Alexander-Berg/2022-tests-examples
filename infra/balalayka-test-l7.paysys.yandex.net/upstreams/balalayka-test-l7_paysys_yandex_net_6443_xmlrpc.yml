@@ -1,0 +1,52 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - iandreyev
+      groups: []
+labels:
+  order: '2000000'
+config_mode: easy2
+---
+l7_upstream_macro:
+  version: 0.0.1
+  id: balalayka-test-l7_paysys_yandex_net_6443_xmlrpc
+  matcher:
+    and_: 
+      - host_re: 'balalayka-test\.paysys\.yandex-team\.ru:6443'
+      - uri_re: '/xmlrpc'
+      - header: {name: 'X-SSL-Client-Verify', re: '0'}
+  monitoring:
+    uuid: balalayka-test-l7_paysys_yandex_net_6443_xmlrpc
+  by_dc_scheme:
+    dc_balancer:
+      weights_section_id: balalayka
+      method: BY_DC_WEIGHT
+      attempts: 1
+    balancer:
+      compat: 
+        method: ACTIVE
+      health_check:
+          delay: '1s'
+          request: 'GET /ping HTTP/1.1\nHost: balalayka-test.paysys.yandex-team.ru:6443\nUser-Agent: l7-balancer-bcl-test\n\n'
+      attempts: 2
+      max_reattempts_share: 0.15
+      fast_attempts: 2
+      do_not_retry_http_responses: true
+      retry_non_idempotent: false
+      connect_timeout: 70ms
+      backend_timeout: 30s
+    dcs:
+      - name: sas
+        backend_ids:
+          - bcl-test-stage_backend_sas    
+      - name: vla
+        backend_ids:
+          - bcl-test-stage_backend_vla
+      - name: man
+        backend_ids:
+          - bcl-test-stage_backend_man
+    on_error:
+      static:
+        status: 504
+        content: 'Service unavailable'

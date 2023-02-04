@@ -1,0 +1,350 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Регионы: отображение стран и регионов на карте
+
+Description:
+Проверка отображения стран и регионов на карте.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components:
+regions
+
+Estimated time:
+180000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно со спаном Евразии.
+  Сверху имеются кнопки-списки "Регион", "Язык", "спорные", "Точность границ:1", имеется контрол слоев.
+
+Step:
+  Action:
+  С помощью кнопок выставить значения: Страны мира; английский; ООН. 
+
+  Expectation:
+  На карте все страны выделяются полупрозрачным синим цветом с выделенной границей стран.
+
+Step:
+  Action:
+  Поводить курсором по странам на карте. 
+
+  Expectation:
+  При наведении появляется хинт на аглийском с наименованием страны.
+
+Step:
+  Action:
+  С помощью кнопок выставить значения: Беларусь; украинский; Белорусский. 
+
+  Expectation:
+  На карте выделяется Беларусь полупрозрачным синим цветом с выделенной границей страны и регионов.
+  На других странах выделение пропадает.
+
+Step:
+  Action:
+  Поводить курсором по выделенным регионам на карте. 
+
+  Expectation:
+  При наведении появляется хинт на украинском с наименованием региона.
+
+Step:
+  Action:
+  С помощью кнопок выставить значения: Турция; турецкий; ООН; точность границ:3. 
+
+  Expectation:
+  На карте выделяется Турция полупрозрачным синим цветом с выделенной границей страны и регионов.
+  На предыдущей стране выделение пропадает.
+
+Step:
+  Action:
+  Поводить курсором по выделенным регионам на карте. 
+
+  Expectation:
+  При наведении появляется хинт на турецком с наименованием региона.
+
+Step:
+  Action:
+  С помощью кнопок выставить значения: Россия; русский; русский. 
+
+  Expectation:
+  На карте выделяется Россия полупрозрачным синим цветом с выделенной границей страны и регионов(Крым в составе России также выделен).
+  На предыдущей стране выделение пропадает.
+
+Step:
+  Action:
+  Поводить курсором по выделенным регионам на карте. 
+
+  Expectation:
+  При наведении появляется хинт на русском с наименованием региона.
+
+Step:
+  Action:
+  С помощью кнопок выставить значения: Украина; белорусский; украинский. 
+
+  Expectation:
+  На карте выделяется Украина полупрозрачным синим цветом с выделенной границей страны и регионов(Крым в составе Украины также выделен).
+  На предыдущей стране выделение пропадает.
+
+Step:
+  Action:
+  Поводить курсором по выделенным регионам на карте. 
+
+  Expectation:
+  При наведении появляется хинт на белорусском с наименованием региона.
+
+Step:
+  Action:
+  С помощью кнопок выставить значения: Казахстан; казахский; не поддерживается; точность границ: 0. 
+
+  Expectation:
+  На карте выделяется Казахстан полупрозрачным синим цветом с выделенной границей страны и регионов.
+  На предыдущей стране выделение пропадает.
+
+Step:
+  Action:
+  Поводить курсором по выделенным регионам на карте. 
+
+  Expectation:
+  При наведении появляется хинт на казахском с наименованием региона.
+-->
+<html>
+<head>
+<title>2.1</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+<script src="../../helper.js"></script>
+<link rel="stylesheet" href="https://yastatic.net/bootstrap/3.3.4/css/bootstrap.min.css"/>
+<script src="https://yastatic.net/jquery/2.1.4/jquery.min.js"></script>
+<script src="https://yastatic.net/bootstrap/3.3.4/js/bootstrap.min.js"></script>
+<script type=text/javascript>
+
+Api('init');
+
+function init(ymaps) {
+
+    var regionControlLayout = ymaps.templateLayoutFactory.createClass(optionsTemplate, {
+                build: function () {
+                    regionControlLayout.superclass.build.call(this);
+
+                    $(this.getParentElement).on('click', 'li', function (e) {
+                        var $target = $(this),
+                                changed = false;
+
+                        if (!$target.hasClass('active')) {
+                            changed = true;
+                            $target.siblings().removeClass('active');
+                            $target.addClass('active');
+
+                            $target.parents('.btn-group').find('.value').html(': ' + $target.find('a').attr('data-id'));
+                        }
+
+                        if (changed) {
+                            updateMap();
+                        }
+                    })
+                },
+                clear: function () {
+                    $(this.getParentElement).off('click', 'li');
+                    regionControlLayout.superclass.clear.call(this);
+                }
+            }),
+            regionControl = new ymaps.control.Button({
+                data: options,
+                options: {
+                    layout: regionControlLayout
+                },
+                float: 'left',
+                maxWidth: [300]
+            }),
+            map = new ymaps.Map('map', {
+                center: [50, 30],
+                zoom: 3,
+                controls: ['typeSelector']
+            });
+
+    map.controls.get('typeSelector').options.set('size', 'small');
+    map.controls.add(regionControl);
+
+    var args = ['region', 'lang', 'quality', 'disputedBorders'];
+
+    function updateMap() {
+        var res = args.reduce(function (res, arg) {
+            var $active = $('.' + arg + ' li.active a');
+            if ($active.length) {
+                res.params[arg] = $active.attr('data-id');
+            } else {
+                res.ready = false;
+            }
+            return res;
+        }, { params: {}, ready: true });
+
+        if (res.ready) {
+            getRegions(res.params);
+        }
+    }
+
+    var regions;
+
+    function getRegions(params) {
+        $('#regions-params').find('button').attr('disabled', 'disabled');
+
+        if (regions) {
+            map.geoObjects.remove(regions);
+        }
+
+        ymaps.regions.load(params.region, {
+            disputedBorders: params.disputedBorders,
+            lang: params.lang,
+            quality: params.quality
+        }).then(function (result) {
+            map.geoObjects.add(regions = result.geoObjects);
+            $('#regions-params').find('button').attr('disabled', null);
+        }, function (e) {
+            alert('No data');
+            $('#regions-params').find('button').attr('disabled', null);
+        });
+    }
+}
+
+var options = {
+            region: [
+                {
+                    id: '001',
+                    title: 'Страны мира'
+                },
+                {
+                    id: 'BY',
+                    title: 'Беларусь'
+                },
+                {
+                    id: 'KZ',
+                    title: 'Казахстан'
+                },
+                {
+                    id: 'RU',
+                    title: 'Россия'
+                },
+                {
+                    id: 'TR',
+                    title: 'Турция'
+                },
+                {
+                    id: 'UA',
+                    title: 'Украина'
+                }
+            ],
+            lang: [
+                {
+                    id: 'en',
+                    title: 'Английский'
+                },
+                {
+                    id: 'be',
+                    title: 'Белорусский'
+                },
+                {
+                    id: 'kk',
+                    title: 'Казахский'
+                },
+                {
+                    id: 'ru',
+                    title: 'Русский'
+                },
+                {
+                    id: 'tr',
+                    title: 'Турецкий'
+                },
+                {
+                    id: 'uk',
+                    title: 'Украинский'
+                }
+            ],
+            langС: [
+                {
+                    id: 'BY',
+                    title: 'Белорусский'
+                },
+                {
+                    id: 'KZ',
+                    title: 'Казахский'
+                },
+                {
+                    id: 'RU',
+                    title: 'Русский'
+                },
+                {
+                    id: 'UA',
+                    title: 'Украинский'
+                },
+                {
+                    id: 'UN',
+                    title: 'ООН'
+                },
+                {
+                    id: 'ENt',
+                    title: 'не поддерживается'
+                }
+            ]
+        },
+        optionsTemplate = ['<div style="line-height: 34px; background-color: #80808080;" id="regions-params">',
+            '<div class="btn-group btn-group-xs">',
+            '<button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown">',
+            '<span>Регион</span><span class="value"></span>&nbsp;<span class="caret"></span>',
+            '</button>',
+            '<ul class="dropdown-menu region">',
+            '{% for region in data.region %}',
+            '<li><a href="javascript:void(0)" data-id="{{ region.id }}">{{ region.title }}</a></li>',
+            '{% endfor %}',
+            '</ul>',
+            '</div>',
+            '&nbsp;',
+            '<div class="btn-group btn-group-xs">',
+            '<button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown">',
+            '<span>Язык</span><span class="value"></span>&nbsp;<span class="caret"></span>',
+            '</button>',
+            '<ul class="dropdown-menu lang">',
+            '{% for lang in data.lang %}',
+            '<li><a href="javascript:void(0)" data-id="{{ lang.id }}">{{ lang.title }}</a></li>',
+            '{% endfor %}',
+            '</ul>',
+            '</div>',
+            '&nbsp;',
+
+
+            '<div class="btn-group btn-group-xs">',
+            '<button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown">',
+            '<span>спорные</span><span class="value"></span>&nbsp;<span class="caret"></span>',
+            '</button>',
+            '<ul class="dropdown-menu disputedBorders">',
+            '{% for langС in data.langС %}',
+            '<li><a href="javascript:void(0)" data-id="{{ langС.id }}">{{ langС.title }}</a></li>',
+            '{% endfor %}',
+            '</ul>',
+            '</div>',
+            '&nbsp;',
+
+            '<div class="btn-group btn-group-xs">',
+            '<button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown">',
+            '<span>Точность границ</span><span class="value">: 1</span>&nbsp;<span class="caret"></span>',
+            '</button>',
+            '<ul class="dropdown-menu quality">',
+            '<li><a href="javascript:void(0)" data-id="0">0</a></li>',
+            '<li class="active"><a href="javascript:void(0)" data-id="1">1</a></li>',
+            '<li><a href="javascript:void(0)" data-id="2">2</a></li>',
+            '<li><a href="javascript:void(0)" data-id="3">3</a></li>',
+            '</ul>',
+            '</div>',
+            '</div>'].join('');
+
+</script>
+</head>
+<body>
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

@@ -1,0 +1,75 @@
+auth:
+  staff:
+    owners:
+      logins: []
+      groups: []
+labels:
+  order: '10000000'
+---
+regexp_section:
+  matcher:
+    match_and:
+      - match_fsm:
+          host: pr-2457085\\.(vconf|khural)\\.test\\.yandex-team\\.ru
+  modules:
+    - headers:
+        create:
+          Host: frontend-test.s3.mds.yandex.net
+    - response_headers:
+        create:
+          Content-Security-Policy-Report-Only: "default-src 'none'; script-src 'self'
+            mc.yandex.ru yastatic.net frontend-test.s3.mds.yandex.net
+            https://chat.s3.yandex.net
+            'sha256-XApxjvPqysEpmur1jEETuDjyeYIZFIH0nW9rb62HMps='
+            'sha256-bqxBBQ8ssyhrv9Yh9msgsJ51Qw9VQU/7YPIQofbDZvs='
+            'sha256-VgTti+sjF2/v2tHTrRL/Yk7YQy/b/esn3qvkWzLqSPc='
+            'sha256-Sd2GpS6KazusbdmnAmrBwfw4IMyvtIvGm852ENq/Vuc='
+            'sha256-w8sdxHnkFRIWzG0oxWGxacQOlu3WnLZ6Aj/rm+ZLBQg='
+            'sha256-14kQX4yrHqPY8Ixd7CISA+cLTqogc5ZtPOSHXJ1MI/g='
+            'sha256-ZJsI6afzYUpyN38KuRg10QdzztcAqJA3LPd6+89YpdM='
+            'sha256-I7dbadKWSgk8wvHH5gpKpkH2eLpg1lApfqDc0h8BsN8='
+            'sha256-ZSm6WnHXizVbaB2vAltheftA6y16GNYD37g9X9bjF5c='
+            'sha256-HOAVK8secEJ8xMRZArkIdgacEcVQD4TSIpThEhXcKyE='
+            'sha256-h7lbDvmsRnB0EHNoQZmxZvLIy351JS9ulOq0ZHyASk0='
+            'sha256-Vqonxd8Aal7FPFIB1KAP/WjzTz5iV+Wv9PhcnY98myk='
+            'sha256-BhgON8Cg+NZlZndPfG6sf4HlsILsEBV7vVGq+m0wlaU='; style-src
+            'self' 'unsafe-inline' yastatic.net frontend-test.s3.mds.yandex.net;
+            img-src 'self' data: mc.yandex.ru *.yandex.net yandex.st
+            center.yandex-team.ru yastatic.net clck.yandex.ru; connect-src
+            'self' https://passport.yandex-team.ru https://staff.yandex-team.ru
+            https://search.yandex-team.ru https://mc.yandex.ru https://yandex.ru
+            backend.messenger.yandex-team.ru center.yandex-team.ru
+            https://strm.yandex.ru wss://prestable.voiceservices.yandex-team.ru
+            https://frontend.vh.yandex-team.ru https://bell.yandex-team.ru
+            wss://push.yandex-team.ru; frame-src blob:
+            https://forms.yandex-team.ru https://yastatic.net
+            https://q.yandex-team.ru https://frontend.vh.yandex-team.ru
+            https://renderer-chat-dev.test.q.yandex-team.ru
+            https://gnc.yandex-team.ru; font-src https://yastatic.net;
+            manifest-src 'self'; report-uri
+            https://csp.yandex.net/csp?from=vconf;"
+    - rewrite:
+        actions:
+          - split: path
+            regexp: ^/(.+)
+            rewrite: /vconf-frontend/pr-2457085/%1
+          - split: path
+            regexp: ^/(.+/)?([^.]+)?$
+            rewrite: /vconf-frontend/pr-2457085/index.html
+    - balancer2:
+        attempts: 1
+        rr: {}
+        generated_proxy_backends:
+          proxy_options:
+            connect_timeout: 70ms
+            backend_timeout: 10s
+            fail_on_5xx: false
+          instances:
+            - host: frontend-test.s3.mds.yandex.net
+              port: 80
+              weight: 1
+        on_error:
+          modules:
+            - errordocument:
+                status: 504
+                content: Service unavailable

@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<!--
+Title:
+Редактор: применение опций при редактировании линии
+
+Description:
+Проверка применения опций при редактировании линии.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+smoke, regress
+
+Estimated time:
+180000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась корректно, на спане синяя линия с двумя метками вершин и промежуточной меткой.
+  Сверху кнопки "drag over"(активна), "drawing from". 
+  Курсор на спане стрелка, с прилиплешей синей пунктирной линией редактора.
+
+Step:
+  Action:
+  Навести курсор на линию, выполнить клик в линию.
+
+  Expectation:
+  При наведении курсор меняется на палец, появляется хинт "line hint", по клику на линии открывается балун "2".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "drag over", затем навести курсор на линию, выполнить клик в линию.
+
+  Expectation:
+  При наведении на линию курсор не меняется, хинт не появялется, по клику появляется новая метка вершины, от предыдущей метки строится новый отрезок линии(линия становится толще).
+  К курсору также прилипает пунктирная линия редактора.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "drawing from", затем клик в свободное место на спане карты.
+
+  Expectation:
+  Подпись кнопки меняется на "drwing from: end".
+  по клику появляется новая метка вершины, от предыдущей метки строится новый отрезок линии.
+  К курсору также прилипает пунктирная линия редактора.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "drawing from: end", затем клик в свободное место на спане карты.
+
+  Expectation:
+  Подпись кнопки меняется на "drwing from: begin".
+  по клику появляется новая метка вершины, от предыдущей метки строится новый отрезок линии.
+  К курсору также прилипает пунктирная линия редактора.
+
+Step:
+  Action:
+  Выполнить клик в последнюю выставленную метку вершины линии, в появившемся меню редактора выбрать "Завершить".
+
+  Expectation:
+  От курсора отлипают пунктирные линии редактора, построенные на предыдущих шагах отрезки линий сохраняются.
+
+Step:
+  Action:
+  Навести курсор на линию, зажать ЛКМ и подрагать линию.
+
+  Expectation:
+  При наведении на линию курсор палец.
+  При зажатии ЛКМ и перемещении курсора происходит корректный драг линии, балун открытый на линии не закрывается, метки вершин и промежуточные метки не пропадают.
+-->
+<html>
+<head>
+    <title>API 2.0</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <script src="../helper.js"></script>
+    <script type="text/javascript">
+        Api('init');
+        function init(ymaps) {
+            var myMap = new ymaps.Map('map', {
+                center: [20, -10],
+                zoom: 5
+            }, {
+                geoObjectDraggable: true
+            });
+            
+            var line = new ymaps.GeoObject({
+                geometry: {
+                    type: "LineString",
+                    coordinates: [
+                        [10, -20],
+                        [30, 0]
+                    ]
+                },
+                properties: {
+                    balloonContent: 'line balloon',
+                    hintContent: 'line hint'
+                }
+            });
+            myMap.geoObjects.add(line);
+            line.editor.options.set('drawOver', false);
+            line.editor.startEditing();
+            line.editor.startDrawing();
+            line.events.add("balloonopen", function (e) {
+                var self = e.get('target');
+                self.properties.set({
+                    balloonContent: self.geometry.getCoordinates().length
+                });
+            });
+            var buttonDragOver = new ymaps.control.Button("drag over");
+            buttonDragOver.select();
+            buttonDragOver.events.add("click", function (e) {
+                line.editor.options.set('drawOver', e.get('target').isSelected());
+            });
+            myMap.controls.add(buttonDragOver);
+            var buttonDrawingFrom = new ymaps.control.Button("drawing from");
+            buttonDrawingFrom.events.add("click", function (e) {
+                var from = e.get('target').isSelected() ? 'begin' : 'end';
+                line.editor.options.set('drawingFrom', from);
+                e.get('target').data.set('content', 'drawing from: ' + from);
+            });
+            myMap.controls.add(buttonDrawingFrom);
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;">
+</div>
+<p><a href="https://tech.yandex.ru/maps/archive/doc/jsapi/2.0/ref/reference/geometry.LineString-docpage/" target="_blank">Docs</a></p>
+</body>
+</html>

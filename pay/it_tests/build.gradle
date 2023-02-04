@@ -1,0 +1,92 @@
+import org.gradle.nativeplatform.platform.internal.DefaultNativePlatform
+
+plugins {
+    id 'java'
+}
+
+group 'ru.yandex.whitestpirit'
+version '1.0-SNAPSHOT'
+
+sourceCompatibility = 11
+
+repositories {
+    maven {url 'https://artifactory.yandex.net/public'}
+}
+
+ext {
+    apply from: "default-properties.gradle"
+}
+
+if (hasProperty('buildProfile')) {
+    apply from: "profile-${buildProfile}.gradle"
+}
+
+ext.useLocalCompose = project.hasProperty('useLocalCompose') ? useLocalCompose : DefaultNativePlatform.getCurrentOperatingSystem().isMacOsX()
+
+dependencies {
+    def junitJupiterVersion = '5.6.2'
+    def jacksonVersion = '2.12.1'
+    def lombokVersion = '1.18.18'
+    def swaggerValidatorVersion='2.10.0'
+    def slf4jVersion='1.7.30'
+
+    implementation "org.testcontainers:testcontainers:1.15.2"
+
+    implementation "com.fasterxml.jackson.core:jackson-databind:$jacksonVersion"
+    implementation "com.fasterxml.jackson.module:jackson-module-parameter-names:$jacksonVersion"
+    implementation "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:$jacksonVersion"
+
+    implementation "org.slf4j:slf4j-simple:$slf4jVersion"
+    implementation "org.slf4j:slf4j-api:$slf4jVersion"
+
+    implementation "org.skyscreamer:jsonassert:1.5.0"
+
+    implementation "one.util:streamex:0.7.3"
+
+    implementation "org.freemarker:freemarker:2.3.30"
+
+    implementation "com.atlassian.oai:swagger-request-validator-core:$swaggerValidatorVersion"
+    implementation "com.atlassian.oai:swagger-request-validator-restassured:$swaggerValidatorVersion"
+
+    implementation "io.rest-assured:rest-assured:4.3.0"
+    implementation 'org.awaitility:awaitility:4.0.3'
+
+    compileOnly "org.projectlombok:lombok:$lombokVersion"
+    annotationProcessor "org.projectlombok:lombok:$lombokVersion"
+    testCompileOnly "org.projectlombok:lombok:$lombokVersion"
+    testAnnotationProcessor "org.projectlombok:lombok:$lombokVersion"
+
+    testImplementation "org.junit.jupiter:junit-jupiter-api:$junitJupiterVersion"
+    testImplementation "org.junit.jupiter:junit-jupiter-params:$junitJupiterVersion"
+    testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:$junitJupiterVersion"
+}
+
+task buildDockerImages(type:Exec) {
+    commandLine 'docker-compose', 'build'
+}
+
+if (getProperty('environment') == 'local') classes {
+    dependsOn buildDockerImages
+}
+
+processResources {
+    inputs.property('environment', getProperty('environment'))
+    filesMatching("**/*.yaml") {
+        expand(project.properties)
+    }
+}
+
+task run(type: JavaExec) {
+    classpath = sourceSets.main.runtimeClasspath
+    main = 'ru.yandex.whitespirit.it_tests.Main'
+    standardInput = System.in
+}
+
+test {
+    // Add random seed as input for tests in order to disable tests caching
+    // Testing vs local WS depends on WS source context, and testing via external WS stand is unstable by definition.
+    systemProperty "random.testing.seed", new Random().nextInt()
+    environment "RUN_SHH_TESTS", (project.properties.get('environment') == 'local') ? "True" : "False"
+    environment "DISABLE_MGM_TESTS", (project.properties.get('disable.mgm.tests') == 'true') ? "True" : "False"
+    useJUnitPlatform()
+}

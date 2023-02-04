@@ -1,0 +1,126 @@
+<!DOCTYPE HTML>
+<!--(skip)(description)
+
+-->
+<!--(version)
+
+-->
+<!--(commands)
+
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var center = [56, 34];
+
+            var map = myMap = new ymaps.Map('map', {
+                center: center,
+                zoom: 4,
+                type: 'yandex#map',
+                controls: ['fullscreenControl'],
+                minZoom: 4
+            });
+            __log__('server: loadingServerNonPointObjects.js');
+            var events = ['geometrychange', 'mapchange', 'optionschange', 'overlaychange', 'parentchange', 'propertieschange'];
+            var domevents = ['click', 'contextmenu', 'dblclick', 'mousedown', 'mouseenter', 'mouseleave', 'mouseup', 'multitouchend',
+                'multitouchstart', 'wheel'];
+            var moveevents = ['mousemove', 'multitouchmove'];
+            var callback = function (e) {
+                __log__(e.get('type'))
+            };
+
+            var loadingObjectManager = new ymaps.LoadingObjectManager('https://alexa.maps.dev.yandex.ru:4778/?bbox=%b', {
+                paddingTemplate: 'managerResponse_bbox_%b',
+                clusterDisableClickZoom: true,
+                geoObjectBalloonContentLayout: ymaps.templateLayoutFactory.createClass('{{properties.balloonContent}}')
+            });
+
+            loadingObjectManager.events.add(events, callback);
+            loadingObjectManager.events.add(domevents, callback);
+
+            map.geoObjects.add(loadingObjectManager);
+
+            var listenerButton = new ymaps.control.Button({data: {content: 'ignore'}, options: {selectOnClick: true}});
+            var optionButton = new ymaps.control.Button({data: {content: 'option'}, options: {selectOnClick: true}});
+            var removeButton = new ymaps.control.Button({data: {content: 'remove'}, options: {selectOnClick: true}});
+            var domButton = new ymaps.control.Button({data: {content: 'DOM'}, options: {selectOnClick: true}});
+            var moveButton = new ymaps.control.Button({data: {content: 'move'}, options: {selectOnClick: true}});
+            var clearButton = new ymaps.control.Button({data: {content: 'clear log'}, options: {selectOnClick: false}});
+
+            listenerButton.events
+                    .add('select', function () {
+                        log.info('Events will be ignored.');
+                        loadingObjectManager.events.remove(events, callback);
+                    })
+                    .add('deselect', function () {
+                        log.info('Waiting for events...');
+                        loadingObjectManager.events.add(events, callback);
+                    });
+
+            optionButton.events
+                    .add('select', function () {
+                        loadingObjectManager.options.set('clusterize', false);
+                    })
+                    .add('deselect', function () {
+                        loadingObjectManager.options.set('clusterize', true);
+                    });
+
+            removeButton.events
+                    .add('select', function () {
+                        map.geoObjects.remove(loadingObjectManager);
+                    })
+                    .add('deselect', function () {
+                        map.geoObjects.add(loadingObjectManager);
+                    });
+
+            domButton.events
+                    .add('deselect', function () {
+                        log.info('Waiting for DOM events...');
+                        loadingObjectManager.events.add(domevents, callback);
+                    })
+                    .add('select', function () {
+                        log.info('DOM events will be ignored.');
+                        loadingObjectManager.events.remove(domevents, callback);
+                    });
+
+            moveButton.events
+                    .add('select', function () {
+                        log.info('Waiting for move events...');
+                        loadingObjectManager.events.add(moveevents, callback);
+                    })
+                    .add('deselect', function () {
+                        log.info('Move events will be ignored.');
+                        loadingObjectManager.events.remove(moveevents, callback);
+                    });
+
+            clearButton.events.add('click', function () {
+                log.clear();
+            });
+
+            map.controls
+                    .add(listenerButton, {float: 'left'})
+                    .add(optionButton, {float: 'left'})
+                    .add(removeButton, {float: 'left'})
+                    .add(clearButton, {float: 'none', position: {bottom: 25, right: 10}})
+                    .add(moveButton, {float: 'left'})
+                    .add(domButton, {float: 'left'});
+
+            addGrid(myMap);
+            var log = new Log();
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

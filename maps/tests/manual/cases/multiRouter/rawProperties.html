@@ -1,0 +1,211 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Мультимаршрут: свойства - обекты маршрута
+
+Description:
+Проверка вывода свойств - объектов маршрута. 
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+multiRouter
+
+Estimated time:
+90000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно со спаном Москвы.
+  Сверху кнопки "DrivenPro...", "MassPr...", "Drive", "Masstra...".  
+
+Step:
+  Action:
+  Выполнить клик в кнопку "Drive". 
+
+  Expectation:
+  Спан карты немного смещается, на карте отображается маршрут авто из трех точек(A,B,C) и двух виаточек.
+  К курсору прилипает полупрозрачная метка "D".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "DrivenPro...". 
+
+  Expectation:
+  Спан карты без изменений, под контейнером с картой появляются 4 строки "[object Object]".
+
+Step:
+  Action:
+  Открыть инструменты разработчика командой Windows: Ctrl + Shift + I если у вас MacOS: ⌥ + ⌘ + I, вкладку Console. 
+
+  Expectation:
+  В открывшейся вкладке консоли строки: "router info; routes[0]; paths[0]; segments[1]" под каждой из которых строка раскрывающегося Object. 
+
+Step:
+  Action:
+  Выполнить клик в кнопку "Masstra...". 
+
+  Expectation:
+  Происходит смена спана на спан СПб, на карте отображается маршрут общественным траснпортом между точек "A" и "B".
+  На спане имеются метки общественного транспорта, альтернативные нитки маршрута.
+  К курсору прилипает полупрозрачная метка "С".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "MassPr...". 
+
+  Expectation:
+  Спан карты без изменений, под контейнером с картой появляются 6 строк "[object Object]".
+  В консоли строки: "router info; routes[0]; paths[0]; transSeg; walkSeg; stops[0]" под каждой из которых строка раскрывающегося Object. 
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 10,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+
+            var multiRoute = new ymaps.multiRouter.MultiRoute({
+                referencePoints: ['питер, ольховая 22', 'пискаревский 2к2'],
+                params: {
+                    results: 5,
+                    routingMode: 'masstransit'
+                }
+            }, {
+                boundsAutoApply: true,
+                wayPointDraggable: true
+            });
+
+            var Masstransit = new ymaps.control.Button('Masstransit');
+            Masstransit.events
+                    .add('select', function () {
+                        map.geoObjects.add(multiRoute);
+                        multiRoute.editor.start({
+                            addWayPoints: true,
+                            dragWayPoints: true,
+                            dragViaPoints: true,
+                            removeWayPoints: true,
+                            removeViaPoints: true
+                        });
+                    })
+                    .add('deselect', function () {
+                        map.geoObjects.remove(multiRoute);
+                        multiRoute.editor.stop;
+                    });
+
+
+            var placemark1 = new ymaps.Placemark([55.63855137, 37.17759604]);
+            var placemark2 = new ymaps.Placemark([55.912150224943986, 37.29753265380539]);
+            var placemark3 = new ymaps.Placemark([56.16, 37.29753265380539]);
+            var placemark4 = new ymaps.Placemark([56.36, 37.29753265380539]);
+            var placemark5 = new ymaps.Placemark([55.97, 37.18]);
+            var multiRoute1= new ymaps.multiRouter.MultiRoute({
+                referencePoints: [placemark1.geometry, placemark2.geometry, placemark5.geometry, placemark3.geometry, placemark4.geometry],
+                params: {
+                    viaIndexes: [1, 2]
+                }
+            }, {
+                boundsAutoApply: true,
+                preset: "islands#multiRouterSmall"
+            });
+            var Drive = new ymaps.control.Button('Drive');
+            Drive.events
+                    .add('select', function () {
+                        map.geoObjects.add(multiRoute1);
+                        multiRoute1.editor.start({
+                            addWayPoints: true,
+                            dragWayPoints: true,
+                            dragViaPoints: true,
+                            removeWayPoints: true,
+                            removeViaPoints: true
+                        });
+                    })
+                    .add('deselect', function () {
+                        map.geoObjects.remove(multiRoute1);
+                        multiRoute1.editor.stop;
+                    });
+
+            var MassProps = new ymaps.control.Button('MassProps');
+            MassProps.events
+                    .add('click', function () {
+                        var routes = multiRoute.model.getRoutes();
+                        var paths = routes[0].getPaths();
+                        var segments = paths[0].getSegments();
+                        var transSeg, walkSeg;
+                        if (segments[0].getType()=="transport"){
+                            transSeg = segments[0];
+                        } else {
+                            walkSeg = segments[0];
+                        };
+                        if (segments[1].getType()=="transport"){
+                            transSeg = segments[1];
+                        } else {
+                            walkSeg = segments[1];
+                        };
+                        var stops = transSeg.getStops();
+
+                        console.clear();
+                        console.log('router info');
+                        __log__(multiRoute.properties.get('rawProperties'));
+                        console.log('routes[0]');
+                        __log__(routes[0].properties.get('rawProperties'));
+                        console.log('paths[0]');
+                        __log__(paths[0].properties.get('rawProperties'));
+                        console.log('transSeg');
+                        __log__(transSeg.properties.get('rawProperties'));
+                        console.log('walkSeg');
+                        __log__(walkSeg.properties.get('rawProperties'));
+                        console.log('stops[0]');
+                        __log__(stops[0].properties.get('rawProperties'));
+                    });
+            var DriveProps = new ymaps.control.Button('DriveProps');
+            DriveProps.events
+                    .add('click', function () {
+                        var routes = multiRoute1.model.getRoutes();
+                        var paths = routes[0].getPaths();
+                        var segments = paths[0].getSegments();
+
+                        console.clear();
+                        console.log('router info');
+                        __log__(multiRoute1.properties.get('rawProperties'));
+                        console.log('routes[0]');
+                        __log__(routes[0].properties.get('rawProperties'));
+                        console.log('paths[0]');
+                        __log__(paths[0].properties.get('rawProperties'));
+                        console.log('segments[1]');
+                        __log__(segments[1].properties.get('rawProperties'));
+                    });
+
+            map.controls.add(Masstransit);
+            map.controls.add(Drive);
+            map.controls.add(MassProps);
+            map.controls.add(DriveProps);
+            __log__("Тест на проверку rawProperties. Кликнуть Drive и DriveProps для АМ, Masstransit и MassProps для ОТ");
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

@@ -1,0 +1,182 @@
+source suggest1
+{
+    type     = mysql
+    sql_host = db-slave-{{ dc }}.{{ admin_config.base_dns_zone }}
+    sql_user = auto
+    sql_pass = KiX1euph
+    sql_db   = 
+    sql_port = {{ admin_config.db.ports.master }}
+
+    sql_query_pre = SET NAMES utf8
+
+    sql_query_range = SELECT MIN(id), MAX(id) FROM tags.tags
+    sql_range_step = 30000
+
+    sql_query = SELECT t1.id, t1.trigram, LENGTH(t1.word) AS len, 1 as source_id, t1.word, t1.category_id, t2.weight AS category_weight \
+                FROM tags.tags t1 \
+                LEFT JOIN tags.categories t2 ON t1.category_id = t2.id \
+                WHERE t1.category_id IS NOT NULL AND t1.id >= $start AND t1.id <= $end
+
+    sql_attr_uint   = len
+    sql_attr_uint   = source_id
+    sql_attr_uint   = category_weight
+    sql_attr_string = word
+
+    sql_query_info = SELECT * FROM tags.tags WHERE id = $id
+}
+
+source suggest2
+{
+    type     = mysql
+    sql_host = db-slave-{{ dc }}.{{ admin_config.base_dns_zone }}
+    sql_user = auto
+    sql_pass = KiX1euph
+    sql_db   =
+    sql_port = {{ admin_config.db.ports.master }}
+
+    sql_query_pre = SET NAMES utf8
+
+    sql_query_range = SELECT MIN(id), MAX(id) FROM tags.synonyms
+    sql_range_step = 30000
+
+    sql_query = SELECT t1.id , t1.trigram, LENGTH(t1.word) AS len, 2 as source_id, t1.word, t2.category_id, t3.weight AS category_weight \
+                FROM tags.synonyms t1 \
+                LEFT JOIN tags.tags t2 ON t1.tag_id = t2.id \
+                LEFT JOIN tags.categories t3 ON t2.category_id = t3.id \
+                WHERE t1.id >= $start AND t1.id <= $end
+
+    sql_attr_uint   = len
+    sql_attr_uint   = source_id
+    sql_attr_uint   = category_weight
+    sql_attr_string = word
+
+    sql_query_info = SELECT * FROM tags.synonyms WHERE id = $id
+}
+
+source suggest_mark_model
+{
+    type     = mysql
+    sql_host = db-slave-{{ dc }}.{{ admin_config.base_dns_zone }}
+    sql_user = auto
+    sql_pass = KiX1euph
+    sql_db   =
+    sql_port = {{ admin_config.db.ports.master }}
+
+    sql_query_pre = SET NAMES utf8
+
+    sql_query_range = SELECT MIN(id), MAX(id) FROM tags.tags
+    sql_range_step = 30000
+
+    sql_query = SELECT t.id, 1 as source_id, t.word AS search_word, cat.weight AS custom_weight \
+                FROM tags.tags t \
+                INNER JOIN tags.categories cat ON cat.id = t.category_id AND cat.id IN (3, 4) \
+                WHERE t.id >= $start AND t.id <= $end
+
+    sql_attr_uint = source_id
+    sql_field_string = search_word
+    sql_attr_uint = custom_weight
+
+    sql_query_info = SELECT * FROM tags.tags WHERE id = $id
+}
+
+source suggest_services
+{
+    type     = mysql
+    sql_host = db-slave-{{ dc }}.{{ admin_config.base_dns_zone }}
+    sql_user = auto
+    sql_pass = KiX1euph
+    sql_db   =
+    sql_port = {{ admin_config.db.ports.master }}
+
+    sql_query_pre = SET NAMES utf8
+
+    sql_query_range = SELECT MIN(service_id), MAX(service_id) FROM poi.services
+    sql_range_step = 30000
+
+    sql_query = SELECT service_id AS id, 2 as source_id, name AS search_word, 0 AS custom_weight \
+                FROM poi.services \
+                WHERE service_id >= $start AND service_id <= $end
+
+    sql_attr_uint = source_id
+    sql_field_string = search_word
+    sql_attr_uint = custom_weight
+
+    sql_query_info = SELECT * FROM poi.services WHERE service_id = $id
+}
+
+source suggest_poi_name
+{
+    type     = mysql
+    sql_host = db-slave-{{ dc }}.{{ admin_config.base_dns_zone }}
+    sql_user = auto
+    sql_pass = KiX1euph
+    sql_db   =
+    sql_port = {{ admin_config.db.ports.master }}
+
+    sql_query_pre = SET NAMES utf8
+
+    sql_query_range = SELECT MIN(poi_id), MAX(poi_id) FROM poi.poi
+    sql_range_step = 30000
+
+    sql_query = SELECT p.poi_id, 3 as source_id, p.value AS search_word, 0 AS custom_weight \
+                FROM poi.poi_prop_values p \
+                WHERE p.prop_name_id = 1 AND p.poi_id >= $start AND p.poi_id <= $end
+
+    sql_attr_uint = source_id
+    sql_field_string = search_word
+    sql_attr_uint = custom_weight
+
+    sql_query_info = SELECT * FROM poi.poi_prop_values WHERE poi_id = $id
+}
+
+index suggest
+{
+    type          = plain
+    source = suggest1
+    source = suggest2
+
+    path = /opt/sphinx_russia/tags/
+
+    docinfo         = extern
+    charset_type    = utf-8
+    html_strip      = 1
+}
+
+index search_suggest
+{
+    type   = plain
+    source = suggest_mark_model
+    source = suggest_services
+    source = suggest_poi_name
+
+    path = /opt/sphinx_russia/russia5/
+
+    docinfo         = extern
+    charset_type    = utf-8
+    html_strip      = 1
+
+    enable_star = 1
+    min_infix_len = 2
+}
+
+indexer
+{
+    mem_limit       = 1024MB
+}
+
+searchd
+{
+    listen          = 21333
+    max_batch_queries = 0
+
+    log             = /var/log/sphinx/searchd_russia.log
+#    query_log       = /var/log/sphinx/query_russia.log
+    pid_file        = /var/run/sphinx/searchd_russia.pid
+    binlog_path     = /var/log/sphinx/russia
+    read_timeout    = 5
+    max_children    = 0
+    max_matches     = 1000
+    unlink_old      = 1
+}
+
+

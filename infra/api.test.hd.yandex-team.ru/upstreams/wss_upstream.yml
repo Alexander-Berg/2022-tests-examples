@@ -1,0 +1,39 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - kent
+      groups: []
+labels:
+  order: '10000000'
+---
+regexp_section:
+  matcher: {}
+  modules:
+    - hasher:
+        mode: subnet
+        take_ip_from: X-Forwarded-For-Y
+    - headers:
+        create_func_weak:
+          X-Forwarded-For-Y: realip
+    - balancer2:
+        timeout_policy:
+          timeout: 1s
+          unique_policy: {}
+        attempts: !f count_backends()
+        attempts_rate_limiter:
+          limit: 0.5
+        hashing: {}
+        generated_proxy_backends:
+          proxy_options:
+            connect_timeout: 100ms
+            backend_timeout: 10s
+            keepalive_count: 1
+            fail_on_5xx: false
+            allow_connection_upgrade: true
+            status_code_blacklist: ["429"]
+          include_backends:
+            type: BY_ID
+            ids:
+              - wss_backend_vla
+              - wss_backend_sas

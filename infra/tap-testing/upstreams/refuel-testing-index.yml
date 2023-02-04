@@ -1,0 +1,56 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - robot-tap
+      groups: []
+labels:
+  order: '1001'
+---
+regexp_section:
+    matcher:
+        match_fsm:
+            host: zapravki\\.tap-tst\\.yandex\\.ru
+    modules:
+        - report:
+              uuid: 'services'
+              ranges: 'default'
+        - report:
+              uuid: 'refuel-testing-total'
+              ranges: 'default'
+        - report:
+              uuid: 'refuel-testing-index'
+              ranges: 'default'
+        - rewrite:
+              actions:
+                  - regexp: '.*'
+                    rewrite: '/zapravki/master/0c7292124f456c27fbf5bddc58b67acdfd7ecf7d/index.html'
+                  - regexp: '.*'
+                    header_name: 'Host'
+                    rewrite: 'tap-test.s3.mds.yandex.net'
+        - response_headers:
+              create:
+                  Cache-Control: public, max-age=900
+                  X-Frame-Options: DENY
+                  X-Content-Type-Options: nosniff
+                  X-XSS-Protection: 1; mode=block
+                  Yandex-CSP-ReportURI: "https://csp.yandex.net/csp?project=turboapp-refuel&req-id={{reqid}}&yandexuid={{yandexuid}}&from=turboapp-refuel-testing"
+                  Content-Security-Policy: "script-src 'self' 'unsafe-eval' yastatic.net mc.yandex.ru mc.webvisor.com mc.webvisor.org mc.yandex.com mc.yandex.by mc.yandex.com.tr mc.yandex.kz mc.yandex.ua mc.yandex.az mc.yandex.co.il mc.yandex.com.am mc.yandex.com.ge mc.yandex.ee mc.yandex.fr mc.yandex.kg mc.yandex.lt mc.yandex.lv mc.yandex.md mc.yandex.tj mc.yandex.tm mc.yandex.uz pass-test.yandex.ru social-test.yandex.ru pass.yandex.ru social.yandex.ru tap-test.s3.mds.yandex.net 'sha256-PjHt95e9fwQJySpOgjU6FB/U7Rv9+RUjh5/tvkx69No=' 'sha256-VDJHshIR/PqvBBSuv0OdWS0+7JgXnknqc14bMV2ME8A=' 'sha256-PzQvgwwj+YcoW2/Gj5VaPpmf+kN590GJVgNKU12SdUY=' 'sha256-oDVZ1MOZrK0YhXnDUKIbcfy9JVoiyvk9V9HuCXdH+uI='; style-src 'self' yastatic.net tap-test.s3.mds.yandex.net; font-src 'self' yastatic.net tap-test.s3.mds.yandex.net; img-src 'self' data: yastatic.net *.maps.yandex.net mc.yandex.ru avatars.mds.yandex.net mc.webvisor.com mc.webvisor.org mc.yandex.com mc.yandex.by mc.yandex.com.tr mc.yandex.kz mc.yandex.ua mc.yandex.az mc.yandex.co.il mc.yandex.com.am mc.yandex.com.ge mc.yandex.ee mc.yandex.fr mc.yandex.kg mc.yandex.lt mc.yandex.lv mc.yandex.md mc.yandex.tj mc.yandex.tm mc.yandex.uz mc.admetrica.ru passport.yandex.ru tap-test.s3.mds.yandex.net tanker.s3.yandex.net https://app.zapravki.yandex.ru https://tanker.s3.yandex.net https://api.tap.yandex.ru https://app.tst.zapravki.yandex.ru https://tanker-test.s3.yandex.net https://api.tap-tst.yandex.ru; media-src 'self' yastatic.net tap-test.s3.mds.yandex.net; connect-src api-maps.yandex.ru api-maps.tst.c.maps.yandex.ru *.yandex.net yandexmetrica.com:* mc.webvisor.com mc.webvisor.org mc.yandex.com mc.yandex.by mc.yandex.com.tr mc.yandex.kz mc.yandex.ru mc.yandex.ua mc.yandex.az mc.yandex.co.il mc.yandex.com.am mc.yandex.com.ge mc.yandex.ee mc.yandex.fr mc.yandex.kg mc.yandex.lt mc.yandex.lv mc.yandex.md mc.yandex.tj mc.yandex.tm mc.yandex.uz mc.admetrica.ru 127.0.0.1:29009 127.0.0.1:30102 yandexmetrika.com:29010 yandexmetrika.com:30103 passport-test.yandex.ru passport.yandex.ru trust-test.yandex.ru trust.yandex.ru https://yandex.ru 'self' https://app.zapravki.yandex.ru https://tanker.s3.yandex.net https://api.tap.yandex.ru https://app.tst.zapravki.yandex.ru https://tanker-test.s3.yandex.net https://api.tap-tst.yandex.ru; worker-src blob:; child-src blob: mc.yandex.ru; frame-src blob: mc.yandex.ru mc.yandex.md trust-test.yandex.ru trust.yandex.ru tap-test.s3.mds.yandex.net yandex.ru; frame-ancestors webvisor.com *.webvisor.com http://webvisor.com http://*.webvisor.com; default-src tap-test.s3.mds.yandex.net; manifest-src 'self'; object-src 'none'; report-uri https://csp.yandex.net/csp?from=turboapp-refuel-testing&project=turboapp-refuel"
+        - balancer2:
+              disable_attempts_rate_limiter: true
+              attempts: 5
+              simple_policy: {}
+              rr: {}
+              generated_proxy_backends:
+                  proxy_options:
+                      backend_timeout: 500ms
+                      connect_timeout: 50ms
+                      fail_on_5xx: true
+                  instances:
+                      - weight: 1
+                        host: 'tap-test.s3.mds.yandex.net'
+                        port: 80
+              on_error:
+                  errordocument:
+                      status: 503
+                      content: 'Service unavailable'

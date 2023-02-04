@@ -1,0 +1,50 @@
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:util="http://www.springframework.org/schema/util"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+       http://www.springframework.org/schema/beans/spring-beans.xsd
+       http://www.springframework.org/schema/util
+       http://www.springframework.org/schema/util/spring-util-2.0.xsd"
+       default-autowire="byName">
+
+
+    <bean class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">
+         <property name="locations" value="classpath:/ru/yandex/auto/searcher/statistics/related/NewRelatedLoaderTest.properties"/>
+    </bean>
+
+    <bean id="newRelatedDataType"
+          class="ru.yandex.extdata.common.meta.DataType">
+        <constructor-arg index="0" value="NEW_RELATED"/>
+        <constructor-arg index="1">
+            <util:constant static-field="ru.yandex.auto.core.AutoSchemaVersions.NEW_RELATED_VERSION"/>
+        </constructor-arg>
+    </bean>
+
+    <bean name="extDataService" class="ru.yandex.extdata.provider.RemoteExtDataService">
+        <constructor-arg index="0" ref="localFSDataCache"/>
+    </bean>
+    <bean name="localFSDataCache" class="ru.yandex.extdata.provider.cache.LocalFSDataCache">
+        <constructor-arg index="0" ref="dataTypeRegistry"/>
+        <constructor-arg index="1" ref="extDataHttpClient"/>
+        <constructor-arg index="2" value="${auto.ext.data.fs.storage.dir}"/>
+    </bean>
+    <bean name="extDataHttpClient" class="ru.yandex.extdata.provider.HttpExtDataClient">
+        <constructor-arg index="0" value="${auto.ext.data.http.url}"/>
+        <constructor-arg index="1" value="${auto.ext.data.http.max.connection}"/>
+        <constructor-arg index="2" value="${auto.ext.data.http.timeout}"/>
+    </bean>
+    <bean id="dataTypeRegistry"
+          class="ru.yandex.extdata.common.meta.DataTypeRegistry">
+        <constructor-arg>
+            <list>
+                <ref bean="newRelatedDataType"/>
+            </list>
+        </constructor-arg>
+    </bean>
+
+    <bean name="newRelatedContainerHolder" class="ru.yandex.auto.searcher.statistics.related.NewRelatedContainerHolder">
+           <constructor-arg name="dataType" ref="newRelatedDataType"/>
+           <constructor-arg name="extDataService" ref="extDataService"/>
+    </bean>
+
+</beans>

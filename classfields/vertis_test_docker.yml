@@ -1,0 +1,48 @@
+---
+
+- hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    host: sre_vertis_test_docker
+    children:
+    - vertis_test_docker
+    - vertis_vtest_docker
+    host_tags:
+    - vertis_sre
+    - vertis_sre_test
+    notifications: []
+    # the redefinition of thresholds
+    crit_limit: "101%"
+    warn_limit: "2"
+
+  pre_tasks:
+    - juggler_facts: jserver_api={{ jserver_api }}
+
+  post_tasks:
+    - juggler_cleanup: jcheck_mark={{ host }}
+
+  tasks:
+    - include: tasks/common.yml
+      vars:
+        # Do not add 'always_warning'. The thresholds have redefined in hosts section.
+        unreachable_only: True
+
+    - include: tasks/basic.yml
+      vars:
+        # Do not add 'always_warning'. The thresholds have redefined in hosts section.
+        checks:
+        - docker-monitoring
+        - filebeat
+        - hprof-courier
+        - nomad
+        - sub-zero
+        - vector
+        - cms-agent
+
+    - name: 'Added geodata6 check with redefined ttl'
+      juggler_check:
+      args: "{{ default_check | combine(unreach, {'service': item}, {'ttl': '4800'}, recursive=True) }}"
+      with_items:
+        - geodata6
+

@@ -1,0 +1,58 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - dridgerve
+      groups: []
+labels:
+  order: '99999995'
+---
+regexp_section:
+  matcher:
+    match_and:
+      - match_fsm:
+          path: /naydex/.*
+      - match_or:
+        - match_fsm:
+            host: yastatic\\.net
+        - match_fsm:
+            host: yastatic-net\\.ru
+  modules:
+    - regexp:
+        sections:
+          yastatic_net:
+            matcher:
+              match_fsm:
+                host: yastatic\\.net
+            modules:
+                - report:
+                    uuid: rewrite_yastatic_to_naydex
+                    ranges: default
+                - rewrite:
+                    actions:
+                    - regexp: /naydex/(.*?)/test(/.*)
+                      split: url
+                      rewrite: 'http://%1.naydex.net%2'
+                - headers:
+                    create:
+                        X-Forwarded-Proto: 'https'
+                - shared:
+                    uuid: backends
+          yastatic_net_ru:
+            matcher:
+              match_fsm:
+                host: yastatic-net\\.ru
+            modules:
+                - report:
+                    uuid: rewrite_yastatic_ru_to_naydex
+                    ranges: default
+                - rewrite:
+                    actions:
+                    - regexp: /naydex/(.*?)/test(/.*)
+                      split: url
+                      rewrite: 'http://%1.naydex-net.ru%2'
+                - headers:
+                    create:
+                        X-Forwarded-Proto: 'https'
+                - shared:
+                    uuid: backends

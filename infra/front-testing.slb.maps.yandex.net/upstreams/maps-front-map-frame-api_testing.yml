@@ -1,0 +1,49 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - sigorilla
+      groups: []
+labels:
+  order: '10000000'
+config_mode: easy2
+---
+l7_upstream_macro:
+  version: 0.2.3
+  id: maps-front-map-frame-api_testing
+  matcher:
+    and_:
+      - host_re: '(www\.)?l7test\.yandex\.[\w.]+'
+      - path_re: '/map-widget(/.*)?'
+  rps_limiter:
+    external:
+      record_name: front-map-frame-api_testing
+      installation: MAPS_FRONT
+  rewrite:
+    - target: PATH
+      pattern:
+        re: '/map-widget/embed/(.*)?'
+      replacement: '/map-widget/v1/embed/%1'
+  flat_scheme:
+    balancer:
+      attempts: 2
+      fast_attempts: 2
+      max_reattempts_share: 0.3
+      max_pessimized_endpoints_share: 0.5
+      health_check:
+        delay: 5s
+        request: >-
+          GET /ping HTTP/1.1\nHost:
+          front-testing.slb.maps.yandex.net\nUser-agent: l7-balancer\n\n
+      retry_non_idempotent: false
+      retry_http_responses:
+        codes:
+          - 5xx
+      backend_timeout: 5s
+      connect_timeout: 150ms
+    backend_ids:
+      #- maps-front-map-frame-api_testing_man
+      - maps-front-map-frame-api_testing_sas
+      - maps-front-map-frame-api_testing_vla
+    on_error:
+      rst: true

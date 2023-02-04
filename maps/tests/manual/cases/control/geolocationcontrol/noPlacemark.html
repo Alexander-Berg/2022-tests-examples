@@ -1,0 +1,184 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Контрол: опции контрола геолокации
+
+Description:
+Проверка опций контрола геолокации.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+Перед проведением теста необходимо настроить браузер для запроса геоданных. В Google Chrome в настройках "Конфиденциальность и безопастность" в блоке "Геоданные" выставить флаг "Спрашивать разрешение на доступ".
+При этом в списке разрешенных адресов вкладки "Геоданные" в подблоке "Разрешить" не должно быть URL адресов ...yandex.ru...Если URL адреса "yandex.ru" имеются удалите их, для корректного прохождения теста и появления запроса на определение местоположения.
+
+Components: 
+control
+
+Estimated time:
+300000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан Москвы, сверху слева имеется контрол геолокации(стрелка), сверху справа кнопки "Remove", "AddGeo", "coord", "noPlace...".
+ 
+Step:
+  Action:
+  Выполнить клик в кнопку "noPlace...".
+  Выполнить клик в контрол геолокации.
+
+  Expectation:
+  Кнопка "noPlace..." активна, фон окрашен желтым.
+  Контрол геолокации кликабелен, после клика появляется диалоговое окно о разрешении доступа к данным о вашем местоположении, с кнопками "разрешить", "блокировать". (конфигурация кнопок и диалогового окна может варьироваться в зависимости от браузера).
+
+Step:
+  Action:
+  В появившемся окне разрешаем доступ к данным о геолокации.
+
+  Expectation:
+  Спан карты без изменений, под контейнером с картой появляется блок: geolocation1: [object Object].
+
+Step:
+  Action:
+  Выполнить клик в кнопку "noPlace...". 
+  Выполнить клик в кнопку "addGeo".
+  Выполнить клик в контрол геолокации.
+
+Expectation:
+  Кнопка "noPlace..." неактивна, фон окрашен белым.
+  Кнопка "addGeo" активна, фон окрашен желтым.
+  После клика в контрол геолокации карта зумится к области местоположения, на спане в центре появляется красная метка геолокации с буквой "Я"(местоположение метки геолокации может быть не точным).
+  Под контейнером с картой блок: geolocation1: [object Object]; locationchange.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "addGeo".
+  Зажав на спане карты ЛКМ драгом переместить спан карты, так чтобы текущее местоположение оказалось за пределами области видимости.
+
+  Expectation:
+  Кнопка "addGeo" неактивна, фон окрашен белым.
+  Драг карты корректный: карта не пропадает, не мигает цветами.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "coord".
+  Выполнить клик в контрол геолокации.
+
+  Expectation:
+  Кнопка "coord" активна, фон окрашен желтым.
+  После клика в контрол геолокации происходит смена спана на спан области местоположения, на спане в центре красная метка геолокации с буквой "Я", обведенная полупрозрачным зеленым кругом.(местоположение метки геолокации может быть не точным).
+  Под контейнером с картой блок: geolocation1: [object Object]; locationchange.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "coord".
+  Выполнить клик в кнопку "Remove".
+
+Expectation:
+  Кнопка "coord" неактивна, фон окрашен белым.
+  Кнопка "Remove" активна, фон окрашен желтым.
+  После клика со спана карты пропадает метка геолокации(красный пин с буквой "Я") и контрол геолокации из контейнера с картой. 
+  Область видимости не меняется, на спане остается область обведенная полупрозрачным зеленым кругом.
+-->
+<html>
+<head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            var myMap = new ym.Map('map', {
+                        center: [55.73259667357658, 37.70153663432529],
+                        zoom: 9,
+                        behaviors: ['default', 'scrollZoom'],
+                        controls: []
+                    }),
+                    callback1 = function (e) {
+                        log.info('geolocation1: ');
+                        __log__(e)
+                    },
+                    events = ['locationchange'],
+                    log = new Log(),
+                    callback2 = function (e) {
+                        __log__(e.get('type'));
+                        myMap.geoObjects.add(e.get('geoObjects'));
+                    },
+                    callback3 = function (e) {
+                        __log__(e.get('type'));
+                        myMap.geoObjects.add(new ymaps.GeoObject({
+                            geometry: { type: "Circle", coordinates: e.get('position'), radius: e.get('geoObjects').accuracy }, properties: {custom: true}
+                        }, {id: 'geoObjectCircle', strokeColor: '#00FF00', fillColor: '#00FF00', fillOpacity: 0.3}));
+                        myMap.setBounds(myMap.geoObjects.getBounds());
+                    },
+                    events = ['locationchange'],
+                    log = new Log();
+
+            addGrid(myMap);
+
+            log.info('noPlacemark - при включенной опции проведение геолокации не открывает метку на карте, в консоли кидается событие');
+            log.info('coord - открываем круг по результатам события геолокации');
+            log.info('addGeo - добавляем объект пришедший в событии "locationchange"');
+            var geolocation1 = new ymaps.control.GeolocationControl({
+                data: {title: '1'},
+                options: {float: 'left'}
+            });
+
+            geolocation1.events.add(events, callback1);
+
+            var removeButton = new ymaps.control.Button({data: {content: 'Remove'}, options: {selectOnClick: true}});
+            removeButton.events
+                    .add('select', function () {
+                        myMap.controls.remove(geolocation1);
+                    })
+                    .add('deselect', function () {
+                        myMap.controls.add(geolocation1);
+                    });
+
+            var noPlacemarkButton = new ymaps.control.Button({data: {content: 'noPlacemark'}, options: {selectOnClick: true}});
+            noPlacemarkButton.events
+                    .add('deselect', function () {
+                        geolocation1.options.set('noPlacemark', false);
+                    })
+                    .add('select', function () {
+                        geolocation1.options.set('noPlacemark', true);
+                    });
+
+            var addGeoButton = new ymaps.control.Button({data: {content: 'addGeo'}, options: {selectOnClick: true}});
+            addGeoButton.events
+                    .add('deselect', function () {
+                        geolocation1.events.remove(events, callback2);
+                    })
+                    .add('select', function () {
+                        geolocation1.events.add(events, callback2);
+                    });
+
+            var coordButton = new ymaps.control.Button({data: {content: 'coord'}, options: {selectOnClick: true}});
+            coordButton.events
+                    .add('deselect', function () {
+                        geolocation1.events.remove(events, callback3);
+                    })
+                    .add('select', function () {
+                        geolocation1.events.add(events, callback3);
+                    });
+
+            myMap.controls
+                    .add(geolocation1)
+                    .add(removeButton, { float: 'right'})
+                    .add(addGeoButton, { float: 'right'})
+                    .add(coordButton, { float: 'right'})
+                    .add(noPlacemarkButton, { float: 'right'});
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

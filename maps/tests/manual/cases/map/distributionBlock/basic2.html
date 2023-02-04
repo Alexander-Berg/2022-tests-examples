@@ -1,0 +1,118 @@
+<!DOCTYPE HTML>
+<!--(skip)(description)
+-->
+<!--(version)
+2.0.38
+-->
+<!--(commands)
+sleep(1000);
+test();
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+
+        function init(ymaps) {
+            ym = ymaps;
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 10,
+                behaviors: ['default', 'scrollZoom']
+            }, {
+                suppressObsoleteBrowserNotifier: false,
+                suppressMapOpenBlock: false
+
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+            var suppressObsoleteBrowserNotifierButton = new ymaps.control.Button({data: {content: 'order'}, options: {selectOnClick: true}});
+            suppressObsoleteBrowserNotifierButton.events
+                    .add('select', function () {
+                        map.options.set('suppressObsoleteBrowserNotifier', true);
+                    })
+                    .add('deselect', function () {
+                        map.options.set('suppressObsoleteBrowserNotifier', false);
+                    });
+
+            myMap.controls
+                    .add(suppressObsoleteBrowserNotifierButton, {top: 100, right: 5});
+
+            var placemark1 = new ymaps.Placemark([55.71574031323344, 37.29753265380539]);
+            var placemark2 = new ymaps.Placemark([55.912150224943986, 37.29753265380539]);
+            var placemark3 = new ymaps.Placemark([56.16, 37.29753265380539]);
+            var placemark4 = new ymaps.Placemark([56.36, 37.29753265380539]);
+            var placemark5 = new ymaps.Placemark([55.97, 37.18]);
+
+            var multiRoute = new ymaps.multiRouter.MultiRoute({
+                referencePoints: [placemark1.geometry, placemark2.geometry, placemark5.geometry, placemark3.geometry, placemark4.geometry],
+                params: {
+                    viaIndexes: [1, 2]
+                }
+            }, {
+                boundsAutoApply: true,
+                preset: "islands#multiRouterSmall"
+            });
+
+            var routeButton = new ymaps.control.Button('route');
+            var editorButton = new ymaps.control.Button('editor');
+            var drawOverButton = new ymaps.control.Button('drawOver');
+
+            editorButton.events
+                    .add('select', function () {
+                        multiRoute.editor.start({
+                            addWayPoints: true,
+                            dragWayPoints: true,
+                            dragViaPoints: true,
+                            removeWayPoints: true,
+                            removeViaPoints: true
+                        })
+                    })
+                    .add('deselect', function () {
+                        multiRoute.editor.stop()
+                    });
+
+            drawOverButton.events
+                    .add('select', function () {
+                        multiRoute.options.set('editorDrawOver', true)
+                    })
+                    .add('select', function () {
+                        multiRoute.options.set('editorDrawOver', false)
+                    });
+            routeButton.events
+                    .add('select', function () {
+                        map.geoObjects.add(multiRoute);
+                    })
+                    .add('deselect', function () {
+                        map.geoObjects.remove(multiRoute);
+                    });
+
+            map.controls
+                    .add(editorButton)
+                    .add(drawOverButton)
+                    .add(routeButton);
+
+            var modeButton = new ymaps.control.Button('mode');
+            modeButton.events
+                    .add('select', function () {
+                        multiRoute.model.setParams({routingMode: 'masstransit'}, true);
+                    })
+                    .add('deselect', function () {
+                        multiRoute.model.setParams({routingMode: 'auto'}, true);
+                    });
+            map.controls.add(modeButton, {position: {bottom: 35, left: 5}});
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

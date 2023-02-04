@@ -1,0 +1,93 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Контрол: поведение меток измерителя расстояний
+
+Description:
+Проверка работы поведения меток измерителя расстояний(ошибка в браузера Safari).
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+control
+
+Estimated time:
+120000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась корректно, в контейнере контрол линейки(снизу справа). 
+  При загрузке под контейнером появляются строки: "before; getDistance() : 0; 18; 18; geometry.LineString: выход за пределы массива точек; 18".
+  Спан карты меняется, в центре карты появляется метка измерителя с отрезком линии, балуном "4010 км".
+  
+Step:
+  Action:
+  Выполнить отзум спана карты,для просмотра всего измеряемого отрезка.
+
+  Expectation:
+  При отзуме под контейнером появляются значения текущего зума.
+  На карте должна отображаться линия измерения с двумя метками в Средиземном море, меткой на территории РФ с балуном "4010 км".
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var map = new ymaps.Map(document.querySelector('#map'), {
+                center: [55.76, 37.64],
+                zoom: 9,
+                controls: ['rulerControl']
+            });
+
+            addGrid(map);
+            var log = new Log();
+
+            var ruler = map.behaviors.get('ruler');
+            log.info('before');
+            try {
+                log.info('getDistance() : ' + ruler.geometry.getDistance());
+            } catch (err) {
+                log.info(err.message)
+            }
+            log.info('');
+
+            ruler.setState('18.0,35.00~1.0,1.0~30.0,30.0');
+            map.setCenter([0.0,0.0], 18);
+            setTimeout(function(){
+                map.setCenter([66.0,49.0], 18);
+            },4000)
+            setTimeout(function () {
+                try {
+                    log.info('getDistance(20, 21) : ' + ruler.geometry.getDistance(20, 21));
+                } catch (err) {
+                    log.info(err.message)
+                }
+            }, 2000)
+            map.events.once('boundschange', function(){
+                map.setCenter([0.0,0.0], 18);
+            });
+            map.events.add('boundschange', function(){
+                log.info(map.getZoom());
+            })
+
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 600px; width: 1000px;"></div>
+</body>
+</html>

@@ -1,0 +1,6 @@
+SIZE(MEDIUM)
+TIMEOUT(600)
+ENABLE(AWACS_PLUGIN)
+ENABLE(BALANCER_PLUGIN)
+INCLUDE(${ARCADIA_ROOT}/balancer/test/plugin/Plug.inc)
+TAG(ya:not_autocheck)

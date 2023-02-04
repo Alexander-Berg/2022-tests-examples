@@ -1,0 +1,153 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+ПОИ: базовая проверка ПОИ с меткой и маршрутом
+
+Description:
+Проверка ПОИ с меткой и маршрутом.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components:
+poi
+
+Estimated time:
+180000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно со спаном Стамбула, в центре спана зеленая метка. 
+  Сверху на карте кнопки "MultiRoute", "GeoEditor".
+
+Step:
+  Action:
+  Поводить курсором по меткам ПОИ/СуперПои/транспортным метка на карте.
+  Навести курсор на зеленую метку, выполнить клик в метку.
+  
+  Expectation:
+  При наведении курсора на ПОИ/СуперПои/транспортные метки курсор меняется на палец.
+  При наведении курсора на метку курсор меняется на палец, на метке хинт "text", по клику открывается балун "text".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "GeoEditor", выполнить клик в любое место на спане карты.
+  Поводить курсором по меткам ПОИ/СуперПои/транспортным метка на карте.
+  
+  Expectation:
+  По клику "GeoEditor" под контейнером появляется строка "started", по клику в спан в месте клика перемещается открытый балун метки.
+  При наведении курсора на ПОИ/СуперПои/транспортные метки курсор меняется на палец.
+
+Step:
+  Action:
+  Закрыть балун метки, выполнить клик в кнопку "GeoEditor".
+  Выполнить клик в метку СуперПОи "мечеть Сулеймание".
+  
+  Expectation:
+  Балун корректно закрылся, на месте балун - зеленая метка. 
+  По клику "GeoEditor" под контейнером появляется строка "stopped".
+  По клику в СуперПои, спан смещается снизу открывается панель балуна с карточкой.
+
+Step:
+  Action:
+  Закрыть балун-панель СуперПОИ.
+  Выполнить клик в кнопку "MultiRoute", выполнить два клика в спан карты на расстоянии друг от друга.
+  
+  Expectation:
+  На спане карты выставлены метки "A", "B", между метками маршрутная нитка, могут быть альтернативные нитки.
+  К курсору прилипает метка "C".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "MultiRoute".
+  Выполнить клик в ПОИ метро "Халич".
+  
+  Expectation:
+  По клику "MultiRoute" от курсора отлипает метка "C".
+  По клику спан смещается снизу открывается панель балуна с карточкой.
+
+Step:
+  Action:
+  Закрыть балун-панель.
+  Выполнить клик в зеленую метку.
+  
+  Expectation:
+  По клику в метку открывается балун "text".
+  Маршрут не пропадает со спана карты.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../helper.js"></script>
+    <script type=text/javascript>
+        Api("init");
+        function init(ymaps) {
+            //ymaps = ym;
+            var map = myMap = new ymaps.Map('map', {
+                center: [41.015917, 28.962240],
+                zoom: 14,
+                behaviors: ['default', 'scrollZoom']
+            }, {
+                yandexMapDisablePoiInteractivity: false,
+                layerPoiOpenEmptyHint: true
+            });
+            addGrid(myMap);
+            __log__("Test case: Basic test. Empty hint enable");
+            __log__("Check poi with route, multiroute, editor.");
+            myMap.controls.add(new ymaps.control.RouteEditor({options: {}}), {float: 'none', position: {bottom: 35, left: 10}});
+
+            var editorButton = new ymaps.control.Button('GeoEditor');
+            editorButton.events
+                    .add('select', function () {
+                        placemark1.editor.startDrawing().then(function () {
+                            __log__('started')
+                        })
+                    })
+                    .add('deselect', function () {
+                        placemark1.editor.stopDrawing();
+                        __log__('stopped')
+                    });
+
+            myMap.controls.add(editorButton);
+
+            // строим маршрут
+            var multiRoute = new ymaps.multiRouter.MultiRoute({
+                referencePoints: []
+            });
+            map.geoObjects.add(multiRoute);
+
+            var editorMultirouteButton = new ymaps.control.Button('MultiRoute');
+            editorMultirouteButton.events
+                    .add('select', function () {
+                        multiRoute.editor.start({
+                            addWayPoints: true,
+                            removeViaPoints: true,
+                            removeWayPoints: true,
+                            addMidPoints: true
+                        });
+                    })
+                    .add('deselect', function () {
+                        multiRoute.editor.stop();
+                    });
+
+            myMap.controls.add(editorMultirouteButton);
+
+            var placemark1 = new ymaps.GeoObject({
+                geometry: { type: "Point", coordinates: map.getCenter() }, properties: {
+                    balloonContent: 'text', hintContent: 'text'
+                }}, {preset: 'islands#greenIcon', draggable: true, openBalloonOnClick: true});
+            myMap.geoObjects.add(placemark1);
+
+        }
+    </script>
+</head>
+<body>
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

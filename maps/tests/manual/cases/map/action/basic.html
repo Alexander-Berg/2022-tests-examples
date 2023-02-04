@@ -1,0 +1,89 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Карта: хаотичное движение спана
+
+Description:
+Проверка создания хаотичного движения спана, остановки движения и запоминания центра спана.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+map
+
+Estimated time:
+90000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+  
+  Expectation:
+  Карта отобразилась корректно, со спаном Москвы, после загруки спан карты начинает хаотично смещаться. 
+  Под контейнером с картой каждую секунду добавляется строка со значением zoom и координатами центра карты вида: "Zoom 10 Center 158821.89...,82331.965...". 
+
+Step:
+  Action:
+  Навести курсор на спан карты, зажав ЛКМ выполнить драг спана и отпустить ЛКМ. 
+  
+  Expectation:
+  Захват и драг карты ЛКМ корректный, после окончания драга карты хаотичное смещение спана прекращается. 
+  Под контейнером с картой каждую секунду продолжает появляться строка со значением zoom и координатами центра карты вида. 
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            //ymaps = ym;
+            var map = myMap = new ym.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 10,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['typeSelector', 'zoomControl']
+            });
+            addGrid(myMap);
+            __log__('Test case: stop drunk map!');
+
+            // Создадим сложное движение: каждые 100 мс центр
+            // карты смещается на случайную величину.
+            // Создадим экземпляр сложного движения.
+            var action = new ymaps.map.action.Continuous();
+            // Запустим его выполнение на карте.
+            myMap.action.execute(action);
+            // Запомним пиксельный центр карты и уровень масштабирования.
+            var center = myMap.getGlobalPixelCenter(),
+                    zoom = myMap.getZoom();
+            // Каждые 100 миллисекунд будем генерировать случайный сдвиг.
+            var interval = window.setInterval(function () {
+                center[0] += Math.round(Math.random() * 100) - 50;
+                center[1] += Math.round(Math.random() * 100) - 50;
+                // Генерируем новый сдвиг карты.
+                action.tick({
+                    globalPixelCenter: center,
+                    zoom: zoom
+                });
+            }, 100);
+            // Как только пользователь сдвинет карту, наше движение
+            // прекратит выполняться и произойдёт событие end.
+            var listener = action.events.once('end', function () {
+                window.clearInterval(interval);
+            });
+            window.setInterval(function () {
+                __log__("Zoom " + myMap.action.getCurrentState().zoom + " Center " + myMap.action.getCurrentState().globalPixelCenter);
+            }, 1000);
+        }
+    </script>
+</head>
+<body>
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

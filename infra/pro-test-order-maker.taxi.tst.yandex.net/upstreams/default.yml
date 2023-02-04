@@ -1,0 +1,52 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - robot-taxi-clown
+      - eatroshkin
+      - glush
+      - sgrebenyukov
+      - nikkraev
+      - broom
+      - oxcd8o
+      - sokogen
+      - nikslim
+      - isharov
+      - nanny-robot
+      groups:
+      - svc_vopstaxi
+labels:
+  order: '99999999'
+config_mode: easy2
+---
+l7_upstream_macro:
+  compat:
+    disable_monitoring: true
+  version: 0.0.1
+  id: default
+  matcher:
+    any: true
+  headers:
+    - create: {target: Host, keep_existing: true, value: pro-test-order-maker.taxi.tst.yandex.net}
+    - create: {target: X-Real-IP, func: realip}
+  flat_scheme:
+    can_handle_announce_checks: true
+    balancer:
+      compat:
+        method: ACTIVE
+      attempts: 1
+      do_not_limit_reattempts: true
+      fast_attempt_all_endpoints: true
+      health_check:
+        delay: 2s
+        request: 'GET /ping HTTP/1.1\nHost: pro-test-order-maker.taxi.tst.yandex.net\nUser-agent: l7-balancer\n\n'
+      do_not_retry_http_responses: true
+      connect_timeout: 70ms
+      backend_timeout: 60s
+      keepalive_count: 1
+    backend_ids:
+      - taxi_pro-test-order-maker_testing
+    on_error:
+      static:
+        status: 504
+        content: 'Service unavailable'

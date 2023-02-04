@@ -1,0 +1,396 @@
+{
+    "HttpServer": {"Port": {{port}}},
+    "Logs": {
+        "Rules": [
+            {
+                "FilePath": "{{logdir}}/error.log",
+                "MinLevel": "Debug",
+                "IncludeCategories": ["Main", "InfoKeeper", "ML"]
+            },
+            {
+                "FilePath": "{{logdir}}/yt.log",
+                "MinLevel": "Debug",
+                "ExcludeCategories": ["AUTO"]
+            }
+        ]
+    },
+    "Workers": {
+        "{{table}}": {
+            "StateTable": "{{state_table_path}}",
+            "Suppliers": [
+                {
+                    "Alias": "resharded_yt_log",
+                    "YtSupplier": {
+                        "QueueConsumer": "{{consumer}}",
+                        "QueuePath": "{{input_queue}}",
+                        "Cluster": "{{yt_cluster}}",
+                        "CommitPeriodMs": 100,
+                        "ChunkSize": 10000,
+                        "MaxOutChunkSize": 10000,
+                        "FlushChunkIntervalMs": 1,
+                        "DelayAfterEmptyReadMs": 10
+                    }
+                }
+            ],
+            "ConsumingSystem": {
+                "Cluster": "{{yt_cluster}}",
+                "MainPath": "{{consuming_system_main_path}}",
+                "Shards": {
+                    "AutoResolve": {}
+                },
+                "MaxShardsAutoResolveRatio": 1.0,
+                "MaxShardsToCheckAutoResolveRatio": 1.0,
+                {# make cs startup faster #}
+                "MasterBalancing": {
+                    "RegisterPeriodMs": 100,
+                    "PullShardsPeriodMs": 100,
+                    "ReshardingPeriodMs": 100,
+                    "AttemptToBecomeActualMasterPeriodMs": 100
+                },
+                "PublicDataConfig": {
+                    "UploadPeriodMs": 100
+                }
+                {# end #}
+            },
+            "GraphProcessorConfig": {
+                "IgnoredMessageTypes": []
+            },
+            "StatefulShardProcessorConfig": {
+                "ParsingThreads": 2, {# demo test specific #}
+                "MaxEpochsInFlight": 3
+            },
+    {% if table == "Banners" %}
+            "BannerGraphConfig": {
+                "TurboUrlDictTable": "{{turbo_url_dict_table}}",
+                "NormalizedHostsTable": "{{normalized_hosts_table}}",
+                "NormalizedUrlsTable": "{{normalized_urls_table}}",
+                "AliveBannersTable":  "{{alive_banners_table}}",
+                "OrdersTable": "{{orders_table}}",
+                "AdGroupsTable": "{{ad_groups_table}}",
+                "GoalsTable": "{{goals_table}}",
+                "EnableGoalsFetch": true,
+                "TsarModelServiceConfig": {
+                {% if model_service_port == 0 %}
+                    "Enabled": false
+                {% else %}
+                    "Enabled": true,
+                    "Attempts": 1,
+                    "Url": "http://localhost:{{model_service_port}}/tsar",
+                    "RequestTimeoutMs": 100,
+                    "EnableThreadPoolInModelService": false,
+                    "TsarModels": [{"VectorID": 1, "ShowPlatform": "CP_BOTH"}],
+                    {% if enable_scatter %}
+                    "EnableScatter": true,
+                    "AddressSuffix": "tsar",
+                    "ScatterClientConfig": {
+                        "SourceType": "SIMPLE",
+                        "SimpleSourceScript": "http://localhost:{{model_service_port}}",
+                        "SourceOptionsConfig": {
+                            "TaskOptions": {
+                                "ConnectTimeouts": ["1s"],
+                                "SendingTimeouts": ["1s"]
+                            },
+                            "TimeOut": "1s",
+                            "AllowConnStat": false
+                        },
+                        "InflightLimit": 3
+                    }
+                    {% else %}
+                    "EnableScatter": false
+                    {% endif %}
+                {% endif %}
+                },
+                "MobileAppDataConfig": {
+                    "Enabled": true,
+                    "Table": "{{mobile_apps_table}}"
+                },
+                "MobileAppDeeplinksConfig": {
+                    "Enabled": true,
+                    "Table": "{{mobile_deeplinks_table}}"
+                },
+                "MultikModelServiceConfig": {"Enabled": false},
+                "BannerLandTaskPerformanceBannerLogTable": "{{bannerland_task_performance_banner_log_table}}",
+                "BannerLandTaskDynamicBannerLogTable": "{{bannerland_task_dynamic_banner_log_table}}",
+                "RknBannerQueue": "{{Rkn_banner_info_queue}}",
+                "GeminiConfig": {
+                    "Enabled": true,
+                    "PossibilityToNormalize": 1,
+                    "NormalizeOnlyActive": false
+                },
+                "CatMachineConfig": {
+                    "Enabled": true,
+                    "Profiles": [
+                        {
+                            "Profile": "BannerSmoothing",
+                            "MergeOpts": {
+                                "SmoothingCoefficient": 0.01
+                            },
+                            "FilterOpts": {
+                                "MaxIDF": 20,
+                                "MaxItemsPerType": 256,
+                                "AcceptTypes" : [
+                                    "KryptaTopDomains",
+                                    "DayOfAWeek",
+                                    "HourOfDay",
+                                    "PageID",
+                                    "PageQtailID",
+                                    "HourOfWeek"
+                                ]
+                            },
+                            "IdfsFilePath" : "idfs.bin"
+                        }
+                    ]
+                },
+                {% if disable_banner_moderation %}
+                "SmartBannerModerationConfig": {
+                    "Enabled": false
+                },
+                "DynamicBannerModerationConfig": {
+                    "Enabled": false
+                },
+                {% endif %}
+                {% if offer_url_dict_enabled %}
+                "OfferUrlsDictConfig": {
+                    "OutputTable": "{{offer_url_dict_table}}",
+                    "UpdateProbability": 1.0
+                },
+                {% endif %}
+                "TrackersConfig": {
+                    "Trackers": [
+                        {
+                            "Name": "Appsflyer",
+                            "Hosts": ["^app\\.appsflyer\\.com$"],
+                            "Params": [{"Key": "clickid", "Value": "clickid"}],
+                            "IOSParams": [],
+                            "AndroidParams": [{"Key": "oaid", "Value": "{OAID_LC}"}]
+                        },
+                        {
+                            "Name": "Kochava",
+                            "Hosts": ["^control\\.kochava\\.com$"],
+                            "Params": [],
+                            "IOSParams": [{"Key": "device_id_type", "Value": "idfa", "Force": true}, {"Key": "idfa", "Value": "{IDFA_UC}", "Force": true}],
+                            "AndroidParams": [{"Key": "device_id_type", "Value": "adid", "Force": true}, {"Key": "adid", "Value": "{GOOGLE_AID_LC}", "Force": true}]
+                        }
+                    ],
+                    "PossibilityToCanonize": 1,
+                    "Enabled": true
+                },
+                "FilterModelsByShowPlatform": true,
+                "FetchCandidatsLogStatistic": false
+            },
+    {% elif table == "Offers" %}
+            "OfferGraphConfig": {
+                "ShubertExpireThresholdHours": 18,
+                "NormalizedUrlsTable": "{{normalized_urls_table}}",
+                "SaasConfig": {
+                    "MessageConfig": {
+                        "MainProfile": {"ObjectType": "PN_Ecom#OT_TurboOffer"}
+                    }
+                },
+                "UpdateListingsConfig": {
+                    "Table": "{{offer_listing_dict_table}}"
+                },
+                "MultikModelServiceConfig": {"Enabled": false},
+                "GeminiConfig": {
+                    "Enabled": true,
+                    "PossibilityToNormalize": 1
+                }
+            },
+    {% elif table == "MarketModels" %}
+            "MarketModelGraphConfig": {
+                "NormalizedUrlsTable": "{{normalized_urls_table}}",
+                "SaasConfig": {
+                    "MessageConfig": {
+                        "MainProfile": {"ObjectType": "PN_Market#OT_Product"}
+                    }
+                }
+            },
+    {% elif table == "Orders" %}
+            "OrderGraphConfig": {
+                "OrderUpdateTimeTable": "{{order_update_time_table}}",
+                "BannerLandTaskPerformanceOrderLogTable": "{{bannerland_task_performance_order_log_table}}",
+                "BannerLandTaskDynamicOrderLogTable": "{{bannerland_task_dynamic_order_log_table}}",
+                "CaesarOrderInfoTable": "{{caesar_order_info_table}}",
+                "CaesarAutoBudgetOrderTable": "{{caesar_auto_budget_order_table}}",
+                "CaesarAutoBudgetOrderWithHistoryTable": "{{caesar_auto_budget_order_with_history_table}}",
+                "CaesarGroupToOrderIndexTable": "{{caesar_group_to_order_index_table}}",
+                 "AutobudgetConfig": {
+                    "GoalsTable": "{{goals_table}}"
+                 }
+            },
+    {% elif table == "Strategies" %}
+            "StrategyGraphConfig": {
+                "OrderTable": "{{orders_table}}"
+            },
+    {% elif table == "AdGroups" %}
+            "AdGroupGraphConfig": {
+                "MaxNotActivePhrases": {{max_not_active_phrases}},
+                "CatMachineConfig": {
+                    "Enabled": true,
+                    "Profiles": [
+                        {
+                            "Profile": "GroupExportSmoothing",
+                            "MergeOpts": {
+                                "SmoothingCoefficient": 0.01
+                            },
+                            "FilterOpts": {
+                                "MaxIDF": 20,
+                                "MaxItemsPerType": 256,
+                                "AcceptTypes" : [
+                                    "KryptaTopDomains",
+                                    "ShownOrders",
+                                    "RegionID",
+                                    "PageID",
+                                    "HourOfWeek"
+                                ]
+                            },
+                            "IdfsFilePath" : "idfs.bin"
+                        }
+                    ]
+                }
+            },
+    {% elif table == "Goals" %}
+                "GoalGraphConfig": {
+                    "GoalsExpireThresholdDays": 2,
+                    "CountersTable": "{{counters_table}}"
+                },
+    {% elif table == "Pages" %}
+            "PageGraphConfig": {
+                "CatMachineConfig": {
+                    "Enabled": true,
+                    "Profiles": [
+                        {
+                            "Profile": "PageSmoothing",
+                            "MergeOpts": {
+                                "SmoothingCoefficient": 0.01
+                            },
+                            "FilterOpts": {
+                                "MaxIDF": 20,
+                                "MaxItemsPerType": 256,
+                                "AcceptTypes" : [
+                                    "KryptaTopDomains",
+                                    "DayOfAWeek",
+                                    "HourOfDay"
+                                ]
+                            },
+                            "IdfsFilePath" : "idfs.bin"
+                        }
+                    ]
+                },
+                "CaesarPageTable": "{{caesar_page_table}}",
+                "CaesarPageImpTable": "{{caesar_page_imp_table}}",
+                "CaesarPartnerPageTable": "{{caesar_partner_page_table}}",
+                "CaesarBlockSettingsTable": "{{caesar_block_settings_table}}",
+                "CaesarSSPPageMappingTable": "{{caesar_s_s_p_page_mapping_table}}",
+                {% if enable_cspage_clearing %}
+                "EnableCSPageClearing": true
+                {% else %}
+                "EnableCSPageClearing": false
+                {% endif %}
+            },
+    {% elif table == "Communications" %}
+            "CommunicationsGraphConfig": {
+                "ChannelTable": "{{communications_channel_table}}"
+            },
+    {% endif %}
+
+    {% if watcher_queue %}
+            "Watcher": {
+                "QueuePath": "{{ watcher_queue }}"
+            },
+    {% endif %}
+            "SubShards": 10,
+            "MaxTasksInQueue": 2000
+        }
+    },
+    "DataReloaderConfig": {
+        "FailOnLoadError": true, {# don't use it in production! #}
+        "MultikPackages": [
+            {
+                "ModelID": 0,
+                "PackagePath": "{{multik_package_folder}}"
+            },
+            {
+                "ModelID": 1,
+                "PackagePath": "{{multik_package_folder_exp}}"
+            }
+        ],
+        "BoughtNTimesBaseFile": "{{caesar_bases_folder}}/bought_n_times_v1.vinyl",
+        "BrowserRatingBaseFile": "{{caesar_bases_folder}}/browser_rating_v1.vinyl",
+        "CustomersChoiceBaseFile": "{{caesar_bases_folder}}/customers_choice_v1.vinyl",
+        "DictVendorBaseFile": "{{caesar_bases_folder}}/dict_vendor_v1.vinyl",
+        "DomainMarketRatingBaseFile": "{{caesar_bases_folder}}/domain_market_rating_v1.vinyl",
+        "ExternalDataExclusionBaseFile": "{{caesar_bases_folder}}/external_data_exclusion_v1.vinyl",
+        "ModelCategoryBaseFile": "{{caesar_bases_folder}}/model_category_v1.vinyl",
+        "ModelRatingBaseFile": "{{caesar_bases_folder}}/model_rating_v1.vinyl",
+        "NearStationBaseFile": "{{caesar_bases_folder}}/nearest_station_v1.vinyl",
+        "OrgAspectsBaseFile": "{{caesar_bases_folder}}/orgs_aspects_v1.vinyl",
+        "OrgsRegDateBaseFile": "{{caesar_bases_folder}}/orgs_reg_date_v1.vinyl",
+        "PageInfoBaseFile": "{{caesar_bases_folder}}/page_info_v1.vinyl",
+        "RealtyBaseFile": "{{caesar_bases_folder}}/realty_v1.vinyl",
+        "SummaryReviewsBaseFile": "{{caesar_bases_folder}}/summary_reviews_v1.vinyl",
+        "TargetDomainBaseFile": "{{caesar_bases_folder}}/target_domain_v1.vinyl",
+        "TaxHistoryBaseFile": "{{caesar_bases_folder}}/tax_history_v1.vinyl",
+        "TurboShopIdToCounterIdFile": "{{turbo_shop_id_to_counter_id_folder}}/turbo_shop_id_2_counter_id.bin.gz",
+        "TurboOriginalUrlsBaseFile": "{{turbo_original_urls_base_file}}/turbo_original_urls_v1.vinyl",
+        "ViewedNTimesBaseFile": "{{caesar_bases_folder}}/viewed_n_times_v1.vinyl",
+        "CurrencyDictsFolder": "{{currency_dicts_folder}}",
+        "NeedLockResources": false,
+        "Geodata6File": "{{geodata_6_file}}",
+        "CatEngineIdfsFolder": "{{cat_engine_idfs_folder}}",
+        "BigbAbExperimentsConfigFile": "{{bigb_ab_experiments_config_file}}",
+        "AutobudgetDefaultConfigFile": "{{autobudget_default_config_file}}",
+        "AutobudgetPreProdConfigFile": "{{autobudget_preprod_config_file}}",
+        "HostClusterDictBaseFile": "{{caesar_bases_folder}}/host_cluster_dict_v1.vinyl",
+        "HolidayBaseFile": "{{caesar_bases_folder}}/holiday_v1.vinyl",
+        "GreatHolidayBaseFile": "{{caesar_bases_folder}}/great_holiday_v1.vinyl",
+        "AutobudgetCoefBaseFile": "{{caesar_bases_folder}}/autobudget_coef_v1.vinyl",
+        "DssmModelContentDataMarkupFile": "{{dssm_model_content_markup_folder}}",
+        "BrandSafetyConfigFile": "{{content_markup_folder}}/thresholds.json",
+        "ContentMarkupDirectory": "{{content_markup_folder}}",
+        "AutobudgetBanSettingsBaseFile": "{{caesar_bases_folder}}/autobudget_ban_settings_v2.vinyl",
+        "InterfaceTagBaseFile": "{{caesar_bases_folder}}/interface_tag_v1.vinyl",
+        "AutobudgetMultipliersBaseFile": "{{caesar_bases_folder}}/autobudget_multipliers_v1.vinyl",
+        "AutobudgetModelsBaseFile": "{{caesar_bases_folder}}/autobudget_models_v1.vinyl",
+        "GoodsRatingBaseFile": "{{caesar_bases_folder}}/goods_rating_v1.vinyl",
+        "SSPInfoBaseFile": "{{caesar_bases_folder}}/ssp_info_v1.vinyl",
+        "ForcedOrderTypeBaseFile": "{{caesar_bases_folder}}/forced_order_type_v1.vinyl",
+        "AutobudgetExperimentConfigFile": "{{autobudget_experiment_config_file}}",
+        "AutobudgetExperimentPreProdConfigFile": "{{autobudget_experiment_preprod_config_file}}",
+        "InventoryBookingsBaseFile": "{{caesar_bases_folder}}/inventory_bookings_v1.vinyl"
+    },
+    "WaitDataReloaderAtStart": false,
+    "YtHedgingClientConfig": {
+        "BanDuration": 0,
+        "BanPenalty": 0,
+        "Clients": [
+            {
+                "ClientConfig": {
+                    "ChannelPoolSize": 9,
+                    "ClusterName": "{{yt_cluster}}",
+                    "EnableRetries": true
+                },
+                "InitialPenalty": 0
+            }
+        ]
+    },
+    "LogWriterConfig": {},
+    "GeminiClientConfig": {
+        "Enabled": true,
+        "Mode": "LOCAL"
+    },
+    {% if grut_address %}
+    "GrutSyncProcessorConfig": {
+        "GrutClientConfig": {
+            "Address": "{{grut_address}}",
+            "Secure": false
+        }
+    },
+    {% endif %}
+    {% if model_service_port != 0 %}
+    "ScatterFactoryConfig": {
+        "RunnersPoolSize": 3
+    },
+    {% endif %}
+    "ProcessingThreads": 2
+}

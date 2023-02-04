@@ -1,0 +1,48 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - tolich
+      groups: []
+labels:
+  order: '00010030'
+---
+regexp_section:
+  matcher:
+    match_or:
+      - match_fsm:
+          uri: '/v9999/admin/live/(.*)'
+      - match_fsm:
+              uri: '/v9999/live/(.*)'
+  modules:
+    - report: {ranges: '10ms,20ms,40ms,80ms,120ms,200ms,500ms,3000ms', uuid: live}
+    - headers:
+        create_func_weak:
+          X-Forwarded-For: realip
+          X-Forwarded-Proto: scheme
+          X-Forwarded-Host: host
+          X-Req-Id: reqid
+    - headers_forwarder:
+        actions:
+          - request_header: 'X-Req-Id'
+            response_header: 'X-Req-Id'
+            weak: true
+    - balancer2:
+        connection_attempts: 2
+        attempts: 3
+        unique_policy: {}
+        rr: {}
+        attempts_rate_limiter:
+          limit: 0.2
+        generated_proxy_backends:
+          proxy_options:
+            backend_timeout: 10s
+            connect_timeout: 50ms
+          include_backends:
+            type: BY_ID
+            ids:
+              - ugc_live_api_dev_backend
+        on_error:
+          errordocument:
+            status: 504
+            content: "Service unavailable"

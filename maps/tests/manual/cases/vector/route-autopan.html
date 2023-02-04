@@ -1,0 +1,181 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Вектор: программное построение маршрута на векторной карте
+
+Description:
+Проверка корректности программного построения маршрута на векторной карте.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components:
+vector
+
+Estimated time:
+240000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть страницу и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно со спаном Москвы с отображением маршрута "A"- метро Киевская,"B"-метро Площадь Революции,"C"-улица Льва Толстого, фиолетовой меткой на маршруте в районе метро Арбатской.
+  В контейнере дефолтный набор контролов, имеются кнопки "bicycle", "pederastian", "masstransit", под контейнером строка: "Вектор показался".
+  На маршрутной нитке открыт балун маршрута авто, с информацией о маршруте.
+
+Step:
+  Action:
+  Выполнить статичный и инертный драг спана карты. 
+
+  Expectation:
+  Драг карты корректный: карта не пропадает, не мигает цветами, нет странных визуальных эффектов, подписи на карте выглядят корректно, не слипаются.
+  Маршрут и элементы маршрута выглядят корректно, не пропадают.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "bicycle", клик в нитку маршрута.
+
+  Expectation:
+  Цвет нитки меняется на зеленый, маршрут перестраивается, появляются метки велосипеда.
+  По клику на маршруте открывается балун маршрута на велосипеде, с информацией о маршруте.
+
+Step:
+  Action:
+  Выполнить статичный и инертный драг спана карты. 
+
+  Expectation:
+  Драг карты корректный: карта не пропадает, не мигает цветами, нет странных визуальных эффектов, подписи на карте выглядят корректно, не слипаются.
+  Маршрут и элементы маршрута выглядят корректно, не пропадают.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "pederastian", клик в нитку маршрута.
+
+  Expectation:
+  Цвет нитки меняется на фиолетовый, нитка маршрута пунктирная, маршрут перестраивается, появляются пешеходные метки.
+  По клику на маршруте открывается балун пешеходного маршрута, с информацией о маршруте.
+
+Step:
+  Action:
+  Выполнить статичный и инертный драг спана карты. 
+
+  Expectation:
+  Драг карты корректный: карта не пропадает, не мигает цветами, нет странных визуальных эффектов, подписи на карте выглядят корректно, не слипаются.
+  Маршрут и элементы маршрута выглядят корректно, не пропадают.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "masstransit", клик в нитку маршрута.
+
+  Expectation:
+  Нитка маршрута становится сплошной(кроме пешеходных участков), маршрут перестраивается, появляются метки общественного транспорта, пешеходные метки.
+  По клику на маршруте открывается балун пешеходного маршрута, с информацией о маршруте.
+
+Step:
+  Action:
+  Выполнить статичный и инертный драг спана карты. 
+
+  Expectation:
+  Драг карты корректный: карта не пропадает, не мигает цветами, нет странных визуальных эффектов, подписи на карте выглядят корректно, не слипаются.
+  Маршрут и элементы маршрута выглядят корректно, не пропадают.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../helper.js"></script>
+    <!-- <script type="text/javascript" src="https://api-maps.tst.c.maps.yandex.ru/2.1.77/?lang=ru_RU&apikey=b027f76e-cc66-f012-4f64-696c7961c395&mode=debug"></script> -->
+    <script type=text/javascript>
+       
+        window.onerror = function(err) {
+            __log__(err);
+        };
+
+        Api('init', undefined, undefined, undefined, undefined, 'ymaps', undefined);
+
+        function init(ymaps) {
+            ymaps.modules.require(['Map']).spread(
+                function (Map, vectorInit) {
+                    const myMap = new Map('map', {
+                        center: [55.72725771214265, 37.640390506634006],
+                        zoom: 16
+                    }, {
+                        vector: true,
+                        layerVectorRevealThreshold: 0
+                    });
+
+                    myMap.layers.events.add('vectorreveal', () => __log__('Вектор показался'));
+                    myMap.layers.events.add('vectorerror', () => __log__('Вектор упал'));
+
+                    const modes = ['masstransit', 'pedestrian', 'bicycle'];
+
+                    const multiRoute = new ymaps.multiRouter.MultiRoute({
+                        referencePoints : [
+                            "метро Киевская",
+                            "метро Охотный ряд",
+                            "метро Площадь Революции",
+                            "Москва, улица Льва Толстого"
+                        ],
+                        params : {
+                            viaIndexes : [1],
+                            results : 2,
+                            routingMode : 'auto'
+                        }
+                    }, {
+                        boundsAutoApply : true
+                    });
+
+                    myMap.geoObjects.add(multiRoute);
+                    multiRoute.model.events.once('requestsuccess', () => multiRoute.getRoutes().get(0).balloon.open());
+
+                    modes.forEach((mode) => {
+                        const button = new ymaps.control.Button({
+                            data : {
+                                content : mode
+                            },
+                            options : {
+                                maxWidth : 150,
+                                selectOnClick : false
+                            }
+                        });
+
+                        button.events.add('click', () => {
+                            multiRoute.model.setParams({ routingMode : mode }, true);
+                            multiRoute.model.events.once('requestsuccess', () =>
+                                multiRoute.getMap().setBounds(multiRoute.getActiveRoute().getBounds())
+                            );
+                        });
+
+                        myMap.controls.add(button);
+                    });
+
+                    myMap.geoObjects.add(new ymaps.Placemark([55.752972, 37.600642], {}, {
+                        preset : 'islands#icon',
+                        iconColor : '#735184'
+                    }));
+
+                },
+                function () {
+                    console.log(arguments);
+                }
+            ).fail(function (err) {
+                console.log(err);
+            });
+        }
+    </script>
+    <style>
+        html, body, #map {
+            width: 100%;
+            height: 95%;
+            margin: 0;
+            padding: 0;
+        }
+    </style>
+</head>
+<body>
+<div id="map"></div>
+</body>
+</html>

@@ -1,0 +1,181 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - anoh
+      groups: []
+labels:
+  order: '00004000'
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      #url: '/znatoki/api/(.*)?'
+      url: '(/q)?(/znatoki)?/api/(.*)?'
+  modules:
+    - threshold:
+        lo_bytes: 262144
+        hi_bytes: 419430
+        pass_timeout: 10s
+        recv_timeout: 3s
+    - regexp:
+        sections:
+            post_method:
+                matcher:
+                    match_fsm:
+                        match: POST.*
+                modules:
+                - balancer2:
+                    attempts: 1
+                    connection_attempts: !f count_backends()
+                    rr: {weights_file: ./controls/traffic_control.weights}
+                    backends:
+                    - weight: 1
+                      name: answers_vla
+                      modules:
+                        - report: {ranges: default, uuid: requests_api_to_vla}
+                        - balancer2:
+                            attempts: 1
+                            connection_attempts: !f count_backends()
+                            weighted2: {}
+                            generated_proxy_backends:
+                              proxy_options:
+                                backend_timeout: 5s
+                                connect_timeout: 100ms
+                              include_backends:
+                                type: BY_ID
+                                ids: [answers_backend_yp_vla]
+                    - weight: 1
+                      name: answers_sas
+                      modules:
+                        - report: {ranges: default, uuid: requests_api_to_sas}
+                        - balancer2:
+                            attempts: 1
+                            connection_attempts: !f count_backends()
+                            weighted2: {}
+                            generated_proxy_backends:
+                              proxy_options:
+                                backend_timeout: 5s
+                                connect_timeout: 100ms
+                              include_backends:
+                                type: BY_ID
+                                ids: [answers_backend_yp_sas]
+                    - weight: 1
+                      name: answers_man
+                      modules:
+                        - report: {ranges: default, uuid: requests_api_to_man}
+                        - balancer2:
+                            attempts: 1
+                            connection_attempts: !f count_backends()
+                            weighted2: {}
+                            generated_proxy_backends:
+                              proxy_options:
+                                backend_timeout: 5s
+                                connect_timeout: 100ms
+                              include_backends:
+                                type: BY_ID
+                                ids: [answers_backend_yp_man]
+                    on_error:
+                      modules:
+                      - errordocument: {content: "Gateway Timeout", status: 504}
+            default:
+                matcher: {}
+                modules:
+                - balancer2:
+                    attempts: 2
+                    connection_attempts: !f count_backends()
+                    rr: {weights_file: ./controls/traffic_control.weights}
+                    backends:
+                    - weight: 1.0
+                      name: answers_vla
+                      modules:
+                        - report: {ranges: default, uuid: requests_api_to_vla}
+                        - balancer2:
+                            attempts: 3
+                            attempts_rate_limiter:
+                              limit: 0.15
+                              coeff: 0.99
+                            connection_attempts: !f count_backends()
+                            # weighted2: {}
+                            dynamic:
+                              max_pessimized_share: 1.0
+                              min_pessimization_coeff: 0
+                              weight_increase_step: 1
+                              history_interval: "5s"
+                              backends_name: "test-vla"
+                              active:
+                                weight_normalization_coeff: 2
+                                use_backend_weight: false
+                                request: 'GET /status_check/ HTTP/1.1\r\nHost: answers-test.yandex.net\r\n\r\n'
+                                delay: "1s"
+                            generated_proxy_backends:
+                              proxy_options:
+                                backend_timeout: 5s
+                                connect_timeout: 50ms
+                                keepalive_count: 3
+                              include_backends:
+                                type: BY_ID
+                                ids: [answers_backend_yp_vla]
+                    - weight: 1
+                      name: answers_sas
+                      modules:
+                        - report: {ranges: default, uuid: requests_api_to_sas}
+                        - balancer2:
+                            attempts: 3
+                            attempts_rate_limiter:
+                              limit: 0.15
+                              coeff: 0.99
+                            connection_attempts: !f count_backends()
+                            # weighted2: {}
+                            dynamic:
+                              max_pessimized_share: 1.0
+                              min_pessimization_coeff: 0
+                              weight_increase_step: 1
+                              history_interval: "5s"
+                              backends_name: "test-sas"
+                              active:
+                                weight_normalization_coeff: 2
+                                use_backend_weight: false
+                                request: 'GET /status_check/ HTTP/1.1\r\nHost: answers-test.yandex.net\r\n\r\n'
+                                delay: "1s"
+                            generated_proxy_backends:
+                              proxy_options:
+                                backend_timeout: 5s
+                                connect_timeout: 50ms
+                                keepalive_count: 3
+                              include_backends:
+                                type: BY_ID
+                                ids: [answers_backend_yp_sas]
+                    - weight: 1
+                      name: answers_man
+                      modules:
+                        - report: {ranges: default, uuid: requests_api_to_man}
+                        - balancer2:
+                            attempts: 3
+                            attempts_rate_limiter:
+                              limit: 0.15
+                              coeff: 0.99
+                            connection_attempts: !f count_backends()
+                            # weighted2: {}
+                            dynamic:
+                              max_pessimized_share: 1.0
+                              min_pessimization_coeff: 0
+                              weight_increase_step: 1
+                              history_interval: "5s"
+                              backends_name: "test-man"
+                              active:
+                                weight_normalization_coeff: 2
+                                use_backend_weight: false
+                                request: 'GET /status_check/ HTTP/1.1\r\nHost: answers-test.yandex.net\r\n\r\n'
+                                delay: "1s"
+                            generated_proxy_backends:
+                              proxy_options:
+                                backend_timeout: 5s
+                                connect_timeout: 50ms
+                                keepalive_count: 3
+                              include_backends:
+                                type: BY_ID
+                                ids: [answers_backend_yp_man]
+                    on_error:
+                      modules:
+                      - errordocument: {content: "Gateway Timeout", status: 504}

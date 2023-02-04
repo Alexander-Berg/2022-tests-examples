@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<!--
+Title:
+Геокод: возвращение результатов в заданной области
+
+Description:
+Проверка возвращения результатов в заданной области.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+regress
+
+Estimated time:
+90000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно, на спане карта мира, имеется 3 метки коллекции. 
+  Сверху слева кнопка "boundedBy".
+ 
+Step:
+  Action:
+  Выполнить клик в кнопку "boundedBy".
+
+  Expectation:
+  На спане карты появляется заданная область - полупрозрачный синий прямоугольник.
+  Внутри заданной области должно быть три метки коллекции(при необходимости призумить спан для отображения всех меток).
+-->
+<html>
+<head>
+    <title>API 2.0</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <script src="../helper.js"></script>
+    <script type=text/javascript>
+        Api('init');
+        function init(ymaps) {
+            var myMap = new ymaps.Map('map', {
+                center: [46.87759261937392, 10.93571358881146],
+                zoom: 1,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+            console.log("boundedBy возвращает три результата в bounds и вне");
+            rectangle = new ymaps.Rectangle([
+                [55.584031731101845, 20.21456126171876],
+                [46.584031731101845, 39.21456126171876]
+            ]);
+            var withBoundedBy, withoutBoundedBy;
+            ymaps.geocode('Льва толстого', {boundedBy: [
+                [55.584031731101845, 20.21456126171876],
+                [46.584031731101845, 39.21456126171876]
+            ], results: 3}).then(function (res) {
+                withBoundedBy = res.geoObjects;
+            });
+            ymaps.geocode('Льва толстого', {results: 3}).then(function (res) {
+                withoutBoundedBy = res.geoObjects;
+                myMap.geoObjects.add(withoutBoundedBy);
+            });
+            var addButton = new ymaps.control.Button({data: {content: 'boundedBy'}, options: {selectOnClick: true}});
+            addButton.events.add('select', function () {
+                myMap.geoObjects.remove(withoutBoundedBy);
+                myMap.geoObjects.add(withBoundedBy).add(rectangle);
+            })
+                    .add('deselect', function () {
+                        myMap.geoObjects.remove(withBoundedBy).remove(rectangle);
+                        myMap.geoObjects.add(withoutBoundedBy);
+                    });
+            myMap.controls.add(addButton);
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+<p><a href="https://tech.yandex.ru/maps/archive/doc/jsapi/2.0/ref/reference/geocode-docpage/" target="_blank">Docs</a></p>
+</body>
+</html>

@@ -1,0 +1,213 @@
+---
+regexp_path_section:
+  pattern: '/(www-zen)(/.*)?'
+  modules:
+    - report:
+        uuid: 'yastatic_net_s3_www-zen'
+        ranges: 'default'
+    - response_headers:
+        create_func:
+            Expires: 'time:+216001s'
+        delete: 'last-modified'
+    - headers:
+        create:
+            X-AAB-PartnerToken: !f get_str_env_var("AWACS_AAB_TOKEN")
+            X-Forwarded-Proto: 'https'
+            Host:  'zen-lib.s3.yandex.net'
+    - rewrite:
+        actions:
+            - regexp: '^/www-zen/s3/zen-lib/(.*)$'
+              rewrite: '/%1'
+    - balancer2:
+        disable_attempts_rate_limiter: true
+        attempts: 5
+        simple_policy: {}
+        rr: {}
+        on_status_code:
+          400:
+            modules:
+                - shared:
+                    uuid: cryprox_on_status_shared_zen
+                - regexp_path:
+                    sections:
+                        found:
+                          pattern: '/s3/(distribution|logoaas|bro-bg-store|lpc|beamlight|district|e7n|dealer|festival-static|ugc|home|yablogs-wysiwyg|twenty|edadeal-public-static|zen-lib|kinopoisk-desktop-www-static|contest|vda|for-media-terminal|for-media-terminal-numbers|for-media-terminal-compare|for-media-mediajams|kinopoisk-frontend|cult-marathon|tv-frontend|new-year-2018|quasar-ui|anytask|time)(/.*)?'
+                          modules:
+                            - report:
+                                uuid: 'yastatic_net_s3_www-zen__inner'
+                                ranges: 'default'
+                                matcher_map:
+                                    'distribution':
+                                        match_fsm:
+                                            path: '/s3/distribution.*'
+                                    'logoaas':
+                                        match_fsm:
+                                            path: '/s3/logoaas.*'
+                                    'bro-bg-store':
+                                        match_fsm:
+                                            path: '/s3/bro-bg-store.*'
+                                    'lpc':
+                                        match_fsm:
+                                            path: '/s3/lpc.*'
+                                    'beamlight':
+                                        match_fsm:
+                                            path: '/s3/beamlight.*'
+                                    'district':
+                                        match_fsm:
+                                            path: '/s3/district.*'
+                                    'e7n':
+                                        match_fsm:
+                                            path: '/s3/e7n.*'
+                                    'dealer':
+                                        match_fsm:
+                                            path: '/s3/dealer.*'
+                                    'festival-static':
+                                        match_fsm:
+                                            path: '/s3/festival-static.*'
+                                    'ugc':
+                                        match_fsm:
+                                            path: '/s3/ugc.*'
+                                    'home':
+                                        match_fsm:
+                                            path: '/s3/home.*'
+                                    'yablogs-wysiwyg':
+                                        match_fsm:
+                                            path: '/s3/yablogs-wysiwyg.*'
+                                    'twenty':
+                                        match_fsm:
+                                            path: '/s3/twenty.*'
+                                    'edadeal-public-static':
+                                        match_fsm:
+                                            path: '/s3/edadeal-public-static.*'
+                                    'zen-lib':
+                                        match_fsm:
+                                            path: '/s3/zen-lib.*'
+                                    'kinopoisk-desktop-www-static':
+                                        match_fsm:
+                                            path: '/s3/kinopoisk-desktop-www-static.*'
+                                    'contest':
+                                        match_fsm:
+                                            path: '/s3/contest.*'
+                                    'vda':
+                                        match_fsm:
+                                            path: '/s3/vda.*'
+                                    'for-media-terminal':
+                                        match_fsm:
+                                            path: '/s3/for-media-terminal.*'
+                                    'for-media-terminal-numbers':
+                                        match_fsm:
+                                            path: '/s3/for-media-terminal-numbers.*'
+                                    'for-media-terminal-compare':
+                                        match_fsm:
+                                            path: '/s3/for-media-terminal-compare.*'
+                                    'for-media-mediajams':
+                                        match_fsm:
+                                            path: '/s3/for-media-mediajams.*'
+                                    'kinopoisk-frontend':
+                                        match_fsm:
+                                            path: '/s3/kinopoisk-frontend.*'
+                                    'cult-marathon':
+                                        match_fsm:
+                                            path: '/s3/cult-marathon.*'
+                                    'tv-frontend':
+                                        match_fsm:
+                                            path: '/s3/tv-frontend.*'
+                                    'new-year-2018':
+                                        match_fsm:
+                                            path: '/s3/new-year-2018.*'
+                                    'quasar-ui':
+                                        match_fsm:
+                                            path: '/s3/quasar-ui.*'
+                                    'anytask':
+                                        match_fsm:
+                                            path: '/s3/anytask.*'
+                                    'time':
+                                        match_fsm:
+                                            path: '/s3/time.*'
+                            - shared:
+                                uuid: yastatic_net_s3_www-zen__inner
+                            - rewrite:
+                                actions:
+                                    - regexp: '/s3/([A-Za-z0-9\\-_]+)/(.*)'
+                                      rewrite: '/%2'
+                                    - regexp: '(.*)'
+                                      rewrite: '%{url}'
+                                      header_name: 'Host'
+                            - rewrite:
+                                actions:
+                                    - regexp: '/s3/([A-Za-z0-9\\-_]+)/(.*)'
+                                      rewrite: '%1.s3.yandex.net'
+                                      header_name: 'Host'
+                            - regexp:
+                                sections:
+                                  br_section:
+                                    matcher:
+                                        match_and:
+                                        - match_fsm:
+                                            path: '.*(\\.js|\\.css|\\.svg)'
+                                        - match_fsm:
+                                            header:
+                                              name: 'accept-encoding'
+                                              value: '(.*,\\.*|)br(\\.*;\\.*q\\.*=\\.*(1|0\\.0*[1-9]).*|\\.*,.*|)'
+                                    modules:
+                                    - rewrite:
+                                        actions:
+                                            - regexp: '([^\\?]+)(.*)'
+                                              rewrite: '%1.br'
+                                    - response_headers:
+                                        create:
+                                            Content-Encoding: br
+                                    - shared:
+                                        uuid: 'yastatic_net_s3_www-zen__inner_common'
+                                  gzip_section:
+                                    matcher:
+                                        match_and:
+                                        - match_fsm:
+                                            path: '.*(\\.js|\\.css|\\.svg)'
+                                        - match_fsm:
+                                            header:
+                                              name: 'accept-encoding'
+                                              value: '(.*,\\.*|)gzip(\\.*;\\.*q\\.*=\\.*(1|0\\.0*[1-9]).*|\\.*,.*|)'
+                                    modules:
+                                    - rewrite:
+                                        actions:
+                                            - regexp: '([^\\?]+)(.*)'
+                                              rewrite: '%1.gz'
+                                    - response_headers:
+                                        create:
+                                            Content-Encoding: gzip
+                                    - shared:
+                                        uuid: 'yastatic_net_s3_www-zen__inner_common'
+                                  default:
+                                    matcher: {}
+                                    modules:
+                                    - shared:
+                                        uuid: 'yastatic_net_s3_www-zen__inner_common'
+                                    - headers:
+                                        delete:
+                                            'authorization|accept-encoding'
+                                    - response_headers:
+                                        create:
+                                            Cache-Control: 'public, max-age=216013'
+                                        delete: 'content-encoding'
+                                    - shared:
+                                        uuid: 'yastatic_s3_cached_shared'
+                        not_found:
+                          modules:
+                                - errordocument:
+                                    status: 404
+          404:
+            modules:
+                - shared:
+                    uuid: cryprox_on_status_shared_zen
+        generated_proxy_backends:
+          proxy_options:
+            backend_timeout: '5s'
+            connect_timeout: '50ms'
+            fail_on_5xx: true
+            keepalive_count: 1
+            keepalive_timeout: '60s'
+          instances:
+            - weight: 1
+              host: 'cryprox.yandex.net'
+              port: 80

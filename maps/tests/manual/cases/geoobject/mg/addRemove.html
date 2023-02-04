@@ -1,0 +1,139 @@
+<!DOCTYPE HTML>
+<!--(skip)(description)
+
+-->
+<!--(version)
+
+-->
+<!--(commands)
+
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script src="../../../js/mg.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            var map = myMap = new ymaps.Map('map', {
+                center: [55.73259667357658, 37.70153663432529],
+                zoom: 9,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            geoCSSource(ym, myMap, this);
+            var collection = new ymaps.GeoObjectCollection();
+            collection
+                    .add(multiPlacemark)
+                    .add(multiPolyline)
+                    .add(multiPolygon);
+            myMap.geoObjects.add(collection);
+            var editorButton = new ymaps.control.Button({data: {content: 'framing'}, options: {selectOnClick: true}});
+            var polylineButton = new ymaps.control.Button({data: {content: 'polyline'}, options: {selectOnClick: true}});
+            var polygonButton = new ymaps.control.Button({data: {content: 'polygon'}, options: {selectOnClick: true}});
+            var placemarkButton = new ymaps.control.Button({data: {content: 'placemark'}, options: {selectOnClick: true}});
+            var addRemoveButton = new ymaps.control.Button({data: {content: 'addRemove'}, options: {selectOnClick: true}});
+            var addRemoveCollectionButton = new ymaps.control.Button({data: {content: 'remCollection'}, options: {selectOnClick: true}});
+            var destroyMap = new ymaps.control.Button({data: {content: 'destroy'}, options: {selectOnClick: true}});
+
+            editorButton.events
+                    .add('select', function () {
+                        collection.each(function (obj) {
+                            obj.editor.startFraming();
+                        });
+                    })
+                    .add('deselect', function () {
+                        collection.each(function (obj) {
+                            obj.editor.stopFraming();
+                        });
+                    });
+
+            polylineButton.events
+                    .add('select', function () {
+                        multiPolyline.editor.startDrawing();
+                    })
+                    .add('deselect', function () {
+                        multiPolyline.editor.stopEditing();
+                    });
+
+            polygonButton.events
+                    .add('select', function () {
+                        multiPolygon.editor.startDrawing();
+                    })
+                    .add('deselect', function () {
+                        multiPolygon.editor.stopEditing();
+                    });
+
+            placemarkButton.events
+                    .add('select', function () {
+                        multiPlacemark.editor.startDrawing();
+                    })
+                    .add('deselect', function () {
+                        multiPlacemark.editor.stopEditing();
+                    });
+            addRemoveButton.events
+                    .add('select', function () {
+                        map.geoObjects.remove(collection);
+                    })
+                    .add('deselect', function () {
+                        map.geoObjects.add(collection);
+                    });
+            addRemoveCollectionButton.events
+                    .add('deselect', function () {
+                        collection
+                                .add(multiPolyline)
+                                .add(multiPolygon)
+                                .add(multiPlacemark);
+                    })
+                    .add('select', function () {
+                        collection
+                                .remove(multiPolyline)
+                                .remove(multiPolygon)
+                                .remove(multiPlacemark);
+                    });
+            destroyMap.events
+                    .add('click', function () {
+                        setTimeout(function () {
+                            myMap.destroy()
+                        }, 5000)
+
+                    });
+
+            collection.each(function (obj) {
+                obj.events.add(['editorstatechange', 'geometrychange','subeditorstatechange', 'subgeometrychange'], function (e) {
+                    __log__(e.get('type'))
+                });
+            });
+            collection.each(function (obj) {
+                obj.editor.events.add(['statechange', 'framingstart', 'framingend', 'framingstop','substatechange', 'subframingstart', 'subframingend', 'subframingstop'], function (e) {
+                    __log__(e.get('type'))
+                });
+            });
+            collection.each(function (obj) {
+                obj.properties.set('hintContent', 'blalala');
+                obj.properties.set('balloonContent', 'blalalalala');
+            });
+
+            map.geoObjects.add(collection);
+
+            map.controls
+                    .add(editorButton)
+                    .add(polygonButton)
+                    .add(polylineButton)
+                    .add(placemarkButton)
+                    .add(addRemoveButton)
+                    .add(addRemoveCollectionButton)
+                    .add(destroyMap);
+        }
+    </script>
+</head>
+<body>
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

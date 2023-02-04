@@ -1,0 +1,239 @@
+---
+instance_macro:
+  version: 0.0.2
+  config_check: {}
+  maxconn: 4000
+  buffer: 1048576
+  log_dir: /place/db/www/logs/
+  tcp_fastopen: 256
+  tcp_listen_queue: 128
+  tcp_congestion_control: "bbr"
+  workers: 1
+  worker_start_delay: 1s
+  worker_start_duration: 30s
+  coro_stack_size: 16384
+  coro_stack_guard: true
+  shutdown_accept_connections: true
+  dns_ttl: 300s
+  unistat:
+    hide_legacy_signals: true
+  dynamic_balancing_log: !f get_log_path('qwerty', 80)
+  pinger_log: !f get_log_path('pingwerty', 80)
+  pinger_required: true
+  state_directory: ./state/
+  cpu_limiter:
+    cpu_usage_coeff: 0.5
+    active_check_subnet_file: './active-check-subnet'
+    disable_file: './disable-cpu-limiter'
+    disable_http2_file: './disable-http2'
+    http2_drop:
+      lo: 0.1
+      hi: 0.66
+    keepalive_close:
+      lo: 0.66
+      hi: 1
+    conn_reject:
+      lo: 0
+      hi: .99
+      conn_hold_count: 100
+      conn_hold_duration: '60s'
+  sd:
+    host: '::1'
+    port: 8080
+  sections:
+    admin:
+      ips: [127.0.0.1, '::1']
+      ports: [15220]
+      modules:
+        - http: {}
+        - admin: {}
+    stats_storage:
+      ips: [127.0.0.4]
+      ports: [15220]
+      modules:
+        - report:
+            uuid: "service_total"
+            ranges: "default"
+            just_storage: true
+            outgoing_codes: [200, 400]
+            matcher_map:
+                ru: {match_fsm: {host: 'beta.mobsearch.yandex.ru' }}
+                ru_ping:
+                    match_and:
+                      - match_fsm: {host: 'beta.mobsearch.yandex.ru'}
+                      - match_fsm: {uri: '/ping'}
+                      - match_fsm: {upgrade: '[a-z]', surround: true}
+        - http:
+            keepalive: true
+            keepalive_drop_probability: 0.6666666
+            keepalive_requests: 1000
+            keepalive_timeout: 100s
+        - errordocument:
+            status: 204
+    check:
+      ips: ['8.8.8.8']
+      ports: [8888]
+      http:
+        active_check_reply:
+          default_weight: 100
+          weight_file: ./active-check-reply-weight-file
+          zero_weight_at_shutdown: true
+    s3:
+      ips: [127.0.0.1]
+      ports: [30000]
+      modules:
+        - shared:
+            uuid: s3
+        - http: {}
+        - compressor:
+            enable_decompression: true
+            compression_codecs:
+              - gzip
+              - br
+        - report:
+            uuid: s3
+            ranges: default
+            disable_signals:
+              - requests
+              - nka
+              - ka
+        - errordocument:
+            status: 200
+            content: "Here is your sitemap!"
+    http_section:
+      ips: ['2a02:6b8::1:62', '2a02:6b8::1:63']
+      ports: [80]
+      local_ips: [local_v4_addr, local_v6_addr]
+      local_ports: [15220]
+      stats_attr: "http"
+      extended_http_macro:
+        port: 15220
+        report_uuid: 'http'
+        keepalive: false
+        keepalive_timeout: '0ms'
+        maxheaders: 100
+        modules:
+          - response_headers_if:
+              matcher:
+                match_and:
+                  - match_header:
+                      name: 'location'
+                      value: 'http://yabs.yandex.ru.*'
+                      value_case_insensitive: false
+                  - match_response_codes:
+                      codes: [302]
+              erase_if_has_header: true
+              create_header:
+                Authorization: !f get_str_env_var("TOKEN", "default-token")
+                Strict-Transport-Security: 'max-age=600'
+          - headers_forwarder:
+              actions:
+                - request_header: 'Origin'
+                  response_header: 'Access-Control-Allow-Origin'
+                  erase_from_request: true
+                  erase_from_response: true
+                  weak: false
+          - headers:
+              create_func:
+                X-Start-Time: starttime
+                X-Req-Id: reqid
+                X-Source-Port-Y: realport
+                X-Yandex-RandomUID: yuid
+                X-Ja3: ja3
+                X-P0f: p0f
+              create_func_weak:
+                X-Forwarded-For: realip
+                X-Forwarded-For-Y: realip
+              append_func:
+                X-Start-Time: starttime
+                X-Req-Id: reqid
+                X-Source-Port-Y: realport
+                X-Yandex-RandomUID: yuid
+              append_func_weak:
+                X-Forwarded-For: realip
+                X-Forwarded-For-Y: realip
+              copy:
+                X-Real-Ip: X-Forwarded-For
+              copy_weak:
+                Y-Real-Ip: Y-Forwarded-For
+          - response_headers:
+              create_weak:
+                X-XSS-Protection: '1; mode=block'
+                X-Content-Type-Options: 'nosniff'
+              append_weak:
+                X-XSS-Protection: '1; mode=block'
+                X-Content-Type-Options: 'nosniff'
+              append_func:
+                X-Start-Time: starttime
+              append_func_weak:
+                X-Ip: localip
+          - cookies:
+              delete: '.*cookie1.*'
+              create:
+                cookie2: value2
+              create_weak:
+                cookie3: value3
+          - regexp:
+              include_upstreams:
+                filter: {any: true}
+                order: {label: {name: "order"}}
+    https_section:
+      ips: ['2a02:6b8::1:62', '2a02:6b8::1:63']
+      ports: [443]
+      local_ips: [local_v4_addr, local_v6_addr]
+      local_ports: [15221]
+      stats_attr: "https"
+      extended_http_macro:
+        port: 15221
+        report_uuid: 'https'
+        enable_ssl: true
+        disable_sslv3: true
+        disable_tlsv1_3: false
+        ssl_sni_max_send_fragment: 1024
+        ssl_sni_validate_cert_date: false
+        ssl_sni_ja3_enabled: true
+        ssl_sni_contexts:
+          beta.mobsearch.yandex.ru:
+            servername_regexp: default
+        modules:
+          - response_headers_if:
+              if_has_header: X-Yandex-STS
+              erase_if_has_header: true
+              create_header:
+                Strict-Transport-Security: 'max-age=600'
+          - headers_forwarder:
+              actions:
+                - request_header: 'Origin'
+                  response_header: 'Access-Control-Allow-Origin'
+                  erase_from_request: true
+                  erase_from_response: true
+                  weak: false
+          - headers:
+              create_func:
+                X-Start-Time: starttime
+                X-Req-Id: reqid
+                X-Source-Port-Y: realport
+                X-Yandex-RandomUID: yuid
+              create_func_weak:
+                X-Forwarded-For: realip
+                X-Forwarded-For-Y: realip
+          - response_headers:
+              create_weak:
+                X-XSS-Protection: '1; mode=block'
+                X-Content-Type-Options: 'nosniff'
+          - cookies:
+              delete: '.*cookie1.*'
+              create:
+                cookie2: value2
+              create_weak:
+                cookie3: value3
+          - cookie_policy:
+              uuid: 'very-test'
+              default_yandex_policies: 'off'
+          - rps_limiter_macro:
+              version: 0.0.4
+              record_name: beta.mobsearch.yandex.ru
+          - regexp:
+              include_upstreams:
+                filter: {any: true}
+                order: {label: {name: "order"}}

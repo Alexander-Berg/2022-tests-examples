@@ -1,0 +1,46 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - fomasha
+      groups: []
+labels:
+  order: '00300000'
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      host: 'beta-ppcdev6-8020\\.wordstat-test\\.direct\\.yandex\\.ru'
+  modules:
+    - antirobot_macro:
+        version: 0.0.9
+        service: 'wordstat'
+    - rewrite:
+        actions:
+          - regexp: '.*'
+            header_name: Host
+            rewrite: 'ppcdev6.yandex.ru'
+    - response_headers:
+        create_weak:
+          # специальные куки для капчи
+          Set-Cookie: 'QUxD7VxS8MA9voVwZdHsjz9wFj80iVcZ=1; 4tMDnU4MRQyvo3SyEKkq89wcAAA6ZJnq=1; gBQeYpMlWFqFExSpsuB8j89vDDlf7HaT=1'
+    - balancer2:
+        rr: {}
+        attempts: 1
+        attempts_rate_limiter:
+          limit: 0.1
+          coeff: 0.99
+        generated_proxy_backends:
+          proxy_options:
+            connect_timeout: 120s
+            backend_timeout: 120s
+            fail_on_5xx: false
+          instances:
+            - host: ppcdev6.yandex.ru
+              port: 8020
+              weight: 1
+        on_error:
+          modules:
+            - errordocument:
+                status: 504
+                content: 'Service unavailable [beta proxy upstream]'

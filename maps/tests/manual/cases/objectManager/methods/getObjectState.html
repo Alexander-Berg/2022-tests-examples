@@ -1,0 +1,349 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Менеджер объектов: метод получения состояния менеджера объектов
+
+Description:
+Проверка работы метода получения состояния менеджера объектов. 
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+objectManager
+
+Estimated time:
+180000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась корректно.
+  На спане две метки коллекции и метка кластера со значением "3".
+  Сверху имеются кнопки "5", "4", "3", "2", "1", "0", "filter".
+  
+Step:
+  Action:
+  Выполнить клик в кнопку "0".
+
+  Expectation:
+  Спан карты смещается, на месте кластера открывается балун с двумя колонками.
+  В левой список "Геообъект №1, ...№0, ...№3", в правой содержимое: заголовок "Геообъект №1", тело "Содержимое балуна геообъекта №1".
+  Под контейнером с картой появляется блок состояний: "isShown (true/undefined): true; isClustered (true/undefined): true; isFilteredOut (false/true): false; cluster ([object Object]/undefined): [object Object]".
+
+Step:
+  Action:
+  Закрыть балун кластера, затем выполнить клик в кнопку "1".
+
+  Expectation:
+  Балун кластера закрывается, на спане снова кластерная метка.
+  После клика в "1" спан карты смещается, на месте кластера открывается балун с двумя колонками.
+  В левой список "Геообъект №1, ...№0, ...№3", в правой содержимое: заголовок "Геообъект №1", тело "Содержимое балуна геообъекта №1".
+  Под контейнером с картой появляется блок состояний: "isShown (true/undefined): true; isClustered (true/undefined): true; isFilteredOut (false/true): false; cluster ([object Object]): [object Object]".
+
+Step:
+  Action:
+  Закрыть балун кластера, затем выполнить клик в кнопку "2".
+
+  Expectation:
+  Балун кластера закрывается, на спане снова кластерная метка.
+  После клика в "2" спан карты смещается, на месте верхней метки открывается балун "Содержимое балуна геообъекта №2".
+  Под контейнером с картой появляется блок состояний: "isShown (true/undefined): true; isClustered (true/undefined): false; isFilteredOut (false/true): false; cluster (undefined/undefined): undefined".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "3".
+
+  Expectation:
+  Спан карты смещается, на месте кластера открывается балун с двумя колонками.
+  В левой список "Геообъект №1, ...№0, ...№3", в правой содержимое: заголовок "Геообъект №1", тело "Содержимое балуна геообъекта №1".
+  Под контейнером с картой появляется блок состояний: "isShown (true/undefined): true; isClustered (true/undefined): true; isFilteredOut (false/true): false; cluster ([object Object]): [object Object]".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "4".
+
+  Expectation:
+  Спан карты смещается, балун кластера закрывается, на месте нижней метки открывается балун "Содержимое балуна геообъекта №4".
+  Под контейнером с картой появляется блок состояний: "isShown (true/undefined): true; isClustered (true/undefined): false; isFilteredOut (false/true): false; cluster (undefined/undefined): undefined".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "5".
+
+  Expectation:
+  Спан карты без изменений.
+  Под контейнером с картой появляется блок состояний: "isShown (false/false): false; isClustered (false/false): false; isFilteredOut (false/false): false; cluster (undefined/undefined): undefined".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "filter", затем клик в "0".
+
+  Expectation:
+  После клика в "filter" кластерная метка немного смещается, значение в метке меняется на "2".
+  После клика в "0" под контейнером с картой появляется блок состояний: "isShown (true/undefined): undefined; isClustered (true/undefined): undefined; isFilteredOut (false/true): true; cluster ([object Object]/undefined): undefined".  
+-->
+<html>
+<head>
+<title>2.1</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+<script src="../../../helper.js"></script>
+<script type=text/javascript>
+
+Api('init');
+
+function init(ymaps) {
+
+    ymaps = ym;
+
+    var map = myMap = new ym.Map('map', {
+        center: [56.034, 36.992],
+        zoom: 12,
+        behaviors: ['default', 'scrollZoom'],
+        controls: ['fullscreenControl']
+    });
+
+    addGrid(myMap);
+    var log = new Log();
+
+    var currentId = 0;
+
+    __log__('Description:');
+    __log__('0 - shown and clustered (filtered)');
+    __log__('1 - shown and clustered');
+    __log__('2 - shown and not clustered');
+    __log__('3 - shown and clustered (invisible)');
+    __log__('4 - shown and not clustered (invisible)');
+    __log__('5 - not on the map');
+    __log__('');
+    __log__('state (unfiltered/filtered):');
+
+    var objectArray = [];
+    objectArray[0] = {
+        type: 'Feature',
+        id: 0,
+        geometry: { type: "Point", coordinates: [56.025, 36.992] },
+        properties: {
+            clusterCaption: 'Геообъект №0',
+            balloonContentBody: 'Содержимое балуна геообъекта №0.',
+            notOnMap: true
+        }, options: {notOnMap: true}
+    };
+    objectArray[1] = {
+        type: 'Feature',
+        id: 1,
+        geometry: { type: "Point", coordinates: [56.021, 36.983] },
+        properties: {
+            clusterCaption: 'Геообъект №1',
+            balloonContentBody: 'Содержимое балуна геообъекта №1.'
+        }
+    };
+
+    var object1 = {
+        type: 'Feature',
+        id: 2,
+        geometry: { type: "Point", coordinates: [56.045, 36.983] },
+        properties: {
+            clusterCaption: 'Геообъект №2',
+            balloonContentBody: 'Содержимое балуна геообъекта №2.'
+        }
+    };
+
+    var objectCollection = {
+        type: 'FeatureCollection',
+        features: [
+            {   type: 'Feature',
+                id: 3,
+                geometry: { type: "Point", coordinates: [56.021, 36.998] },
+                properties: {
+                    clusterCaption: 'Геообъект №3',
+                    balloonContentBody: 'Содержимое балуна геообъекта №3.'
+                },
+                options: {visible: false}
+            },
+            {
+                type: 'Feature',
+                id: 4,
+                geometry: { type: "Point", coordinates: [56.034, 36.976] },
+                properties: {
+                    clusterCaption: 'Геообъект №4',
+                    balloonContentBody: 'Содержимое балуна геообъекта №4.'
+                },
+                options: {visible: false}
+            }
+        ]};
+
+    var object2 = {
+        type: 'Feature',
+        id: 5,
+        geometry: { type: "Point", coordinates: [61, 31] },
+        properties: {
+            clusterCaption: 'Геообъект №5',
+            balloonContentBody: 'Содержимое балуна геообъекта №5.'
+        }
+    };
+
+    var objectManager = new ymaps.ObjectManager({
+        clusterize: true,
+        clusterDisableClickZoom: true
+    });
+
+    objectManager.objects.add(objectArray);
+    objectManager.objects.add(objectCollection);
+    objectManager.objects.add(object1);
+    objectManager.objects.add(object2);
+    map.geoObjects.add(objectManager);
+
+    var filterButton = new ymaps.control.Button('filter');
+
+    var state0Button = new ymaps.control.Button({data: {content: '0'}, options: {selectOnClick: false}});
+    var state1Button = new ymaps.control.Button({data: {content: '1'}, options: {selectOnClick: false}});
+    var state2Button = new ymaps.control.Button({data: {content: '2'}, options: {selectOnClick: false}});
+    var state3Button = new ymaps.control.Button({data: {content: '3'}, options: {selectOnClick: false}});
+    var state4Button = new ymaps.control.Button({data: {content: '4'}, options: {selectOnClick: false}});
+    var state5Button = new ymaps.control.Button({data: {content: '5'}, options: {selectOnClick: false}});
+
+    filterButton.events.add('click', function () {
+        objectManager.setFilter('options.notOnMap != true');
+    });
+
+    state0Button.events.add('click', function () {
+        var object0State = objectManager.getObjectState(0);
+        __log__('isShown (true/undefined): ' + object0State.isShown);
+        __log__('isClustered (true/undefined): ' + object0State.isClustered);
+        __log__('isFilteredOut (false/true): ' + object0State.isFilteredOut);
+        if (object0State.isShown) {
+            __log__('cluster ([object Object]/undefined): ');
+            __log__(object0State.cluster);
+            if (object0State.isClustered) {
+                //object0State.cluster.state.set('activeObject', objectArray[0]);
+                objectManager.clusters.balloon.open(object0State.cluster.id);
+            } else {
+                objectManager.objects.balloon.open(0);
+            }
+        } else {
+            __log__('cluster ([object Object]/undefined): ' + object0State.cluster)
+        }
+        __log__('');
+    });
+
+    state1Button.events.add('click', function () {
+        var object1State = objectManager.getObjectState(1);
+        __log__('isShown (true/true): ' + object1State.isShown);
+        __log__('isClustered (true/true): ' + object1State.isClustered);
+        __log__('isFilteredOut (false/false): ' + object1State.isFilteredOut);
+        if (object1State.isShown) {
+            __log__('cluster ([object Object]/): ');
+            __log__(object1State.cluster);
+            if (object1State.isClustered) {
+                //object1State.cluster.state.set('activeObject', objectArray[1]);
+                objectManager.clusters.balloon.open(object1State.cluster.id);
+            } else {
+                objectManager.objects.balloon.open(1);
+            }
+        } else {
+            __log__('cluster ([object Object]/): ' + object1State.cluster)
+        }
+        __log__('');
+    });
+
+    state2Button.events.add('click', function () {
+        var object2State = objectManager.getObjectState(2);
+        __log__('isShown (true/true): ' + object2State.isShown);
+        __log__('isClustered (false/false): ' + object2State.isClustered);
+        __log__('isFilteredOut (false/false): ' + object2State.isFilteredOut);
+        if (object2State.isShown) {
+            __log__('cluster (undefined/undefined): ');
+            __log__(object2State.cluster);
+            if (object2State.isClustered) {
+                //object2State.cluster.state.set('activeObject', object1);
+                objectManager.clusters.balloon.open(object2State.cluster.id);
+            } else {
+                objectManager.objects.balloon.open(2);
+            }
+        } else {
+            __log__('cluster (undefined/undefined): ' + object2State.cluster)
+        }
+        __log__('');
+    });
+
+    state3Button.events.add('click', function () {
+        var object3State = objectManager.getObjectState(3);
+        __log__('isShown (true/true): ' + object3State.isShown);
+        __log__('isClustered (true/true): ' + object3State.isClustered);
+        __log__('isFilteredOut (false/false): ' + object3State.isFilteredOut);
+        if (object3State.isShown) {
+            __log__('cluster ([object Object]/): ');
+            __log__(object3State.cluster);
+            if (object3State.isClustered) {
+                //object3State.cluster.state.set('activeObject', objectCollection.get(0));
+                objectManager.clusters.balloon.open(object3State.cluster.id);
+            } else {
+                objectManager.objects.balloon.open(3);
+            }
+        } else {
+            __log__('cluster ([object Object]/): ' + object3State.cluster)
+        }
+        __log__('');
+    });
+
+    state4Button.events.add('click', function () {
+        var object4State = objectManager.getObjectState(4);
+        __log__('isShown (true/true): ' + object4State.isShown);
+        __log__('isClustered (false/false): ' + object4State.isClustered);
+        __log__('isFilteredOut (false/false): ' + object4State.isFilteredOut);
+        if (object4State.isShown) {
+            __log__('cluster (undefined/undefined): ');
+            __log__(object4State.cluster);
+            if (object4State.isClustered) {
+                //object4State.cluster.state.set('activeObject', objectCollection.get(1));
+                objectManager.clusters.balloon.open(object4State.cluster.id);
+            } else {
+                objectManager.objects.balloon.open(4);
+            }
+        } else {
+            __log__('cluster (undefined/undefined): ' + object4State.cluster)
+        }
+        __log__('');
+    });
+
+    state5Button.events.add('click', function () {
+        var object5State = objectManager.getObjectState(5);
+        __log__('isShown (false/false): ' + object5State.isShown);
+        __log__('isClustered (false/false): ' + object5State.isClustered);
+        __log__('isFilteredOut (false/false): ' + object5State.isFilteredOut);
+        if (object5State.isShown) {
+            __log__('cluster (undefined/undefined): ');
+            __log__(object5State.cluster);
+            if (object5State.isClustered) {
+                //object5State.cluster.state.set('activeObject', object2);
+                objectManager.clusters.balloon.open(object5State.cluster.id);
+            } else {
+                objectManager.objects.balloon.open(5);
+            }
+        } else {
+            __log__('cluster (undefined/undefined): ' + object5State.cluster)
+        }
+        __log__('');
+    });
+
+    map.controls
+            .add(filterButton)
+            .add(state0Button)
+            .add(state1Button)
+            .add(state2Button)
+            .add(state3Button)
+            .add(state4Button)
+            .add(state5Button);
+
+}
+</script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

@@ -1,0 +1,200 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Менеджер объектов: балун автопан RemoteObjectManager
+
+Description:
+Проверка балуна автопана RemoteObjectManager. 
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+objectManager
+
+Estimated time:
+180000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась корректно со спаном Москвы, на спане множество меток, метка кластера, прямоугольник, линия.
+  Через 3 секунды полсе загрузки, спан карты смещается на прямоугольнике открывается балун "Содержимое балуна".
+  Сверху имеются кнопки применения опций.
+  
+Step:
+  Action:
+  Выполнить клик в кнопку "isOpen".
+
+  Expectation:
+  Под контейнером с картой появляется строка "isOpen: true".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "get".
+
+  Expectation:
+  Под контейнером с картой появляется блок "getData: [object Object]; OK; getOptions: [object Object]; getPosition: 55.74...,37.61...; getOverlay: [object Object]; OK".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "openClose".
+
+  Expectation:
+  Под контейнером с картой появляется блок "balloon.open() fulfilled: false; balloon.open() rejected: true".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "isOpen".
+
+  Expectation:
+  Под контейнером с картой появляется строка "isOpen: false".
+
+Step:
+  Action:
+  Выполнить два клика в кнопку "close".
+
+  Expectation:
+  На прямоугольнике снова открывается балун "Содержимое балуна".
+
+Step:
+  Action:
+  Навести курсор на прямоугольник.
+  Выполнить клик в кнопку "destroy...".
+  Навести курсор на прямоугольник.
+
+  Expectation:
+  При наведении на прямоугольник появляется хинт "Текст всплывающей подсказки".
+  После клика в "destroy..." под контейнером блок "Hint.open() fulfilled: false; Hint.open() rejected: true".
+  При повторном наведнии курсора хинт не появляется.
+
+Step:
+  Action:
+  Зажав ЛКМ сместить спан карты, так чтобы прямоугольник был вне области видимости карты.
+  Выполнить клик в кнопку "autopan".
+
+  Expectation:
+  По клику в  кнопку "autopan" спан карты смещается для отображения балуна прямоугольника.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "destroy".
+
+  Expectation:
+  Спан карты немного смещается, балун закрывается, под контейнером блок: "balloon.open() fulfilled: false; balloon.open() rejected: true".
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var center = [55.831903, 37.411961];
+
+            var map = myMap = new ymaps.Map('map', {
+                center: center,
+                zoom: 10,
+                type: 'yandex#map',
+                controls: ['fullscreenControl']
+            });
+
+            // создаем экземпляр класса RemoteObjectManager
+            var remoteObjectManager = new ymaps.RemoteObjectManager('../objectData.js?%l', {
+                splitRequests: true,
+                paddingTemplate: 'managerResponse'
+                //clusterDisableClickZoom: false
+            });
+            map.geoObjects.add(remoteObjectManager);
+
+            addGrid(myMap);
+            var log = new Log();
+            setTimeout(function () {
+                remoteObjectManager.objects.balloon.open(3)
+            }, 2000);
+
+            var autoPanButton = new ymaps.control.Button({data: {content: 'autoPan'}, options: {selectOnClick: false}});
+            autoPanButton.events.add('click', function () {
+                remoteObjectManager.objects.balloon.autoPan()
+            });
+
+            var getButton = new ymaps.control.Button({data: {content: 'get'}, options: {selectOnClick: false}});
+            getButton.events.add('click', function () {
+                __log__('getData: ' + remoteObjectManager.objects.balloon.getData());
+                validateValue(getObjectClassName(remoteObjectManager.objects.balloon.getData()), 'Object');
+                __log__('getOptions: ' + remoteObjectManager.objects.balloon.getOptions());
+                remoteObjectManager.objects.balloon.getOverlay().then(function (res) {
+                    __log__("getOverlay: " + res);
+                    validateValue(res, remoteObjectManager.objects.balloon.getOverlaySync())
+                });
+                __log__('getPosition: ' + remoteObjectManager.objects.balloon.getPosition());
+            });
+
+            var isOpenButton = new ymaps.control.Button({data: {content: 'isOpen'}, options: {selectOnClick: false}});
+            isOpenButton.events.add('click', function () {
+                __log__('isOpen: ' + remoteObjectManager.objects.balloon.isOpen(3))
+            });
+
+            var closeButton = new ymaps.control.Button('close');
+            closeButton.events
+                    .add('select', function () {
+                        remoteObjectManager.objects.balloon.close()
+                    })
+                    .add('deselect', function () {
+                        remoteObjectManager.objects.balloon.open(3)
+                    });
+
+            var destroyButton = new ymaps.control.Button({data: {content: 'destroy'}, options: {selectOnClick: false}});
+            destroyButton.events.add('click', function () {
+                var promise = remoteObjectManager.objects.balloon.open(6);
+                remoteObjectManager.objects.balloon.destroy();
+                promise.always(function () {
+                    log.info('balloon.open() fulfilled: ' + promise.isFulfilled());
+                    log.info('balloon.open() rejected: ' + promise.isRejected());
+                })
+            });
+
+            var destroyHintButton = new ymaps.control.Button({data: {content: 'destroyHint'}, options: {selectOnClick: false}});
+            destroyHintButton.events.add('click', function () {
+                var promise = remoteObjectManager.objects.hint.open(6);
+                remoteObjectManager.objects.hint.destroy();
+                promise.always(function () {
+                    log.info('Hint.open() fulfilled: ' + promise.isFulfilled());
+                    log.info('Hint.open() rejected: ' + promise.isRejected());
+                })
+            });
+
+            var openCloseButton = new ym.control.Button({data: {content: 'openClose'}, options: {selectOnClick: false}});
+            openCloseButton.events.add('click', function () {
+                var promise = remoteObjectManager.objects.balloon.open(3);
+                remoteObjectManager.objects.balloon.close();
+                promise.always(function () {
+                    log.info('balloon.open() fulfilled: ' + promise.isFulfilled());
+                    log.info('balloon.open() rejected: ' + promise.isRejected());
+                });
+            });
+
+            map.controls
+                    .add(openCloseButton)
+                    .add(autoPanButton)
+                    .add(getButton)
+                    .add(isOpenButton)
+                    .add(closeButton)
+                    .add(destroyButton)
+                    .add(destroyHintButton);
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

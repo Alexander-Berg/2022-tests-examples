@@ -1,0 +1,180 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Интерактивный балун
+
+Description:
+Проверяем работу балуна с инпутом у метки и объекта на карте.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components:
+balloon
+
+Estimated time:
+180000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан Подмосковья. В центре открыт пустой балун с кнопкой закрытия.
+  Снизу справа имеются кнопка "clear"(Для удобства отслеживания результатов шагов после выполнения шага можно делать клик в кнопку "сlear", которая должна удалять строки из под контейнера с картой).
+    
+Step:
+  Action:
+  Навести курсор на балун. 
+ 
+  Expectation:
+  При наведении курсора на контейнер с картой под картой появляется текст: map: mouseenter.
+  При наведении курсора на балун под картой появляется текст: map: mouseleave; balloon: mouseenter.
+
+Step:
+  Action:
+  Вывести курсор за пределы балуна. 
+ 
+  Expectation:
+  При выведении курсора за контейнер с картой под картой появляется текст: balloon: mouseleave; map: mouseenter.
+
+Step:
+  Action:
+  Выполнить клик внутри открытого балуна(не в крестик). 
+ 
+  Expectation:
+  Под картой появляется текст: 
+  balloon: mousedown
+  balloon: mouseup
+  balloon: click.
+
+Step:
+  Action:
+  Выполнить даблклик внутри открытого балуна(не в крестик). 
+ 
+  Expectation:
+  Под картой появляется текст: 
+  balloon: mousedown
+  balloon: mouseup
+  balloon: click
+  balloon: mousedown
+  balloon: mouseup
+  balloon: click
+  balloon: dblclick.
+
+Step:
+  Action:
+  Выполнить скрол колесом мыши внутри балуна(и в одну и в другую сторону). 
+ 
+  Expectation:
+  Под картой появляется текст: balloon: wheel(1-а надпись на каждое значение прокручивания).
+
+Step:
+  Action:
+  Выполнить наведение/выведение курсора, клик/даблклик, скрол на балуне при помощи тачпада. 
+ 
+  Expectation:
+  При наведении курсора на балун - balloon: mouseenter.
+  При выведении курсора за пределы балуна - balloon: mouseleave.
+  При клике в балун - balloon: mousedown; balloon: mouseup; balloon: click.
+  При даблклике - mousedown; balloon: mouseup; balloon: click; mousedown; balloon: mouseup; balloon: click; balloon: dblclick. 
+  При скроле(пинчзуме) - balloon: wheel.
+-->
+<html>
+<head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym; // hack
+
+            var myMap = new ym.Map('map', {
+                center: [55.71299668051204, 37.29774445223639],
+                zoom: 15,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+
+            var balloon,
+                    pos = myMap.getCenter(),
+                    contentLayout = ymaps.templateLayoutFactory.createClass('$[balloonContent]<span id="tst">$[a]$[x]</span>'),
+                    options = { contentLayout: contentLayout};
+            window.balloon = balloon = new ymaps.Balloon(myMap);
+            balloon.options.set(options).setParent(myMap.options);
+            balloon.open(pos);
+
+            var domevents = ['click', 'contextmenu', 'dblclick', 'mousedown', 'mouseenter', 'mouseleave', 'mouseup', 'multitouchend',
+                'multitouchstart', 'wheel'];
+
+            var callback1 = function (e) {
+                log.info('balloon: ' + e.get('type'));
+                console.log('balloon: ' + e.get('type'))
+            };
+
+            var callback2 = function (e) {
+                log.info('map: ' + e.get('type'));
+                console.log('map: ' + e.get('type'))
+            };
+
+            balloon.events.add(domevents, callback1);
+            myMap.events.add(domevents, callback2);
+
+            var opaqueButton = new ymaps.control.Button({data: {content: 'opaque'}, options: {selectOnClick: false}});
+            var geoObjectButton = new ymaps.control.Button({data: {content: 'geoObject'},
+                options: {selectOnClick: false}});
+            var layerButton = new ymaps.control.Button({data: {content: 'layer'}, options: {selectOnClick: false}});
+            var transparentButton = new ymaps.control.Button({data: {content: 'transparent'},
+                options: {selectOnClick: false}});
+            var silentButton = new ymaps.control.Button({data: {content: 'silent'}, options: {selectOnClick: false}});
+            var clearButton = new ymaps.control.Button('clear');
+
+            opaqueButton.events.add('click', function () {
+                balloon.options.set('interactivityModel', 'default#opaque')
+            });
+
+            geoObjectButton.events.add('click', function () {
+                balloon.options.set('interactivityModel', 'default#geoObject')
+            });
+
+            layerButton.events.add('click', function () {
+                balloon.options.set('interactivityModel', 'default#layer')
+            });
+
+            transparentButton.events.add('click', function () {
+                balloon.options.set('interactivityModel', 'default#transparent')
+            });
+
+            silentButton.events.add('click', function () {
+                balloon.options.set('interactivityModel', 'default#silent')
+            });
+
+            clearButton.events.add('click', function () {
+                log.clear();
+            });
+
+            myMap.controls
+                    .add(opaqueButton)
+                    .add(geoObjectButton)
+                    .add(layerButton)
+                    .add(transparentButton)
+                    .add(silentButton, {float: 'left'})
+                    .add(clearButton, {float: 'none', position: {bottom: 40, right: 10}});
+
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

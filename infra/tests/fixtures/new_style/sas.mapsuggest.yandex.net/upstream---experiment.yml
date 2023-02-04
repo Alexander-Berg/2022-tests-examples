@@ -1,0 +1,74 @@
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      cgi: 'exprt=5'
+      surround: true
+  modules:
+    - report:
+        ranges: default
+        uuid: exprt5
+    - balancer2:
+        attempts: 1
+        rr: {weights_file: ./controls/traffic_control.weights}
+        backends:
+        - weight: 1
+          name: !f prefix_with_dc("man")
+          modules:
+            - balancer2:
+                attempts: 4
+                active_policy:
+                  skip_attempts: !f count_backends()
+                  unique_policy: {}
+                hashing:
+                  delay: 5s
+                  request: 'GET /ping HTTP/1.1\nHost: mapsuggest.yandex.net\n\n'
+                generated_proxy_backends:
+                  proxy_options:
+                    backend_timeout: 1s
+                    connect_timeout: 40ms
+                    keepalive_count: 10
+                  include_backends:
+                    type: BY_ID
+                    ids: [mapsuggest-exp-man]
+        - weight: 1
+          name: !f prefix_with_dc("sas")
+          modules:
+            - balancer2:
+                attempts: 4
+                active_policy:
+                  skip_attempts: !f count_backends()
+                  unique_policy: {}
+                hashing:
+                  delay: 5s
+                  request: 'GET /ping HTTP/1.1\nHost: mapsuggest.yandex.net\n\n'
+                generated_proxy_backends:
+                  proxy_options:
+                    backend_timeout: 1s
+                    connect_timeout: 40ms
+                    keepalive_count: 10
+                  include_backends:
+                    type: BY_ID
+                    ids: [mapsuggest-exp-sas]
+        - weight: 1
+          name: !f prefix_with_dc("vla")
+          modules:
+            - balancer2:
+                attempts: 4
+                active_policy:
+                  skip_attempts: !f count_backends()
+                  unique_policy: {}
+                hashing:
+                  delay: 5s
+                  request: 'GET /ping HTTP/1.1\nHost: mapsuggest.yandex.net\n\n'
+                generated_proxy_backends:
+                  proxy_options:
+                    backend_timeout: 1s
+                    connect_timeout: 40ms
+                    keepalive_count: 10
+                  include_backends:
+                    type: BY_ID
+                    ids: [mapsuggest-exp-vla]
+        on_error:
+          modules:
+            - errordocument: {status: 504}

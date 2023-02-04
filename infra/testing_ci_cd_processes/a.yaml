@@ -1,0 +1,162 @@
+service: testing_ci_cd_processes
+title: Testing CI CD Processes
+
+ci:
+  release-title-source: flow
+  secret: sec-01ezbzq8vpf73s03j8btj89jwb
+  runtime:
+    sandbox-owner: TESTING_CI_CD_PROCESSES
+
+  releases:
+    deploy-release-rm:
+      title: Deploy release RM
+      flow: deploy-release-flow-rm
+      stages:
+        - id: build
+          title: Build
+        - id: testing
+          title: Testing
+        - id: stable
+          title: Stable
+
+    deploy-release-native:
+      title: Deploy release Native
+      flow: deploy-release-flow-native
+      stages:
+        - id: build
+          title: Build
+        - id: testing
+          title: Testing
+        - id: stable
+          title: Stable
+
+    nanny-release-rm:
+      title: Nanny release RM
+      flow: nanny-release-flow-rm
+      stages:
+        - id: build
+          title: Build
+        - id: testing
+          title: Testing
+        - id: stable
+          title: Stable
+
+  flows:
+    deploy-release-flow-rm:
+      title: Deploy release flow RM
+      show-in-actions: true
+      jobs:
+        build-api-docker:
+          title: Build API. Docker
+          task: common/arcadia/ya_package
+          stage: build
+          input:
+            packages: infra/deploy/testing_ci_cd_processes/package/package.json
+            resource_type: TESTING_CI_CD_PROCESSES_API_DOCKER
+            package_type: docker
+            docker_image_repository: sshipkov
+            docker_push_image: true
+            docker_user: robot-sshipkov-ci
+            docker_token_vault_name: docker.registry.token
+            docker_build_network: host
+        deploy-to-yd:
+          title: Deploy to Y.Deploy
+          needs: build-api-docker
+          task: common/deploy/release
+          stage: stable
+          manual:
+            enabled: true
+#            approvers: TESTING_CI_CD_PROCESSES
+            prompt: "Раскатываем?"
+          input:
+            config:
+              release_artifact_type: DOCKER_IMAGE
+              sandbox_resource_type: TESTING_CI_CD_PROCESSES_API_DOCKER
+              release_stage: testing  # тип deploy-сцены
+              stage_name: Testing_TCCP  # имя сцены
+              release_subject: "Тут release_subject"
+              release_notes: "Тут release_notes"
+
+    deploy-release-flow-native:
+      title: Deploy release flow Native
+      show-in-actions: true
+      jobs:
+        build-api-docker:
+          title: Build API. Docker
+          task: common/arcadia/ya_package_2
+          stage: build
+          input:
+            # Путь относительно корня аркадии к спеке собираемого с помощью ya package пакета
+            packages: infra/deploy/testing_ci_cd_processes/package/package.json
+            package_type: docker
+            # Имя docker-репозитория. Это не имя docker-образа: если вы заливаете свой
+            # пакет в докер, например, как deploy-ci/http_server_example:1.0
+            # то "docker-ci" — это репозиторий, "http_server_example" — имя образа,
+            # а "1.0" — имя тега.
+            docker_image_repository: sshipkov
+            docker_push_image: true
+            # Имя робота, который авторизуется в Registry
+            docker_user: robot-sshipkov-ci
+            # Имя хранилища Sandbox Vault, содержащего OAuth-токен для доступа docker_user к registry.
+            # В качестве токена в Vault можно сохранить тот же токен, который вы сохранили
+            # под именем deploy_ci.token в yav. 
+            docker_token_vault_name: docker.registry.token
+            # Явно задаём имя тега, который мы собираем. Оно потребуется ниже.
+            custom_version: "${context.version_info.full}"
+        deploy-to-yd:
+          title: Deploy to Y.Deploy
+          needs: build-api-docker
+          task: common/deploy/create_release
+          stage: stable
+          manual:
+            enabled: true
+#            approvers: TESTING_CI_CD_PROCESSES
+            prompt: "Раскатываем?"
+          input:
+            config:
+              stage_id: Testing_TCCP
+              patches:
+                - docker:
+                    docker_image_ref:
+                        # Имя deploy unit, в котором производятся изменения.
+                        deploy_unit_id: hello_world_service
+                        # Имя обновляемого box в этом deploy unit.
+                        box_id: api
+                    # Полное имя применяемого docker-образа, включая
+                    # имя тега (совпадает с тем тегом, который мы собрали выше).
+                    image_name: "sshipkov/service_hello_world:${context.version_info.full}"
+
+    nanny-release-flow-rm:
+      title: Nanny release flow RM
+      show-in-actions: true
+      jobs:
+        build-api-docker:
+          title: Build API. Docker
+          task: common/arcadia/ya_package
+          stage: build
+          input:
+            packages: infra/deploy/testing_ci_cd_processes/package/package.json
+            resource_type: TESTING_CI_CD_PROCESSES_API_DOCKER
+            package_type: docker
+            docker_image_repository: sshipkov
+            docker_push_image: true
+            docker_user: robot-sshipkov-ci
+            docker_token_vault_name: docker.registry.token
+            docker_build_network: host
+        deploy-to-nanny:
+          title: Deploy to Nanny
+          needs: build-api-docker
+          task: common/nanny/release
+          stage: stable
+          manual:
+            enabled: true
+#            approvers: TESTING_CI_CD_PROCESSES
+            prompt: "Раскатываем?"
+          input:
+            config:
+              sandbox_resource_type: TESTING_CI_CD_PROCESSES_API_DOCKER
+              common_release_data:
+                release_stage: testing  # тип deploy-сцены
+                release_subject: "Тут release_subject"
+                release_notes: "Тут release_notes"
+              service_name: testing_ci_cd_processes

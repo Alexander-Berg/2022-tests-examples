@@ -1,0 +1,185 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Мультимаршрут: базовый тест
+
+Description:
+Проверка базового построения мультимаршрута.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+multiRouter
+
+Estimated time:
+240000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно со спаном Москвы.
+  В контейнере контрол фулскрин, кнопки "mode", "traffic". Курсор на спане карты палец с закрепленной красной меткой "A".
+
+Step:
+  Action:
+  Выполнить клик в спан карты.
+
+  Expectation:
+  На спане карты появляется красная метка "A", курсор - палец с закрепленной синей меткой "В".
+
+Step:
+  Action:
+  Выполнить клик в спан карты на удалении от метки "А".
+
+  Expectation:
+  На спане карты появляется синяя метка "В", курсор - палец с закрепленной синей меткой "С".
+  Между метками "А" и "В" появляется маршрутная нитка, а также альтернативная линия маршрута.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "mode".
+
+  Expectation:
+  Происходит смена режима маршрута на маршрут общественным транспортом, на спане появляются метки траснпорта с подписями, пешеходные метки со временем и расстоянием. 
+
+Step:
+  Action:
+  Выполнить клик в кнопку "mode".
+
+  Expectation:
+  Происходит смена режима маршрута на маршрут авто, метки общественного транспорта и пешеходные метки пропадают на спане только метки "А" и "В". 
+
+Step:
+  Action:
+  Выполнить клик в кнопку "traffic".
+
+  Expectation:
+  Включается опция прокладывать мультимаршрут с учетом информации о текущих пробках на дорогах. 
+  На маршруте может появится/пропасть альтернативная линия, перестроится основной маршрут. 
+
+Step:
+  Action:
+  Выполнить клик в кнопку "traffic".
+
+  Expectation:
+  Отключается опция прокладывать мультимаршрут с учетом информации о текущих пробках на дорогах. 
+  На маршруте может появится/пропасть альтернативная линия, перестроится основной маршрут.
+
+Step:
+  Action:
+  Выполнить клик в спан карты на удалении от метки "А" и "B".
+
+  Expectation:
+  На спане карты появляется синяя метка "С", метка "B" становится зеленого цвета, курсор - палец с закрепленной синей меткой "D".
+  Маршрут на карте перестраивается с учетом метки "C".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "mode".
+
+  Expectation:
+  Происходит смена режима маршрута на маршрут общественным транспортом, на спане появляются метки траснпорта с подписями, пешеходные метки со временем и расстоянием. 
+
+Step:
+  Action:
+  Выполнить клик в кнопку "mode".
+
+  Expectation:
+  Происходит смена режима маршрута на маршрут авто, метки общественного транспорта и пешеходные метки пропадают на спане только метки "А","В", "C". 
+
+Step:
+  Action:
+  Выполнить клик в кнопку "traffic".
+
+  Expectation:
+  Включается опция прокладывать мультимаршрут с учетом информации о текущих пробках на дорогах. 
+  На маршруте может появится/пропасть альтернативная линия, перестроится основной маршрут.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "traffic".
+
+  Expectation:
+  Отключается опция прокладывать мультимаршрут с учетом информации о текущих пробках на дорогах. 
+  На маршруте может появится/пропасть альтернативная линия, перестроится основной маршрут.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 10,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            }, {
+                suppressObsoleteBrowserNotifier: true,
+                suppressMapOpenBlock: false
+
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+
+            __log__('По клику по карте появится точка маршрута');
+
+            var multiRoute = new ymaps.multiRouter.MultiRoute({
+                referencePoints: [],
+                params: {
+                    routingMode: 'auto'
+                }
+            }, {
+                boundsAutoApply: true,
+                editorDrawOver: false
+            });
+            map.geoObjects.add(multiRoute);
+
+            multiRoute.editor.start({
+                addWayPoints: true,
+                addMidPoints: true,
+                dragWayPoints: true,
+                dragViaPoints: true,
+                removeWayPoints: true,
+                removeViaPoints: true
+            });
+
+            var trafficButton = new ymaps.control.Button('traffic');
+            trafficButton.events
+                    .add('select', function () {
+                        multiRoute.model.setParams({avoidTrafficJams: true}, true)
+                    })
+                    .add('deselect', function () {
+                        multiRoute.model.setParams({avoidTrafficJams: false}, true)
+                    });
+            map.controls.add(trafficButton);
+
+            var modeButton = new ymaps.control.Button('mode');
+            modeButton.events
+                    .add('select', function () {
+                        multiRoute.model.setParams({routingMode: 'masstransit'}, true)
+                    })
+                    .add('deselect', function () {
+                        multiRoute.model.setParams({routingMode: 'auto'}, true)
+                    });
+            map.controls.add(modeButton);
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

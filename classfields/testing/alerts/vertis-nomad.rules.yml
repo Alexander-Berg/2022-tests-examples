@@ -1,0 +1,168 @@
+groups:
+- name: /etc/prometheus/alerts/vertis-nomad.rules
+  rules:
+  # meta: call_on_weekend: False
+  - alert: NomadUiTooFewInstances
+    expr: count(nomad_task_memory_rss_bytes{alloc=~"nomad-ui.*"}) < 2
+    for: 2m
+    labels:
+      indicates: availability
+      job: nomad-exporter
+      juggler_aggr_host: vertis-nomad
+      juggler_tag1: vertis_sre
+      juggler_tag2: vertis_sre_test
+      kind: cause
+      severity: warning
+    annotations:
+      description: Alive {{ .Value }} < 2 instances for more than 2 minutes.
+      summary: 'Nomad-ui: Too few instances alive'
+
+  - alert: SubZero_Non2xxGolpAnswer
+    expr: sum(irate(container_ip_info_golp_non_2xx_answer{job="sub-zero"}[90s])) by (instance) > 0
+    for: 5m
+    labels:
+      indicates: availability
+      job: sub-zero
+      juggler_aggr_host: vertis-nomad
+      juggler_tag1: vertis_sre
+      juggler_tag2: vertis_sre_test
+      kind: cause
+      severity: warning
+    annotations:
+      description: "sub-zero: too many non 2xx answers from golp on {{ $labels.instance }}"
+      summary: "sub-zero: too many non 2xx answers from golp on {{ $labels.instance }}"
+
+  - alert: SubZero_GetContainerInfo
+    expr: sum(rate(container_ip_info_get_container_ip_total{job="sub-zero"}[5m])) by (instance) == 0
+    for: 5m
+    labels:
+      indicates: availability
+      job: sub-zero
+      juggler_aggr_host: vertis-nomad
+      juggler_tag1: vertis_sre
+      juggler_tag2: vertis_sre_test
+      kind: cause
+      severity: warning
+    annotations:
+      description: "sub-zero: no data about containers on {{ $labels.instance }}"
+      summary: "sub-zero: no data about containers on {{ $labels.instance }}"
+
+  - alert: NomadClients_AllocatedCpuInSas
+    expr: ( sum(nomad_client_allocated_cpu{datacenter="sas", host=~"docker.*"}) *100 ) / ( sum(nomad_client_allocated_cpu{datacenter="sas", host=~"docker.*"}) + sum(nomad_client_unallocated_cpu{datacenter="sas", host=~"docker.*"}) ) > 95
+    for: 10m
+    labels:
+      indicates: availability
+      job: nomad-clients
+      juggler_aggr_host: vertis-nomad
+      juggler_tag1: vertis_sre
+      juggler_tag2: vertis_sre_test
+      kind: cause
+      severity: warning
+    annotations:
+      description: "nomad-clients: allocated cpu in SAS more than 95%"
+      summary: "nomad-clients: allocated cpu in SAS more than 95% {{ $labels.instance }}"
+
+  - alert: NomadClients_AllocatedCpuInVla
+    expr: ( sum(nomad_client_allocated_cpu{datacenter="vla", host=~"docker.*"}) *100 ) / ( sum(nomad_client_allocated_cpu{datacenter="vla", host=~"docker.*"}) + sum(nomad_client_unallocated_cpu{datacenter="vla", host=~"docker.*"}) ) > 95
+    for: 10m
+    labels:
+      indicates: availability
+      job: nomad-clients
+      juggler_aggr_host: vertis-nomad
+      juggler_tag1: vertis_sre
+      juggler_tag2: vertis_sre_test
+      kind: cause
+      severity: warning
+    annotations:
+      description: "nomad-clients: allocated cpu in VLA more than 95%"
+      summary: "nomad-clients: allocated cpu in VLA more than 95% {{ $labels.instance }}"
+
+  - alert: NomadClients_AllocatedMemoryInSas
+    expr: ( sum(nomad_client_allocated_memory{datacenter="sas", host=~"docker.*"}) *100 ) / ( sum(nomad_client_allocated_memory{datacenter="sas", host=~"docker.*"}) + sum(nomad_client_unallocated_memory{datacenter="sas", host=~"docker.*"}) ) > 95
+    for: 10m
+    labels:
+      indicates: availability
+      job: nomad-clients
+      juggler_aggr_host: vertis-nomad
+      juggler_tag1: vertis_sre
+      juggler_tag2: vertis_sre_test
+      kind: cause
+      severity: warning
+    annotations:
+      description: "nomad-clients: allocated memory in SAS more than 95%"
+      summary: "nomad-clients: allocated memory in SAS more than 95% {{ $labels.instance }}"
+
+  - alert: NomadClients_AllocatedMemoryInVla
+    expr: ( sum(nomad_client_allocated_memory{datacenter="vla", host=~"docker.*"}) *100 ) / ( sum(nomad_client_allocated_memory{datacenter="vla", host=~"docker.*"}) + sum(nomad_client_unallocated_memory{datacenter="vla", host=~"docker.*"}) ) > 95
+    for: 10m
+    labels:
+      indicates: availability
+      job: nomad-clients
+      juggler_aggr_host: vertis-nomad
+      juggler_tag1: vertis_sre
+      juggler_tag2: vertis_sre_test
+      kind: cause
+      severity: warning
+    annotations:
+      description: "nomad-clients: allocated memory in VLA more than 95%"
+      summary: "nomad-clients: allocated memory in VLA more than 95% {{ $labels.instance }}"
+
+  - alert: NomadServers_TooManyPeriodicalJobs
+    expr: ( sum(nomad_nomad_job_summary_complete{exported_job=~".*/periodic-.*"}) + sum(nomad_nomad_job_summary_failed{exported_job=~".*/periodic-.*"})  + sum(nomad_nomad_job_summary_lost{exported_job=~".*/periodic-.*"})  + sum(nomad_nomad_job_summary_queued{exported_job=~".*/periodic-.*"})  + sum(nomad_nomad_job_summary_running{exported_job=~".*/periodic-.*"})  + sum(nomad_nomad_job_summary_starting{exported_job=~".*/periodic-.*"}) ) > 10000
+    for: 10m
+    labels:
+      indicates: availability
+      job: nomad-servers
+      juggler_aggr_host: vertis-nomad
+      juggler_tag1: vertis_sre
+      juggler_tag2: vertis_sre_test
+      kind: cause
+      severity: warning
+    annotations:
+      description: "nomad-servers: too many periodical jobs"
+      summary: "nomad-servers: too many periodical jobs (more than 10 000)"
+
+  - alert: NomadServers_TooMuchMemoryUsed
+    expr: sum(mem_used_percent{group=~"vertis_vtest_nomad"}) by (instance) > 90
+    for: 10m
+    labels:
+      indicates: availability
+      job: nomad-clients
+      juggler_aggr_host: vertis-nomad
+      juggler_tag1: vertis_sre
+      juggler_tag2: vertis_sre_test
+      kind: cause
+      severity: warning
+    annotations:
+      description: "nomad-servers: memory used more than 90%"
+      summary: "nomad-servers: memory used more than 90% {{ $labels.instance }}"
+
+  - alert: NomadServers_TooManyGoroutines
+    expr: sum(go_goroutines{job="nomad-servers"}) by (instance) > 5000
+    for: 3m
+    labels:
+      indicates: availability
+      job: nomad-servers
+      juggler_aggr_host: vertis-nomad
+      juggler_tag1: vertis_sre
+      juggler_tag2: vertis_sre_test
+      kind: cause
+      severity: warning
+    annotations:
+      description: "Too many goroutines {{ .Value }} > 5000 at {{ $labels.instance }} for more than 3 minutes."
+      summary: 'Nomad-servers: too many goroutines {{ .Value }} > 5000 at {{ $labels.instance }}'
+
+  - alert: NomadClients_TooManyGoroutines
+    expr: sum(go_goroutines{job="nomad-clients"}) by (instance) > 500000
+    for: 10m
+    labels:
+      indicates: availability
+      job: nomad-clients
+      juggler_aggr_host: vertis-nomad
+      juggler_tag1: vertis_sre
+      juggler_tag2: vertis_sre_test
+      kind: cause
+      severity: warning
+    annotations:
+      description: "Too many goroutines {{ .Value }} > 500000 at {{ $labels.instance }} for more than 10 minutes."
+      summary: 'Nomad-clients: too many goroutines {{ .Value }} > 500000 at {{ $labels.instance }}'

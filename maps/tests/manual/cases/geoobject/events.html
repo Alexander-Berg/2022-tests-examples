@@ -1,0 +1,260 @@
+<!DOCTYPE HTML>
+<!--(skip)(description)
+GeoObject: events
+This case should also be tested manually.
+-->
+<!--(version)
+2.1
+-->
+<!--(commands)
+click(13);
+mouseover(61);
+click(61);
+test();
+click(46);
+click(11);
+test();
+click(9);
+click(3);
+drag(141, 157);
+test();
+click(13);
+click(3);
+click(9);
+click(5);
+click(52);
+click(138);
+test();
+-->
+<html>
+<head>
+<title></title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+<script src="../../helper.js"></script>
+<script src="geoCS.js"></script>
+<script type=text/javascript>
+
+Api('init');
+
+function init(ymaps) {
+    ymaps = ym; // hack
+
+    var map = myMap = new ym.Map('map', {
+        center: [55.73259667357658, 37.70153663432529],
+        zoom: 9,
+        behaviors: ['default', 'scrollZoom'],
+        controls: ['fullscreenControl', 'geolocationControl']
+    });
+
+    geoCSSource(ym, myMap, this);
+    addGrid(myMap);
+    var log = new Log();
+
+    var placemark1 = new ymaps.Placemark([55.81, 37.29753265380539], {
+        iconContent: 'getCoordinates',
+        balloonContent: 'balloon'
+    }, {
+        preset: 'islands#redStretchyIcon',
+        hideIconOnBalloonOpen: false,
+        draggable: true
+    });
+
+    placemark1.events.add('geometrychange', function (e) {
+        placemark1.properties.set('iconContent', placemark1.geometry.getCoordinates())
+    });
+
+    map.geoObjects.add(placemark1);
+
+    var collection = new ymaps.GeoObjectCollection();
+
+    collection
+            .add(geoObjectPlacemark)
+            .add(geoObjectPolyline)
+            .add(geoObjectPolygon)
+            .add(geoObjectRectangle)
+            .add(geoObjectRectangle)
+            .add(geoObjectCircle)
+            .add(placemark)
+            .add(polyline)
+            .add(polygon)
+            .add(rectangle)
+            .add(circle);
+
+    collection.each(function (obj) {
+        obj.properties.set('balloonContent', 'text');
+        obj.properties.set('hintContent', 'text');
+    });
+
+    myMap.geoObjects
+            .add(collection);
+
+    var events = ['balloonclose', 'balloonopen', 'geometrychange', 'mapchange', 'overlaychange', 'parentchange',
+        'propertieschange', 'optionschange', 'hintopen', 'hintclose'];
+
+    var domevents = ['click', 'contextmenu', 'dblclick', 'mousedown', 'mouseenter', 'mouseleave', 'mouseup', 'multitouchend',
+        'multitouchstart', 'wheel'];
+
+    var moveevents = ['mousemove', 'multitouchmove'];
+
+    var dragevents = ['beforedrag', 'beforedragstart', 'drag', 'dragstart', 'dragend'];
+
+    var callback = function (e) {
+        log.info(e.get('target').options.get('id') + ': ' + e.get('type'));
+        console.log(e.get('target').options.get('id') + ': ' + e.get('type'));
+        // MAPSAPI-8958
+        if (e.get('type') == 'drag') {
+            log.info('drag position: ' + e.get('position'));
+            console.log('drag position: ' + e.get('position'))
+        }
+    };
+
+    var removeButton = new ymaps.control.Button({data: {content: 'remove'}, options: {selectOnClick: true}});
+    var listenerButton = new ymaps.control.Button({data: {content: 'listen'}, options: {selectOnClick: true}});
+    var optionButton = new ymaps.control.Button({data: {content: 'option'}, options: {selectOnClick: true}});
+    var freezeButton = new ymaps.control.Button({data: {content: 'freeze'}, options: {selectOnClick: true}});
+    var boundsButton = new ymaps.control.Button({data: {content: 'data'}, options: {selectOnClick: false}});
+    var moveButton = new ymaps.control.Button({data: {content: 'move'}, options: {selectOnClick: true}});
+    var domButton = new ymaps.control.Button({data: {content: 'DOM'}, options: {selectOnClick: true}});
+    var dragButton = new ymaps.control.Button({data: {content: 'drag'}, options: {selectOnClick: true}});
+    var clearButton = new ymaps.control.Button({data: {content: 'clear log'}, options: {selectOnClick: false}});
+
+    removeButton.events
+            .add('select', function () {
+                myMap.geoObjects
+                        .remove(geoObjectPlacemark)
+                        .remove(geoObjectPolyline)
+                        .remove(geoObjectPolygon)
+                        .remove(geoObjectRectangle)
+                        .remove(geoObjectCircle)
+                        .remove(placemark)
+                        .remove(polyline)
+                        .remove(polygon)
+                        .remove(rectangle)
+                        .remove(circle);
+            })
+            .add('deselect', function () {
+                myMap.geoObjects
+                        .add(geoObjectPlacemark)
+                        .add(geoObjectPolyline)
+                        .add(geoObjectPolygon)
+                        .add(geoObjectRectangle)
+                        .add(geoObjectCircle)
+                        .add(placemark)
+                        .add(polyline)
+                        .add(polygon)
+                        .add(rectangle)
+                        .add(circle);
+            });
+
+    listenerButton.events
+            .add('deselect', function () {
+                log.info('Events will be ignored.');
+                collection.each(function (obj) {
+                    obj.events.remove(events, callback);
+                });
+            })
+            .add('select', function () {
+                log.info('Waiting for events...');
+                collection.each(function (obj) {
+                    obj.events.add(events, callback);
+                });
+            });
+
+    optionButton.events
+            .add('select', function () {
+                collection.each(function (obj) {
+                    obj.options.set('draggable', true);
+                });
+            })
+            .add('deselect', function () {
+                collection.each(function (obj) {
+                    obj.options.set('draggable', false);
+                });
+            });
+
+    freezeButton.events
+            .add('select', function () {
+                collection.each(function (obj) {
+                    obj.options.freeze();
+                });
+            })
+            .add('deselect', function () {
+                collection.each(function (obj) {
+                    obj.options.unfreeze();
+                });
+            });
+
+    boundsButton.events
+            .add('click', function () {
+                collection.each(function (obj) {
+                    obj.properties.set('hintContent', 'new text');
+                });
+            });
+
+    moveButton.events
+            .add('select', function () {
+                log.info('Waiting for move events...');
+                collection.each(function (obj) {
+                    obj.events.add(moveevents, callback);
+                });
+            })
+            .add('deselect', function () {
+                log.info('Move events will be ignored.');
+                collection.each(function (obj) {
+                    obj.events.remove(moveevents, callback);
+                });
+            });
+
+    domButton.events
+            .add('select', function () {
+                log.info('Waiting for DOM events...');
+                collection.each(function (obj) {
+                    obj.events.add(domevents, callback);
+                });
+            })
+            .add('deselect', function () {
+                log.info('DOM events will be ignored.');
+                collection.each(function (obj) {
+                    obj.events.remove(domevents, callback);
+                });
+            });
+
+    dragButton.events
+            .add('select', function () {
+                log.info('Waiting for action* events...');
+                collection.each(function (obj) {
+                    obj.events.add(dragevents, callback);
+                });
+            })
+            .add('deselect', function () {
+                log.info('action* events will be ignored.');
+                collection.each(function (obj) {
+                    obj.events.remove(dragevents, callback);
+                });
+            });
+
+    clearButton.events.add('click', function () {
+        log.clear();
+    });
+
+    myMap.controls
+            .add(listenerButton, {float: 'left'})
+            .add(boundsButton, {float: 'left'})
+            .add(optionButton, {float: 'left'})
+            .add(freezeButton, {float: 'none', position: {bottom: 55, right: 10}})
+            .add(clearButton, {float: 'none', position: {bottom: 25, right: 10}})
+            .add(removeButton, {float: 'none', position: {bottom: 85, right: 10}})
+            .add(new ymaps.control.FullscreenControl(), {float: 'none', position: {bottom: 125, right: 10}})
+            .add(new ymaps.control.TypeSelector(), {float: 'none', position: {bottom: 155, right: 10}})
+            .add(moveButton, {float: 'left'})
+            .add(domButton, {float: 'left'})
+            .add(dragButton, {float: 'left'});
+
+}
+</script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

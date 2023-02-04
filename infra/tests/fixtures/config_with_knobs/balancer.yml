@@ -1,0 +1,145 @@
+---
+main:
+  reset_dns_cache_file: !k reset-dns-cache-file
+  buffer: 65536
+  maxconn: 1000
+  workers: 0
+  log: /place/db/www/logs/log.txt
+  addrs:
+  - ip: 127.0.0.4
+    port: 15010
+  - ip: 127.0.0.44
+    port: !f get_port_var("http_port", 0, 80)
+  - ip: 127.0.0.44
+    port: !f get_port_var("https_port")
+  - ip: 8.8.8.8
+    port: 8888
+  admin_addrs:
+  - ip: 127.0.0.1
+    port: 15010
+  - ip: ::1
+    port: 15010
+  ipdispatch:
+    sections:
+      admin:
+        ips: [127.0.0.1, '::1']
+        ports: [15010]
+        http:
+          no_keepalive_file: !k no-keepalive-file
+          maxlen: 65536
+          maxreq: 65536
+          admin: {}
+      check:
+        ips: ['8.8.8.8']
+        ports: [8888]
+        http:
+          active_check_reply:
+            default_weight: 100
+            weight_file: !k active-check-reply-weight-file
+            use_header: true
+            use_body: true
+      stats_storage:
+        ips: [127.0.0.4]
+        ports: [15010]
+        modules:
+        - report:
+            uuid: "service_total"
+            ranges: "default"
+            just_storage: true
+        - antirobot:
+            no_cut_request_file: !k antirobot-no-cut-request-file
+            file_switch: !k antirobot-file-switch
+            checker:
+              errordocument: {status: 200}
+        - http:
+            maxlen: 65536
+            maxreq: 65536
+        - errordocument:
+            status: 200
+      remote_ips_80:
+        ips: ['127.0.0.44']
+        ports:
+        - !f get_port_var("http_port", 0, 80)
+        extended_http_macro:
+          modules:
+          - threshold:
+              lo_bytes: 524288
+              hi_bytes: 1048576
+              pass_timeout: 10s
+              recv_timeout: 1s
+          - headers:
+              create_func:
+                X-Real-IP: realip
+              create_func_weak:
+                X-Forwarded-For: realip
+                X-Req-Id: reqid
+                X-Scheme: scheme
+                X-Source-Port: realport
+          - regexp:
+              include_upstreams:
+                filter: {any: true}
+                order: {label: {name: "order"}}
+      local_ips_443:
+        ips: ['127.0.0.44']
+        ports:
+        - !f get_port_var("https_port")
+        modules:
+        - errorlog:
+            log: /place/db/www/logs/current-error_log-balancer-443
+            log_level: ERROR
+        - ssl_sni:
+            force_ssl: true
+            contexts:
+              default:
+                ocsp_file_switch: !k ocsp-file-switch
+                cert: /dev/shm/balancer/allCAs-awacs.yandex-team.ru.pem
+                priv: /dev/shm/balancer/priv/awacs.yandex-team.ru.pem
+                log: /place/db/www/logs/current-ssl_sni-balancer-443
+                ticket_keys:
+                - {keyfile: /dev/shm/balancer/priv/1st.awacs.yandex-team.ru.key}
+                - {keyfile: /dev/shm/balancer/priv/2nd.awacs.yandex-team.ru.key}
+                - {keyfile: /dev/shm/balancer/priv/3rd.awacs.yandex-team.ru.key}
+        - http:
+            maxlen: 65536
+            maxreq: 65536
+            keepalive: true
+            no_keepalive_file: ./controls/keepalive_disabled
+        - accesslog:
+            log: /place/db/www/logs/current-access_log-balancer-443
+        - threshold:
+            lo_bytes: 524288
+            hi_bytes: 1048576
+            pass_timeout: 10s
+            recv_timeout: 1s
+        - report:
+            uuid: service_total
+            ranges: default
+        - headers:
+            create_func:
+              X-Real-IP: realip
+            create_func_weak:
+              X-Forwarded-For: realip
+              X-Req-Id: reqid
+              X-Scheme: scheme
+              X-Source-Port: realport
+        - antirobot_macro:
+            file_switch: !k antirobot-macro-file-switch
+            gencfg_groups:
+            - name: MSK_ANTIROBOT_ANTIROBOT
+              version: tags/stable-92-r105
+        - request_replier:
+            rate_file: !k request-replier-rate-file
+            sink:
+              balancer2:
+                attempts: 5
+                weighted2: {}
+                generated_proxy_backends:
+                  proxy_options: {}
+                  instances:
+                    - weight: 1
+                      host: 'sinkadm.priemka.yandex.ru'
+                      port: 80
+        - regexp:
+            include_upstreams:
+              filter: {any: true}
+              order: {label: {name: "order"}}

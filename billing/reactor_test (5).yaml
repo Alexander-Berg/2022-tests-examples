@@ -1,0 +1,172 @@
+# Nirvana reactions config in format of
+# `arcadia/billing/hot/nirvana/maintenance nirvana-reactions`
+
+root_path: /billing/balance-test/log_tariff
+project_path: /billing/balance-test/Project
+quota: bs_log_tariffication_test
+owner: agapitovds
+
+ttl: &ttl 14
+
+# Template and instances for "DSP Generate Meta"
+graph_meta_source: &graph_meta_source b39aeba4-6e05-4828-aa47-001e0e42679f
+graph_meta_target: &graph_meta_target 3c1361c8-e993-4ed3-b135-03b0067a2171
+
+# Template and instances for "DSP Tariffication"
+graph_proc_source: &graph_proc_source 3e55c1f9-44c3-4ce0-ade2-e3f03c753f87
+graph_proc_target: &graph_proc_target 64526b4a-9d1e-4e39-8973-409b2f478013
+
+# Template and instances for "Copy result tables to Freud"
+graph_copy_source: &graph_copy_source 9450ed88-6662-4292-bbf6-966080ce3f34
+graph_copy_target: &graph_copy_target 97f6ee84-d07c-4335-bc23-b28f7ee2a7f0
+
+
+artifacts:
+  - path: partner/dsp_income/tariff/meta_current
+    type: NIRVANA_DATA_FILE_JSON
+    ttl: *ttl
+  - path: partner/dsp_income/tariff/meta_tariffed_arnold
+    type: NIRVANA_DATA_FILE_JSON
+    ttl: *ttl
+  - path: partner/dsp_income/tariff/meta_tariffed_hahn
+    type: NIRVANA_DATA_FILE_JSON
+    ttl: *ttl
+  - path: partner/dsp_income/tariff/jobs_binary_revision
+    type: PRIMITIVE_INT
+    ttl: 1500
+
+reactions:
+  - path: partner/dsp_income/tariff/meta/meta_generate_arnold
+    ttl: *ttl
+    triggers:
+      - name: cron
+        cron: 0 0/10 * ? * * *
+    source_graph: *graph_meta_source
+    target_graph: *graph_meta_target
+    params:
+      - name: jobs-binary-arcadia-revision
+        artifact: partner/dsp_income/tariff/jobs_binary_revision
+      - name: yt_cluster
+        value: arnold
+    inputs:
+      - block: INPUT_generator
+        endpoint: last_generated_meta
+        artifact: partner/dsp_income/tariff/meta_current
+      - block: INPUT_generator
+        endpoint: last_tariffed_meta
+        artifact: partner/dsp_income/tariff/meta_tariffed_arnold
+    outputs:
+      - block: OUTPUT_generator
+        endpoint: new_meta
+        artifact: partner/dsp_income/tariff/meta_current
+
+  - path: partner/dsp_income/tariff/meta/meta_generate_hahn
+    ttl: *ttl
+    triggers:
+      - name: cron
+        cron: 0 0/10 * ? * * *
+    source_graph: *graph_meta_source
+    target_graph: *graph_meta_target
+    params:
+      - name: jobs-binary-arcadia-revision
+        artifact: partner/dsp_income/tariff/jobs_binary_revision
+      - name: yt_cluster
+        value: hahn
+    inputs:
+      - block: INPUT_generator
+        endpoint: last_generated_meta
+        artifact: partner/dsp_income/tariff/meta_current
+      - block: INPUT_generator
+        endpoint: last_tariffed_meta
+        artifact: partner/dsp_income/tariff/meta_tariffed_hahn
+    outputs:
+      - block: OUTPUT_generator
+        endpoint: new_meta
+        artifact: partner/dsp_income/tariff/meta_current
+
+  - path: partner/dsp_income/tariff/tariff/tariffication_arnold
+    ttl: *ttl
+    triggers:
+      - name: meta_current
+        artifact: partner/dsp_income/tariff/meta_current
+    source_graph: *graph_proc_source
+    target_graph: *graph_proc_target
+    params:
+      - name: jobs-binary-arcadia-revision
+        artifact: partner/dsp_income/tariff/jobs_binary_revision
+      - name: yt_cluster
+        value: arnold
+    inputs:
+      - block: INPUT
+        endpoint: in
+        artifact: partner/dsp_income/tariff/meta_current
+    outputs:
+      - block: OUTPUT
+        endpoint: out
+        artifact: partner/dsp_income/tariff/meta_tariffed_arnold
+
+  - path: partner/dsp_income/tariff/tariff/tariffication_hahn
+    ttl: *ttl
+    triggers:
+      - name: meta_current
+        artifact: partner/dsp_income/tariff/meta_current
+    source_graph: *graph_proc_source
+    target_graph: *graph_proc_target
+    params:
+      - name: jobs-binary-arcadia-revision
+        artifact: partner/dsp_income/tariff/jobs_binary_revision
+      - name: yt_cluster
+        value: hahn
+    inputs:
+      - block: INPUT
+        endpoint: in
+        artifact: partner/dsp_income/tariff/meta_current
+    outputs:
+      - block: OUTPUT
+        endpoint: out
+        artifact: partner/dsp_income/tariff/meta_tariffed_hahn
+
+  - path: common/table_copy_simple/dsp_tariffed_copy_from_hahn_to_freud
+    ttl: *ttl
+    source_graph: *graph_copy_source
+    target_graph: *graph_copy_target
+    triggers:
+      - name: meta_tariffed_hahn
+        artifact: partner/dsp_income/tariff/meta_tariffed_hahn
+    params:
+      - name: destination-cluster
+        value: hahn
+#        value: freud
+      - name: destination-path
+        value: //home/balance-test/agapitovds/dsp/freud-storage/
+#        value: //home/yabs/log/billing_dsp/prod/tariffed/
+      - name: source-cluster
+        value: hahn
+      - name: source-path
+        value: //home/balance-test/test/log_tariff/public/income/dsp/tariffed/
+      - name: yt-token
+        value: robot-balance-tester-yt-token
+#        value: robot-yb-log-tarif-yt-token
+      - name: mr-account
+        value: balance-test
+#        value: balance
+    inputs:
+      - block: GET_RUN_ID_FROM_META_BLOCK_CODE
+        endpoint: input
+        artifact: partner/dsp_income/tariff/meta_tariffed_hahn
+    outputs: {}
+
+queues:
+  - path: partner/dsp_income/tariff/tariff/tariffication_arnold_queue
+    size: 1000
+    reactions:
+      - partner/dsp_income/tariff/tariff/tariffication_arnold
+  - path: partner/dsp_income/tariff/tariff/tariffication_hahn_queue
+    size: 1000
+    reactions:
+      - partner/dsp_income/tariff/tariff/tariffication_hahn
+  - path: partner/dsp_income/tariff/meta/meta_generate_queue
+    size: 1
+    reactions:
+      - partner/dsp_income/tariff/meta/meta_generate_hahn
+      - partner/dsp_income/tariff/meta/meta_generate_arnold

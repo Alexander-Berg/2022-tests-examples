@@ -1,0 +1,374 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Enterprise: Проверка построения мультимаршрутов
+
+Description:
+Проверяем построение мультимаршрутов на кнопках.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components:
+internal
+
+Estimated time: 
+420000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан Москвы.
+  Справа имеются кнопки построения маршрутов: "msc, mass"; "msc, auto", "spb, mass", "moscow, spb", "kaliningrad", "RUBK", "enterprise, cities", "enterprise, coords".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "msc, mass".
+
+  Expectation:
+  Смена спана и призум на спане Москвы.
+  В области видимости маршрут на общественном транспорте с метками "А", "B", "C. Основная маршрутная линия - оранжевая. Имеются фиолетовые пунктирные линии пешеходной части маршрута. Имеются метки метро и пешеходная метка.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "msc, auto".
+
+  Expectation:
+  Смена спана и призум на спане Москвы.
+  В области видимости маршрут на автомобиле с метками "А" - улица Лобачевского(белая метка с красной буквой), "B" - метро Академическая(белая метка с синей буквой). Основная маршрутная линия - красная. Альтернативные - темно-синие. 
+
+Step:
+  Action:
+  Выполнить клик в кнопку "spb, mass".
+
+  Expectation:
+  Смена спана не происходит, предыдущий маршрут пропадает.
+
+Step:
+  Action:
+  Зажав ЛКМ на карте переместиться на спан Санкт-Петербурга(можно немного отскролить карту). 
+
+  Expectation:
+  На спане Санкт-Петербурга маршрут на общественном транспорте с метками "А" - Комендантский проспект, 30к1, "B" - Пискаревский проспект, 2к2Щ, Основная маршрутная линия - красная. Имеются альтернативные линии - темно-синие.части маршрута. Имеются метки метро и метка маршрутки.
+
+Step:
+  Action:
+  Поочередно призумится к метке "А", "B" и метке маршрутки.
+
+  Expectation:
+  На маршруте имеется пунктирная фиолетовая линия отображающая пешеходную часть маршрута и пешеходные метки с данными о времени и расстоянии пешеходной части маршрута.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "moscow, spb".
+
+  Expectation:
+  Происходит смена спана, и отзум.
+  В области видимости маршрут на автомобиле с метками "А" - Москва, "B" - Санкт-Петербург. Основная маршрутная линия - фиолетовая. Альтернативная - серая. 
+
+Step:
+  Action:
+  Выполнить клик в кнопку "kaliningrad".
+
+  Expectation:
+  Происходит смена спана, и отзум.
+  В области видимости маршрут на автомобиле с метками "А" - Нижний Новгород, "B" - Калининград. Основная маршрутная линия - фиолетовая. Альтернативная - серая. 
+
+Step:
+  Action:
+  Выполнить клик в кнопку "RUBK".
+
+  Expectation:
+  Происходит смена спана, и призум.
+  В области видимости маршрут на автомобиле с метками "А" - Киев, "B" - Минск. Основная маршрутная линия - фиолетовая. Альтернативная - серая. 
+
+Step:
+  Action:
+  Выполнить клик в кнопку "enterprise, cities".
+
+  Expectation:
+  Происходит смена спана, и отзум.
+  В области видимости маршрут на автомобиле с метками "А" - Лондон, "B" - Париж. Основная маршрутная линия - фиолетовая. Альтернативные - серые.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "enterprise, cities".
+
+  Expectation:
+  Происходит небольшое смещение спана.
+  В области видимости маршрут на автомобиле с метками "А", "B". Основная маршрутная линия - фиолетовая. Альтернативные - серые.
+-->
+<html>
+<head>
+<title>2.1</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+<script src="../../../helper.js"></script>
+<script type=text/javascript>
+
+Api("init", "", "", "", "", "", "enterprise.api-maps.tst.c.maps.yandex.ru");
+
+function init(ymaps) {
+    ym = ymaps;
+
+    // если несколько раз переключиться с маршрута на маршрут,
+    // карта начинает выставлять неправильные координаты
+
+    var events = ['requestcancel', 'requestfail', 'requestsend', 'requestsuccess'];
+    var callback = function (e) {
+        __log__(e.get('type'))
+    };
+    __log__('Проверить маршруты в энтерпрайз. Все маршруты должны строиться.');
+    var map = myMap = new ymaps.Map('map', {
+                center: [55.739625, 37.54120],
+                zoom: 7,
+                type: "yandex#map",
+                controls: [],
+                behaviors: ['default']
+            }, {
+                buttonMaxWidth: 99999,
+                backgroundVisible: false
+            }),
+            multiRoute1 = new ymaps.multiRouter.MultiRoute({
+                referencePoints: ["метро Киевская", "метро Охотный ряд", "метро Площадь Революции", "Москва, улица Льва Толстого"],
+                params: {
+                    viaIndexes: [1],
+                    routingMode: 'masstransit'
+                }
+            }, {
+                boundsAutoApply: true,
+                viaPointIconRadius: 10,
+                pinIconRadius: 5,
+                wayPointStartIconColor: "#80C257",
+                wayPointFinishIconColor: "#8470FF",
+                wayPointIconColor: "black",
+                routeStrokeWidth: 2,
+                routeActiveStrokeWidth: 6,
+                routeStrokeColor: "000088",
+                routeActiveStrokeColor: "#FF4500",
+                pinIconFillColor: "#BFEFFF",
+                viaPointIconFillColor: "#FFD39B",
+                transportMarkerIconColor: "#FFE4E1",
+                wayPointDraggable: true
+            }),
+            multiRoute2 = new ymaps.multiRouter.MultiRoute({
+                referencePoints: ["Москва, улица Лобачевского", "Москва, метро Академическая"]
+            }, {
+                boundsAutoApply: true,
+                preset: "islands#multiRouterBig",
+                routeStrokeWidth: 2,
+                routeActiveStrokeWidth: 4,
+                routeStrokeColor: "000088",
+                routeActiveStrokeColor: "ff0011",
+                wayPointDraggable: true
+            }),
+
+            multiRoute3 = new ymaps.multiRouter.MultiRoute({
+                referencePoints: ["питер, комендантский 30к1", "питер, пискареский пр 2к2"],
+                params: {
+                    routingMode: 'masstransit'
+                }
+            }, {
+                boundsAutoApply: false,
+                preset: "islands#multiRouterBig",
+                routeStrokeWidth: 2,
+                routeActiveStrokeWidth: 4,
+                routeStrokeColor: "000088",
+                routeActiveStrokeColor: "ff0011",
+                wayPointDraggable: true
+            }),
+
+            multiRoute4 = new ymaps.multiRouter.MultiRoute({
+                referencePoints: ["Москва", "Питер"]
+            }, {
+                boundsAutoApply: true,
+                wayPointDraggable: true
+            }),
+
+            multiRoute5 = new ymaps.multiRouter.MultiRoute({
+                referencePoints: ["Новгород", "Калининград"]
+            }, {
+                boundsAutoApply: true,
+                wayPointDraggable: true
+            }),
+
+            multiRoute6 = new ymaps.multiRouter.MultiRoute({
+                referencePoints: ["Киев", "Минск"]
+            }, {
+                boundsAutoApply: true,
+                wayPointDraggable: true
+            }),
+
+            multiRoute7 = new ymaps.multiRouter.MultiRoute({
+                referencePoints: ["Лондон", "Париж"]
+            }, {
+                boundsAutoApply: true,
+                wayPointDraggable: true
+            }),
+
+            multiRoute8 = new ymaps.multiRouter.MultiRoute({
+                referencePoints: [
+                    [51.3026, 0.0739],
+                    [48.5000, 2.2000]
+                ]
+            }, {
+                boundsAutoApply: true,
+                wayPointDraggable: true
+            }),
+
+            buttonRoute1 = new ymaps.control.Button("msc,mass"),
+            buttonRoute2 = new ymaps.control.Button("msc,auto"),
+            buttonRoute3 = new ymaps.control.Button("spb,mass"),
+            buttonRoute4 = new ymaps.control.Button("moscow,spb"),
+            buttonRoute5 = new ymaps.control.Button("kaliningrad"),
+            buttonRoute6 = new ymaps.control.Button("RUBK"),
+            buttonRoute7 = new ymaps.control.Button("enterprise,cities"),
+            buttonRoute8 = new ymaps.control.Button("enterprise,coords"),
+            buttonBounds = new ymaps.control.Button("bounds");
+
+    map.controls
+            .add(buttonBounds)
+            .add(buttonRoute8, {position: {right: 5, bottom: 35}})
+            .add(buttonRoute7, {position: {right: 5, bottom: 65}})
+            .add(buttonRoute6, {position: {right: 5, bottom: 95}})
+            .add(buttonRoute5, {position: {right: 5, bottom: 125}})
+            .add(buttonRoute4, {position: {right: 5, bottom: 155}})
+            .add(buttonRoute3, {position: {right: 5, bottom: 185}})
+            .add(buttonRoute2, {position: {right: 5, bottom: 215}})
+            .add(buttonRoute1, {position: {right: 5, bottom: 245}});
+
+    buttonRoute1.events.add('select', function () {
+        buttonRoute2.deselect();
+        buttonRoute3.deselect();
+        buttonRoute4.deselect();
+        buttonRoute5.deselect();
+        buttonRoute6.deselect();
+        buttonRoute7.deselect();
+        buttonRoute8.deselect();
+        myMap.geoObjects.add(multiRoute1);
+    });
+
+    buttonRoute2.events.add('select', function () {
+        buttonRoute1.deselect();
+        buttonRoute3.deselect();
+        buttonRoute4.deselect();
+        buttonRoute5.deselect();
+        buttonRoute6.deselect();
+        buttonRoute7.deselect();
+        buttonRoute8.deselect();
+        myMap.geoObjects.add(multiRoute2);
+    });
+
+    buttonRoute3.events.add('select', function () {
+        buttonRoute1.deselect();
+        buttonRoute2.deselect();
+        buttonRoute4.deselect();
+        buttonRoute5.deselect();
+        buttonRoute6.deselect();
+        buttonRoute7.deselect();
+        buttonRoute8.deselect();
+        myMap.geoObjects.add(multiRoute3);
+    });
+
+    buttonRoute4.events.add('select', function () {
+        buttonRoute1.deselect();
+        buttonRoute2.deselect();
+        buttonRoute3.deselect();
+        buttonRoute5.deselect();
+        buttonRoute6.deselect();
+        buttonRoute7.deselect();
+        buttonRoute8.deselect();
+        myMap.geoObjects.add(multiRoute4);
+    });
+
+    buttonRoute5.events.add('select', function () {
+        buttonRoute1.deselect();
+        buttonRoute2.deselect();
+        buttonRoute3.deselect();
+        buttonRoute4.deselect();
+        buttonRoute6.deselect();
+        buttonRoute7.deselect();
+        buttonRoute8.deselect();
+        myMap.geoObjects.add(multiRoute5);
+    });
+
+    buttonRoute6.events.add('select', function () {
+        buttonRoute1.deselect();
+        buttonRoute2.deselect();
+        buttonRoute3.deselect();
+        buttonRoute4.deselect();
+        buttonRoute5.deselect();
+        buttonRoute7.deselect();
+        buttonRoute8.deselect();
+        myMap.geoObjects.add(multiRoute6);
+    });
+
+    buttonRoute7.events.add('select', function () {
+        buttonRoute1.deselect();
+        buttonRoute2.deselect();
+        buttonRoute3.deselect();
+        buttonRoute5.deselect();
+        buttonRoute6.deselect();
+        buttonRoute4.deselect();
+        buttonRoute8.deselect();
+        myMap.geoObjects.add(multiRoute7);
+    });
+
+    buttonRoute8.events.add('select', function () {
+        buttonRoute1.deselect();
+        buttonRoute2.deselect();
+        buttonRoute3.deselect();
+        buttonRoute5.deselect();
+        buttonRoute6.deselect();
+        buttonRoute7.deselect();
+        buttonRoute4.deselect();
+        myMap.geoObjects.add(multiRoute8);
+    });
+
+    buttonRoute1.events.add('deselect', function () {
+        map.geoObjects.remove(multiRoute1)
+    });
+    buttonRoute2.events.add('deselect', function () {
+        map.geoObjects.remove(multiRoute2)
+    });
+    buttonRoute3.events.add('deselect', function () {
+        map.geoObjects.remove(multiRoute3)
+    });
+    buttonRoute4.events.add('deselect', function () {
+        map.geoObjects.remove(multiRoute4)
+    });
+    buttonRoute5.events.add('deselect', function () {
+        map.geoObjects.remove(multiRoute5)
+    });
+    buttonRoute6.events.add('deselect', function () {
+        map.geoObjects.remove(multiRoute6)
+    });
+    buttonRoute7.events.add('deselect', function () {
+        map.geoObjects.remove(multiRoute7)
+    });
+    buttonRoute8.events.add('deselect', function () {
+        map.geoObjects.remove(multiRoute8)
+    });
+
+    addGrid(map);
+    var log = new Log();
+
+    multiRoute1.model.events.add(events, callback);
+    multiRoute2.model.events.add(events, callback);
+    multiRoute3.model.events.add(events, callback);
+    multiRoute4.model.events.add(events, callback);
+    multiRoute5.model.events.add(events, callback);
+    multiRoute6.model.events.add(events, callback);
+    multiRoute7.model.events.add(events, callback);
+    multiRoute8.model.events.add(events, callback);
+}
+</script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

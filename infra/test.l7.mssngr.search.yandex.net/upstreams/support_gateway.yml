@@ -1,0 +1,83 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - manokk
+      groups:
+      - svc_mssngrbackend_administration
+labels:
+  order: '10000000'
+---
+regexp_section:
+    matcher:
+        match_or:
+            - match_and:
+                - match_or:
+                    - match_fsm:
+                        host: 'api.messenger.test.yandex.(com|ru|net)'
+                    - match_fsm:
+                        host: 'api.messenger.test.yandex-team.ru:443'
+                    - match_fsm:
+                        host: 'api.messenger.test.yandex.(com|ru|net):443'
+                    - match_fsm:
+                        host: '(.*\\.)?yandex\\.(ru|com\\.tr|kz|ua|by|az|com\\.am|com\\.ge|co\\.il|kg|lt|lv|md|tj|tm|uz|fr|ee|com)'
+                    - match_fsm:
+                        host: '(.*\\.)?yandex\\.(ru|com\\.tr|kz|ua|by|az|com\\.am|com\\.ge|co\\.il|kg|lt|lv|md|tj|tm|uz|fr|ee|com):443'
+            - match_or:
+                - match_fsm:
+                    uri: '/support/api/(fanout|service)'
+                - match_fsm:
+                    uri: '/messenger/api/testing/registry/(support)(/.*)?'
+    modules:
+        - rewrite:
+            actions:
+                - regexp: '/support/api/(.*)'
+                  rewrite: '/api/%1'
+                - regexp: '/messenger/api/testing/registry/(.*)?'
+                  rewrite: '/api/client'
+        - report: {ranges: default, uuid: support_gateway}
+        - threshold:
+            lo_bytes: 307200
+            hi_bytes: 716800
+            pass_timeout: 10s
+            recv_timeout: 1s
+        - shared:
+            uuid: support_gateway
+        - stats_eater: {}
+        - hasher:
+            mode: subnet
+            subnet_v4_mask: 32
+            subnet_v6_mask: 128
+        - balancer2:
+            attempts: 2
+            rendezvous_hashing: {weights_file: ./controls/traffic_control.weights}
+            backends:
+                - weight: 1
+                  name: supportgateway_sas
+                  modules:
+                    - report: {ranges: default, uuid: support_gateway_requests_to_sas}
+                    - balancer2:
+                        attempts: 2
+                        connection_attempts: 5
+                        attempts_rate_limiter:
+                            limit: 0.2 
+                        rendezvous_hashing:
+                            delay: '5s'
+                            request: 'GET /admin?action=ping&from=slb HTTP/1.1\r\nHost: test.l7.mssngr.search.yandex.net\r\n\r\n'
+                        generated_proxy_backends:
+                            proxy_options:
+                                backend_timeout: 3000ms
+                                connect_timeout: 50ms
+                                keepalive_count: 5
+                                keepalive_timeout: "60s"
+                                status_code_blacklist_exceptions: ["503"]
+                            include_backends:
+                                type: BY_ID
+                                ids: [support_gateway_sas]
+                - weight: -1
+                  name: supportgateway_devnull
+                  modules:
+                    - report: {ranges: default, uuid: support_gateway_requests_to_devnull}
+                    - errordocument:
+                        status: 200
+        

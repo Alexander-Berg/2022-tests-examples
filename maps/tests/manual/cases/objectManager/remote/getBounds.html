@@ -1,0 +1,135 @@
+<!DOCTYPE HTML>
+<!--(skip)(description)
+-->
+<!--(version)
+-->
+<!--(commands)
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.716901946294286, 37.30336807048247],
+                zoom: 6,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            }, {
+                buttonMaxWidth: 9999,
+                avoidFractionalZoom: false
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+
+            log.info('Server: apps/remoteNonPointObjects.js, port: 4781');
+            //log.info('Server: apps/remoteServerOnlyNonPointObjects.js, port: 4790');
+            log.info('Test case: clusterize true/false');
+            var remoteObjectManager = new ymaps.RemoteObjectManager('https://alexa.maps.dev.yandex.ru:4781/?bbox=%b', {
+                paddingTemplate: 'managerResponse_bbox_%b',
+                splitRequests: true
+            });
+            map.geoObjects.add(remoteObjectManager);
+
+            var placemark6 = new ymaps.GeoObject({
+                geometry: { type: "Point", coordinates: [55.711, 37.297] },
+                properties: {
+                    clusterCaption: 'Геообъект №6',
+                    balloonContentBody: 'Содержимое балуна геообъекта №6.'
+                }
+            });
+            var placemark7 = new ymaps.GeoObject({
+                geometry: { type: "Point", coordinates: [55.716, 37.302] },
+                properties: {
+                    clusterCaption: 'Геообъект №7',
+                    balloonContentBody: 'Содержимое балуна геообъекта №7.'
+                }
+            });
+
+            var setButton = new ymaps.control.Button({data: {content: 'get OM bounds'}, options: {selectOnClick: false}});
+            var removeButton = new ymaps.control.Button({data: {content: 'remove all from OM'}, options: {selectOnClick: false}});
+            var geoobjectsButton = new ymaps.control.Button('add geoobjects to map');
+            var getBoundsButton = new ymaps.control.Button('get map.geoObjects bounds');
+            var clearBoundsButton = new ymaps.control.Button('clear bounds');
+            var checkObjectButton = new ymaps.control.Button('check');
+
+            setButton.events.add('click', function () {
+                __log__(remoteObjectManager.getBounds());
+                //map.setBounds(remoteObjectManager.getBounds());
+            });
+
+            removeButton.events.add('click', function () {
+                remoteObjectManager.objects.removeAll();
+            });
+
+            geoobjectsButton.events
+                    .add('select', function () {
+                        map.geoObjects.add(placemark6);
+                        map.geoObjects.add(placemark7);
+                    })
+                    .add('deselect', function () {
+                        map.geoObjects.remove(placemark6);
+                        map.geoObjects.remove(placemark7);
+                    });
+
+            getBoundsButton.events.add('click', function () {
+                coords = map.geoObjects.getBounds();
+                __log__(coords);
+                bounds = new ymaps.Rectangle(coords, {}, {fillOpacity: 0.5, strokeWidth: 3});
+                //map.geoObjects.add(bounds);
+                //map.setBounds(map.geoObjects.getBounds());
+            });
+
+            clearBoundsButton.events.add('click', function () {
+                map.geoObjects.remove(bounds);
+            });
+            checkObjectButton.events
+                    .add('click', function () {
+                        __log__("Координаты точек в ОM");
+                        remoteObjectManager.objects.each(function (obj) {
+                                    __log__(obj.geometry.coordinates);
+                                }
+                        );
+                        __log__("getBounds OM");
+                        validateValue(remoteObjectManager.getBounds(), "50.07099322742353,30.080526550300416,56.334191733032974,43.46557858865705");
+                        __log__("getBounds карты");
+                        var placemarks = [];
+                        var count = 0;
+                        remoteObjectManager.objects.each(function (obj) {
+                                    placemarks[count++] = new ymaps.Placemark(obj.geometry.coordinates);
+                                }
+                        );
+                        for (var i = 0; i < placemarks.length; i++) {
+                            map.geoObjects.add(placemarks[i]);
+                        }
+                        validateValue(map.geoObjects.getBounds(), "50.07099322742353,30.080526550300416,56.334191733032974,43.46557858865705");
+
+                        for (var i = 0; i < placemarks.length; i++) {
+                            map.geoObjects.remove(placemarks[i]);
+                        }
+                    });
+
+            map.controls
+                    .add(setButton, {position: {top: 5, left: 5}})
+                    .add(removeButton, {position: {top: 35, left: 5}})
+                    .add(geoobjectsButton, {position: {top: 125, left: 5}})
+                    .add(getBoundsButton, {position: {top: 95, left: 5}})
+                    .add(clearBoundsButton, {position: {top: 65, left: 5}})
+                    .add(checkObjectButton, {position: {top: 155, left: 5}})
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

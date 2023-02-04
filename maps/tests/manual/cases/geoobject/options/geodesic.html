@@ -1,0 +1,126 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Геообъект: включение опции отображения в форме геодезических кривых
+
+Description:
+Проверка опции отображения в форме геодезических кривых.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+geoobject
+
+Estimated time:
+90000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+  
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан карты мира, на спане два ряда объектов: две синие метки, линия, многоугольник, прямоугольник, круг(верхний ряд фигур зеленого цвета, кроме метки, нижний - синего), за фигурами вертикальная синия линия по всей высоте контейнера с картой.
+  Сверху имеется кнопка "geodesic".
+  Под контейнером с картой блок логов "default value:" и 10 строк значений "undefined".
+  
+Step:
+  Action:
+  Выполнить клик в кнопку "geodesic".  
+
+  Expectation:
+  Меняется отображение фигур: линии, многоугольника, прямоугольника, круга. Линии на фигурах становятся выпуклыми.
+  Под контейнером с картой появляется блок "geodesic" и 10 строк "true".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "geodesic".  
+
+  Expectation:
+  Отображение объектов возвращается в первоначальный вид(линии объектов прямые).
+  Под контейнером с картой появляется блок "geodesic" и 10 строк "false".
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script src="../largeGeoCS.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym; // hack
+
+            var map = myMap = new ym.Map('map', {
+                center: [45.49164319665052, 71.83328440350243],
+                zoom: 1,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            largeGeoSource(ym, myMap, this);
+            addGrid(myMap);
+            var log = new Log();
+
+            var line = new ymaps.Polyline([
+                [90, 180],
+                [-90, 180]
+            ]);
+            myMap.geoObjects.add(line);
+
+            var collection = new ymaps.GeoObjectCollection();
+            collection
+                    .add(geoObjectPlacemark)
+                    .add(geoObjectPolyline)
+                    .add(geoObjectPolygon)
+                    .add(geoObjectRectangle)
+                    .add(geoObjectCircle)
+                    .add(placemark)
+                    .add(polyline)
+                    .add(polygon)
+                    .add(rectangle)
+                    .add(circle);
+
+            collection.each(function (obj) {
+                obj.options.set('draggable', true);
+            });
+
+            var geodesicButton = new ymaps.control.Button({data: {content: 'geodesic'}}, {selectOnClick: true});
+            geodesicButton.events
+                    .add('select', function () {
+                        log.info('');
+                        log.info('geodesic');
+                        collection.each(function (obj) {
+                            obj.options.set('geodesic', true);
+                            log.info(obj.options.get('geodesic'));
+                        });
+                    })
+                    .add('deselect', function () {
+                        log.info('');
+                        log.info('geodesic');
+                        collection.each(function (obj) {
+                            obj.options.set('geodesic', false);
+                            log.info(obj.options.get('geodesic'));
+                        });
+                    });
+
+            myMap.geoObjects.add(collection);
+
+            log.info('default value: ');
+            collection.each(function (obj) {
+                log.info(obj.options.get('geodesic'));
+            });
+
+            myMap.controls.add(geodesicButton);
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

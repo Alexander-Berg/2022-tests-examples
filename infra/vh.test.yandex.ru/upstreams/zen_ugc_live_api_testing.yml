@@ -1,0 +1,43 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - arbaks
+      groups: []
+labels:
+  order: '10000000'
+config_mode: easy2
+---
+l7_upstream_macro:
+  version: 0.2.1
+  id: zen_ugc_live_api_testing
+  matcher:
+    path_re: '/zenlive/(.*)?'
+  rewrite:
+    - target: PATH
+      pattern:
+        re: '/zenlive/(.*)'
+      replacement: '/%1'
+  headers:
+    - create: {target: X-Forwarded-For, func: realip, keep_existing: false}
+    - create: {target: X-Forwarded-Proto, func: scheme, keep_existing: false}
+    - create: {target: X-Forwarded-Host, func: host, keep_existing: false}
+    - create: {target: X-Req-Id, func: reqid, keep_existing: true}
+  flat_scheme:
+    balancer:
+      backend_timeout: 60s
+      connect_timeout: 1s
+      attempts: 3
+      retry_http_responses:
+        codes: [5xx]
+      retry_non_idempotent: true
+      max_reattempts_share: 0.34
+      max_pessimized_endpoints_share: 0.34
+      health_check:
+        delay: '10s'
+        request: 'GET /ping HTTP/1.1\nHost: api.vh.test.yandex.net\n\n'
+    backend_ids: [zen_ugc_live_api_testing]
+    on_error:
+      static:
+        status: 504
+        content: 'Service unavailable'

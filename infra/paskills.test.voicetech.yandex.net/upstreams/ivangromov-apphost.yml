@@ -1,0 +1,56 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - ivangromov
+      groups: []
+labels:
+  order: '10000000'
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      path: '/ivangromov-apphost/.*'
+  modules:
+    - report: {ranges: default, uuid: ivangromov-apphost}
+    - headers:
+        create_func_weak:
+            X-Real-Ip: realip
+            X-Forwarded-For-Y: realip
+            X-Request-Id: reqid
+        create:
+            X-Yandex-Internal-Request: '1'
+        create_func:
+            X-Yandex-Host: host
+            X-Yandex-Url: url
+            X-Yandex-Scheme: scheme
+        append_func:
+            X-Forwarded-For: realip
+    - rewrite:
+        actions:
+          - regexp: '/ivangromov-apphost/(.*)'
+            rewrite: '/%1'
+    - balancer2:
+        rr: {}
+        attempts: 1
+        fast_attempts: 3
+        attempts_rate_limiter:
+          limit: 0.3
+        fast_503: true
+        return_last_5xx: true
+        status_code_blacklist:
+          - "5xx"
+        generated_proxy_backends:
+          proxy_options:
+            connect_timeout: 100ms
+            backend_timeout: 10s
+            fail_on_5xx: false
+          include_backends:
+            type: BY_ID
+            ids: [ivangromov-apphost]
+        on_error:
+          modules:
+            - errordocument:
+                status: 504
+                content: '504: Service Unavailable'
+            

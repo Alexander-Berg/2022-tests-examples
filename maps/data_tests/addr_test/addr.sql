@@ -1,0 +1,10 @@
+INSERT INTO {addr_out} (addr_id, isocode, disp_class, name, name_lo, tags, geom) VALUES
+(1, 'RU', 5, NULL, NULL, ['admin', 'address'], Spatial::GeomFromText('POINT (100 100)', 3395)),
+(2, 'RU', 5, NULL, NULL, ['admin', 'address'], Spatial::GeomFromText('POINT (250 250)', 3395)),
+(3, 'RU', 5, NULL, NULL, ['admin', 'address'], Spatial::GeomFromText('POINT (28.75 71.25)', 3395)),
+(4, 'RU', 5, NULL, NULL, ['admin', 'address'], Spatial::GeomFromText('POINT (500 500)', 3395)),
+(5, 'RU', 5, NULL, NULL, ['admin', 'address'], Spatial::GeomFromText('POINT (676.416 676.416)', 3395)),
+(6, 'RU', 5, NULL, NULL, ['admin', 'address'], Spatial::GeomFromText('POINT (900 900)', 3395)),
+(7, 'RU', 5, NULL, NULL, ['admin', 'address'], Spatial::GeomFromText('POINT (1025.39 1025.39)', 3395)),
+(8, 'RU', 5, NULL, NULL, ['admin', 'address'], Spatial::GeomFromText('POINT (2200 2200)', 3395)),
+(8, 'RU', 5, NULL, NULL, ['admin', 'address'], Spatial::GeomFromText('POINT (2600 2600)', 3395));

@@ -1,0 +1,38 @@
+---
+
+- hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    host: vertis-mdb-kafka-test
+    host_tags:
+      - vertis_sre
+      - vertis_sre_test
+
+  pre_tasks:
+    - juggler_facts: jserver_api={{ jserver_api }}
+
+  post_tasks:
+    - juggler_cleanup: jcheck_mark={{ host }}
+
+  tasks:
+    - name: 'Add unispace check'
+      juggler_check:
+      args: >
+        {{ mdb_check |
+        combine({'children': [{'host': 'tag=vertis_sre & tag=vertis_mdb & tag=vertis_kafka_test & service=vertis-mdb-kafka-unispace', 'service': 'all', 'type': 'EVENTS', 'instance': 'all'}]}, recursive=True) |
+        combine(crit_disabled, {'service': 'vertis-mdb-kafka-unispace'}, recursive=True) }}
+
+    - name: 'Add alive check'
+      juggler_check:
+      args: >
+        {{ mdb_check |
+        combine({'children': [{'host': 'tag=vertis_sre & tag=vertis_mdb & tag=vertis_kafka_test & service=vertis-mdb-kafka-alive', 'service': 'all', 'type': 'EVENTS', 'instance': 'all'}]}, recursive=True) |
+        combine(crit_disabled, {'service': 'vertis-mdb-kafka-alive'}, recursive=True) }}
+
+    - name: 'Add underreplicated partitions check'
+      juggler_check:
+      args: >
+        {{ mdb_check |
+        combine({'children': [{'host': 'tag=vertis_sre & tag=vertis_mdb & tag=vertis_kafka_test & service=vertis-mdb-kafka-underreplicated-partitions', 'service': 'all', 'type': 'EVENTS', 'instance': 'all'}]}, recursive=True) |
+        combine(crit_disabled, {'service': 'vertis-mdb-kafka-underreplicated-partitions'}, recursive=True) }}

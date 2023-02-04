@@ -1,0 +1,119 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Хинт: опция сдвига позиции хинта - выхода за границы контейнера
+
+Description:
+Проверка опции, заставляющий инфо-объекта сдвигать свою позицию, чтобы не выходить за границы контейнера.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+hint
+
+Estimated time:
+90000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+  
+  Expectation:
+  Карта отобразилась корректно. 
+  На карте спан Европейской части России, сверху слева кнопки "outerHint", "!fitPane".
+  Справа на спане карты метка коллекции, чуть ниже открыт хинт "hint".    
+
+Step:
+  Action:
+  Выполнить клик в кнопку "!fitPane".
+  
+  Expectation:
+  Хинт меняет позицию за пределы контейнера с кратой, часть хинта не видна. 
+
+Step:
+  Action:
+  Выполнить клик в кнопку "outerHint".
+  
+  Expectation:
+  Хинт полностью отображен, при этом он находится за пределами контейнера с картой. 
+
+Step:
+  Action:
+  Выполнить клик в кнопку "outerHint".
+  
+  Expectation:
+  Часть хинта находящаяся за пределами контейнера с картой становится не видна. 
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var myMap = new ym.Map('map', {
+                center: [54.979783826514364, 36.905019925608016],
+                zoom: 4,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+
+            var hint,
+                    pos = [52.43078332124603, 57.27067718505638],
+                    contentLayout = ymaps.templateLayoutFactory.createClass('$[hintContent]<span id="tst">$[a]$[x]</span>'),
+                    data = { a: 'hint' },
+                    options = { contentLayout: contentLayout, pane: 'hint', fitPane: true};
+            window.hint = hint = new ymaps.Hint(myMap);
+            hint.options.set(options).setParent(myMap.options);
+
+            hint.setData(data);
+            hint.open(pos);
+
+            var myPoint = new ym.Placemark(pos, {}, {});
+            myMap.geoObjects.add(myPoint);
+
+            var hintButton = new ymaps.control.Button({data: {content: '!fitPane'}, options: {selectOnClick: true}});
+            hintButton.events
+                    .add('select', function () {
+                        hint.close().then(function () {
+                            hint.options.set('fitPane', false);
+                            hint.open(pos);
+                        });
+
+                    })
+                    .add('deselect', function () {
+                        hint.close().then(function () {
+                            hint.options.set('fitPane', true);
+                            hint.open(pos);
+                        });
+
+                    });
+            myMap.controls.add(hintButton);
+
+            var paneButton = new ymaps.control.Button({data: {content: 'outerHint'}, options: {selectOnClick: true}});
+            paneButton.events
+                    .add('select', function () {
+                        hint.options.set('pane', 'outerHint');
+                    })
+                    .add('deselect', function () {
+                        hint.options.set('pane', 'hint');
+                    });
+            myMap.controls.add(paneButton)
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

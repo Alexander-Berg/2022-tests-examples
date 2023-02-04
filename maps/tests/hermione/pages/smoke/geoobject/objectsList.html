@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <script src="../../../helper.js"></script>
+    <script src="../../../img/1.6.4-jquery.js" type="text/javascript"></script>
+    <script src="https://sandbox.api.maps.yandex.net/examples/ru/2.1/object_list/groups.js"
+            type="text/javascript"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+
+            // Создание экземпляра карты.
+            var myMap = new ymaps.Map('map', {
+                center: [50.443705, 30.530946],
+                zoom: 14
+            }, {
+                searchControlProvider: 'yandex#search'
+            });
+            // Контейнер для меню.
+            var menu = $('<ul class="menu"></ul>');
+
+            for (var i = 0, l = groups.length; i < l; i++) {
+                createMenuGroup(groups[i]);
+            }
+
+            function createMenuGroup(group) {
+                // Пункт меню.
+                var menuItem = $('<li><a href="#" id="' + group.name.replace(/\s/g, '') + '">' + group.name + '</a></li>');
+                // Коллекция для геообъектов группы.
+                var collection = new ymaps.GeoObjectCollection(null, {preset: group.style});
+                // Контейнер для подменю.
+                var submenu = $('<ul class="submenu"></ul>');
+
+                // Добавляем коллекцию на карту.
+                myMap.geoObjects.add(collection);
+
+                // Добавляем подменю.
+                menuItem
+                    .append(submenu)
+                    // Добавляем пункт в меню.
+                    .appendTo(menu)
+                    // По клику удаляем/добавляем коллекцию на карту и скрываем/отображаем подменю.
+                    .find('a')
+                    .toggle(function () {
+                        myMap.geoObjects.remove(collection);
+                        submenu.hide();
+                    }, function () {
+                        myMap.geoObjects.add(collection);
+                        submenu.show();
+                    });
+                for (var j = 0, m = group.items.length; j < m; j++) {
+                    createSubMenu(group.items[j], collection, submenu);
+                }
+            }
+
+            function createSubMenu(item, collection, submenu) {
+                // Пункт подменю.
+                var submenuItem = $('<li><a href="#" id="' + item.name.replace(/\s/g, '') + '">' + item.name + '</a></li>');
+                // Создаем метку.
+                var placemark = new ymaps.Placemark(item.center, {balloonContent: item.name});
+
+                // Добавляем метку в коллекцию.
+                collection.add(placemark);
+                // Добавляем пункт в подменю.
+                submenuItem
+                    .appendTo(submenu)
+                    // При клике по пункту подменю открываем/закрываем баллун у метки.
+                    .find('a')
+                    .toggle(function () {
+                        placemark.balloon.open();
+                    }, function () {
+                        placemark.balloon.close();
+                    });
+            }
+
+            // Добавляем меню в тэг BODY.
+            menu.appendTo($('body'));
+            // Выставляем масштаб карты чтобы были видны все группы.
+            myMap.setBounds(myMap.geoObjects.getBounds());
+
+            link(myMap);
+        }
+    </script>
+</head>
+<body>
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

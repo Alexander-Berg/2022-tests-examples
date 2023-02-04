@@ -1,0 +1,137 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Мультимаршрут: смена активного маршрута на спане карты
+
+Description:
+Проверка смены активного маршрута на спане карты. 
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+multiRouter
+
+Estimated time:
+120000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  При загрузке первоначально загружается карта со спаном Москвы, затем спан меняется на спан Санкт-Петербурга с мультимаршрутом из 2 точек(A,B), имеется альтернативная нитка.
+  В контейнере контрол фулскрин, сверху кнопка "setActive", снизу слева кнопка "mode". 
+
+Step:
+  Action:
+  Выполнить клик в кнопку "setActive".
+
+  Expectation:
+  Происходит смена активного маршрута, альтернативная нитка становится основной. 
+  Под контейнером с картой появляется строка: "activeroutechange". 
+
+Step:
+  Action:
+  Выполнить клик в кнопку "mode".
+
+  Expectation:
+  Происходит смена режима маршрута на режим общественного транспорта, появляются метки общественного траснпорта, маршрут может перестроится, могут появится дополнительные альтернативные линии. 
+  Под контейнером с картой появляются множество строк: "overlaychange". 
+
+Step:
+  Action:
+  Выполнить два клика в кнопку "setActive".
+
+  Expectation:
+  Происходит смена активного маршрута, альтернативная нитка становится основной, могут появится новые метки общественного транспорта. 
+  Под контейнером с картой появляется строка: "activeroutechange". 
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            //TODO: написать тест
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 10,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            addGrid(map);
+            var log = new Log();
+
+            __log__('setActiveRoute method');
+
+            var events = ['activeroutechange', 'boundsautoapply', 'geometrychange', 'mapchange', 'optionschange',
+                'overlaychange', 'parentchange', 'propertieschange'];
+            var domevents = ['click', 'contextmenu', 'dblclick', 'mousedown', 'mouseenter', 'mouseleave', 'mouseup', 'multitouchend',
+                'multitouchstart', 'wheel'];
+
+            var callback = function(e) {
+                log.info(e.get('type'))
+            };
+
+            var multiRoute = new ymaps.multiRouter.MultiRoute({
+                referencePoints: ['питер, ольховая 22', 'пискаревский 2к2']
+            }, {
+                editorDrawOver: false,
+                wayPointDraggable: true,
+                viaPointDraggable: true,
+                boundsAutoApply: true,
+                zoomMargin: 30,
+                preset: "islands#multiRouterBig"
+            });
+
+            map.geoObjects.add(multiRoute);
+            multiRoute.events.add(events, callback);
+
+            var clearButton = new ymaps.control.Button('clear');
+            var setActiveButton = new ymaps.control.Button('setActive');
+            var routesCollection;
+            setActiveButton.events.add('select', function () {
+                multiRoute.setActiveRoute(multiRoute.getRoutes().get(1));
+
+            })
+                    .add('deselect', function () {
+                        multiRoute.setActiveRoute(multiRoute.getRoutes().get(0));
+
+            });
+
+            clearButton.events.add('click', function() {
+                log.clear();
+            });
+
+            map.controls
+                    .add(setActiveButton)
+                    .add(clearButton, {float: 'none', position: {right: 10, bottom: 35}});
+
+            var modeButton = new ymaps.control.Button('mode');
+            modeButton.events
+                    .add('select', function () {
+                        multiRoute.model.setParams({routingMode: 'masstransit'}, true);
+                    })
+                    .add('deselect', function () {
+                        multiRoute.model.setParams({routingMode: 'auto'}, true);
+                    });
+            map.controls.add(modeButton, {position: {bottom: 35, left: 5}});
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

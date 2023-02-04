@@ -1,0 +1,82 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - robot-tap
+      groups: []
+labels:
+  order: '1000'
+---
+regexp_section:
+  matcher:
+    match_and:
+      - match_fsm:
+          host: checkout-test-service\\.tap-tst\\.yandex\\.ru
+      - match_fsm:
+          path: /ws.*
+  modules:
+    - report:
+        uuid: 'services'
+        ranges: 'default'
+    - report:
+        uuid: 'checkout-test-service-total'
+        ranges: 'default'
+    - report:
+        uuid: 'checkout-test-service'
+        ranges: 'default'
+    - response_headers:
+        create:
+          X-Frame-Options: DENY
+          X-Content-Type-Options: nosniff
+          X-XSS-Protection: 1; mode=block
+          Access-Control-Allow-Origin: '*'
+          Access-Control-Allow-Methods: GET, OPTIONS
+          Access-Control-Max-Age: '86400'
+    - balancer2:
+        attempts: !f count_backends()
+        rr: {weights_file: ./controls/traffic_control.weights}
+        backends:
+          - weight: 1
+            name: checkouttestservice_vla
+            modules:
+              - balancer2:
+                  attempts: 5
+                  connection_attempts: 5
+                  retry_non_idempotent: false
+                  attempts_rate_limiter:
+                    limit: 0.1
+                  weighted2: {}
+                  generated_proxy_backends:
+                    proxy_options:
+                      backend_timeout: 2s
+                      connect_timeout: 100ms
+                      keepalive_count: 3
+                      fail_on_5xx: false
+                      allow_connection_upgrade: true
+                    include_backends:
+                      type: BY_ID
+                      ids: [tap_checkout_test_service_vla]
+          - weight: 1
+            name: checkouttestservice_sas
+            modules:
+              - balancer2:
+                  attempts: 5
+                  connection_attempts: 5
+                  retry_non_idempotent: false
+                  attempts_rate_limiter:
+                    limit: 0.1
+                  weighted2: {}
+                  generated_proxy_backends:
+                    proxy_options:
+                      backend_timeout: 2s
+                      connect_timeout: 100ms
+                      keepalive_count: 3
+                      fail_on_5xx: false
+                      allow_connection_upgrade: true
+                    include_backends:
+                      type: BY_ID
+                      ids: [tap_checkout_test_service_sas]
+        on_error:
+          errordocument:
+            status: 503
+            content: 'Service unavailable'

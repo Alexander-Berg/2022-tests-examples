@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<!--
+Title:
+Геокод: геокодирование станций метро
+
+Description:
+Проверка геокодирования станций метро.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+regress
+
+Estimated time:
+60000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно, со спаном Нижнего Новгорода.
+  На карте отображаются метки с иконкой стнаций метро.
+ 
+Step:
+  Action:
+  Выполнить клик в 5 меток на спане карты.
+
+  Expectation:
+  По клику метка пропадает, на ее месте открывается балун с данными вида: "метро Бурнаковская; Россия, Нижний Новгород, Сормовско-Мещерская линия".
+  При открытии балуна спан карты может смещаться, для полного отображения балуна.
+-->
+<html>
+<head>
+    <title>API 2.0</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <script src="../helper.js"></script>
+    <script type=text/javascript>
+        Api('init');
+        function init(ymaps) {
+            ymaps.geocode('Нижний Новгород', { results: 1 }).then(function (res) {
+                var firstGeoObject = res.geoObjects.get(0),
+                        map = myMap = new ymaps.Map("map", {
+                            center: firstGeoObject.geometry.getCoordinates(),
+                            zoom: 11
+                        });
+                myMap.container.fitToViewport();
+                attachReverseGeocode(map);
+                
+                
+                ymaps.geocode(myMap.getCenter(), {
+                    kind: 'metro',
+                    boundedBy: myMap.getBounds(),
+                    results: 20
+                }).then(function (res) {
+                    res.geoObjects.options.set('preset', 'twirl#metroMoscowIcon');
+                    myMap.geoObjects.add(res.geoObjects);
+                });
+            }, function (err) {
+                alert(err.message);
+            });
+            function attachReverseGeocode(myMap) {
+                myMap.events.add('click', function (e) {
+                    var coords = e.get('coordPosition');
+                    ymaps.geocode(coords).then(function (res) {
+                        var names = [];
+                        res.geoObjects.each(function (obj) {
+                            names.push(obj.properties.get('name'));
+                        });
+                        myMap.geoObjects.add(new ymaps.Placemark(coords, {
+                            iconContent: names[0],
+                            balloonContent: names.reverse().join(', ')
+                        }, {
+                            preset: 'twirl#redStretchyIcon',
+                            balloonMaxWidth: '250'
+                        }));
+                    });
+                });
+            }
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+<p><a href="https://tech.yandex.ru/maps/archive/doc/jsapi/2.0/ref/reference/geocode-docpage/" target="_blank">Docs</a></p>
+</body>
+</html>

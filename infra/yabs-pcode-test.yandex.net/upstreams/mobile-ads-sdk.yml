@@ -1,0 +1,134 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - dridgerve
+      groups: []
+labels:
+  order: 09999997
+---
+regexp_section:
+  matcher:
+    match_or:
+      - match_fsm:
+          host: 'mobile-ads-beta\\.yandex\\.ru.*'
+      - match_fsm:
+          host: 'test\\.mobile-ads-beta\\.yandex\\.ru.*'
+  modules:
+    - regexp:
+        sections:
+          mobile_ads_router:
+            matcher:
+              match_fsm:
+                url: '/+v\\d/+.*'
+            modules:
+              - report: {ranges: default, uuid: mobile_ads_router}
+              - shared:
+                  uuid: backends_mobile_ads
+              - rewrite:
+                  actions:
+                    - regexp: '/+v(\\d)/+(.*)'
+                      rewrite: '/v%1/%2'
+                    - regexp: '.*con=dev(\\d).*'
+                      rewrite: '%{url}&srcrwr=PCODE__SDK_SERVICE:PCODE__SDK_SERVICE_DEV%1'
+              - headers:
+                  create_weak:
+                    X-Forwarded-Proto: https
+                    pcode-request: 'true'
+                    X-Yandex-Internal-Request: '1'
+                  create_func_weak:
+                    X-Forwarded-For: realip
+                    X-Real-IP: realip
+              - hdrcgi:
+                  body_scan_limit: 1048576
+                  hdr_from_cgi:
+                    X-Nanpu-Uuid: uuid
+              - hdrcgi:
+                  cgi_from_hdr:
+                    uuid: X-Nanpu-Uuid
+              - exp_getter_macro:
+                  service_name: nanpu
+                  trusted: true
+                  testing_mode: {}
+                  _version: 3
+              - balancer2:
+                  connection_attempts: 2
+                  attempts: 2
+                  attempts_rate_limiter:
+                    limit: 0.15
+                    max_budget: 45
+                  rr:
+                    weights_file: ./controls/traffic_control.weights
+                  return_last_5xx: true
+                  status_code_blacklist: ["503"]
+                  backends:
+                    - weight: 1
+                      name: pcode_man
+                      modules:
+                        - report: {ranges: default, uuid: request_to_man_mobile_sdk}
+                        - balancer2:
+                            attempts: 1
+                            dynamic:
+                              max_pessimized_share: 0.2
+                            generated_proxy_backends:
+                              proxy_options:
+                                backend_timeout: 5s
+                                connect_timeout: 70ms
+                                keepalive_count: 1
+                                fail_on_5xx: false
+                              include_backends:
+                                type: BY_ID
+                                ids: [testing_man]
+                    - weight: 1
+                      name: pcode_myt
+                      modules:
+                        - report: {ranges: default, uuid: request_to_myt_mobile_sdk}
+                        - balancer2:
+                            attempts: 1
+                            dynamic:
+                              max_pessimized_share: 0.2
+                            generated_proxy_backends:
+                              proxy_options:
+                                backend_timeout: 5s
+                                connect_timeout: 70ms
+                                keepalive_count: 1
+                                fail_on_5xx: false
+                              include_backends:
+                                type: BY_ID
+                                ids: [testing_myt]
+                    - weight: 1
+                      name: pcode_sas
+                      modules:
+                        - report: {ranges: default, uuid: request_to_sas_mobile_sdk}
+                        - balancer2:
+                            attempts: 1
+                            dynamic:
+                              max_pessimized_share: 0.2
+                            generated_proxy_backends:
+                              proxy_options:
+                                backend_timeout: 5s
+                                connect_timeout: 70ms
+                                keepalive_count: 1
+                                fail_on_5xx: false
+                              include_backends:
+                                type: BY_ID
+                                ids: [testing_sas]
+                    - weight: -1
+                      name: pcode_devnull
+                      modules:
+                        - errordocument:
+                            status: 504
+                            content: "Service unavailable"
+          notice:
+            matcher:
+              match_fsm:
+                url: '/+notice.*'
+            modules:
+              - errordocument:
+                  status: 200
+          mobile_ads_router_not_found:
+            matcher: {}
+            modules:
+              - report: {ranges: default, uuid: mobile_ads_router_not_found}
+              - errordocument:
+                  status: 404

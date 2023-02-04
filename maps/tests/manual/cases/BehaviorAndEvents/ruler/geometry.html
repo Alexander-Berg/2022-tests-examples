@@ -1,0 +1,128 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Геометрия линейки
+
+Description:
+Проверяем линейку с программно выставленными точками.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components:
+behavior
+
+Estimated time:
+120000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась.
+  На карте спан Центрального федерального округа.
+  Под блоком с картой имеется 5 блоков строк, под каждым из которых "OK".
+
+Step:
+  Action:
+  Выполнить клик в спан карты.
+ 
+  Expectation:
+  В месте клика появляется метка линейки, соединенная серыми линиями линейки с другой точкой.
+  У выставленной метки балун с расстоянием в км.
+
+Step:
+  Action:
+  Отзумить спан для просмотра всех точек и отрезков линейки скролом мыши.
+
+  Expectation:
+  На спане карты 4 метки линейки соединенные между собой.
+  Балун у метки выставленной на шаге 2 не пропадает. 
+
+Step:
+  Action:
+  Поводить курсором по меткам линейки.
+
+  Expectation:
+  На двух не крайних меткам имеются хинты с расстоянием в км.
+
+Step:
+  Action:
+  Навести курсор на метку с балуном, зажать ЛКМ и переместить на спане карты.
+
+  Expectation:
+  Метка перемещается, в балуне меняется расстояние (в зависимости от переноса в большую или меньшую сторону).
+
+Step:
+  Action:
+  Клик в кнопку закрытия балуна с расстоянием у метки.
+
+  Expectation:
+  Появляется диалоговое окно "Удалить все метки?", ответами "Ок" и "Отмена".
+
+Step:
+  Action:
+  Клик в кнопку "Ок".
+
+  Expectation:
+  Со спана карты пропали метки линейки, спан карты без изменений.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 8,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+
+            var ruler = map.behaviors.get('ruler');
+            ruler.events.add(['disable', 'enable', 'mapchange', 'optionschange', 'parentchange'], function (e) {
+                log.info('-- ' + e.get('type'))
+            });
+
+            ruler.enable();
+            ruler.geometry.set(0, [55, 37]);
+            ruler.geometry.set(1, [56, 38]);
+            ruler.geometry.set(2, [57, 39]);
+
+            try {
+                log.info('distance (0,1): ' + ruler.geometry.getDistance(0, 1));
+                validateValue(128015.13367, ruler.geometry.getDistance(0, 1).toFixed(5));
+                log.info('distance (1,2): ' + ruler.geometry.getDistance(1, 2));
+                validateValue(127243.41764, ruler.geometry.getDistance(1, 2).toFixed(5));
+            } catch (err) {
+                log.info('distance: ' + err)
+            }
+
+            log.info('length: ' + ruler.geometry.getLength());
+            validateValue(3, ruler.geometry.getLength());
+            log.info('type: ' + ruler.geometry.getType());
+            validateValue("LineString", ruler.geometry.getType());
+            log.info('coordinates: ' + ruler.geometry.getCoordinates());
+            validateValue("55,37,56,38,57,39", ruler.geometry.getCoordinates());
+
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

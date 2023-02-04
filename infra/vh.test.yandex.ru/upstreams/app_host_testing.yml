@@ -1,0 +1,51 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - smalashkevich
+      groups: []
+labels:
+  order: '00000100'
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      uri: '/apphost/(.*)'
+  modules:
+    - report: {uuid: apphost-testing, ranges: default}
+    - rewrite:
+        actions:
+          - regexp: '/apphost([/v0-9]*)/([%./a-zA-z0-9]+)[%?]*(.*)'
+            rewrite: '/vh%1/proxy?handler=public/%2&%3'
+    - exp_getter_macro:
+        service_name: vh
+        testing_mode: {}
+        _version: 3
+    - balancer2:
+        attempts: 2
+        rr: {}
+        backends:
+          - weight: 1
+            name: bygeo_man
+            modules:
+              - headers:
+                  create:
+                    X-Yandex-Internal-Request: 1
+              - report: {uuid: apphost-man-testing, ranges: default}
+              - balancer2:
+                  attempts: 3
+                  attempts_rate_limiter:
+                    limit: 0.25
+                  rr: {}
+                  timeout_policy:
+                    timeout: 5s
+                    unique_policy: {}
+                  generated_proxy_backends:
+                    proxy_options:
+                      backend_timeout: 2s
+                      connect_timeout: 50ms
+                      keepalive_count: 1
+                    include_backends:
+                      type: BY_ID
+                      ids:
+                        - man_vh_http_adapter_testing

@@ -1,0 +1,109 @@
+<!DOCTYPE HTML>
+<!--(skip)(description)
+
+-->
+<!--(version)
+
+-->
+<!--(commands)
+
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+        //TODO: Каждый раз доходя до этого теста я чертыхаюсь, переделай!
+        function init(ymaps) {
+            ymaps = ym;
+
+            var coords = [],
+                    center = [56, 34],
+                    features = [],
+                    sourceObjectsQuery;
+            for (var i = 0; i < 500; i++) {
+                var x = center[0] + 10 * Math.random() * Math.random() * Math.random() * Math.random() * (Math.random() < 0.5 ? -1 : 1),
+                        y = center[1] + 10 * Math.random() * Math.random() * Math.random() * Math.random() * (Math.random() < 0.5 ? -1 : 1);
+                coords[i] = [x, y];
+                features.push({
+                    type: 'Feature',
+                    geometry: {
+                        type: 'Point',
+                        coordinates: coords[i]
+                    }
+                });
+            }
+
+            window.managerResponse = function (x, y, z) {
+                var globalPixelBounds = [
+                    [x * 256, y * 256],
+                    [(x + 1) * 256, (y + 1) * 256]
+                ];
+                var bounds = ymaps.util.bounds.fromGlobalPixelBounds(globalPixelBounds, z, map.options.get('projection'));
+                var rectangle = new ymaps.Rectangle(bounds);
+                map.geoObjects.add(rectangle);
+                rectangle.options.set('coordRendering', 'boundsPath');
+                var it = sourceObjectsQuery.searchInside(rectangle).getIterator();
+                map.geoObjects.remove(rectangle);
+                var answerFeatures = [];
+                var obj;
+                while ((obj = it.getNext()) != it.STOP_ITERATION) {
+                    answerFeatures.push({
+                        id: sourceObjectsQuery.indexOf(obj),
+                        type: 'Feature',
+                        geometry: {
+                            type: 'Point',
+                            coordinates: obj.geometry.getCoordinates()
+                        }
+                    });
+                }
+                window['managerResponse_x_' + x]({
+                    data: {
+                        type: 'FeatureCollection',
+                        features: answerFeatures
+                    }
+                })
+            };
+
+            var map = myMap = new ymaps.Map('map', {
+                center: center,
+                zoom: 10,
+                type: 'yandex#map',
+                controls: ['fullscreenControl', 'typeSelector']
+            });
+            addGrid(myMap);
+            var log = new Log();
+
+            var loadingObjectManager = new ymaps.LoadingObjectManager('https://jsapi.sergeiiak.alexa.maps.dev.yandex.ru/api/2.1/objectManager/loading/response.xml?x=%t', {
+                paddingTemplate: 'managerResponse_%t',
+                splitRequests: true
+            });
+            sourceObjectsQuery = ymaps.geoQuery({
+                type: 'FeatureCollection',
+                features: features
+            }).setOptions('visible', false).addToMap(map);
+            map.geoObjects.add(loadingObjectManager);
+
+            var changeSplitButton = new ymaps.control.Button({data: {content: 'splitRequests'}, options: {selectOnClick: true}});
+            changeSplitButton.events
+                    .add('select', function () {
+                        loadingObjectManager.options.set('splitRequests', true);
+                        log.info('splitRequests is true');
+                    })
+                    .add('deselect', function () {
+                        loadingObjectManager.options.set('splitRequests', false);
+                        log.info('splitRequests is false');
+                    });
+            map.controls.add(changeSplitButton);
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

@@ -1,0 +1,123 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Печать: страница с мульмаршрутом
+
+Description:
+Проверка печати карты с мульмаршрутом.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components:
+internal
+
+Estimated time:
+120000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно со спаном Москвы, на спане построен маршрут "А", "В" на общественном транспорте.
+  Имеется основная нитка, альтернативная, метки общественного транспорта.
+  В контейнере сверху кнопка "Показывать время для...", внизу блок дистрибуции, коопирайт и "Условия использования".
+
+Step:
+  Action:
+  Выполнить клик ПКМ, в контекстном меню выбрать "Печать", либо CTRL + P.
+  
+  Expectation:
+  Проверить отображение карты на странице подготовки к печати.
+  На странице отсутсвуют кнопка "Показывать время для...", блок дистрибуции, имеется маршрут, нитки, метки маршрута, коопирайт, "Условия использования".
+
+Step:
+  Action:
+  Закрыть страницу подготовки к печати, призумится к метке "А" маршрута.
+  Выполнить клик в кнопку "Показывать время для...".
+  
+  Expectation:
+  Возле маршрутной метки "A" пешеходная метка с временм и расстоянием сегмента.
+  По клику в "Показывать время для..." в пешеходной метке остается только время пешеходного сегмента.
+
+Step:
+  Action:
+  Выполнить клик ПКМ, в контекстном меню выбрать "Печать", либо CTRL + P.
+  
+  Expectation:
+  Проверить отображение карты на странице подготовки к печати.
+  На странице отсутсвуют кнопка "Показывать время для...", блок дистрибуции, имеется маршрут, нитки, метки маршрута с подписями и дополнениями, коопирайт, "Условия использования".
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            //ymaps = ym;
+            /**
+             * Создаем мультимаршрут.
+             * @see https://api.yandex.ru/maps/doc/jsapi/2.1/ref/reference/multiRouter.MultiRoute.xml
+             */
+            var multiRoute = new ymaps.multiRouter.MultiRoute({
+                referencePoints: [
+                    [55.749, 37.524],
+                    "Москва, Успенский пер. 7"
+                ],
+                params: {
+                    routingMode: 'masstransit'
+                }
+            }, {
+                // Автоматически устанавливать границы карты так, чтобы маршрут был виден целиком.
+                boundsAutoApply: true
+            });
+
+            // Создаем кнопку.
+            var changeLayoutButton = new ymaps.control.Button({
+                data: { content: "Показывать время для пеших сегментов"},
+                options: { selectOnClick: true }
+            });
+
+            // Объявляем обработчики для кнопки.
+            changeLayoutButton.events.add('select', function () {
+                multiRoute.options.set(
+                        // routeMarkerIconContentLayout - чтобы показывать время для всех сегментов.
+                        "routeWalkMarkerIconContentLayout",
+                        ymaps.templateLayoutFactory.createClass('{{ properties.duration.text }}')
+                );
+            });
+
+            changeLayoutButton.events.add('deselect', function () {
+                multiRoute.options.unset("routeWalkMarkerIconContentLayout");
+            });
+
+            // Создаем карту с добавленной на нее кнопкой.
+            var myMap = new ymaps.Map('map', {
+                center: [55.739625, 37.54120],
+                zoom: 12,
+                controls: [changeLayoutButton]
+            }, {
+                buttonMaxWidth: 300,
+                suppressObsoleteBrowserNotifier: false,
+                suppressMapOpenBlock: false
+            });
+
+            // Добавляем мультимаршрут на карту.
+            myMap.geoObjects.add(multiRoute);
+            var log = new Log();
+            log.info("Test case: время считается и оно адекватное");
+
+        }
+    </script>
+</head>
+<body>
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

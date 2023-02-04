@@ -1,0 +1,50 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - i-sokolov
+      groups: []
+labels:
+  order: '01000000'
+---
+regexp_section:
+  matcher:
+    match_and:
+      - match_fsm:
+          uri: '/ugc/episodes\\.json(.*)'
+  modules:
+    - report: {uuid: ugc-test, ranges: default}
+    - exp_getter_macro:
+        _version: 3
+        service_name: vh
+        testing_mode: {}
+    - balancer2:
+        attempts: 2
+        rr: {}
+        backends:
+          - weight: 1
+            name: ugc-man
+            modules:
+              - report: {uuid: ugc-test-man, ranges: default}
+              - rewrite:
+                  actions:
+                    - regexp: '/ugc/episodes\\.json[%?]*(.*)'
+                      rewrite: '/vh/stable-26?handler=public/episodes.json&%1'
+              - balancer2:
+                  attempts: 3
+                  attempts_rate_limiter:
+                    limit: 0.25
+                  rr: {}
+                  timeout_policy:
+                    timeout: 5s
+                    unique_policy: {}
+                  generated_proxy_backends:
+                    proxy_options:
+                      backend_timeout: 2500ms
+                      connect_timeout: 50ms
+                      keepalive_count: 1
+                    include_backends:
+                      type: BY_ID
+                      ids:
+                        - man_vh_http_adapter_testing
+          

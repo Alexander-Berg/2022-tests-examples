@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="windows-1251"?>
+<!DOCTYPE beans PUBLIC "-//SPRING//DTD BEAN//EN" "http://www.springframework.org/dtd/spring-beans.dtd">
+
+<beans default-lazy-init="false">
+
+    <bean class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer"
+          lazy-init="false">
+        <property name="locations">
+            <list>
+                <value>classpath:config/realty-model.${environment.type}.properties</value>
+                <value>classpath:config/realty-model.properties</value>
+            </list>
+        </property>
+        <property name="ignoreUnresolvablePlaceholders" value="false"/>
+        <property name="order" value="-1"/>
+        <property name="ignoreResourceNotFound" value="true"/>
+    </bean>
+
+    <bean id="masterJdbcTemplate" class="org.springframework.jdbc.core.JdbcTemplate">
+        <constructor-arg ref="masterMysqlDataSource"/>
+    </bean>
+
+    <bean id="slaveJdbcTemplate" class="org.springframework.jdbc.core.JdbcTemplate">
+        <constructor-arg ref="slaveMysqlDataSource"/>
+    </bean>
+
+    <bean id="masterTransactionTemplate" class="org.springframework.transaction.support.TransactionTemplate">
+        <property name="transactionManager" ref="masterTransactionManager"/>
+    </bean>
+
+    <bean id="masterTransactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager" >
+        <property name="dataSource" ref="masterMysqlDataSource"/>
+    </bean>
+
+    <bean id="slaveTransactionTemplate" class="org.springframework.transaction.support.TransactionTemplate">
+        <property name="transactionManager" ref="slaveTransactionManager"/>
+    </bean>
+
+    <bean id="slaveTransactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager" >
+        <property name="dataSource" ref="slaveMysqlDataSource"/>
+    </bean>
+
+    <bean id="masterMysqlDataSource" class="org.apache.commons.dbcp.BasicDataSource"
+          destroy-method="close">
+        <property name="driverClassName" value="com.mysql.jdbc.Driver"/>
+        <!--ssh -L 3307:vertis-master-testing.mysql.yandex.net:3306 sashagrey-->
+<!--
+        <property name="url" value="jdbc:mysql://localhost:3307/realty2_stats?useUnicode=true&amp;characterEncoding=utf8&amp;autoReconnect=true&amp;rewriteBatchedStatements=true&amp;jdbcCompliantTruncation=false"/>
+        <property name="username" value="realty2_stats"/>
+        <property name="password" value="iugoo5De"/>
+-->
+
+        <property name="url" value="jdbc:mysql://dev-store02f.vs.yandex.net:3306/capa_plugin?useUnicode=true&amp;characterEncoding=utf8&amp;autoReconnect=true&amp;rewriteBatchedStatements=true&amp;jdbcCompliantTruncation=false"/>
+        <property name="username" value="capa_plugin"/>
+        <property name="password" value="capa_plugin"/>
+
+        <!--<property name="url" value="jdbc:mysql://localhost:3306/realty?useUnicode=true&amp;characterEncoding=utf8&amp;autoReconnect=true&amp;rewriteBatchedStatements=true&amp;jdbcCompliantTruncation=false"/>-->
+        <!--<property name="username" value="root"/>-->
+
+        <property name="maxActive" value="2"/>
+        <property name="maxIdle" value="0"/>
+    </bean>
+
+    <bean id="slaveMysqlDataSource" class="org.apache.commons.dbcp.BasicDataSource"
+          destroy-method="close">
+        <property name="driverClassName" value="com.mysql.jdbc.Driver"/>
+        <!--ssh -L 3308:vertis-slave-testing.mysql.yandex.net:3306 sashagrey-->
+<!--
+        <property name="url" value="jdbc:mysql://localhost:3308/realty2_stats?useUnicode=true&amp;characterEncoding=utf8&amp;autoReconnect=true&amp;rewriteBatchedStatements=true&amp;jdbcCompliantTruncation=false"/>
+        <property name="username" value="realty2_stats"/>
+        <property name="password" value="iugoo5De"/>
+-->
+
+        <property name="url" value="jdbc:mysql://dev-store02f.vs.yandex.net:3306/capa_plugin?useUnicode=true&amp;characterEncoding=utf8&amp;autoReconnect=true&amp;rewriteBatchedStatements=true&amp;jdbcCompliantTruncation=false"/>
+        <property name="username" value="capa_plugin"/>
+        <property name="password" value="capa_plugin"/>
+
+        <!--<property name="url" value="jdbc:mysql://localhost:3306/realty?useUnicode=true&amp;characterEncoding=utf8&amp;autoReconnect=true&amp;rewriteBatchedStatements=true&amp;jdbcCompliantTruncation=false"/>-->
+        <!--<property name="username" value="root"/>-->
+
+        <property name="maxActive" value="2"/>
+        <property name="maxIdle" value="0"/>
+    </bean>
+
+    <bean class="ru.yandex.realty.capa.plugin.RealtyService" id="realtyService">
+        <property name="readJdbcTemplate" ref="slaveJdbcTemplate"/>
+        <property name="readTransactionTemplate" ref="slaveTransactionTemplate"/>
+        <property name="writeJdbcTemplate" ref="masterJdbcTemplate"/>
+        <property name="writeTransactionTemplate" ref="masterTransactionTemplate"/>
+    </bean>
+</beans>

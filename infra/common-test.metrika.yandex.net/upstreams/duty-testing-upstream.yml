@@ -1,0 +1,40 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - robert
+      groups: []
+labels:
+  order: '000300'
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      host: 'duty-test\\.mtrs\\.yandex-team\\.ru'
+  modules:
+    - headers:
+        create:
+            Host: duty-test.mtrs.yandex-team.ru
+    - balancer2:
+        attempts: 1
+        connection_attempts: !f count_backends()
+        unique_policy: {}
+        dynamic:
+          max_pessimized_share: 0.2
+          active:
+            delay: 1s
+            weight_normalization_coeff: 1
+            request: 'GET /ping/app HTTP/1.1\nHost: duty-test.mtrs.yandex-team.ru\nUser-agent: l7-balancer\n\n'
+        generated_proxy_backends:
+          proxy_options:
+            backend_timeout: 5s
+            connect_timeout: 500ms
+            fail_on_5xx: false
+            keepalive_count: 1
+          include_backends:
+            type: BY_ID
+            ids: [duty-testing-backend]
+        on_error:
+          errordocument:
+            status: 504
+            content: 'Service unavailable: l7-balancer'

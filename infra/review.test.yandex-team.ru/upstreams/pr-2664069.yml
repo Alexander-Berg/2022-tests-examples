@@ -1,0 +1,50 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - robot-muad-dib
+      groups: []
+labels:
+  order: '10000000'
+---
+regexp_section:
+  matcher:
+    match_and:
+      - match_fsm:
+          host: pr-2664069[.](.*)
+  modules:
+    - headers:
+        create:
+          Host: review.s3.mds.yandex.net
+    - response_headers_if:
+        matcher:
+          match_header:
+            name: Content-Type
+            value: text/html
+        create_header:
+          Cache-Control: no-cache, no-store, must-revalidate
+    - rewrite:
+        actions:
+          - split: path
+            regexp: ^/(.+)
+            rewrite: /beta/pr-2664069/%1
+          - split: path
+            regexp: ^/(.+/)?([^.]+)?$
+            rewrite: /beta/pr-2664069/index.html
+    - balancer2:
+        attempts: 1
+        rr: {}
+        generated_proxy_backends:
+          proxy_options:
+            connect_timeout: 70ms
+            backend_timeout: 10s
+            fail_on_5xx: false
+          instances:
+            - host: review.s3.mds.yandex.net
+              port: 80
+              weight: 1
+        on_error:
+          modules:
+            - errordocument:
+                status: 504
+                content: Service unavailable

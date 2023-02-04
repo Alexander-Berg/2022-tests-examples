@@ -1,0 +1,79 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - kfour
+      groups: []
+labels:
+  order: '00000001'
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      uri: '/video(/.*)?'
+  modules:
+    - shared:
+        uuid: 'video'
+    - exp_getter_macro:
+        service_name: video
+        testing_mode: {}
+    - geobase_macro: {}
+    - antirobot_macro:
+        include_backends:
+          type: BY_ID
+          ids: [antirobot]
+    - balancer2:
+        attempts: 2
+        rr: {weights_file: ./controls/traffic_control.weights}
+        backends:
+        - weight: 1
+          name: video_man
+          modules:
+            - report: {ranges: default, uuid: requests_to_man}
+            - balancer2:
+                attempts: 2
+                attempts_file: './controls/attempts.count'
+                weighted2: {}
+                generated_proxy_backends:
+                  proxy_options:
+                    backend_timeout: 10s
+                    connect_timeout: 80ms
+                    keepalive_count: 1
+                  include_backends:
+                    type: BY_ID
+                    ids: [video_man]
+        - weight: 1
+          name: video_sas
+          modules:
+            - report: {ranges: default, uuid: requests_to_sas}
+            - balancer2:
+                attempts: 2
+                attempts_file: './controls/attempts.count'
+                weighted2: {}
+                generated_proxy_backends:
+                  proxy_options:
+                     backend_timeout: 10s
+                     connect_timeout: 81ms
+                     keepalive_count: 1
+                  include_backends:
+                    type: BY_ID
+                    ids: [video_sas]
+        - weight: 1
+          name: video_vla
+          modules:
+            - report: {ranges: default, uuid: requests_to_vla}
+            - balancer2:
+                attempts: 2
+                attempts_file: './controls/attempts.count'
+                weighted2: {}
+                generated_proxy_backends:
+                  proxy_options:
+                    backend_timeout: 10s
+                    connect_timeout: 80ms
+                    keepalive_count: 1
+                  include_backends:
+                    type: BY_ID
+                    ids: [video_vla]
+        on_error:
+          modules:
+          - errordocument: {status: '502'}

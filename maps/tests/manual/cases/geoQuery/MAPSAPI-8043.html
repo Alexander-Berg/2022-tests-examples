@@ -1,0 +1,305 @@
+<!doctype html>
+<!--(skip)(description)
+geoQueryResult
+Filter points of selection by latitude.
+Methods, used in the test:
+- addToMap()
+- search()
+- setOptions()
+- then()
+Script:
+1. Click first button
+2. Check that objects above the line became red
+3. Click second button
+4. Check that objects below the line became red
+5. geodesic == true
+6. Check again
+-->
+<!--(version)
+2.0.31
+-->
+<!--(commands)
+click(5);
+test();
+click(8);
+test();
+click(2);
+click(5);
+test();
+click(8);
+test();
+-->
+<html>
+<head>
+<title></title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+<script src="../../helper.js"></script>
+<script src="../../js/wgs84MercatorSource.js"></script>
+<script type=text/javascript>
+
+Api('init');
+
+function init(ymaps) {
+    ymaps = ym; // hack
+
+    var map = myMap = new ym.Map('map', {
+        center: [55.5541584321358, 37.93061981201168],
+        zoom: 9,
+        behaviors: ['default', 'scrollZoom'],
+        controls: ['fullscreenControl']
+    });
+
+    wgs84MercatorSource(ym, myMap, this);
+    addGrid(myMap);
+    var log = new Log();
+
+    log.info('GeoQueryResult search(): MAPSAPI-8043 - conditions without spaces');
+
+    var result = ym.geoQuery(geoQueryResult);
+    result.then(function () {
+        result.addToMap(myMap);
+    });
+
+    var lat55_6 = new ymaps.Polyline([
+                [55.6, 37.26978759765576],
+                [55.6, 38.605749511718194]
+            ], {hintContent: "latitude = 55.6"},
+            {visible: false, strokeColor: '#FF0000', strokeWidth: 3});
+    var lat55_45 = new ymaps.Polyline([
+                [55.45, 37.26978759765576],
+                [55.45, 38.605749511718194]
+            ], {hintContent: "latitude = 55.45"},
+            {visible: false, strokeColor: '#FF0000', strokeWidth: 3});
+
+    var long37_6 = new ymaps.Polyline([
+                [55.932822058184314, 37.6],
+                [55.15804309347428, 37.6]
+            ], {hintContent: "longitude = 37.6"},
+            {visible: false, strokeColor: '#FF0000', strokeWidth: 3});
+    var long37_9 = new ymaps.Polyline([
+                [55.932822058184314, 37.9],
+                [55.15804309347428, 37.9]
+            ], {hintContent: "longitude = 37.9"},
+            {visible: false, strokeColor: '#FF0000', strokeWidth: 3});
+
+    var x79185 = new ymaps.Polyline([
+                [55.184067753127366, 37.50324707031226],
+                [55.93119684874074, 37.509863281249736]
+            ],
+            {hintContent: "x = 79185"}, {visible: false, strokeColor: '#FF0000', strokeWidth: 3});
+
+    var y41110 = new ymaps.Polyline([
+                [55.7256682875947, 37.2409484863276],
+                [55.721709104899915, 38.634588623046376]
+            ],
+            {hintContent: "y = 41110"}, {visible: false, strokeColor: '#FF0000', strokeWidth: 3});
+
+
+    var latitudeFilterButton1 = new ymaps.control.Button({data: {content: 'Lat>55.60'}, options: {selectOnClick: false}});
+    var latitudeFilterButton2 = new ymaps.control.Button({data: {content: 'Lat<55.45'}, options: {selectOnClick: false}});
+    var filterRlikeButton = new ymaps.control.Button({data: {content: 'rlike "^objectCollection"'}}, {selectOnClick: false});
+    var filterEqualsButton = new ymaps.control.Button({data: {content: '== undefined'}}, {selectOnClick: false});
+    var filterRegexpButton = new ymaps.control.Button({data: {content: 'regexp "3$"'}}, {selectOnClick: false});
+    var filterInequalsButton = new ymaps.control.Button({data: {content: '!= "geoObjectCircle"'}}, {selectOnClick: false});
+    var filterNullButton = new ymaps.control.Button({data: {content: 'hintContent != null'}}, {selectOnClick: false});
+    var filterUndefinedButton = new ymaps.control.Button({data: {content: 'hintContent == undefined'}}, {selectOnClick: false});
+    var filterTrueButton = new ymaps.control.Button({data: {content: 'custom == true'}}, {selectOnClick: false});
+    var filterFalseButton = new ymaps.control.Button({data: {content: 'custom == false'}}, {selectOnClick: false});
+    var equalsButton = new ymaps.control.Button({data: {content: '== Placemark'}}, {selectOnClick: false});
+    var inequalsButton = new ymaps.control.Button({data: {content: '!= Polyline'}}, {selectOnClick: false});
+    var regexpButton = new ymaps.control.Button({data: {content: 'regexp ^Po'}}, {selectOnClick: false});
+    var aboveXButton = new ymaps.control.Button({data: {content: 'X >= 79185'}}, {selectOnClick: false});
+    var belowXButton = new ymaps.control.Button({data: {content: 'X <= 79185'}}, {selectOnClick: false});
+    var lessThanYButton = new ymaps.control.Button({data: {content: 'Y <= 41110'}}, {selectOnClick: false});
+    var moreThanYButton = new ymaps.control.Button({data: {content: 'Y >= 41110'}}, {selectOnClick: false});
+    var longitudeFilterButton1 = new ymaps.control.Button({data: {content: 'Long > 37.9'}}, {selectOnClick: false});
+    var longitudeFilterButton2 = new ymaps.control.Button({data: {content: 'Long < 37.6'}}, {selectOnClick: false});
+
+
+    // shows objects above the line
+    latitudeFilterButton1.events.add('click', function () {
+        testSearch(result, 'lat>55.6');
+        lat55_6.options.set('visible', true);
+    });
+
+    // shows objects below another line
+    latitudeFilterButton2.events.add('click', function () {
+        testSearch(result, 'lat<55.45');
+        lat55_45.options.set('visible', true);
+    });
+
+    // filter objects (rlike)
+    filterRlikeButton.events.add('click', function () {
+        testSearch(result, 'options.id rlike "^objectCollection"');
+    });
+
+    // filter objects (==)
+    filterEqualsButton.events.add('click', function () {
+        testSearch(result, 'options.id==undefined');
+    });
+    // filter objects (regexp)
+    filterRegexpButton.events.add('click', function () {
+        testSearch(result, 'options.id regexp "3$"');
+    });
+
+    // filter objects (!=)
+    filterInequalsButton.events.add('click', function () {
+        testSearch(result, 'options.id!="geoObjectCircle"');
+    });
+
+    // filter objects (!=)
+    filterNullButton.events.add('click', function () {
+        testSearch(result, 'properties.hintContent!=null');
+    });
+
+    // filter objects (==)
+    filterUndefinedButton.events.add('click', function () {
+        testSearch(result, 'properties.hintContent==undefined');
+    });
+
+    // filter objects (==)
+    filterTrueButton.events.add('click', function () {
+        testSearch(result, 'properties.custom==true');
+    });
+
+    // filter objects
+    filterFalseButton.events.add('click', function () {
+        testSearch(result, 'properties.custom==false');
+    });
+
+    // filter objects (==)
+    equalsButton.events.add('click', function () {
+        testSearch(result, 'geometry.type=="Point"');
+    });
+    // filter objects (!=)
+    inequalsButton.events.add('click', function () {
+        testSearch(result, 'geometry.type!="LineString"');
+    });
+    // filter objects (regexp)
+    regexpButton.events.add('click', function () {
+        testSearch(result, 'geometry.type regexp "^Po"');
+    });
+
+    // filter objects (>=)
+    aboveXButton.events.add('click', function () {
+        /*var p = myMap.options.get('projection'),
+         z = myMap.getZoom(),
+         bounds = [p.toGlobalPixels([55.57283665890869,37.47331390380759], z)];
+         log.info(bounds);*/
+        testSearch(result, 'x>=79185');
+        x79185.options.set('visible', true);
+    });
+    // filter objects (<=)
+    belowXButton.events.add('click', function () {
+        /*var p = myMap.options.get('projection'),
+         z = myMap.getZoom(),
+         bounds = [p.toGlobalPixels([55.57283665890869,37.47331390380759], z)];
+         log.info(bounds);*/
+        testSearch(result, 'x<=79185');
+        x79185.options.set('visible', true);
+    });
+
+    // filter objects
+    lessThanYButton.events.add('click', function () {
+        /*var coord = geoObjectPlacemark.geometry.getCoordinates();
+         var p = myMap.options.get('projection'),
+         z = myMap.getZoom(),
+         bounds = [p.toGlobalPixels([55.51521680447712,37.68205413818325], z)];
+         log.info(bounds);*/
+        testSearch(result, 'y<=41110');
+        y41110.options.set('visible', true);
+    });
+
+    // filter objects
+    moreThanYButton.events.add('click', function () {
+        /*var coord = geoObjectPlacemark.geometry.getCoordinates();
+         var p = myMap.options.get('projection'),
+         z = myMap.getZoom(),
+         bounds = [p.toGlobalPixels([55.51521680447712,37.68205413818325], z)];
+         log.info(bounds);*/
+        testSearch(result, 'y>=41110');
+        y41110.options.set('visible', true);
+    });
+
+    // show all objects to the right of the line
+    longitudeFilterButton1.events.add('click', function () {
+        testSearch(result, 'long>37.9');
+        long37_9.options.set('visible', true);
+    });
+
+    // show all objects to the left of the line
+    longitudeFilterButton2.events.add('click', function () {
+        testSearch(result, 'lng<37.6');
+        long37_6.options.set('visible', true);
+    });
+
+    map.geoObjects
+            .add(lat55_6)
+            .add(lat55_45)
+            .add(long37_6)
+            .add(long37_9)
+            .add(x79185)
+            .add(y41110);
+
+    map.controls
+            .add(latitudeFilterButton1, {position: {left: 5, top: 5}})
+            .add(latitudeFilterButton2, {position: {left: 5, top: 35}})
+            .add(longitudeFilterButton1, {position: {left: 5, top: 65}})
+            .add(longitudeFilterButton2, {position: {left: 5, top: 95}})
+            .add(filterEqualsButton, {position: {left: 5, top: 125}})
+            .add(filterInequalsButton, {position: {left: 5, top: 155}})
+            .add(filterRegexpButton, {position: {left: 5, top: 185}})
+            .add(filterRlikeButton, {position: {left: 5, top: 215}})
+            .add(filterNullButton, {position: {left: 5, top: 245}})
+            .add(filterUndefinedButton, {position: {left: 5, top: 275}})
+            .add(filterTrueButton, {position: {left: 5, top: 305}})
+            .add(filterFalseButton, {position: {left: 5, top: 335}})
+            .add(equalsButton, {position: {left: 5, top: 365}})
+            .add(inequalsButton, {position: {left: 5, top: 395}})
+            .add(regexpButton, {position: {left: 5, top: 425}})
+            .add(aboveXButton, {position: {left: 5, top: 455}})
+            .add(belowXButton, {position: {left: 5, top: 485}})
+            .add(lessThanYButton, {position: {right: 5, bottom: 65}})
+            .add(moreThanYButton, {position: {right: 5, bottom: 35}});
+
+
+    // function-helper for convenient search
+    function testSearch(initialData, condition) {
+
+        initialData.unsetOptions(['preset', 'fillColor', 'fillOpacity', 'strokeColor']);
+        lat55_6.options.set('visible', false);
+        lat55_45.options.set('visible', false);
+        long37_6.options.set('visible', false);
+        long37_9.options.set('visible', false);
+        x79185.options.set('visible', false);
+        y41110.options.set('visible', false);
+
+        var filtered = initialData.search(condition);
+        filtered.each(function (obj) {
+            obj.options.set('strokeColor', "#FF0000")
+                    .set('preset', "islands#redIcon")
+                    .set('fillColor', '#FF0000')
+                    .set('fillOpacity', 0.2)
+        });
+
+        /*var iterator = filtered.getIterator(), obj;
+         while (obj = iterator.getNext()) {
+         if (obj == iterator.STOP_ITERATION) {
+         log.info(obj + ' - STOP_ITERATION');
+         return;
+         }
+         log.info(obj);
+         obj.options.set('strokeColor', "#FF0000")
+         .set('preset', "islands#redIcon")
+         .set('fillColor', '#FF0000')
+         .set('fillOpacity', 0.2)
+         }*/
+    }
+}
+</script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

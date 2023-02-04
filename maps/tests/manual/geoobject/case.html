@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<!--
+Title:
+Геообъект: применение опций к геообъектам
+
+Description:
+Проверка применения опций к геообъектам.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+regress
+
+Estimated time:
+360000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно, на спане два ряда объектов(голубые, желтые): многоугольник, прямоугольник, круг.
+  Сверху имеются кнопки "invisible", "fill", "outline", "image", "tile/stretch", "fillColor", "fillOpacity".
+
+Step:
+  Action:
+  Открыть инструменты разработчика командами: Windows: Ctrl + Shift + I если у вас MacOS: ⌥ + ⌘ + I, вкладку Console.
+  Выполнить клик в кнопку "invisible". 
+
+  Expectation:
+  При открытии консоли там будут строки опций геообъектов, ошибок быть не должно.
+  По клику в кнопку объекты пропадают со спана, в консоли появляется строка "visible: false".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "invisible".
+   
+  Expectation:
+  Объекты вновь появились на спане карты, в консоли появляется строка "visible: true".
+
+Step:
+  Action:
+  Выполнить два клика в кнопку "fill".
+   
+  Expectation:
+  После первого клика в консоли строка "fill: true", после второго клика объекты пропадают с карты, в консоли строка "fill: false".
+
+Step:
+  Action:
+  Выполнить клик в кнопки "fill", затем клик в "outline".
+   
+  Expectation:
+  По клику в "fill" объекты появляются на карте, в консоли "fill: true".
+  По клику в "outline" у верхнего ряда появляется голубая обводка, у нижнего красная пунктирная на многоугольнике, на остальных фигурах сплошная.
+  В консоли появляется строка "outline: true".
+
+Step:
+  Action:
+  Выполнить клик в кнопки "outline", затем клик в "image".
+   
+  Expectation:
+  По клику в "outline" обводка объектов пропадает, в консоли "outline: false".
+  По клику в "image" объекты верхнего ряда отображаются в виде розовых шаров, в нижнем ряду внутри фигур отображаются иконки маленьких шаров.
+  В консоли появляется строка "fillImageHref: [toolbox]".
+
+Step:
+  Action:
+  Выполнить клик в кнопки "image", затем клик в "tile/stretch".
+   
+  Expectation:
+  По клику в "image" иконки пропадают, объекты в первоначальном виде, в консоли "fillImageHref: default".
+  По клику в "tile/stretch" объекты без изменений, в консоли появляется строка "fillMethod: tile".
+
+Step:
+  Action:
+  Выполнить клик в кнопки "tile/stretch", затем клик в "fillColor".
+   
+  Expectation:
+  По клику в "tile/stretch" объекты без изменений, в консоли "fillMethod: stretch".
+  По клику в "fillColor" нижний ряд пропадает, верхний окрашен в полупрозрачный зеленый, в консоли появляется строка "fillColor: 00FF0070/FFFF0000".
+
+Step:
+  Action:
+  Выполнить клик в кнопки "fillColor", затем клик в "fillOpacity".
+   
+  Expectation:
+  По клику в "fillColor" объекты верхнего ряда окрашиваются в ярко-зеленый, нижнего в полупрозрачный зеленый, в консоли "fillColor: 00FF00FF/00FF0070".
+  По клику в "fillOpacity" нижний ряд пропадает, верхнийстановится полупрозрачным, в консоли появляется строка "fillOpacity: 0.6/0.0".
+
+Step:
+  Action:
+  Выполнить клик в "fillOpacity".
+   
+  Expectation:
+  По клику объекты верхнего ряда снова непрозрачные, окрашены в ярко-зеленый, нижнего в полупрозрачный зеленый, в консоли "fillOpacity: 1.0/0.7".
+-->
+<html>
+<head>
+<title>API 2.0</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<script src="../helper.js"></script>
+<script src="geoCS.js"></script>
+<script type=text/javascript>
+
+Api('init');
+
+function init(ymaps) {
+    var myMap = new ymaps.Map('map', {
+        center: [55.73259667357658, 37.70153663432529],
+        zoom: 9,
+        behaviors: ['default', 'scrollZoom'],
+        controls: []
+    });
+    geoCSSource(ymaps, myMap, this);
+    
+    
+    var image1 = 'https://png-5.findicons.com/files/icons/232/christmas_xp/32/christmas_ball_5.png';
+    var image2 = 'https://png-5.findicons.com/files/icons/232/christmas_xp/64/christmas_ball_5.png';
+    var collection1 = new ymaps.GeoObjectCollection();
+    var collection2 = new ymaps.GeoObjectCollection();
+    collection1
+            .add(geoObjectPolygon)
+            .add(geoObjectRectangle)
+            .add(geoObjectCircle);
+    collection2
+            .add(polygon)
+            .add(rectangle)
+            .add(circle);
+    console.log('Lower row:');
+    console.log('balloonContent: text');
+    console.log('outline: false, strokeColor: FF0000, strokeStyle: dash, strokeWidth: 3, strokeOpacity: 1');
+    console.log('fill: true, fillColor: FFFF00, fillMethod: tile, fillOpacity: 1, visible: true');
+    collection1.each(function (obj) {
+        obj.properties.set('balloonContent', 'text');
+        obj.options.set('outline', false);
+        obj.options.set('strokeColor', '#FF0000');
+        obj.options.set('strokeStyle', 'dash');
+        obj.options.set('strokeWidth', 3);
+        obj.options.set('strokeOpacity', 1);
+        obj.options.set('fill', true);
+        obj.options.set('fillColor', '#FFFF00');
+        obj.options.set('fillMethod', 'tile');
+        obj.options.set('fillOpacity', 1);
+        obj.options.set('visible', true);
+    });
+    console.log('Upper row:');
+    console.log('balloonContent: text1');
+    console.log('outline: false, strokeColor: 00FFFF, strokeStyle: dash, strokeWidth: 10, strokeOpacity: 0.5');
+    console.log('fill: true, fillColor: 00FFFF, fillMethod: stretch, fillOpacity: 1, visible: true');
+    collection2.each(function (obj) {
+        obj.properties.set('balloonContent', 'text1');
+        obj.options.set('outline', false);
+        obj.options.set('strokeColor', '#00FFFF');
+        obj.options.set('strokeStyle', 'dash');
+        obj.options.set('strokeWidth', 10);
+        obj.options.set('strokeOpacity', 0.5);
+        obj.options.set('fill', true);
+        obj.options.set('fillColor', '#00FFFF');
+        obj.options.set('fillMethod', 'stretch');
+        obj.options.set('fillOpacity', 1);
+        obj.options.set('visible', true);
+    });
+    var visibleButton = new ymaps.control.Button({data: {content: 'invisible'}}, {selectOnClick: true});
+    visibleButton.events
+            .add('select', function () {
+                console.log('visible: false');
+                collection1.each(function (obj) {
+                    obj.options.set('visible', false)
+                });
+                collection2.each(function (obj) {
+                    obj.options.set('visible', false)
+                });
+            })
+            .add('deselect', function () {
+                console.log('visible: true');
+                collection1.each(function (obj) {
+                    obj.options.set('visible', true)
+                });
+                collection2.each(function (obj) {
+                    obj.options.set('visible', true)
+                });
+            });
+    var fillButton = new ymaps.control.Button({data: {content: 'fill'}}, {selectOnClick: true});
+    fillButton.events
+            .add('select', function () {
+                console.log('fill: true');
+                collection1.each(function (obj) {
+                    obj.options.set('fill', true)
+                });
+                collection2.each(function (obj) {
+                    obj.options.set('fill', true)
+                });
+            })
+            .add('deselect', function () {
+                console.log('fill: false');
+                collection1.each(function (obj) {
+                    obj.options.set('fill', false)
+                });
+                collection2.each(function (obj) {
+                    obj.options.set('fill', false)
+                });
+            });
+    var outlineButton = new ymaps.control.Button({data: {content: 'outline'}}, {selectOnClick: true});
+    outlineButton.events
+            .add('select', function () {
+                console.log('outline: true');
+                collection1.each(function (obj) {
+                    obj.options.set('outline', true)
+                });
+                collection2.each(function (obj) {
+                    obj.options.set('outline', true)
+                });
+            })
+            .add('deselect', function () {
+                console.log('outline: false');
+                collection1.each(function (obj) {
+                    obj.options.set('outline', false)
+                });
+                collection2.each(function (obj) {
+                    obj.options.set('outline', false)
+                });
+            });
+    var imageButton = new ymaps.control.Button({data: {content: 'image'}}, {selectOnClick: true});
+    imageButton.events
+            .add('select', function () {
+                console.log('fillImageHref: [toolbox]');
+                collection1.each(function (obj) {
+                    obj.options.set('fillImageHref', image1)
+                });
+                collection2.each(function (obj) {
+                    obj.options.set('fillImageHref', image2)
+                });
+            })
+            .add('deselect', function () {
+                console.log('fillImageHref: default');
+                collection1.each(function (obj) {
+                    obj.options.unset('fillImageHref')
+                });
+                collection2.each(function (obj) {
+                    obj.options.unset('fillImageHref')
+                });
+            });
+    var methodButton = new ymaps.control.Button({data: {content: 'tile/stretch'}}, {selectOnClick: true});
+    methodButton.events
+            .add('select', function () {
+                console.log('fillMethod: tile');
+                collection1.each(function (obj) {
+                    obj.options.set('fillMethod', 'tile');
+                });
+                collection2.each(function (obj) {
+                    obj.options.set('fillMethod', 'tile');
+                });
+            })
+            .add('deselect', function () {
+                console.log('fillMethod: stretch');
+                collection1.each(function (obj) {
+                    obj.options.unset('fillMethod', 'stretch');
+                });
+                collection2.each(function (obj) {
+                    obj.options.unset('fillMethod', 'stretch');
+                });
+            });
+    var fillColorButton = new ymaps.control.Button({data: {content: 'fillColor'}}, {selectOnClick: true});
+    fillColorButton.events
+            .add('select', function () {
+                console.log('fillColor: 00FF0070/FFFF0000');
+                collection1.each(function (obj) {
+                    obj.options.set('fillColor', '#FFFF0000');
+                });
+                collection2.each(function (obj) {
+                    obj.options.set('fillColor', '#00FF0070');
+                });
+            })
+            .add('deselect', function () {
+                console.log('fillColor: 00FF00FF/00FF0070');
+                collection1.each(function (obj) {
+                    obj.options.set('fillColor', '#00FF0070');
+                });
+                collection2.each(function (obj) {
+                    obj.options.set('fillColor', '#00FF00FF');
+                });
+            });
+    var fillOpacityButton = new ymaps.control.Button({data: {content: 'fillOpacity'}}, {selectOnClick: true});
+    fillOpacityButton.events
+            .add('select', function () {
+                console.log('fillOpacity: 0.6/0.0');
+                collection1.each(function (obj) {
+                    obj.options.set('fillOpacity', 0.0);
+                });
+                collection2.each(function (obj) {
+                    obj.options.set('fillOpacity', 0.6);
+                });
+            })
+            .add('deselect', function () {
+                console.log('fillOpacity: 1.0/0.7');
+                collection1.each(function (obj) {
+                    obj.options.set('fillOpacity', 0.7);
+                });
+                collection2.each(function (obj) {
+                    obj.options.set('fillOpacity', 1.0);
+                });
+            });
+    myMap.geoObjects
+            .add(collection1)
+            .add(collection2);
+    myMap.controls.add(visibleButton)
+            .add(fillButton)
+            .add(outlineButton)
+            .add(imageButton)
+            .add(methodButton)
+            .add(fillColorButton)
+            .add(fillOpacityButton);
+}
+</script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+<p><a href="https://tech.yandex.ru/maps/archive/doc/jsapi/2.0/ref/reference/GeoObjectCollection-docpage/" target="_blank">Docs</a></p>
+</body>
+</html>

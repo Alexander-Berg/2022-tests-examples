@@ -1,0 +1,145 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Асинхронная загрузка балуна метки
+
+Description:
+Асинхронная загрузка балуна метки
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+smoke
+
+Estimated time: 
+60000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан Москвы. 
+  На спане множество синих меток.
+
+Step:
+  Action:
+  Поводить курсором по меткам.
+
+  Expectation:
+  При наведении курсора ховер - палец, появляется хинт "Текст подсказки".
+    
+Step:
+  Action:
+  Поочередно прокликать ЛКМ пять любых меток.
+  
+  Expectation:
+  При клике в метку на ее месте открывается балун "Контент балуна".
+  При клике в последующую метку, балун предыдущей метки закрывается.
+
+Step:
+  Action:
+  Закрыть балун кликом в крестик.
+  
+  Expectation:
+  Балун закрылся.
+
+Step:
+  Action:
+  Зажав ЛКМ на спане карты перемещаем спан карты в другу область видимости.
+  
+  Expectation:
+  В другой области видимости(за пределами спана Москвы) меток нет.
+
+Step:
+  Action:
+  Зажав ЛКМ на спане карты возвращаемся на спан Москвы.
+  
+  Expectation:
+  Перемещение спана карты корректное: карта не мигает, не пропадает.
+  На спане Москвы множество синих меток.
+
+Step:
+  Action:
+  Поочередно прокликать ЛКМ пять любых меток.
+  
+  Expectation:
+  При клике в метку на ее месте открывается балун "Контент балуна".
+  При клике в последующую метку, балун предыдущей метки закрывается.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="//yandex.st/jquery/2.1.0/jquery.min.js" type="text/javascript"></script>
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            //ymaps = ym;
+            var myMap = new ymaps.Map('map', {
+                        center: [55.76, 37.64],
+                        zoom: 10
+                    }, {
+                        backgroundVisible: false
+                    }),
+                    objectManager = new ymaps.ObjectManager({
+                        // Мы хотим загружать данные для балуна перед открытием, поэтому
+                        // запретим автоматически открывать балун по клику.
+                        geoObjectOpenBalloonOnClick: false
+                    });
+            addGrid(myMap);
+            var log = new Log();
+            log.info("Test case: Данные балуна загружаются перед открытием.");
+            log.info("ИЕ8 не поддерживает JQuery");
+
+            myMap.geoObjects.add(objectManager);
+
+
+            $.ajax({
+                url: "../../../js/OMBalloonData.json"
+            }).done(function (data) {
+                objectManager.add(data);
+            });
+
+            // Функция, эмулирующая запрос за данными на сервер.
+            function loadBalloonData(objectId) {
+                var dataDeferred = ymaps.vow.defer();
+
+                function resolveData() {
+                    dataDeferred.resolve('Данные балуна');
+                }
+
+                window.setTimeout(resolveData, 1000);
+                return dataDeferred.promise();
+            }
+
+            function hasBalloonData(objectId) {
+                return objectManager.objects.getById(objectId).properties.balloonContent;
+            }
+
+            objectManager.objects.events.add('click', function (e) {
+                var objectId = e.get('objectId');
+                if (hasBalloonData(objectId)) {
+                    objectManager.objects.balloon.open(objectId);
+                } else {
+                    loadBalloonData(objectId).then(function (data) {
+                        var obj = objectManager.objects.getById(objectId);
+                        obj.properties.balloonContent = data;
+                        objectManager.objects.balloon.open(objectId);
+                    });
+                }
+            });
+        }
+    </script>
+</head>
+<body>
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

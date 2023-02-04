@@ -1,0 +1,68 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - dronte
+      groups: []
+labels:
+  order: '00000100'
+---
+regexp_section:
+  matcher:
+    match_and:
+      - match_fsm:
+          uri: '/mss(/.*)?'
+  modules:
+    - cgi_hasher:
+        parameters:
+          - 'uid'
+    - report:
+        uuid: mail_smart_subject_v2
+        ranges: "10ms,20ms,40ms,80ms,120ms,200ms"
+        
+    - balancer2:
+        attempts: 3
+        attempts_file: './controls/attempts.count'
+        rendezvous_hashing:
+          # weights_file: './controls/traffic_control.weights'
+          reload_duration: '1s'
+        backends:
+        
+        - weight: 1
+          name: mss_vla
+          modules:
+            - report: {ranges: default, uuid: requests_mail_smart_compose_to_vla}
+            - balancer2:
+                connection_attempts: 5
+                attempts_rate_limiter:
+                  limit: 0.25
+                attempts: 3
+                attempts_file: './controls/attempts.count'
+                rendezvous_hashing:
+                  request: 'GET /health HTTP/1.1\r\nHost: mlp-test.yandex.net\r\n\r\n'
+                  delay: 5s
+
+                generated_proxy_backends:
+                  proxy_options:
+                    backend_timeout: 5s
+                    connect_timeout: 100ms
+                    keepalive_count: 1
+                    https_settings:
+                      ca_file: !f get_ca_cert_path("allCAs.pem", "./")
+                      verify_depth: 3
+                  include_backends:
+                    type: BY_ID
+                    ids: [smart-subject-server-testing-v2]
+
+
+        - weight: -1
+          name: msc_devnull
+          modules:
+            - report:
+                uuid: requests_mail_smart_compose_to_devnull
+                ranges: 2ms
+            - errordocument:
+                status: 204
+        on_error:
+          modules:
+          - errordocument: {content: Gateway Timeout, status: 504}

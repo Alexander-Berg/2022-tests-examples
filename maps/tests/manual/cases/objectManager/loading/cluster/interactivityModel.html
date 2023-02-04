@@ -1,0 +1,122 @@
+<!DOCTYPE HTML>
+<!--(skip)(description)
+
+-->
+<!--(version)
+
+-->
+<!--(commands)
+
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var center = [56, 34];
+
+            var map = myMap = new ymaps.Map('map', {
+                center: center,
+                zoom: 4,
+                type: 'yandex#map',
+                controls: ['fullscreenControl', 'typeSelector']
+            });
+            addGrid(myMap);
+            var log = new Log();
+            log.info('Server: apps/loadingServerStatic.js, port: 4778');
+            var loadingObjectManager = new ymaps.LoadingObjectManager('https://alexa.maps.dev.yandex.ru:4778/?bbox=%b', {
+                paddingTemplate: 'managerResponse_bbox_%b',
+                splitRequests: true,
+                clusterize: false,
+                clusterDisableClickZoom: true,
+                clusterOpenBalloonOnClick: false
+
+            });
+            map.geoObjects.add(loadingObjectManager);
+
+            var events = ['click', 'contextmenu', 'dblclick', 'mousedown', 'mouseenter', 'mouseleave', 'mouseup',
+                'multitouchend', 'multitouchstart', 'wheel'];
+
+            var callback = function (e) {
+                log.info('map: ' + e.get('type'));
+                console.log('map: ' + e.get('type'))
+            };
+            var opaqueButton = new ymaps.control.Button('opaque');
+            var geoobjectButton = new ymaps.control.Button('geoobject');
+            var layerButton = new ymaps.control.Button('layer');
+            var transparentButton = new ymaps.control.Button('transparent');
+            var silentButton = new ymaps.control.Button('silent');
+            var clearButton = new ymaps.control.Button('clear');
+
+            // Объект получает все DOM-события и не прокидывает их на карту.
+            // Поведения карты не будут работать при наведении или клике на объекты с данной моделью интерактивности
+            opaqueButton.events.add('click', function () {
+                loadingObjectManager.options.set('clusterInteractivityModel', 'default#opaque');
+                loadingObjectManager.options.set('geoObjectInteractivityModel', 'default#opaque');
+            });
+
+            // Объект получает все DOM-события. На карту прокидываются события 'wheel' и 'mousedown'.
+            // У события 'mousedown' выставляется флаг 'preventDefault'=true. Если на карте включены поведения 'scrollZoom' или 'magnifier',
+            // они будут работать через объекты с данной моделью интерактивности, в отличие от объектов с моделью 'default#opaque'.
+            geoobjectButton.events.add('click', function () {
+                loadingObjectManager.options.set('clusterInteractivityModel', 'default#geoObject');
+                loadingObjectManager.options.set('geoObjectInteractivityModel', 'default#geoObject');
+            });
+
+            // Объект получает все DOM-события. На карту прокидываются события 'wheel' и 'mousedown'.
+            // Если на карте включены поведения 'scrollZoom', 'drag' или 'magnifier',
+            // они будут работать через объекты с данной моделью интерактивности
+            layerButton.events.add('click', function () {
+                loadingObjectManager.options.set('clusterInteractivityModel', 'default#layer');
+                loadingObjectManager.options.set('geoObjectInteractivityModel', 'default#layer');
+            });
+
+            // Объект получает все DOM-события, а затем прокидывает их на карту.
+            transparentButton.events.add('click', function () {
+                loadingObjectManager.options.set('clusterInteractivityModel', 'default#transparent');
+                loadingObjectManager.options.set('geoObjectInteractivityModel', 'default#transparent');
+            });
+
+            // Объект перестает кидать события интерактивности, но пропускает их на карту.
+            silentButton.events.add('click', function () {
+                loadingObjectManager.options.set('clusterInteractivityModel', 'default#silent');
+                loadingObjectManager.options.set('geoObjectInteractivityModel', 'default#silent');
+            });
+            clearButton.events.add('click', function () {
+                log.clear();
+            });
+
+            var button = new ymaps.control.Button('!clusterize');
+            button.events
+                    .add('select', function () {
+                        loadingObjectManager.options.set('clusterize', false)
+                    })
+                    .add('deselect', function () {
+                        loadingObjectManager.options.set('clusterize', true)
+                    });
+            map.controls.add(button);
+
+            map.controls
+                    .add(opaqueButton, {float: 'left'})
+                    .add(geoobjectButton, {float: 'left'})
+                    .add(layerButton, {float: 'left'})
+                    .add(transparentButton, {float: 'left'})
+                    .add(silentButton, {float: 'left'})
+                    .add(clearButton, {float: 'none', position: {bottom: 40, right: 10}});
+
+            map.events.add(events, callback);
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

@@ -1,0 +1,94 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <style>
+        #custom {
+            background-color: #FFFFFF;
+            border: 1px solid black;
+            height: 100px;
+            width: 510px;
+            position: absolute;
+            bottom: 0;
+        }
+
+        #close {
+            background-color: #bbbbbb;
+            border: 1px solid black;
+            height: 10px;
+            width: 30px;
+            margin-left: 470px;
+        }
+
+        #text {
+            margin-left: 20px;
+            margin-top: 0px;
+            width: 510px;
+        }
+    </style>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+
+
+            var myMap = new ymaps.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 10,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            link(myMap);
+
+
+            var BalloonLayout = ymaps.templateLayoutFactory.createClass('<div id="custom">' +
+                    '<input id="close" value="close" onClick="balloon.events.fire(\'userclose\'); balloon.close()">' +
+                    '<p id="text">$[content]</p></div>', {}, {});
+            ymaps.layout.storage.add('custom#balloon', BalloonLayout);
+
+            var balloon,
+                    pos = myMap.getCenter(),
+                    options = {panelMaxMapArea: 0, panelLayout: 'custom#balloon'};
+            window.balloon = balloon = new ymaps.Balloon(myMap);
+            balloon.options.set(options).setParent(myMap.options);
+            balloon.setData({content: 'Panel with custom layout'});
+            balloon.open(pos);
+
+            var preventButton = new ymaps.control.Button({data: {content: 'panel/balloon'}, options: {selectOnClick: true, maxWidth: 150}});
+            var openButton = new ymaps.control.Button({data: {content: 'open balloon'}, options: {selectOnClick: true, maxWidth: 120}});
+
+            // Change panelMaxMapArea option. Infinity value - panel mode, zero value - balloon mode.
+            preventButton.events
+                    .add('select', function () {
+                        balloon.options.set('panelMaxMapArea', Infinity);
+                        __log__('panelMaxMapArea: ' + balloon.options.get('panelMaxMapArea'))
+                    })
+                    .add('deselect', function () {
+                        balloon.options.set('panelMaxMapArea', 0);
+                        __log__('panelMaxMapArea: ' + balloon.options.get('panelMaxMapArea'))
+                    });
+
+            // Open balloon in the center of the map, and close balloon, if button deselected
+            openButton.events
+                    .add('select', function () {
+                        balloon.open(pos);
+                    })
+                    .add('deselect', function () {
+                        balloon.close();
+                    });
+
+            myMap.controls
+                    .add(openButton)
+                    .add(preventButton);
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

@@ -1,0 +1,44 @@
+const zoom = 11;
+const {WAIT_FOR_UPDATE} = require('../../constants');
+const tokyo = [35.682272, 139.753137];
+const telAviv = [32.080571, 34.780586];
+const tehran = [35.666377, 51.364698];
+
+describe('Rendering of hieroglyphs', () => {
+    it('Tokyo – Tel-Aviv – Tehran', async ({browser}) => {
+        await browser.openMap({center: tokyo, zoom: zoom, controls: ['default']});
+        await browser.verifyScreenshot('tokyo-before-zoom', PO.map());
+        await browser.waitForVisible(PO.map.controls.zoom.minus());
+        await browser.click(PO.map.controls.zoom.plus());
+        await browser.pause(WAIT_FOR_UPDATE);
+        await browser.click(PO.map.controls.zoom.plus());
+        await browser.pause(WAIT_FOR_UPDATE);
+        await browser.click(PO.map.controls.zoom.plus());
+        await browser.pause(WAIT_FOR_UPDATE);
+        await browser.click(PO.map.controls.zoom.plus());
+        await browser.pause(WAIT_FOR_UPDATE);
+        await browser.waitForTilesLoaded();
+        await browser.verifyNoErrors();
+        await browser.verifyScreenshot('tokyo-after-zoom', PO.map());
+        await browser.execute((center) => myMap.setCenter(center), telAviv).catch((err) => new Error(err));
+        await browser.pause(WAIT_FOR_UPDATE);
+        await browser.waitForTilesLoaded();
+        await browser.verifyScreenshot('set-center-telAviv', PO.map());
+        await browser.click(PO.map.controls.zoom.plus());
+        await browser.pause(WAIT_FOR_UPDATE);
+        await browser.click(PO.map.controls.zoom.plus());
+        await browser.pause(WAIT_FOR_UPDATE);
+        await browser.waitForTilesLoaded();
+        await browser.verifyScreenshot('telAviv-after-zoom', PO.map());
+        await browser.execute((center) => myMap.setCenter(center), tehran).catch((err) => new Error(err));
+        await browser.pause(WAIT_FOR_UPDATE);
+        await browser.waitForTilesLoaded();
+        await browser.verifyScreenshot('set-center-tehran', PO.map());
+        await browser.click(PO.map.controls.zoom.minus());
+        await browser.pause(WAIT_FOR_UPDATE);
+        await browser.click(PO.map.controls.zoom.minus());
+        await browser.pause(WAIT_FOR_UPDATE);
+        await browser.waitForTilesLoaded();
+        await browser.verifyScreenshot('tehran-after-zoom', PO.map());
+    });
+});

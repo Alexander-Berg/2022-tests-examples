@@ -1,0 +1,103 @@
+---
+regexp_section:
+    matcher:
+      match_or:
+        - match_fsm: {path: '/uni.ws', case_insensitive: true, surround: false}
+    modules:
+        - headers:
+            create_func:
+              X-Yandex-TCP-Info: tcp_info
+              X-Forwarded-For-Y: realip
+              X-Real-Port: realport
+        - log_headers:
+            name_re: 'X-(UPRX-(UUID|SSID|AUTH-TOKEN|RETRY-COUNT|APP-(ID|TYPE))|ALICE-CLIENT-REQID|Yandex-TCP-Info)'
+        - antirobot_macro: {version: 0.0.2}
+        - exp_getter:
+            file_switch: ./controls/disable_uaas_exp_uniproxy2
+            uaas:
+                modules:
+                    - rewrite:
+                        actions: [ { split: path, regexp: '.*', rewrite: '/uniproxy'} ]
+                    - hdrcgi:
+                        cgi_from_hdr:
+                            uuid: X-UPRX-UUID
+                    - headers:
+                        create:
+                            User-Agent: uniproxy
+                    - balancer2:
+                        attempts: 1
+                        rr: {}
+                        by_name_policy:
+                            name: !f get_geo("bygeo_", "random")
+                            unique_policy: {}
+                        backends:
+                            - weight: 1
+                              name: bygeo_man
+                              modules:
+                                - balancer2:
+                                    attempts: 3
+                                    attempts_rate_limiter:
+                                        limit: 0.5
+                                    weighted2: {}
+                                    generated_proxy_backends:
+                                        proxy_options:
+                                            connect_timeout: 3ms
+                                            backend_timeout: 4ms
+                                        include_backends:
+                                            type: BY_ID
+                                            ids: [usersplit_man]
+                            - weight: 1
+                              name: bygeo_sas
+                              modules:
+                                - balancer2:
+                                    attempts: 3
+                                    attempts_rate_limiter:
+                                        limit: 0.5
+                                    weighted2: {}
+                                    generated_proxy_backends:
+                                        proxy_options:
+                                            connect_timeout: 3ms
+                                            backend_timeout: 4ms
+                                        include_backends:
+                                            type: BY_ID
+                                            ids: [usersplit_sas]
+                            - weight: 1
+                              name: bygeo_vla
+                              modules:
+                                - balancer2:
+                                    attempts: 3
+                                    attempts_rate_limiter:
+                                        limit: 0.5
+                                    weighted2: {}
+                                    generated_proxy_backends:
+                                        proxy_options:
+                                            connect_timeout: 3ms
+                                            backend_timeout: 4ms
+                                        include_backends:
+                                            type: BY_ID
+                                            ids: [usersplit_vla]
+        - regexp:
+            sections:
+                uniproxy2-experiment:
+                    matcher:
+                        match_or:
+                            - match_fsm: { header: { name: 'X-Yandex-ExpBoxes', value: '.*258652,.*' } }
+                            - match_fsm: { header: { name: 'X-UPRX-APP-ID', value: 'yabro\\.(beta|canary|dev)' } }
+                            - match_fsm: { header: { name: 'X-UPRX-APP-ID', value: 'com\\.yandex\\.browser\\.(alpha|beta|canary|inhouse)' } }
+                            - match_fsm: { header: { name: 'X-UPRX-APP-ID', value: 'ru\\.yandex\\.mobile\\.search\\.(inhouse|ipad\\.inhouse)' } }
+                            - match_fsm: { header: { name: 'X-UPRX-APP-ID', value: 'ru\\.yandex\\.mobile\\.inhouse' } }
+                            - match_fsm: { header: { name: 'X-UPRX-APP-ID', value: 'ru\\.yandex\\.searchplugin\\.beta' } }
+                            - match_fsm: { header: { name: 'X-UPRX-APP-ID', value: 'ru\\.yandex\\.yandexnavi\\.inhouse' } }
+                            - match_fsm: { header: { name: 'X-UPRX-APP-ID', value: 'ru\\.yandex\\.mobile\\.navigator\\.inhouse' } }
+                    modules:
+                        - report: {ranges: default, uuid: uniproxy2_ws}
+                        - headers:
+                            delete: 'X-Yandex-Exp.*'
+                        - shared:
+                            uuid: uniproxy2_backends
+                default:
+                    matcher: {}
+                    modules:
+                        - report: {ranges: default, uuid: uniproxy_ext_ws}
+                        - shared:
+                            uuid: uniproxy_backends

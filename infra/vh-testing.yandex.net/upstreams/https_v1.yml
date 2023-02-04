@@ -1,0 +1,46 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - smalashkevich
+      groups: []
+labels:
+  order: '00000003'
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      uri: '/v1/(.*)'
+  modules:
+    - report: {uuid: v1, ranges: default}
+    - rewrite:
+        actions:
+          - regexp: '/v1/(.*)'
+            rewrite: '/public/%1'
+    - cookie_hasher:
+        cookie: yandexuid
+    - balancer2:
+        attempts: 3
+        rr: {}
+        by_hash_policy:
+          unique_policy: {}
+        backends:
+        - weight: 1
+          name: !f prefix_with_dc('prod')
+          modules:
+            - report: {uuid: requests_to_testing, ranges: default}
+            - balancer2:
+                attempts: 4
+                rr: {}
+                by_hash_policy:
+                  timeout_policy:
+                    timeout: 1s
+                    unique_policy: {}
+                generated_proxy_backends:
+                  proxy_options:
+                    backend_timeout: 3s
+                    connect_timeout: 50ms
+                    keepalive_count: 1
+                  include_backends:
+                    type: BY_ID
+                    ids: [bootstrap_vh]

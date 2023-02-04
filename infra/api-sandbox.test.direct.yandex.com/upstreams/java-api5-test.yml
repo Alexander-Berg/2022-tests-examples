@@ -1,0 +1,47 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - pe4kin
+      groups: []
+labels:
+  order: '10000000'
+---
+regexp_section:
+  matcher:
+    match_or:
+      - match_fsm:
+          path: (/json)?/v\\d+/(retargetinglists|advideos|audiencetargets|agencyclients|clients|feeds|keywordsresearch|sitelinks|smartadtargets|vcards|creatives|negativekeywordsharedsets|bids|businesses|keywordbids|adextensions|leads|adgroups|ads|dictionaries|bidmodifiers|keywords|dynamictextadtargets|features|promotedcontent|turbopages|dynamicfeedadtargets)(/.*)?
+      - match_fsm:
+          host: api5-sandbox-test.direct.yandex.com
+  modules:
+    - headers:
+        create:
+            X-Real-SSL-Protocol: TLSv1.2
+    - balancer2:
+        attempts: 1
+        attempts_rate_limiter:
+          limit: 0.15
+        connection_attempts: 3
+        status_code_blacklist : ["5xx"]
+        return_last_5xx: true
+        unique_policy: {}
+        dynamic:
+          max_pessimized_share: 0.35
+          min_pessimization_coeff: 0.1
+          weight_increase_step: 0.1
+          history_interval: "10s"
+          backends_name: "java-api5"
+          active:
+            use_backend_weight: false
+            weight_normalization_coeff: 1
+            request: 'GET /alive HTTP/1.0\n\n'
+            delay: "1s"
+        generated_proxy_backends:
+          proxy_options:
+            backend_timeout: 600s
+            connect_timeout: 100ms
+            fail_on_5xx: false
+          include_backends:
+            type: BY_ID
+            ids: [java-api5-sas-test, java-api5-man-test]

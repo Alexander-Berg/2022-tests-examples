@@ -1,0 +1,51 @@
+---
+
+- name: Playbook for restart docker hosts in vertis_test_docker group
+  hosts: vertis_test_docker
+  serial: 1
+  user: root
+
+  tasks:
+    - name: Disable ap
+      shell: /usr/sbin/vertis-ansible-pull.sh -d
+
+    - name: Drain node
+      shell: nomad node drain -self -enable -deadline 30s -detach
+
+    - name: Wait while alloc migrating
+      shell: '[ $(docker ps | wc -l) -eq "1" ]'
+      register: results
+      until: results | success
+      retries: 300
+      delay: 1
+
+    - name: stop nomad
+      shell: systemctl stop nomad.service
+
+    - name: stop containers ( if exists )
+      shell: for i in $(docker ps | awk '{print $1}'); do docker stop $i || true; done
+
+    - name: reboot host
+      shell: reboot
+
+    - name: Pause for 5 minutes
+      pause:
+        seconds: 300
+
+    - name: Wait for nomad up
+      shell: monrun -r nomad | grep -Eq "I am ineligible for scheduling|I am in drain mode|I am agent"
+      register: nomads_monrun
+      until: nomads_monrun | success
+      retries: 1000
+      delay: 2
+
+    - name: Enable ap
+      shell: /usr/sbin/vertis-ansible-pull.sh -e
+
+    - name: Undrain node
+      shell: nomad node drain -self -disable
+
+    - name: Pause for 5 seconds
+      pause:
+        seconds: 5
+

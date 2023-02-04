@@ -1,0 +1,115 @@
+instance_macro:
+  sd: {}
+  unistat: {}
+  maxconn: 1000
+  log_dir: /place/db/www/logs/
+  workers: !f get_workers()
+  sections:
+    admin:
+      ips: [127.0.0.1, '::1']
+      ports: [22055]
+      modules:
+        - http: {}
+        - admin: {}
+    stats_storage:
+      ips: [127.0.0.4]
+      ports: [22055]
+      modules:
+        - report:
+            uuid: "service_total"
+            ranges: "default"
+            just_storage: true
+        - http: {}
+        - errordocument:
+            status: 204
+    http_section:
+      ips: ['2a02:6b8:0:3400:0:780:0:2']
+      ports: [80]
+      local_ips: [local_v4_addr, local_v6_addr]
+      local_ports: [22055]
+      extended_http_macro:
+        port: 22055
+        report_uuid: 'http'
+        modules:
+          - regexp:
+              sections:
+                exp_testing:
+                  matcher:
+                    match_fsm:
+                      cgi: "(exp-testing=da|exp_confs=testing)"
+                      surround: true
+                  modules:
+                    - exp_getter_macro:
+                        header_name: X-L7-EXP-Testing
+                        service_name: answers
+                        _version: 2
+                    - shared:
+                        uuid: upstreams
+                default:
+                  matcher: {}
+                  modules:
+                    - exp_getter_macro:
+                        service_name: answers
+                        _version: 2
+                    - shared:
+                        uuid: upstreams
+                    - regexp:
+                        include_upstreams:
+                          order:
+                            label:
+                              name: order
+    https_section:
+      ips: ['2a02:6b8:0:3400:0:780:0:2']
+      ports: [443]
+      extended_http_macro:
+        port: 22055
+        report_uuid: 'https'
+        enable_ssl: true
+        ssl_sni_contexts:
+          answers-test.yandex.net:
+            servername_regexp: default
+            cert: !c answers.test.yandex.ru
+        modules:
+          - headers:
+              create_func:
+                X-Forwarded-For-Y: realip
+              create_func_weak:
+                X-Req-Id: reqid
+          - regexp:
+              sections:
+                exp_testing:
+                  matcher:
+                    match_fsm:
+                      cgi: "(exp-testing=da|exp_confs=testing)"
+                      surround: true
+                  modules:
+                    - response_headers:
+                        create:
+                          X-Section: 'https:exp_testing'
+                    - exp_getter_macro:
+                        header_name: X-L7-EXP-Testing
+                        service_name: answers
+                        _version: 2
+                    - shared:
+                        uuid: upstreams
+                    - regexp:
+                        include_upstreams:
+                          order:
+                            label:
+                              name: order
+                default:
+                  matcher: {}
+                  modules:
+                    - response_headers:
+                        create:
+                          X-Section: 'https:default'
+                    - exp_getter_macro:
+                        service_name: answers
+                        _version: 2
+                    - shared:
+                        uuid: upstreams
+                    - regexp:
+                        include_upstreams:
+                          order:
+                            label:
+                              name: order

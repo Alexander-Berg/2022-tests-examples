@@ -1,0 +1,47 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - zivot
+      groups: []
+labels:
+  order: '100'
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      path: '/(api|request|static)(/.*)?'
+  modules:
+  - headers:
+      create:
+        Host: crt-api.test.yandex-team.ru
+      create_func:
+        X-Real-IP: realip
+  - response_headers:
+      create:
+        Cache-Control: 'no-cache, max-age=0'
+  - balancer2:
+      attempts: 1
+      simple_policy: {}
+      fast_attempts: 3
+      rr: {}
+      generated_proxy_backends:
+        proxy_options:
+          backend_timeout: '60s'
+          connect_timeout: '200ms'
+          fail_on_5xx: true
+          keepalive_count: 1
+          keepalive_timeout: '180s'
+          https_settings:
+            ca_file: !f get_ca_cert_path("allCAs.pem", "./")
+            sni_on: true
+            verify_depth: 3
+        instances:
+        - weight: 1
+          host: 'crt-slb.test.yandex-team.ru'
+          port: 443
+
+      on_error:
+        modules:
+        - errordocument:
+            status: 503

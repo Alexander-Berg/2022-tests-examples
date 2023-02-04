@@ -1,0 +1,132 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Менеджер объектов: программная смена пресета меток в менеджере объектов
+
+Description:
+Проверка программной смены пресета меток в менеджере объектов. 
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+objectManager
+
+Estimated time:
+60000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась корректно, на спане множество меток коллекций с номерами.
+  Через 5 секунд под контейнером появляются 2 строки: "balloonContentLayout change".
+  На спане карты две метки меняют пресет и становятся зеленого цвета.
+  
+Step:
+  Action:
+  Призумить спан карты, найти две метки с измененным пресетом.
+
+  Expectation:
+  На спане метки с номерами "3", "4" с измененным пресетом - зеленого цвета.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ym = ymaps;
+
+            var map = myMap = new ymaps.Map('map', {
+                center: [59.96343157514998, 30.317977733422868],
+                zoom: 7,
+                // Добавим к стандартным поведениям карты зум колесом мыши.
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+
+            var objectManager = new ym.ObjectManager({clusterize: false});
+            var placemarksNumber = 500;
+            var bounds = map.getBounds();
+            var newPlacemarks = createGeoObjects(placemarksNumber, bounds);
+
+            objectManager.objects.add(newPlacemarks);
+            map.geoObjects.add(objectManager);
+
+            function createGeoObjects(number, bounds) {
+                var placemarks = [];
+                // Создаем нужное количество меток
+                for (var i = 0; i < number; i++) {
+                    // Генерируем координаты метки случайным образом.
+                    var coordinates = getRandomCoordinates(bounds);
+                    // Создаем метку со случайными координатами.
+                    var myPlacemark = {
+                        "type": "Feature",
+                        "id": i,
+                        "geometry": {
+                            "type": "Point",
+                            "coordinates": coordinates
+                        },
+                        "properties": {
+                            "balloonContent": i,
+                            "clusterCaption": i,
+                            "hintContent": i,
+                            "iconContent": i
+                        },
+                        "options": {
+                            //zIndex: i,
+
+                            //preset: "islands#blueIcon"
+                        }
+                    };
+                    placemarks.push(myPlacemark);
+                }
+                return placemarks;
+            }
+
+            /*
+             setTimeout(function () {
+             map.options.set("geoObjectZIndex", 100000);
+             }, 4000);
+             */
+            setTimeout(function () {
+                objectManager.objects.options.set("zIndex", 100);
+                __log__('balloonContentLayout change');
+            }, 4000);
+            setTimeout(function () {
+                //objectManager.objects.options.set("zIndex", 1200000);
+                objectManager.objects.setObjectOptions(3, {
+                    zIndex: 99,
+                    preset: "islands#greenIcon"
+                });
+                objectManager.objects.setObjectOptions(4, {
+                    zIndex: 101,
+                    preset: "islands#greenIcon"
+                });
+                __log__('balloonContentLayout change');
+            }, 5000);
+
+
+            function getRandomCoordinates(bounds) {
+                var size = [bounds[1][0] - bounds[0][0], bounds[1][1] - bounds[0][1]];
+                return [Math.random() * size[0] + bounds[0][0], Math.random() * size[1] + bounds[0][1]];
+            }
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

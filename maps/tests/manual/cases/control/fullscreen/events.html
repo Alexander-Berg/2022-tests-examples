@@ -1,0 +1,235 @@
+<!DOCTYPE HTML>
+<!--(skip)(description)
+control.FullscreenControl: events
+-->
+<!--(version)
+2.1
+-->
+<!--(commands)
+click(207);
+click(7); // disable and enable events
+click(236);
+test();
+click(7);
+click(236);
+test();
+click(11); // mapchange, parentchange, optionschange
+test();
+click(11);
+test();
+click(14); // optionschange
+test();
+click(1); // select, click, press and deselect
+click(4);
+click(5);
+test();
+click(210);
+click(226);
+click(210);
+click(226);
+test();
+-->
+<html>
+<head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            var map = myMap = new ym.Map('map', {
+                        center: [55.73259667357658, 37.70153663432529],
+                        zoom: 9,
+                        behaviors: ['default', 'scrollZoom'],
+                        controls: []
+                    }),
+                    callback1 = function (e) {
+                        log.info('fullscreen1: ' + e.get('type'))
+                    },
+                    callback2 = function (e) {
+                        log.info('fullscreen2: ' + e.get('type'))
+                    },
+                    callback3 = function (e) {
+                        log.info('fullscreen3: ' + e.get('type'));
+                        if (e.get('type') == 'mapchange') {
+                            try {
+                                log.info('oldMap: ' + e.get('oldMap').getCenter());
+                            } catch (e) {
+                                log.info('oldMap is null')
+                            }
+                            try {
+                                log.info('newMap: ' + e.get('newMap').getCenter());
+                            } catch (e) {
+                                log.info('newMap is null')
+                            }
+                        }
+                        if (e.get('type') == 'parentchange') {
+                            try {
+                                log.info('oldParent: ' + e.get('oldParent').getMap().getCenter());
+                            } catch (e) {
+                                log.info('oldParent is undefined')
+                            }
+                            try {
+                                log.info('newParent: ' + e.get('newParent').getMap().getCenter());
+                            } catch (e) {
+                                log.info('newParent is undefined')
+                            }
+                        }
+                    },
+                    events = ['click', 'select', 'deselect', 'enable', 'disable', 'mapchange',
+                        'optionschange', 'parentchange', 'press'],
+                    log = new Log();
+
+            addGrid(myMap);
+
+            var fullscreen1 = new ymaps.control.FullscreenControl({
+                data: {title: '1'},
+                options: {float: 'left'}
+            });
+
+            var fullscreen2 = new ymaps.control.FullscreenControl({
+                data: {title: '2'},
+                options: {float: 'left'},
+                state: {selected: true}
+            });
+
+            var fullscreen3 = new ymaps.control.FullscreenControl({
+                data: {title: '3'},
+                options: {float: 'left'},
+                state: {enabled: false}
+            });
+
+            fullscreen1.events.add(events, callback1);
+            fullscreen2.events.add(events, callback2);
+            fullscreen3.events.add(events, callback3);
+
+            var listenerButton = new ymaps.control.Button({data: {content: 'Ignore'}, options: {selectOnClick: true}});
+            listenerButton.events
+                    .add('deselect', function () {
+                        log.info('Waiting for events...');
+                        fullscreen1.events.add(events, callback1);
+                        fullscreen2.events.add(events, callback2);
+                        fullscreen3.events.add(events, callback3);
+                    })
+                    .add('select', function () {
+                        log.info('Events will be ignored.');
+                        fullscreen1.events.remove(events, callback1);
+                        fullscreen2.events.remove(events, callback2);
+                        fullscreen3.events.remove(events, callback3);
+                    });
+
+            var disableButton = new ymaps.control.Button({data: {content: 'Disable'}, options: {selectOnClick: true}});
+            disableButton.events
+                    .add('select', function () {
+                        fullscreen1.state.set('enabled', false);
+                        fullscreen2.state.set('enabled', false);
+                        fullscreen3.state.set('enabled', false);
+                    })
+                    .add('deselect', function () {
+                        fullscreen1.state.set('enabled', true);
+                        fullscreen2.state.set('enabled', true);
+                        fullscreen3.state.set('enabled', true);
+                    });
+
+            var removeButton = new ymaps.control.Button({data: {content: 'Remove'}, options: {selectOnClick: true}});
+            removeButton.events
+                    .add('select', function () {
+                        myMap.controls.remove(fullscreen1);
+                        myMap.controls.remove(fullscreen2);
+                        myMap.controls.remove(fullscreen3);
+                    })
+                    .add('deselect', function () {
+                        myMap.controls.add(fullscreen1);
+                        myMap.controls.add(fullscreen2);
+                        myMap.controls.add(fullscreen3);
+                    });
+
+            var optionButton = new ymaps.control.Button({data: {content: 'Visible'}, options: {selectOnClick: true}});
+            optionButton.events
+                    .add('select', function () {
+                        fullscreen1.options.set('visible', false);
+                        fullscreen2.options.set('visible', false);
+                        fullscreen3.options.set('visible', false);
+                    })
+                    .add('deselect', function () {
+                        fullscreen1.options.set('visible', true);
+                        fullscreen2.options.set('visible', true);
+                        fullscreen3.options.set('visible', true);
+                    });
+
+            var isEnabledButton = new ymaps.control.Button({data: {content: 'isEnabled'}, options: {selectOnClick: false}});
+            isEnabledButton.events.add('click', function () {
+                log.info('isEnabled: ' + fullscreen1.isEnabled());
+                log.info('isEnabled: ' + fullscreen2.isEnabled());
+                log.info('isEnabled: ' + fullscreen3.isEnabled());
+            });
+
+            var selectButton = new ymaps.control.Button({data: {content: 'Select'}, options: {selectOnClick: true}});
+            selectButton.events
+                    .add('select', function () {
+                        fullscreen1.select();
+                        fullscreen2.select();
+                        fullscreen3.select();
+                    })
+                    .add('deselect', function () {
+                        fullscreen1.deselect();
+                        fullscreen2.deselect();
+                        fullscreen3.deselect();
+                    });
+
+            var isSelectedButton = new ymaps.control.Button({data: {content: 'isSelected'}, options: {selectOnClick: false}});
+            isSelectedButton.events.add('click', function () {
+                log.info('isSelected: ' + fullscreen1.isSelected());
+                log.info('isSelected: ' + fullscreen2.isSelected());
+                log.info('isSelected: ' + fullscreen3.isSelected());
+            });
+
+            var clearButton = new ymaps.control.Button('clear');
+            clearButton.events.add('click', function () {
+                log.clear();
+            });
+            map.controls.add(clearButton, {float: 'none', position: {bottom: 95, right: 10}});
+
+            var freezeButton = new ymaps.control.Button({data: {content: 'freeze'}, options: {selectOnClick: true}});
+            freezeButton.events
+                    .add('select', function () {
+                        fullscreen1.options.freeze();
+                        fullscreen2.options.freeze();
+                        fullscreen3.options.freeze();
+                    })
+                    .add('deselect', function () {
+                        fullscreen1.options.unfreeze();
+                        fullscreen2.options.unfreeze();
+                        fullscreen3.options.unfreeze();
+                    });
+
+            var isFrozenButton = new ymaps.control.Button({data: {content: 'isFrozen'}, options: {selectOnClick: false}});
+            isFrozenButton.events.add('click', function () {
+                log.info('isFrozen: ' + fullscreen1.options.isFrozen());
+                log.info('isFrozen: ' + fullscreen2.options.isFrozen());
+                log.info('isFrozen: ' + fullscreen3.options.isFrozen());
+            });
+
+            map.controls
+                    .add(fullscreen1)
+                    .add(fullscreen2)
+                    .add(fullscreen3)
+                    .add(disableButton, { float: 'right'})
+                    .add(listenerButton, { float: 'right'})
+                    .add(removeButton, { float: 'right'})
+                    .add(optionButton, { float: 'right'})
+                    .add(isEnabledButton, { float: 'none', position: {bottom: 35, right: 5}})
+                    .add(selectButton, { float: 'none', position: {bottom: 125, left: 5}})
+                    .add(isSelectedButton, { float: 'none', position: {bottom: 95, left: 5}})
+                    .add(freezeButton, { float: 'none', position: {bottom: 65, left: 5}})
+                    .add(isFrozenButton, { float: 'none', position: {bottom: 35, left: 5}})
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

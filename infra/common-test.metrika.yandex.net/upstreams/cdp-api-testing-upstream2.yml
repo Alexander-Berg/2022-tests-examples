@@ -1,0 +1,37 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - lavrinovich
+      groups: []
+labels:
+  order: '10000000'
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      host: cdp-api.test.metrika.yandex.net
+  modules:
+    - headers:
+        create:
+            Host: cdp-api.test.metrika.yandex.net
+
+    - balancer2:
+        attempts: 2
+        attempts_rate_limiter:
+          limit: 0.15
+        connection_attempts: !f count_backends()
+        status_code_blacklist : ["5xx"]
+        return_last_5xx: true
+        unique_policy: {}
+        active:
+            delay: 1s
+            request: 'GET /internal/ping HTTP/1.1\nHost: cdp-api.test.metrika.yandex.net\nUser-agent: l7-balancer\n\n'
+        generated_proxy_backends:
+          proxy_options:
+            backend_timeout: 240s
+            connect_timeout: 100ms
+            fail_on_5xx: false
+          include_backends:
+            type: BY_ID
+            ids: [cdp-api-test]

@@ -1,0 +1,3 @@
+DROP TABLE IF EXISTS tasks;
+DROP TABLE IF EXISTS offers;
+DROP TABLE IF EXISTS offer_errors;

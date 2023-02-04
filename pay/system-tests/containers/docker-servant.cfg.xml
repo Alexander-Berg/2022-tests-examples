@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Config>
+    <Environment>
+        <Type>test</Type>
+    </Environment>
+
+    <Log level="info">stdout</Log>
+    <Pid>/var/run/yb/simplebrother_balance_bo.pid</Pid>
+
+    <PyLog>
+        <Logger name="yb.servant">INFO</Logger>
+        <Logger name="sqlalchemy.engine">DEBUG</Logger>
+        <Logger name="sqlalchemy.pool">DEBUG</Logger>
+        <Logger name="sqlalchemy.orm.unitofwork">DEBUG</Logger>
+        <LogFormat>%(asctime)s P%(process)s T%(thread)-2.0d %(levelname)-8s %(name)-15s: %(message)s</LogFormat>
+        <SysLogFormat>T%(thread)-4s %(name)-15s: %(message)s</SysLogFormat>
+    </PyLog>
+    <MonitorSet>
+        <Schema>
+            <Table id="result">
+                <name>ds.t_monitor_query_result</name>
+                <columns>
+                    <name>service</name>
+                    <lastrun>last_run</lastrun>
+                    <queryid>query_id</queryid>
+                    <result>status</result>
+                    <description>descr</description>
+                    <metric>metric</metric>
+                </columns>
+            </Table>
+        </Schema>
+        <Connection id="balance_bo" subid='balance' path="simple_brother.connections.sqlalchemy_connect">
+            <DbBackends>
+                <DbBackend id="balance" type="oracle">
+                    <Host>balance.yandex.ru</Host>
+                    <User>ds</User>
+                    <Pass>tiger</Pass>
+                </DbBackend>
+                <DbBackend id="balance_ro" type="oracle">
+                    <Host>BALANCE_RO.YANDEX.RU</Host>
+                    <User>ds</User>
+                    <Pass>tiger</Pass>
+                </DbBackend>
+            </DbBackends>
+        </Connection>
+
+        <Handler path='simple_brother.handlers.oracle.OracleHandler' id='darkspirit'>
+            <Setting name="expiration_seconds" type='int'>600</Setting>
+            <Setting name="connection">balance_bo</Setting>
+        </Handler>
+        <Scheduler path='simple_brother.schedulers.StaticScheduler'>
+            <Setting name="path">simplebrother_balance_bo.schedule.schedule</Setting>
+        </Scheduler>
+        <Senders>
+            <Sender path="simplebrother_balance_bo.docker.DockerSender">
+                <!-- Simple brother in case of balance has a strict set of names allowed, so we use
+                solomon name in order to pass the sender filter-->
+                <Setting name="name">solomon_trust_cashregisters</Setting>
+            </Sender>
+            <Sender path="simplebrother_balance_bo.docker.DockerMetaSender" meta="True"/>
+        </Senders>
+        <MonitorLogic>
+            <Setting name="meta_handler">darkspirit</Setting>
+            <Setting name="query_handler">darkspirit</Setting>
+            <Setting name="result_table" type="table">result</Setting>
+            <Setting name="lock_name">simplebrotherlock_%d</Setting>
+            <Setting name="lock_timeout" type='int'>2</Setting>
+            <Setting name="ttl_relative" type='float'>.1</Setting>
+            <Setting name="ttl_absolute" type='int'>40</Setting>
+        </MonitorLogic>
+
+        <Metamonitor name="simple_metamonitor1" query_id="0" maxtime="4"></Metamonitor>
+        <Metamonitor2 name="simple_metamonitor2" query_id="-1"></Metamonitor2>
+        <LoopPeriod>10</LoopPeriod>
+        <GlobalLock>
+            <Setting name="name">simplebrother_balance_bo</Setting>
+            <Setting name="lock_acquire_timeout" type='int'>2</Setting>
+        </GlobalLock>
+    </MonitorSet>
+    <ZooKeeper>
+        <Setting name="hosts">zookeeper:2181</Setting>
+    </ZooKeeper>
+    <Http>
+        <Interface>0.0.0.0</Interface>
+        <Port>16001</Port>
+        <ThreadPool>5</ThreadPool>
+        <Allow>
+            <Host>127.0.0.1</Host>
+        </Allow>
+    </Http>
+    <MPool module="butils.application.plugins.mpool">
+       <Initsize>5</Initsize>
+       <Maxsize>50</Maxsize>
+       <WipeTimeout>120</WipeTimeout>
+       <MonitorInterval>2</MonitorInterval>
+       <ApplyTimeout>120</ApplyTimeout>
+    </MPool>
+</Config>

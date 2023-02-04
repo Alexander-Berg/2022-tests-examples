@@ -1,0 +1,105 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Геообъект: смена состояния точки при изменении центра карты
+
+Description:
+Проверка смены состояния точки при изменении центра карты.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+geoobject
+
+Estimated time:
+90000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+  
+  Expectation:
+  Карта отобразилась корректно, на карте спан Санкт-Петербурга с зеленой меткой коллекции, слева сверху кнопка "state".
+
+Step:
+  Action:
+  Навести курсор на метку на спане карты. 
+  
+  Expectation:
+  Под контейнером с картой появляется блок состояний: "active: undefined; hover: true".
+
+Step:
+  Action:
+  Выполнить клик ПКМ по метке, после чего немного сместить курсор. 
+  
+  Expectation:
+  По клику ПКМ происходит смена центра спана карты, метка коллекции перемещается в центр спана. 
+  После начала движения курсора после смены центра, под контейнером с картой повляется блок: "active: undefined; hover: false".
+-->
+<html>
+<head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            var myMap = new ymaps.Map('map', {
+                center: [59.976469003480716, 30.290052050069413],
+                zoom: 9,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            var log = new Log();
+            addGrid(myMap);
+
+            addGrid(myMap);
+            var log = new Log();
+            log.info('Map center will be changed on context menu.');
+            log.info('State has to be changed immediately!');
+
+            var events = ['click', 'contextmenu', 'dblclick', 'mousedown', 'mouseenter', 'mouseleave', 'mouseup', 'multitouchend',
+                'multitouchstart', 'wheel'];
+            var callback = function (e) {
+                log.info('event: ' + e.get('type'))
+            };
+
+            var placemark = new ymaps.GeoObject({
+                geometry: { type: "Point", coordinates: [60, 30.5] }, properties: {
+                    balloonContent: 'text', hintContent: 'text'
+                }}, {preset: 'islands#greenIcon', draggable: true, openBalloonOnClick: true});
+
+            placemark.events.add('contextmenu', function () {
+                myMap.setCenter(placemark.geometry.getCoordinates());
+            });
+            placemark.events.add(events, callback);
+
+            var monitor = new ymaps.Monitor(placemark.state)
+                    .add(['active', 'hover'], function (values) {
+                        log.info('active: ' + monitor.get('active'));
+                        log.info('hover: ' + monitor.get('hover'));
+                    });
+
+            var button = new ymaps.control.Button({data: {content: 'state'}, options: {selectOnClick: false}});
+            button.events.add('click', function () {
+                log.info('active: ' + placemark.state.get('active'));
+                log.info('hover: ' + placemark.state.get('hover'));
+            });
+
+            myMap.geoObjects.add(placemark);
+            myMap.controls.add(button);
+
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

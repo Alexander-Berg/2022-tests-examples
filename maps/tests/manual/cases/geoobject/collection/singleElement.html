@@ -1,0 +1,95 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Геообъект: добавление метки в коллекцию объектов и вывод данных коллекции
+
+Description:
+Проверка добавления метки в коллекцию объектов и вывод данных коллекции.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+geoobject
+
+Estimated time:
+30000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан Московской области, а районе Одинцово имеется зеленая метка.
+  Сверху слева имеется кнопка "add".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "add".
+   
+  Expectation:
+  Спан карты без изменений, под контейнером с картой появляется лог: 0: Point - geoObjectPlacemark; getLength: 1.
+-->
+<html>
+<head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script src="../geoCS.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym; // hack
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.73259667357658, 37.70153663432529],
+                zoom: 9,
+                behaviors: ['default', 'scrollZoom'],
+                controls: []
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+            geoCSSource(ym, myMap, this);
+
+            log.info('on click: add geoObjectPlacemark to collection, print all elements in log ' +
+                    'and show collection length ');
+
+            var collection = new ymaps.GeoObjectCollection({
+                properties: {
+                    hintContent: 'collection',
+                    balloonContent: 'collection'
+                },
+                children: [geoObjectPlacemark]
+            }, {
+                preset: 'islands#redCircleIcon',
+                strokeColor: '#FF0000',
+                fillColor: '#FF0000',
+                fillOpacity: 0.3
+            });
+
+            map.geoObjects.add(collection);
+
+            var addButton = new ymaps.control.Button({data: {content: 'add'}, options: {selectOnClick: false}});
+            addButton.events.add('click', function () {
+                var addResult = collection.add(geoObjectPlacemark);
+                for (var i = 0; i < addResult.getLength(); i++) {
+                    var element = addResult.get(i);
+                    log.info(i + ': ' + element.geometry.getType() + ' - ' + element.options.get('id'));
+                }
+                log.info('getLength: ' + addResult.getLength());
+            });
+
+            map.controls.add(addButton)
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

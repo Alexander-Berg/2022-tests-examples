@@ -1,0 +1,76 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - rifler
+      groups: []
+labels:
+  order: '00003000'
+---
+regexp_section:
+  matcher:
+    match_or:
+      - match_fsm:
+          host: 'test\\.appmetri(c|k)a\\.yandex\\.(ru|ua|by|kz|com|com.tr)'
+      - match_fsm:
+          host: 'appmetri(c|k)a\\.crowdtest\\.(metri(k|c)a\\.)?yandex\\.(ru|ua|by|kz|com|com.tr)'
+  modules:
+    - response_headers:
+        create:
+          Strict-Transport-Security: 'max-age=31536000'
+    - balancer2:
+        attempts: !f count_backends()
+        status_code_blacklist: ["502"]
+        return_last_5xx: true
+        rr: { weights_file: ./controls/traffic_control.weights }
+        backends:
+          - weight: 1
+            name: bygeo_sas
+            modules:
+              - shared:
+                  uuid: test_appmetrica_sas
+              - balancer2:
+                  attempts: 1
+                  connection_attempts: 2
+                  dynamic:
+                    max_pessimized_share: 1
+                    active:
+                      delay: "1s"
+                      weight_normalization_coeff: 1
+                      request: 'GET /healthchecks/awacs HTTP/1.1\nHost: test.appmetrica.yandex.ru\nUser-agent: l7-balancer\n\n'
+                  generated_proxy_backends:
+                    proxy_options:
+                      backend_timeout: 120s
+                      connect_timeout: 70ms
+                      keepalive_count: 0
+                      fail_on_5xx: false
+                    include_backends:
+                      type: BY_ID
+                      ids: [appmetrica-sas]
+          - weight: 1
+            name: bygeo_vla
+            modules:
+              - shared:
+                  uuid: test_appmetrica_vla
+              - balancer2:
+                  attempts: 1
+                  connection_attempts: 2
+                  dynamic:
+                    max_pessimized_share: 1
+                    active:
+                      delay: "1s"
+                      weight_normalization_coeff: 1
+                      request: 'GET /healthchecks/awacs HTTP/1.1\nHost: test.appmetrica.yandex.ru\nUser-agent: l7-balancer\n\n'
+                  generated_proxy_backends:
+                    proxy_options:
+                      backend_timeout: 120s
+                      connect_timeout: 70ms
+                      keepalive_count: 0
+                      fail_on_5xx: false
+                    include_backends:
+                      type: BY_ID
+                      ids: [appmetrica-vla]
+        on_error:
+          errordocument:
+            status: 504
+            content: "Service unavailable"

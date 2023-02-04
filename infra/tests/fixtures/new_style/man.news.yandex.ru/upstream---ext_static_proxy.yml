@@ -1,0 +1,32 @@
+---
+regexp_section:
+    matcher:
+        match_and:
+          - match_fsm:
+                path: '/yastatic/.*'
+          - match_fsm:
+                host: '(m\\.)?news\\.yandex\\.[^.]+'
+    modules:
+        - rewrite:
+            actions:
+              - header_name: Host
+                regexp: .*
+                rewrite: yastatic.net
+              - split: path
+                regexp: '/yastatic/(.*)'
+                rewrite: '/%1'
+        - balancer2:
+            attempts: 3
+            rr: {}
+            simple_policy: {}
+            generated_proxy_backends:
+                proxy_options:
+                    backend_timeout: 1000ms
+                    connect_timeout: 100ms
+                    fail_on_5xx: true
+                    status_code_blacklist: ["4xx"]
+                instances:
+                  - weight: 1
+                    host: yastatic.net
+                    port: 80
+            

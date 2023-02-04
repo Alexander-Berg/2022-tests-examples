@@ -1,0 +1,51 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - idlesign
+      - nanny-robot
+      groups:
+      - svc_refs
+labels:
+  order: '10000000'
+config_mode: easy2
+---
+l7_upstream_macro:
+  version: 0.0.2
+  id: refs-test-l7_paysys_yandex_net
+  matcher:
+    path_re: '(/.*)?'
+  monitoring:
+    uuid: refs-test-l7_paysys_yandex_net
+  by_dc_scheme:
+    dc_balancer:
+      weights_section_id: default
+      method: BY_DC_WEIGHT
+      attempts: 2
+    balancer:
+      attempts: 2
+      compat: 
+        method: ACTIVE
+      health_check:
+          delay: '1s'
+          request: 'GET /ping HTTP/1.1\nHost: rest-test.paysys.yandex.net\nUser-Agent: l7-balancer-refs-test\n\n'
+      max_reattempts_share: 0.15
+      fast_attempts: 2
+      do_not_retry_http_responses: true
+      retry_non_idempotent: false
+      connect_timeout: 70ms
+      backend_timeout: 10s
+    dcs:
+      - name: sas
+        backend_ids:
+          - refs-test-stage_backend_sas
+      - name: myt
+        backend_ids:
+          - refs-test-stage_backend_myt
+      - name: iva
+        backend_ids:
+          - refs-test-stage_backend_iva
+    on_error:
+      static:
+        status: 504
+        content: 'Service unavailable'

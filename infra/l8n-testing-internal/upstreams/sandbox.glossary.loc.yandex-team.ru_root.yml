@@ -1,0 +1,50 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - ddd127
+      groups: []
+labels:
+  order: '10000000'
+---
+regexp_section:
+  matcher:
+    match_and:
+    - match_or:
+      - match_fsm:
+          path: /.*
+    - match_or:
+      - match_fsm:
+          host: sandbox.glossary.loc.yandex-team.ru
+  modules:
+  - report:
+      just_storage: false
+      outgoing_codes:
+      - '500'
+      - '502'
+      - '503'
+      - '504'
+      ranges: default
+      uuid: loc-sandbox-glossary-root
+  - balancer2:
+      attempts: 3
+      attempts_rate_limiter:
+        limit: 0.2
+      connection_attempts: 3
+      dynamic:
+        max_pessimized_share: 0.5
+      generated_proxy_backends:
+        include_backends:
+          ids:
+          - glossary-test.backend
+          type: BY_ID
+        proxy_options:
+          backend_read_timeout: 10s
+          backend_timeout: 10s
+          backend_write_timeout: 10s
+          connect_timeout: 60ms
+          fail_on_5xx: false
+      on_error:
+        errordocument:
+          content: Backend unavailable
+          status: 504

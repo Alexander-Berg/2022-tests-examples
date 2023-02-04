@@ -1,0 +1,337 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Геолокация: определение геолокации с использованием Geolocation API
+
+Description:
+Проверка определения местоположения с использованием Geolocation API.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+Перед проведением теста необходимо настроить браузер для запроса геоданных. В Google Chrome в настройках "Конфиденциальность и безопастность" в блоке "Геоданные" выставить флаг "Спрашивать разрешение на доступ".
+При этом в списке разрешенных адресов вкладки "Геоданные" в подблоках "Разрешить" и "Блокировать" не должно быть URL адресов ...yandex.ru...Если URL адреса "yandex.ru" имеются удалите их, для корректного прохождения теста и появления запроса на определение местоположения.
+
+Components: 
+geolocation
+
+Estimated time:
+120000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан Москвы, сверху слева имеется кнопка "Где я?".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "Где я?". 
+
+  Expectation:
+  По клику на странице появляется диалоговое окно о разрешении доступа к данным о вашем местоположении, с кнопками "разрешить", "блокировать". 
+  (конфигурация кнопок и диалогового окна может варьироваться в зависимости от браузера).
+  
+Step:
+  Action:
+  Клик в кнопку "Разрешить" в диалоговом окне браузера.
+
+  Expectation:
+  Спан карты может изменится, на спане карты появляется круглая синяя метка, спан карты окрашен полупрозрачным синим фоном.
+  
+Step:
+  Action:
+  Навести курсор на метку.
+
+  Expectation:
+  Появляется хинт с наименованием топонима местоположения.
+  
+Step:
+  Action:
+  Выполнить отзум спана карты для обзора спана всего города или населенного пункта.
+
+  Expectation:
+  Отзум спана карты корректный, карта не мигает, не пропадает, метка геолокации не пропадает.
+  На спане карты вокруг метки имеется полупрозрачный синий круг, обозначающий тоность определения геолокации.
+-->
+<html>
+<head>
+<title>2.1</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+<script src="../../helper.js"></script>
+<script type=text/javascript>
+
+Api('init');
+
+function init(ymaps) {
+    ymaps = ym;
+
+    /**
+     * Класс кнопки определения местоположения пользователя.
+     * с помощью Geolocation API.
+     * @see http://www.w3.org/TR/geolocation-API/
+     * @class
+     * @name GeolocationButton
+     * @param {Object} params Данные для кнопки и параметры к Geolocation API.
+     */
+    function GeolocationButton(params) {
+        GeolocationButton.superclass.constructor.call(this, params);
+
+        // Расширяем опции по умолчанию теми, что передали в конструкторе.
+        this.geoLocationOptions = ymaps.util.extend({
+            // Не центрировать карту.
+            noCentering: false,
+            // Не ставить метку.
+            noPlacemark: false,
+            // Не показывать точность определения местоположения.
+            noAccuracy: false,
+            // Режим получения наиболее точных данных.
+            enableHighAccuracy: true,
+            // Максимальное время ожидания ответа (в миллисекундах).
+            timeout: 10000,
+            // Максимальное время жизни полученных данных (в миллисекундах).
+            maximumAge: 1000
+        }, params.options);
+    }
+
+    ymaps.util.augment(GeolocationButton, ymaps.control.Button, {
+        /**
+         * Метод будет вызван при добавлении кнопки на карту.
+         * @function
+         * @name GeolocationButton.onAddToMap
+         * @param {ymaps.Map} map Карта на которую добавляется кнопка.
+         */
+        onAddToMap: function () {
+            GeolocationButton.superclass.onAddToMap.apply(this, arguments);
+
+            ymaps.option.presetStorage.add('geolocation#icon', {
+                iconImageHref: 'man.png',
+                iconImageSize: [27, 26],
+                iconImageOffset: [-10, -24]
+            });
+
+            this.hint = new GeolocationButtonHint(this);
+            // Обрабатываем клик на кнопке.
+            this.events.add('click', this.onGeolocationButtonClick, this);
+        },
+        /**
+         * Метод будет вызван при удалении кнопки с карты.
+         * @function
+         * @name GeolocationButton.onRemoveFromMap
+         * @param {ymaps.Map} map Карта с которой удаляется кнопка.
+         */
+        onRemoveFromMap: function () {
+            this.events.remove('click', this.onGeolocationButtonClick, this);
+            this.hint = null;
+            ymaps.option.presetStorage.remove('geolocation#icon');
+
+            GeolocationButton.superclass.onRemoveFromMap.apply(this, arguments);
+        },
+        /**
+         * Обработчик клика на кнопке.
+         * @function
+         * @private
+         * @name GeolocationButton.onGeolocationButtonClick
+         * @param {ymaps.Event} e Объект события.
+         */
+        onGeolocationButtonClick: function (e) {
+
+            // Делаем кнопку ненажатой
+            if (this.isSelected()) {
+                this.deselect();
+            }
+
+            if (navigator.geolocation) {
+                // Запрашиваем текущие координаты устройства.
+                navigator.geolocation.getCurrentPosition(
+                        ymaps.util.bind(this._onGeolocationSuccess, this),
+                        ymaps.util.bind(this._onGeolocationError, this),
+                        this.geoLocationOptions
+                );
+            }
+            else {
+                this.handleGeolocationError('Ваш броузер не поддерживает GeolocationAPI.');
+            }
+        },
+        /**
+         * Обработчик успешного завершения геолокации.
+         * @function
+         * @private
+         * @name GeolocationButton._onGeolocationSuccess
+         * @param {Object} position Объект, описывающий текущее местоположение.
+         */
+        _onGeolocationSuccess: function (position) {
+            this.handleGeolocationResult(position);
+        },
+        /**
+         * Обработчик ошибки геолокации.
+         * @function
+         * @name GeolocationButton._onGeolocationError
+         * @param {Object} error Описание причины ошибки.
+         */
+        _onGeolocationError: function (error) {
+            this.handleGeolocationError('Точное местоположение определить не удалось.');
+
+            if (console) {
+                console.warn('GeolocationError: ' + GeolocationButton.ERRORS[error.code - 1]);
+            }
+        },
+        /**
+         * Обработка ошибки геолокации.
+         * @function
+         * @name GeolocationButton.handleGeolocationError
+         * @param {Object|String} err Описание ошибки.
+         */
+        handleGeolocationError: function (err) {
+            this.hint
+                    .show(err.toString())
+                    .hide(2000);
+        },
+        /**
+         * Обработка результата геолокации.
+         * @function
+         * @name GeolocationButton.handleGeolocationResult
+         * @param {Object} position Результат геолокации.
+         */
+        handleGeolocationResult: function (position) {
+            var location = [position.coords.latitude, position.coords.longitude],
+                    accuracy = position.coords.accuracy,
+                    map = this.getMap(),
+                    options = this.geoLocationOptions,
+                    placemark = this._placemark,
+                    circle = this._circle;
+
+            // Смена центра карты (если нужно)
+            if (!options.noCentering) {
+                map.setCenter(location, 15);
+            }
+
+            // Установка метки по координатам местоположения (если нужно).
+            if (!options.noPlacemark) {
+                // Удаляем старую метку.
+                if (placemark) {
+                    map.geoObjects.remove(placemark);
+                }
+                this._placemark = placemark = new ymaps.Placemark(location, {}, { preset: 'islands#blueCircleIcon' });
+                map.geoObjects.add(placemark);
+                // Показываем адрес местоположения в хинте метки.
+                this.getLocationInfo(placemark);
+            }
+
+            // Показываем точность определения местоположения (если нужно).
+            if (!options.noAccuracy) {
+                // Удаляем старую точность.
+                if (circle) {
+                    map.geoObjects.remove(circle);
+                }
+                this._circle = circle = new ymaps.Circle([location, accuracy], {}, { opacity: 0.5 });
+                map.geoObjects.add(circle);
+            }
+        },
+        /**
+         * Получение адреса по координатам метки.
+         * @function
+         * @name GeolocationButton.getLocationInfo
+         * @param {ymaps.Placemark} point Метка для которой ищем адрес.
+         */
+        getLocationInfo: function (point) {
+            ymaps.geocode(point.geometry.getCoordinates())
+                    .then(function (res) {
+                        var result = res.geoObjects.get(0);
+
+                        if (result) {
+                            point.properties.set('hintContent', result.properties.get('name'));
+                        }
+                    });
+        }
+    });
+
+    /**
+     * Человекопонятное описание кодов ошибок.
+     * @static
+     */
+    GeolocationButton.ERRORS = [
+        'permission denied',
+        'position unavailable',
+        'timeout'
+    ];
+
+    /**
+     * Класс хинта кнопки геолокации, будем использовать для отображения ошибок.
+     * @class
+     * @name GeolocationButtonHint
+     * @param {GeolocationButton} btn Экземпляр класса кнопки.
+     */
+    function GeolocationButtonHint(btn) {
+        var map = btn.getMap(),
+        // Позиция кнопки.
+                position = btn.options.get('position');
+
+        this._map = map;
+    }
+
+    /**
+     * Отображает хинт справа от кнопки.
+     * @function
+     * @name GeolocationButtonHint.show
+     * @param {String} text
+     * @returns {GeolocationButtonHint}
+     */
+    GeolocationButtonHint.prototype.show = function (text) {
+        var map = this._map,
+                globalPixels = map.converter.pageToGlobal(this._position),
+                position = map.options.get('projection').fromGlobalPixels(globalPixels, map.getZoom());
+
+        this._hint = map.hint.show(position, text);
+
+        return this;
+    };
+    /**
+     * Прячет хинт с нужной задержкой.
+     * @function
+     * @name GeolocationButtonHint.hide
+     * @param {Number} timeout Задержка в миллисекундах.
+     * @returns {GeolocationButtonHint}
+     */
+    GeolocationButtonHint.prototype.hide = function (timeout) {
+        var hint = this._hint;
+
+        if (hint) {
+            setTimeout(function () {
+                hint.hide();
+            }, timeout);
+        }
+
+        return this;
+    };
+
+    var map = myMap = new ymaps.Map("map", {
+                center: [55.755768, 37.617671],
+                zoom: 10,
+                behaviors: ["default", "scrollZoom"],
+                controls: []
+            }),
+            myButton = new GeolocationButton({
+                data: {
+                    content: 'Где я?',
+                    title: 'Определить местоположение'
+                },
+                options: {
+                    // Режим получения наиболее точных данных.
+                    enableHighAccuracy: true
+                }
+            });
+
+    myMap.controls.add(myButton);
+    __log__("По результатам геолокации на карте открывается метка(с хинтом) и круг(с точностью)");
+    addGrid(map);
+}
+</script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

@@ -1,0 +1,49 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - pazus
+      groups: []
+labels:
+  order: 09000000
+config_mode: easy2
+---
+l7_upstream_macro:
+    version: 0.0.1
+    id: testing-api_scheduler
+    matcher:
+        uri_re: '/testing/api/scheduler-not-working(/(.*))?'
+    rewrite:
+        - target: PATH
+          pattern:
+            re: '/testing/api/scheduler(/(.*))?'
+          replacement: '/api/scheduler%1'
+    headers:
+        - create: {target: X-Real-Ip, func: realip, keep_existing: true}
+        - create: {target: X-Forwarded-For-Y, func: realip, keep_existing: true}
+        - create: {target: X-Request-Id, func: reqid, keep_existing: true}
+        - append: {target: X-Forwarded-For, func: realip, do_not_create_if_missing: false}
+    monitoring:
+        uuid: testing-api_scheduler
+    flat_scheme:
+        balancer:
+            attempt_all_endpoints: true
+            fast_attempt_all_endpoints: true
+            max_reattempts_share: 0.15
+            max_pessimized_endpoints_share: 0.2
+            retry_http_responses:
+                codes: [5xx, 429]
+                on_last_failed_retry: PROXY_RESPONSE_AS_IS
+            fast_attempts_type: CONNECT_FAILURE_AND_503
+            health_check: 
+                delay: 1s
+                request: 'GET /ping HTTP/1.1\nHost: paskills-common-testing.alice.yandex.net\n\n'
+            connect_timeout: 50ms
+            backend_timeout: 10s
+            keepalive_count: 3
+        backend_ids:
+            - paskills-int-testing.api
+        on_error:
+            static:
+                status: 504
+                content: "Service unavailable"

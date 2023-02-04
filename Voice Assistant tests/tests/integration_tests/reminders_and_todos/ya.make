@@ -1,4 +1,0 @@
-OWNER(
-    karina-usm
-    petrk
-)

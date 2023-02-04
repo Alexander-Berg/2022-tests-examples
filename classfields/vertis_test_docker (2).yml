@@ -1,0 +1,84 @@
+filebeat.max_procs: 8
+
+queue.mem:
+  events: 500000
+  flush.min_events: 20000
+  flush.timeout: 5s
+
+logging.level: info
+logging.to_files: true
+logging.metrics:
+  enabled: true
+  period: 300
+logging.files:
+  path: /var/log/filebeat
+  name: filebeat
+  keepfiles: 3
+  permissions: 0644
+  interval: 24h
+
+filebeat.inputs:
+  - type: log
+    enabled: true
+    paths:
+      - /var/lib/nomad/alloc/*/alloc/logs/*.stderr.*
+      - /var/lib/nomad/alloc/*/alloc/logs/*.stdout.*
+      - /var/lib/nomad/alloc/*/alloc/logs/*/*.log
+      - /var/lib/nomad/alloc/*/alloc/logs/*/*.shell
+    fields_under_root: true
+    fields:
+      hostname: "{{inventory_hostname}}"
+      env: "test"
+    close_inactive: 12h
+    multiline.pattern: '(^\[)|(^@@ )|(^(19|20)\d\d[- \.](0[1-9]|1[012])[- \.](0[1-9]|[12][0-9]|3[01]))|(^\[(19|20))|(^tskv)|(^{)'
+    multiline.negate: true
+    multiline.match: after
+    exclude_files:
+      [
+        '\.gz$',
+        '\-2017\-',
+        '\-2018\-',
+        '\-2019\-',
+        '\-2020\-',
+        '\-2021\-',
+        '\-2022\-',
+        '\-2023\-',
+        '\.fifo$',
+        "tskv",
+        '\.stdout\.[0-9]',
+      ]
+
+processors:
+  - drop_fields:
+      fields: ["beat", "input_type", "prospector", "input", "host", "agent", "ecs"]
+
+output.kafka:
+  enabled: True
+  hosts:
+    [
+      "man-6a7r9mknuj3412h8.db.yandex.net:9091",
+      "man-o2oconvb0kl6714p.db.yandex.net:9091",
+      "man-qdo4b6idh9b5bm54.db.yandex.net:9091",
+      "sas-0u7lfh0t31o2rqkt.db.yandex.net:9091",
+      "sas-ckrl109tqjnpomjc.db.yandex.net:9091",
+      "sas-pe55cgjfpc6a3mev.db.yandex.net:9091",
+      "vla-b057mb87urgc807b.db.yandex.net:9091",
+      "vla-f703n3gqen3t1ecp.db.yandex.net:9091",
+      "vla-im01bei7f5140n0h.db.yandex.net:9091"
+    ]
+  username: {{lookup('yav', 'ver-01fc3fwpqendka1em50cmagq1q', 'write_user')}}
+  password: {{lookup('yav', 'ver-01fc3fwpqendka1em50cmagq1q', 'write_password')}}
+  sasl.mechanism: SCRAM-SHA-512
+  security_protocol: SASL_SSL
+  ssl.enabled: true
+  ssl.certificate_authorities: ["/usr/local/share/ca-certificates/YandexInternalRootCA.crt"]
+
+  # message topic selection + partitioning
+  topic: "logs"
+  partition.hash:
+    hash: ["source"]
+    reachable_only: true
+  required_acks: 1
+  keep_alive: 60s
+  bulk_max_size: 500000
+  worker: 9

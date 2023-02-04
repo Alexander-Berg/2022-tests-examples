@@ -1,0 +1,178 @@
+<!doctype html>
+<!--
+Title:
+Гео запрос: поиск с условием по выборке объектов
+
+Description:
+Проверка поиска с условием по выборке объектов.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+geoQuery
+
+Estimated time:
+180000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+  
+  Expectation:
+  Карта отобразилась корректно.
+  На спане карты появляются ряды объектов: узкий прямоугольник, круг, метка прямоугольник(шире первого), линия.
+  Метки в рядах синего цвета, также имеется множество меток голубого цвета, объекты фигур имеют синию полупрозрачную заливку, линия - сплошную обводку.
+  Сверху слева кнопки "geodesic", "Lat < 55...", "Lat > 55...".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "Lat < 55...". 
+  
+  Expectation:
+  В нижней трети спана появляется красная горизонтальная линия, метки коллекций ниже линии становятся красными.
+  Под контейнером с картой появляется блок из строк [object Object] по количеству красных меток и строка "[object Object] - STOP_ITERATION".  
+
+Step:
+  Action:
+  Выполнить клик в кнопку "Lat > 55...". 
+  
+  Expectation:
+  В центре спана появляется красная горизонтальная линия, метки коллекций выше линии становятся красными.
+  Под контейнером с картой появляется блок из строк [object Object] по количеству красных меток и строка "[object Object] - STOP_ITERATION".  
+
+Step:
+  Action:
+  Выполнить клик кнопку "geodesic". 
+  
+  Expectation:
+  Объекты прямоугольников и кругов промигивают и остаются на спане карты.
+  Под контейнером с картой появляется строка: "geodesic mode enabled.".
+  
+Step:
+  Action:
+  Выполнить клик в кнопку "Lat < 55...". 
+  
+  Expectation:
+  В нижней трети спана появляется красная горизонтальная линия, метки коллекций ниже линии становятся красными.
+  Под контейнером с картой появляется блок из строк [object Object] по количеству красных меток и строка "[object Object] - STOP_ITERATION".  
+
+Step:
+  Action:
+  Выполнить клик в кнопку "Lat > 55...". 
+  
+  Expectation:
+  В центре спана появляется красная горизонтальная линия, метки коллекций выше линии становятся красными.
+  Под контейнером с картой появляется блок из строк [object Object] по количеству красных меток и строка "[object Object] - STOP_ITERATION".  
+-->
+<html>
+<head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../helper.js"></script>
+    <script src="../../js/wgs84MercatorSource.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym; // hack
+
+            var myMap = new ym.Map('map', {
+                center: [55.5541584321358, 37.93061981201168],
+                zoom: 9,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            wgs84MercatorSource(ym, myMap, this);
+            addGrid(myMap);
+            var log = new Log();
+
+            log.info('GeoQueryResult search(): function is called only for points, which satisfies the condition');
+
+            var result = ym.geoQuery(geoQueryResult);
+            result.then(function () {
+                result.addToMap(myMap);
+            });
+
+            var lat55_6 = new ymaps.Polyline([
+                        [55.6, 37.26978759765576],
+                        [55.6, 38.605749511718194]
+                    ], {hintContent: "latitude = 55.6"},
+                    {visible: false, strokeColor: '#FF0000', strokeWidth: 3});
+            var lat55_45 = new ymaps.Polyline([
+                        [55.45, 37.26978759765576],
+                        [55.45, 38.605749511718194]
+                    ], {hintContent: "latitude = 55.45"},
+                    {visible: false, strokeColor: '#FF0000', strokeWidth: 3});
+
+            var latitudeFilterButton1 = new ymaps.control.Button({data: {content: 'Lat > 55.60'}, options: {selectOnClick: false}});
+            var latitudeFilterButton2 = new ymaps.control.Button({data: {content: 'Lat < 55.45'}, options: {selectOnClick: false}});
+            var geodesicButton = new ymaps.control.Button({data: {content: 'geodesic'}, options: {selectOnClick: true}});
+
+            // function-helper for convenient search
+            var testSearch = function (initialData, condition) {
+
+                initialData.unsetOptions(['preset', 'fillColor', 'fillOpacity', 'strokeColor']);
+                lat55_6.options.set('visible', false);
+                lat55_45.options.set('visible', false);
+
+                var filtered = initialData.search(condition);
+
+                var iterator = filtered.getIterator(), obj;
+                while (obj = iterator.getNext()) {
+                    if (obj == iterator.STOP_ITERATION) {
+                        log.info(obj + ' - STOP_ITERATION');
+                        return;
+                    }
+                    log.info(obj);
+                    obj.options.set('strokeColor', "#FF0000")
+                            .set('preset', "islands#redIcon")
+                            .set('fillColor', '#FF0000')
+                            .set('fillOpacity', 0.2)
+                }
+            };
+
+            // shows objects above the line
+            latitudeFilterButton1.events.add('click', function () {
+                testSearch(result, 'lat > 55.6');
+                lat55_6.options.set('visible', true);
+            });
+
+            // shows objects below another line
+            latitudeFilterButton2.events.add('click', function () {
+                testSearch(result, 'lat < 55.45');
+                lat55_45.options.set('visible', true);
+            });
+
+            // geodesic option
+            geodesicButton.events
+                    .add('select', function () {
+                        result.setOptions('geodesic', true);
+                        log.info('geodesic mode enabled.');
+                    })
+                    .add('deselect', function () {
+                        result.setOptions('geodesic', false);
+                        log.info('geodesic mode disabled.');
+                    });
+
+            myMap.geoObjects
+                    .add(lat55_6)
+                    .add(lat55_45);
+
+            myMap.controls
+                    .add(latitudeFilterButton1, {right: 5, top: 5})
+                    .add(latitudeFilterButton2, {right: 5, top: 35});
+            myMap.controls.add(geodesicButton, {right: 425, top: 5});
+
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

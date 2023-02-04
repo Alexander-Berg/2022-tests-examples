@@ -1,0 +1,46 @@
+module.exports = {
+    app: require.resolve('app'),
+
+    workers: 4,
+
+    control: {
+        forkTimeout: 5000,
+        stopTimeout: 10000
+    },
+
+    server: {
+        port: process.env.NODE_PORT
+    },
+
+    extensions: {
+        '@vertis/luster-vertislogs': {
+            extendConsole: true,
+            stdout: true,
+            stderr: 'stdout'
+        },
+
+        'luster-prometheus': {
+            port: process.env._DEPLOY_METRICS_PORT
+        },
+
+        'luster-graceful-dns': {
+            family: 6
+        },
+
+        'luster-tvm': {
+            refresh: 30 * 60 * 1000,
+            connection: {
+                protocol: process.env.TVM_PROTOCOL+ ':',
+                host: process.env.TVM_HOST,
+                port: process.env.TVM_PORT,
+                family: 6
+            },
+            src: process.env.TVM_ID,
+            secret: process.env.TVM_SECRET,
+            dst: {
+                blackbox: process.env.BLACKBOX_TVMID,
+                realtyApi: process.env.REALTY_API_TVMID
+            }
+        }
+    }
+};

@@ -1,0 +1,169 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Геообъект: опция пейн карты
+
+Description:
+Проверка опции пейн карты.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+geoobject
+
+Estimated time:
+300000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+  
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан на котором горизонтально расположены 2 ряда по 10 меток коллекций, ряд из 9 синих прямоугольников, ряд из 9 синих линий. 
+  Последние два обьекта в рядах (меток, прямоугольников и линий) отделены отступов от других объектов на спане.
+  Под контейнером с картой блок из 11 строк "length: 0".
+
+Step:
+  Action:
+  Последовательно навести курсор на метки коллекций в верхнем ряду слева-направо.
+
+  Expectation:
+  При наведении курсора появляется хинт с обозначением слева-направо: "ground", "areas", "shadows", "places", "overlaps", "balloon", "outerBalloon", "controls", "hint", "outerHint".
+  После обозначения в хинте два значения, вида: "ground: 42,-37", далее у первых 8-ми меток второе значение уменьшается на два("areas: 42,-35").
+  Последние две метки имеют значения "42, -19", "42, -17".  
+
+Step:
+  Action:
+  Последовательно навести курсор на метки коллекций во втором сверху ряду слева-направо.
+
+  Expectation:
+  При наведении курсора появляется хинт с обозначением слева-направо: "ground", "areas", "shadows", "places", "overlaps", "balloon", "outerBalloon", "controls", "hint", "outerHint".
+  После обозначения в хинте два значения, вида: "ground: 41,-37", далее у первых 8-ми меток второе значение уменьшается на два("areas: 41,-35").
+  Последние две метки имеют значения "41, -19", "41, -17".  
+
+Step:
+  Action:
+  Последовательно навести курсор на прямоугольники слева-направо.
+
+  Expectation:
+  При наведении курсора на первые три прямоугольника появляется хинт с обозначением слева-направо: "areas: 40,-36,37,-35", "shadows: 40,-34,37,-33", "places: 40,-32,37,-31".
+  При наведении на остальные курсор меняется на стрелку. 
+
+Step:
+  Action:
+  Навести курсор на область между 7 и 8 прямоугольниками.
+
+  Expectation:
+  При наведении на область появляется хинт: "copyrights: 40,-22,37,-21".
+
+Step:
+  Action:
+  Последовательно навести курсор на линии слева-направо.
+
+  Expectation:
+  При наведении курсора на первые три линии появляется хинт с обозначением слева-направо: "areas: 36,-36,31,-35", "shadows: 36,-34,31,-33", "places: 36,-32,31,-31".
+  При наведении на остальные курсор меняется на стрелку. 
+
+Step:
+  Action:
+  Навести курсор на область между 7 и 8 линиями.
+
+  Expectation:
+  При наведении на область появляется хинт: "copyrights: 36,-22,31,-21".
+
+Step:
+  Action:
+  Навести курсор на спан карты и выполнить статичный драг карты.
+  
+  Expectation:
+  При драге спана карты последние 3 объекта в каждом из рядов открепляются от спана карты, и двужутся вслед за движением курсора, остальные объекты неподвижны на спане карты.
+  После остановки драга открепившиеся объекты возвращаются на первоначальные позиции в рядах.
+  
+Step:
+  Action:
+  Переместить спан карты драгом вправо, так, чтобы ряды объектов были вне текущего вьюпорта.
+  
+  Expectation:
+  После драга, справа от контейнера с картой на странице браузера отображаются 4 метки коллекции, прямоугольник и линия.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+            var map = myMap = new ym.Map('map', {
+                center: [35.83649397128404, -27.987314062500015],
+                zoom: 5,
+                controls: ['fullscreenControl']
+            }, {
+                hintShowTimeout: 0
+            });
+            addGrid(myMap);
+            var log = new Log();
+
+            var panes = ['ground', 'areas', 'shadows', 'places', 'overlaps', 'balloon', 'outerBalloon', 'controls', 'copyrights', 'hint', 'outerHint'];
+
+            for (var i = 0; i < panes.length; i++) {
+                var point1 = new ym.Placemark([42, -37 + i * 2]);
+                point1.options.set("iconPane", panes[i]);
+                point1.options.set("draggable", true);
+                point1.events.add("mouseenter", function (e) {
+                    e.get('target').properties.set(
+                            'hintContent', e.get('target').options.get('iconPane') + ": " + e.get('target').geometry.getCoordinates()
+                    );
+                });
+
+                // pane не должна работать, потому что есть iconPane
+                var point2 = new ym.Placemark([41, -37 + i * 2]);
+                point2.options.set("pane", panes[i]);
+                point2.options.set("draggable", true);
+                point2.events.add("mouseenter", function (e) {
+                    e.get('target').properties.set(
+                            'hintContent', e.get('target').options.get('pane') + ": " + e.get('target').geometry.getCoordinates()
+                    );
+                });
+
+                var rectangle = new ym.Rectangle([
+                    [40, -38 + i * 2],
+                    [37, -38 + i * 2 + 1]
+                ]);
+                rectangle.events.add("mouseenter", function (e) {
+                    e.get('target').properties.set(
+                            'hintContent', e.get('target').options.get('pane') + ": " + e.get('target').geometry.getCoordinates()
+                    );
+                });
+                rectangle.options.set("pane", panes[i]);
+
+                var line = new ym.Polyline([
+                    [36, -38 + i * 2],
+                    [31, -38 + i * 2 + 1]
+                ]);
+                line.events.add("mouseenter", function (e) {
+                    e.get('target').properties.set(
+                            'hintContent', e.get('target').options.get('pane') + ": " + e.get('target').geometry.getCoordinates()
+                    );
+                });
+                line.options.set("pane", panes[i]);
+
+                myMap.geoObjects.add(point1).add(point2).add(rectangle).add(line);
+
+                // MAPSAPI-8149
+                log.info(('length: ' + ymaps.hotspot.Manager.get(map.panes.get('events')).getContainerList()._list.length))
+            }
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

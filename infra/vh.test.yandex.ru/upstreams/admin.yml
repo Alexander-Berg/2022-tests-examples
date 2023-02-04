@@ -1,0 +1,53 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - tolich
+      groups: []
+labels:
+  order: '00010100'
+---
+regexp_section:
+  matcher:
+    match_or:
+    - match_fsm:
+       uri: '/v1/admin/.*'
+     # legacy prefix, should not be used. added for compatibility with vh-ugc-upload-link apphost graph.
+    - match_fsm:
+       uri: '/ugc-admin-api/.*'
+  modules:
+    - report: {ranges: default, uuid: admin}
+    - rewrite:
+        actions:
+          - regexp: '/v1/admin/(.*)'
+            rewrite: '/%1'
+          - regexp: '/ugc-admin-api/(.*)'
+            rewrite: '/%1'
+    - headers:
+        create_func_weak:
+          X-Forwarded-For: realip
+          X-Forwarded-Proto: scheme
+          X-Forwarded-Host: host
+          X-Req-Id: reqid
+    - headers_forwarder:
+        actions:
+          - request_header: 'X-Req-Id'
+            response_header: 'X-Req-Id'
+            weak: true
+    - balancer2:
+        attempts: 3
+        rr: {}
+        attempts_rate_limiter:
+          limit: 0.2
+        generated_proxy_backends:
+          proxy_options:
+            backend_timeout: 10s
+            connect_timeout: 300ms
+          include_backends:
+            type: BY_ID
+            ids:
+              - ugc_admin_api_testing_backend
+        on_error:
+          errordocument:
+            status: 504
+            content: "Service unavailable"

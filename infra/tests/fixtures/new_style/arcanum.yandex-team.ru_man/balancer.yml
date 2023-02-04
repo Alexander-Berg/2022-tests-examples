@@ -1,0 +1,54 @@
+---
+instance_macro:
+  workers: 0
+  maxconn: 5000
+  sections:
+    admin:
+      ips: [127.0.0.1, '::1']
+      ports:
+        - !f get_port_var('port')
+      modules:
+        - http: {}
+        - admin: {}
+    stats_storage:
+      ips: [127.0.0.4]
+      ports:
+        - !f get_port_var('port')
+      modules:
+        - report:
+            uuid: 'service_total'
+            ranges: 'default'
+            just_storage: true
+        - http: {}
+        - errordocument:
+            status: 204
+    https_section:
+      ips: ['*']
+      ports:
+        - 443
+      extended_http_macro:
+        report_uuid: 'https'
+        enable_ssl: true
+        ssl_sni_contexts:
+          arcanum.yandex-team.ru:
+            servername_regexp: default
+        modules:
+          - shared:
+              uuid: modules
+    http_section:
+      ips: ['*']
+      ports:
+        - 80
+        - !f get_port_var('port')
+      extended_http_macro:
+        report_uuid: 'http'
+        modules:
+          - shared:
+              uuid: modules
+          - regexp:
+              include_upstreams:
+                filter:
+                  any: true
+                order:
+                  label:
+                    name: order

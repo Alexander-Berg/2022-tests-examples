@@ -1,0 +1,41 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - stewie
+      groups: []
+labels:
+  order: '10000000'
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      uri: '/get/browser/experiments/(browser|ios).proto'
+  modules:
+    - headers:
+        create:
+            Host: api.browser.yandex.net
+    - response_headers:
+        create_weak:
+          Access-Control-Allow-Origin: '*'
+    - rewrite:
+        actions:
+          - regexp: '^/get/browser/experiments/(browser|ios).proto'
+            rewrite: '/content/get/experiments/%1.proto'
+    - balancer2:
+        rr: {}
+        attempts: 1
+        generated_proxy_backends:
+            proxy_options:
+                fail_on_5xx: false
+                backend_timeout: 10s
+                connect_timeout: 70ms
+            instances:
+              - weight: 1
+                host: api.browser.yandex.net
+                port: 80
+        on_error:
+          modules:
+            - errordocument:
+                status: 504
+                content: 'Service unavailable'

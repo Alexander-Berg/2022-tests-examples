@@ -1,0 +1,36 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - menjoy
+      groups: []
+labels:
+  order: '10000000'
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      uri: '/(global-notifications|bell/api)/.*'
+  modules:
+    - rewrite:
+        actions:
+          - regexp: '(.*)(ru|by|com|kz)'
+            header_name: Host
+            rewrite: 'l7test.yandex.%2'
+    - balancer2:
+        rr: {}
+        attempts: 2
+        attempts_rate_limiter:
+          limit: 0.1
+          coeff: 0.99
+        generated_proxy_backends:
+          proxy_options:
+            connect_timeout: 100ms
+            backend_timeout: 10s
+          instances:
+            - host: l7test.yandex.ru
+              port: 80
+              weight: 1
+        on_error:
+          modules:
+          - errordocument: {content: Gateway Timeout, status: 504}

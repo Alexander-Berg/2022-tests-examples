@@ -1,0 +1,158 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Балун слушающий события
+
+Description:
+Проверяем прослушивание событий и текстовое отображение под блоком с картой.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components:
+balloon
+
+Estimated time:
+180000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан Москвы. В центре карты открыт балун с содержимым "text".
+    
+Step:
+  Action:
+  Навести курсор на область открытого балуна. 
+ 
+  Expectation:
+  При наведении курсора на область балуна под картой появляется текст: mouseenter.
+
+Step:
+  Action:
+  Вывести курсор за пределы область открытого балуна.
+ 
+  Expectation:
+  При выведении курсора за пределы с картой под картой появляется текст: mouseleave.
+
+Step:
+  Action:
+  Выполнить клик по области открытого балуна. 
+ 
+  Expectation:
+  Под картой появляется текст: 
+  mousedown
+  mouseup
+  click
+
+Step:
+  Action:
+  Выполнить даблклик по области открытого балуна. 
+ 
+  Expectation:
+  Под картой появляется текст: 
+  mousedown
+  mouseup
+  click
+  mousedown
+  mouseup
+  click
+  dblclick
+
+Step:
+  Action:
+  Выполнить клик ПКМ по области открытого балуна. 
+ 
+  Expectation:
+  Под картой появляется текст: 
+  mousedown
+  mouseup
+  contextmenu
+
+Step:
+  Action:
+  Навести курсор на область балуна и выполнить скрол колесом мыши(в одну и в другую сторону). 
+ 
+  Expectation:
+  Под картой появляется текст: 
+  wheel(1-а надпись на каждое значение прокручивания).
+
+Step:
+  Action:
+  Навести курсор на область открытого балуна,зажав ЛКМ переместить курсор в области балуна. 
+ 
+  Expectation:
+  После зажатия ЛКМ под картой появляется текст:
+  mousedown
+  Перенос курсора корректный: спан карты и сам балун не перемещаются.
+  После отпускания ЛКМ под картой появляется текст:
+  mouseup
+  click 
+
+Step:
+  Action:
+  Выполнить наведение/выведение курсора, клик/даблклик, скрол на метке и спане карты при помощи тачпада(либо продублировать шаг со скролом мыши или ЛКМ). 
+ 
+  Expectation:
+  При наведении курсора на балун - mouseenter.
+  При выведении курсора за пределы балуна - mouseleave.
+  При клике в балун - mousedown; mouseup; click.
+  При даблклике - mousedown; mouseup; click; mousedown; mouseup; click; dblclick. 
+  При пинчзуме (или скроле колесом мыши) - wheel.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 10,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            addGrid(map);
+            var log = new Log();
+
+            log.info('Listening for events on balloon overlay...');
+
+            var events = ["click", "contextmenu", "dblclick", "mousedown",
+                "mouseenter", "mouseleave", /*"mousemove",*/
+                "mouseout", "mouseover", "mouseup",
+                "multitouchstart", "multitouchmove", "multitouchend", "wheel", "transitionend"];
+
+            var callback = function (e) {
+                log.info(e.get('type'))
+            };
+
+            var balloon,
+                    pos = map.getCenter(),
+                    contentLayout = ymaps.templateLayoutFactory.createClass('$[balloonContent]test'),
+                    options = { contentLayout: contentLayout, preventPanelMode: true };
+            window.balloon = balloon = new ymaps.Balloon(map);
+            balloon.options.set(options).setParent(map.options);
+
+            balloon.open(pos).then(function () {
+                balloon.getOverlay().then(function (overlay) {
+                    overlay.events.add(events, callback);
+                });
+            });
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

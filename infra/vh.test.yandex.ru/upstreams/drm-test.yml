@@ -1,0 +1,49 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - smalashkevich
+      groups: []
+labels:
+  order: '00000100'
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      uri: '/drm_test/(.*)'
+  modules:
+    - report: {uuid: drm_test, ranges: default}
+    - rewrite:
+        actions:
+          - regexp: '/drm_test/([%./a-zA-z0-9]+)[%?]*(.*)'
+            rewrite: '/vh/drm-test?handler=public/%1&%2'
+    - exp_getter_macro:
+        service_name: vh
+        testing_mode: {}
+        _version: 3
+    - balancer2:
+        attempts: 2
+        rr: {}
+        backends:
+          - weight: 1
+            name: drm
+            modules:
+              - report: {uuid: drm, ranges: default}
+              - balancer2:
+                  attempts: 3
+                  attempts_rate_limiter:
+                    limit: 0.25
+                  rr: {}
+                  timeout_policy:
+                    timeout: 5s
+                    unique_policy: {}
+                  generated_proxy_backends:
+                    proxy_options:
+                      backend_timeout: 2s
+                      connect_timeout: 50ms
+                      status_code_blacklist: [408]
+                      keepalive_count: 1
+                    include_backends:
+                      type: BY_ID
+                      ids:
+                        - man_vh_http_adapter_testing

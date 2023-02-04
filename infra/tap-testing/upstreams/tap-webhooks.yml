@@ -1,0 +1,68 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - nodge
+      groups: []
+labels:
+  order: '30'
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      host: webhooks\\.tap-tst\\.yandex\\.ru
+  modules:
+    - report:
+        uuid: 'services'
+        ranges: 'default'
+    - report:
+        uuid: 'tap-webhooks'
+        ranges: 'default'
+    - balancer2:
+        attempts: !f count_backends()
+        rr: {weights_file: ./controls/traffic_control.weights}
+        backends:
+          - weight: 1
+            name: webhooks_vla
+            modules:
+              - balancer2:
+                  attempts: 2
+                  connection_attempts: 5
+                  retry_non_idempotent: false
+                  attempts_rate_limiter:
+                    limit: 0.1
+                  dynamic:
+                    max_pessimized_share: 0.2
+                  generated_proxy_backends:
+                    proxy_options:
+                      backend_timeout: 15s
+                      connect_timeout: 100ms
+                      keepalive_count: 3
+                      fail_on_5xx: false
+                    include_backends:
+                      type: BY_ID
+                      ids: [tap_webhooks_vla]
+          - weight: 1
+            name: webhooks_sas
+            modules:
+              - balancer2:
+                  attempts: 2
+                  connection_attempts: 5
+                  retry_non_idempotent: false
+                  attempts_rate_limiter:
+                    limit: 0.1
+                  dynamic:
+                    max_pessimized_share: 0.2
+                  generated_proxy_backends:
+                    proxy_options:
+                      backend_timeout: 15s
+                      connect_timeout: 100ms
+                      keepalive_count: 3
+                      fail_on_5xx: false
+                    include_backends:
+                      type: BY_ID
+                      ids: [tap_webhooks_sas]
+        on_error:
+          errordocument:
+            status: 503
+            content: 'Service unavailable'

@@ -1,0 +1,41 @@
+---
+regexp_section:
+  matcher:
+    match_and:
+      - match_or:
+        - match_fsm:
+            host: '(m\\.)?news\\.yandex\\.[^.]+'
+        - match_and:
+          - match_fsm:
+              host: '(www\\.)?(m\\.)?yandex\\.(az|by|co\\.il|com|com\\.am|com\\.ge|com\\.ua|ee|fr|kg|kz|lt|lv|md|ru|tj|tm|uz|ua)'
+          - match_fsm:
+              path: '/sport.*'
+      - match_or:
+        - match_fsm:
+            uri: '/sport/live_info/([^-?]+)/([^-?]+)'
+        - match_fsm:
+            uri: '/sport/live_comments/([^-?]+)/([^-?]+)'
+  modules:
+    - rewrite:
+        actions:
+            - regexp: '/sport/live_info/(\\w+)/(\\w+)(\\?(.+))?'
+              rewrite: '/v2/%1/events/%2?preset=yandexsport'
+            - regexp: '/sport/live_comments/(\\w+)/(\\w+)(\\?(.+))?'
+              rewrite: '/v2/%1/events/%2/livecomments?tail=5'
+            - header_name: Host
+              regexp: .*
+              rewrite: api.sport.yandex.ru
+    - balancer2:
+          attempts: 1
+          rr: {}
+          simple_policy: {}
+          generated_proxy_backends:
+              proxy_options:
+                  backend_timeout: 1000ms
+                  connect_timeout: 100ms
+                  fail_on_5xx: true
+                  status_code_blacklist: ["4xx"]
+              instances:
+                - weight: 1
+                  host: api.sport.yandex.ru
+                  port: 80

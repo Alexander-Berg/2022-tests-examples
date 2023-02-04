@@ -1,0 +1,140 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Видимая область кластеризации
+
+Description:
+Кластеризация меток в видимой области карты.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+smoke
+
+Estimated time: 
+300000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно.
+  На карте метки кластеров(объединения меток) с цифрами, и метки коллекций.
+  Сверху слева имеется кнопка "SHOW!"
+  Под блоком карты поле для ввода данных, со значением "Арбат".
+
+Step:
+  Action:
+  Навести курсор на метку коллекции и кликнуть в нее.  
+  
+  Expectation:
+  Появляется балун с заголовком и содержимым отвечающий поисковому запросу (улица, квартал, река с наименованием "Арбат"). 
+  У балуна есть кнопка закрытия.
+
+Step:
+  Action:
+  Ввести в поле ввода данных "Тверская", клик в кнопку "SHOW!".
+  
+  Expectation:
+  На карте появились метки кластеров и метки коллекций, спан карты сместился к области видимости меток.
+
+Step:
+  Action:
+  Призумится к метке кластера с цифрой 2 расположенной у Черного моря до распада кластера на метки коллекций.
+  
+  Expectation:
+  Кластерная метка распалась на 2 метки коллекций.
+
+Step:
+  Action:
+  Поочередно кликнуть в одну и вторую метку.
+  
+  Expectation:
+  При наведении курсора на метки курсор меняется на палец.
+  При клике в метку появляется балун с заголовком и содержимым отвечающий поисковому запросу (станица Тверская, ж/д станция Тверская). 
+  При открытии балуна спан карты смещается для полного открытия балуна. У балунов есть кнопка закрытия.
+
+Step:
+  Action:
+  Ввести в поле ввода данных "Площадь", клик в кнопку "SHOW!".
+  
+  Expectation:
+  На карте появились метки кластеров и метки коллекций, спан карты сместился и призумился к области видимости меток.
+  Под блоком карты и инпутом ввода данных появляется строка с поисковым запросом "Площадь".
+
+Step:
+  Action:
+  Отзумится до максимального значения.
+  
+  Expectation:
+  При отзуме корректно происходит кластеризация меток коллекций в кластера.
+  По окончании зума на карте может быть один или несколько кластерных меток с корректным значением кластеризации.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var myMap = new ymaps.Map("map", {
+                center: [55.73, 37.75],
+                zoom: 10,
+                controls: ['zoomControl', 'searchControl', 'typeSelector', 'fullscreenControl']
+            }, {
+                backgroundVisible: false
+            });
+            var result;
+            //add custom search string to show geocode results
+            var btnTerm = new ymaps.control.Button('SHOW!');
+            btnTerm.options.set('selectOnClick', false);
+            btnTerm.events.add('click', function() {
+                var myTerm = document.getElementsByClassName("textTerm")[0].value;
+                log.info(myTerm);
+                showObjects(myTerm);
+
+            });
+
+            myMap.controls.add(btnTerm);
+
+            function showObjects(term) {
+                if(result) {
+                   // log.info('result is not empty');
+                    myMap.geoObjects.removeAll();
+                };
+
+                // Сделаем запрос на геокодирование, а затем спозиционируем карту, чтобы
+                // все объекты попадали в видимую область карты и коэффициент масштабирования был
+                // максимально возможным.
+                result = ymaps.geoQuery(ymaps.geocode(term)).applyBoundsToMap(myMap, {checkZoomRange: true});
+                // Откластеризуем полученные объекты и добавим кластеризатор на карту.
+                // Обратите внимание, что кластеризатор будет создан сразу, а объекты добавлены в него
+                // только после того, как будет получен ответ от сервера.
+
+                var resultCluster = result.clusterize({clusterDisableClickZoom: true, clusterBalloonContentLayout: 'cluster#balloonAccordion'});
+                myMap.geoObjects.add(resultCluster);
+            };
+
+            addGrid(myMap);
+            var log = new Log();
+
+            log.info('Test script: Кликай SHOW - меняй текст в поле, должны быть кластеризованные объекты');
+            showObjects("Арбат");
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+<div> <p>введите имя объекта: </p>
+      <input type="text" class="textTerm" value="Арбат"> </div>
+</body>
+</html>

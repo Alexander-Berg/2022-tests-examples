@@ -1,0 +1,106 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - nanny-robot
+      groups: []
+config_transport:
+  nanny_static_file:
+    service_id: rtc_balancer_api-test_browser_yandex_net_vla
+    instance_tags:
+      ctype: prod
+      itype: balancer
+      prj: api-test.browser.yandex.net
+---
+instance_macro:
+  version: 0.0.2
+  workers: !f get_workers()
+  sd: {}
+  unistat: {}
+  sections:
+    admin:
+      ips: [127.0.0.1, '::1']
+      ports:
+        - !f get_port_var('port')
+      modules:
+        - http: {}
+        - admin: {}
+    http_section:
+      ips: ['*']
+      ports:
+        - 80
+        - !f get_port_var('port')
+      extended_http_macro:
+        modules:
+          - threshold:
+              lo_bytes: 512
+              hi_bytes: 1024
+              pass_timeout: 10s
+              recv_timeout: 1s
+          - headers:
+              append_func:
+                X-Forwarded-For: realip
+              create_func_weak:
+                X-Real-IP: realip
+                X-Forwarded-For-Y: realip
+                X-Source-Port-Y: realport
+                X-Request-Id: reqid
+                X-Forwarded-Proto: scheme
+                X-Yandex-Ja3: ja3
+                X-Yandex-Ja4: ja4                
+                Host: host
+          - log_headers:
+                name_re: 'X-Forwarded-For|Accept-Encoding|X-Request-Id|User-Agent|Cache-Control|Pragma'
+                response_name_re: 'ETag|Content-Encoding|Cache-Control'
+          - regexp:
+              include_upstreams:
+                filter:
+                  any: true
+                order:
+                  label:
+                    name: order
+    https_section:
+      ips: ['*']
+      ports: [443]
+      extended_http_macro:
+        enable_ssl: true
+        enable_http2: true
+        ssl_sni_ja3_enabled: true
+        ssl_sni_contexts:
+          sec.api.browser.yandex.ru:
+            cert: !c sec.api.browser.yandex.ru
+            servername_regexp: 'sec\\.api\\.browser\\.yandex\\.(ru|by|com|com\\.tr|kz|net|ua|uz)'
+          api.browser.yandex.ru:
+            cert: !c api.browser.yandex.ru
+            servername_regexp: 'api\\.browser\\.yandex\\.(ru|by|com|com\\.tr|kz|net|ua|uz)'
+          browser-api.store.yandex.net:
+            cert: !c browser-api.store.yandex.net
+            servername_regexp: 'browser-api\\.store\\.yandex\\.net'
+          api-test.browser.yandex.ru:
+            cert: !c api-test.browser.yandex.ru
+            servername_regexp: default
+        modules:
+          - headers:
+              append_func:
+                X-Forwarded-For: realip
+              create_func_weak:
+                X-Real-IP: realip
+                X-Forwarded-For-Y: realip
+                X-Source-Port-Y: realport
+                X-Request-Id: reqid
+                X-Forwarded-Proto: scheme
+                X-Yandex-Ja3: ja3
+                X-Yandex-Ja4: ja4
+                Host: host
+              create_weak:
+                X-Yandex-HTTPS: yes
+          - log_headers:
+                name_re: 'X-Forwarded-For|Accept-Encoding|X-Request-Id|User-Agent|Cache-Control|Pragma'
+                response_name_re: 'ETag|Content-Encoding|Cache-Control'
+          - regexp:
+              include_upstreams:
+                filter:
+                  any: true
+                order:
+                  label:
+                    name: order

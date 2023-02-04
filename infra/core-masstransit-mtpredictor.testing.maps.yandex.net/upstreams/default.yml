@@ -1,0 +1,59 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - nanny-robot
+      groups: []
+labels:
+  order: '99999999'
+---
+regexp_section:
+  matcher: {}
+  modules:
+    - shared:
+        uuid: 'backends'
+    - balancer2:
+        attempts: 1
+        rr: {}
+        by_name_policy:
+          name: !f get_geo("bygeo_", "random")
+          unique_policy: {}
+        backends:
+          - weight: 1
+            name: bygeo_sas
+            modules:
+              - report: {ranges: default, uuid: requests_to_sas}
+              - balancer2:
+                  attempts: !f count_backends()
+                  active: {
+                    request: 'GET /ping HTTP/1.1\r\nHost: core-masstransit-mtpredictor.testing.maps.yandex.net\r\n\r\n',
+                    delay: 10s
+                  }
+                  generated_proxy_backends:
+                    proxy_options:
+                      backend_timeout: 1s
+                      connect_timeout: 100ms
+                      keepalive_count: 0
+                      fail_on_5xx: true
+                    include_backends:
+                      type: BY_ID
+                      ids: [SAS_MAPS_CORE_MASSTRANSIT_MTPREDICTOR_TESTING]
+          - weight: 1
+            name: bygeo_vla
+            modules:
+              - report: {ranges: default, uuid: requests_to_vla}
+              - balancer2:
+                  attempts: !f count_backends()
+                  active: {
+                    request: 'GET /ping HTTP/1.1\r\nHost: core-masstransit-mtpredictor.testing.maps.yandex.net\r\n\r\n',
+                    delay: 10s
+                  }
+                  generated_proxy_backends:
+                    proxy_options:
+                      backend_timeout: 1s
+                      connect_timeout: 100ms
+                      keepalive_count: 0
+                      fail_on_5xx: true
+                    include_backends:
+                      type: BY_ID
+                      ids: [VLA_MAPS_CORE_MASSTRANSIT_MTPREDICTOR_TESTING]

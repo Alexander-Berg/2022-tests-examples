@@ -1,0 +1,130 @@
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      uri: '/((m)?search/)?atomsearch/distr_portal(/.*)?'
+  modules:
+    - report:
+        uuid: atomsearch-distr_portal
+        ranges: default
+    - threshold:
+        lo_bytes: 1048576
+        hi_bytes: 1048576
+        pass_timeout: 9s
+        recv_timeout: 1s
+    - rewrite:
+        actions:
+          - regexp: '/(m)?search/(.*)'
+            rewrite: '/%2'
+    - balancer2:
+        attempts: 3
+        attempts_file: './controls/atomsearch-distr_portal.attempts'
+        rr: {weights_file: ./controls/traffic_control_localgeo.weights}
+        backends:
+        - weight: 1
+          name: webatom_vla
+          modules:
+            - report: {ranges: default, uuid: requests_atomsearch-distr_portal_to_vla}
+            - balancer2:
+                attempts: 1
+                rr: {weights_file: ./controls/traffic_control_localgeo.weights}
+                backends:
+                - weight: 1
+                  name: webatom2_first
+                  modules:
+                    - report: {ranges: default, uuid: requests_atomsearch-distr_portal_to_first}
+                    - balancer2:
+                        attempts: 2
+                        weighted2: {}
+                        generated_proxy_backends:
+                          proxy_options:
+                            backend_timeout: 250ms
+                          include_backends:
+                            type: BY_ID
+                            ids: [production_atom_front_vla]
+                - weight: 1
+                  name: webatom2_second
+                  modules:
+                    - report: {ranges: default, uuid: requests_atomsearch-distr_portal_to_second}
+                    - balancer2:
+                        attempts: 2
+                        weighted2: {}
+                        generated_proxy_backends:
+                          proxy_options:
+                            backend_timeout: 250ms
+                          include_backends:
+                            type: BY_ID
+                            ids: [production_atom_front_second_vla]
+        - weight: 1
+          name: webatom_sas
+          modules:
+            - report: {ranges: default, uuid: requests_atomsearch-distr_portal_to_sas}
+            - balancer2:
+                attempts: 1
+                rr: {weights_file: ./controls/traffic_control_localgeo.weights}
+                backends:
+                - weight: 1
+                  name: webatom2_first
+                  modules:
+                    - report: {ranges: default, uuid: requests_atomsearch-distr_portal_to_first}
+                    - balancer2:
+                        attempts: 2
+                        weighted2: {}
+                        generated_proxy_backends:
+                          proxy_options:
+                            backend_timeout: 250ms
+                          include_backends:
+                            type: BY_ID
+                            ids: [production_atom_front_sas]
+                - weight: 1
+                  name: webatom2_second
+                  modules:
+                    - report: {ranges: default, uuid: requests_atomsearch-distr_portal_to_second}
+                    - balancer2:
+                        attempts: 2
+                        weighted2: {}
+                        generated_proxy_backends:
+                          proxy_options:
+                            backend_timeout: 250ms
+                          include_backends:
+                            type: BY_ID
+                            ids: [production_atom_front_second_sas]
+        - weight: 1
+          name: webatom_man
+          modules:
+            - report: {ranges: default, uuid: requests_atomsearch-distr_portal_to_man}
+            - balancer2:
+                attempts: 1
+                rr: {weights_file: ./controls/traffic_control_localgeo.weights}
+                backends:
+                - weight: 1
+                  name: webatom2_first
+                  modules:
+                    - report: {ranges: default, uuid: requests_atomsearch-distr_portal_to_first}
+                    - balancer2:
+                        attempts: 2
+                        weighted2: {}
+                        generated_proxy_backends:
+                          proxy_options:
+                            backend_timeout: 250ms
+                          include_backends:
+                            type: BY_ID
+                            ids: [production_atom_front_man]
+                - weight: 1
+                  name: webatom2_second
+                  modules:
+                    - report: {ranges: default, uuid: requests_atomsearch-distr_portal_to_second}
+                    - balancer2:
+                        attempts: 2
+                        weighted2: {}
+                        generated_proxy_backends:
+                          proxy_options:
+                            backend_timeout: 250ms
+                          include_backends:
+                            type: BY_ID
+                            ids: [production_atom_front_second_man]
+        - weight: -1
+          name: webatom_devnull
+          modules:
+            - errordocument:
+                status: 204

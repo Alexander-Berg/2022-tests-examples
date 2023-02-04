@@ -1,0 +1,291 @@
+---
+regexp_path_section:
+  pattern: '/637c2054cfdbcdaf43f9227014b8940d'
+  modules:
+    - balancer2:
+            attempts: 1
+            rr: {}
+            backends:
+                - weight: -1
+                  modules:
+                    - shared:
+                        uuid: 'options_verb_section'
+                    - headers:
+                        create:
+                            Access-Control-Allow-Headers: 'Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type'
+                            Access-Control-Allow-Methods: 'GET, OPTIONS'
+                            Content-Type: 'text/plain charset=UTF-8'
+                            Content-Length: '0'
+                            Access-Control-Allow-Origin: '*'
+                    - errordocument:
+                        status: 200
+                - weight: -1
+                  modules:
+                    - shared:
+                        uuid: 'yastatic_s3_shared'
+                    - report:
+                        uuid: 's3_report'
+                        ranges: 'default'
+                    - balancer2:
+                        disable_attempts_rate_limiter: true
+                        attempts: 5
+                        simple_policy: {}
+                        rr: {}
+                        generated_proxy_backends:
+                          proxy_options:
+                            backend_timeout: '60s'
+                            connect_timeout: '50ms'
+                            fail_on_5xx: true
+                            keepalive_count: 1
+                            keepalive_timeout: '180s'
+                            need_resolve: false
+                          instances:
+                            - weight: 1
+                              host: 'yastatic.s3.yandex.net'
+                              port: 80
+                - weight: -1
+                  modules:
+                    - shared:
+                        uuid: 'yastatic_s3_cached_shared'
+                    - report:
+                        uuid: 's3_cached_report'
+                        ranges: 'default'
+                    - response_headers:
+                        delete: 'Connection'
+                    - log_headers:
+                        name_re: 'Host'
+                    - balancer2:
+                        attempts: 1
+                        rr: {weights_file: ./controls/macache}
+                        backends:
+                          - weight: -1
+                            name: with_macache
+                            modules:
+                              - report:
+                                  uuid: 'total_request_with_macache'
+                                  ranges: 'default'
+                              - cache2:
+                                  cache_ttl: 600s
+                                  shard_number: 10
+                              - balancer2:
+                                    disable_attempts_rate_limiter: true
+                                    attempts: 1
+                                    simple_policy: {}
+                                    rr: {}
+                                    on_status_code:
+                                        # Затираем 404 с xml ответом mds
+                                        404:
+                                            modules:
+                                            - errordocument:
+                                                status: 404
+                                                content: Not Found    
+                                    on_error:
+                                        modules:
+                                        - errordocument:
+                                            status: 503
+                                    generated_proxy_backends:
+                                      proxy_options:
+                                        backend_timeout: '60s'
+                                        connect_timeout: '50ms'
+                                        fail_on_5xx: true
+                                        keepalive_count: 1
+                                        keepalive_timeout: '180s'
+                                        need_resolve: false
+                                      instances:
+                                        - weight: 1
+                                          host: 'yastatic.s3.yandex.net'
+                                          port: 80
+
+                          - weight: 1
+                            name: without_macache
+                            modules:
+                            - report:
+                                uuid: 'total_request_with_old_cache'
+                                ranges: 'default'
+                            - balancer2:
+                                disable_attempts_rate_limiter: true
+                                attempts: 1
+                                simple_policy: {}
+                                rr: {}
+                                on_status_code:
+                                    # Затираем 404 с xml ответом mds
+                                    404:
+                                        modules:
+                                        - errordocument:
+                                            status: 404
+                                            content: Not Found    
+                                on_error:
+                                    modules:
+                                    - errordocument:
+                                        status: 503
+                                generated_proxy_backends:
+                                  proxy_options:
+                                    backend_timeout: '60s'
+                                    connect_timeout: '50ms'
+                                    fail_on_5xx: true
+                                    keepalive_count: 5
+                                    keepalive_timeout: '180s'
+                                    need_resolve: false
+                                  instances:
+                                    - weight: 1
+                                      host: localhost
+                                      port: 8888
+                - weight: -1
+                  modules:
+                    - shared:
+                        uuid: 'yastatic_s3_mdst_shared'
+                    - report:
+                        uuid: 's3_mdst_report'
+                        ranges: 'default'
+                    - response_headers:
+                        delete: 'Connection'
+                    - balancer2:
+                        disable_attempts_rate_limiter: true
+                        attempts: 1
+                        simple_policy: {}
+                        rr: {}
+                        on_status_code:
+                            # Затираем 404 с xml ответом mds
+                            404:
+                                modules:
+                                - errordocument:
+                                    status: 404
+                                    content: Not Found    
+                        on_error:
+                            modules:
+                            - errordocument:
+                                status: 503
+                        generated_proxy_backends:
+                          proxy_options:
+                            backend_timeout: '60s'
+                            connect_timeout: '50ms'
+                            fail_on_5xx: true
+                            keepalive_count: 5
+                            keepalive_timeout: '180s'
+                            need_resolve: false
+                          instances:
+                            - weight: 1
+                              host: s3.mdst.yandex.net
+                              port: 80
+                - weight: -1
+                  modules:
+                  - shared:
+                        uuid: 'yastatic_s3_cryprox_shared'
+                  - response_headers:
+                        delete: 'Connection'
+                  - balancer2:
+                        attempts: 1
+                        simple_policy: {}
+                        rr: {}
+                        on_status_code:
+                            400:
+                                modules:
+                                    - shared:
+                                        uuid: 'cryprox_on_status_shared'
+                                    # workaround, чтобы cachedaemon не отдавал странный Last-Modified
+                                    - response_headers:
+                                        create_func:
+                                            Last-Modified: 'time:+1ms'
+                                    - headers:
+                                        create:
+                                            'X-AAB-PartnerToken': !f get_str_env_var("AWACS_AAB_TOKEN")
+                                            'X-Forwarded-Proto': 'https'
+                                            'Host':  yastatic.net
+                                    - balancer2:
+                                        attempts: 5
+                                        simple_policy: {}
+                                        rr: {}
+                                        on_error:
+                                            modules:
+                                                - errordocument:
+                                                    status: 503
+                                        generated_proxy_backends:
+                                          proxy_options:
+                                            backend_timeout: '60s'
+                                            connect_timeout: '50ms'
+                                            fail_on_5xx: true
+                                            keepalive_count: 1
+                                            keepalive_timeout: '180s'
+                                          instances:
+                                            - weight: 1
+                                              host: 'cryprox.yandex.net'
+                                              port: 80
+                            404:
+                                modules:
+                                    - shared:
+                                        uuid: 'cryprox_on_status_shared'
+                        generated_proxy_backends:
+                                proxy_options:
+                                    backend_timeout: '60s'
+                                    connect_timeout: '50ms'
+                                    fail_on_5xx: true
+                                    keepalive_count: 1
+                                    keepalive_timeout: '180s'
+                                    need_resolve: false
+                                instances:
+                                    - weight: 1
+                                      host: localhost
+                                      port: 8888
+                - weight: -1
+                  modules:
+                  - shared:
+                        uuid: 'yastatic_s3_cryprox_test_shared'
+                  - response_headers:
+                        delete: 'Connection'
+                  - balancer2:
+                        attempts: 1
+                        simple_policy: {}
+                        rr: {}
+                        on_status_code:
+                            400:
+                                modules:
+                                    - shared:
+                                        uuid: 'cryprox_test_on_status_shared'
+                                    # workaround, чтобы cachedaemon не отдавал странный Last-Modified
+                                    - response_headers:
+                                        create_func:
+                                            Last-Modified: 'time:+1ms'
+                                    - headers:
+                                        create:
+                                            'X-AAB-PartnerToken': !f get_str_env_var("AWACS_AAB_TOKEN")
+                                            'X-Forwarded-Proto': 'https'
+                                            'Host':  yastatic.net
+                                    - balancer2:
+                                        attempts: 5
+                                        simple_policy: {}
+                                        rr: {}
+                                        on_error:
+                                            modules:
+                                                - errordocument:
+                                                    status: 503
+                                        generated_proxy_backends:
+                                          proxy_options:
+                                            backend_timeout: '60s'
+                                            connect_timeout: '50ms'
+                                            fail_on_5xx: true
+                                            keepalive_count: 1
+                                            keepalive_timeout: '180s'
+                                          instances:
+                                            - weight: 1
+                                              host: 'cryprox-test.yandex.net'
+                                              port: 80
+                            404:
+                                modules:
+                                    - shared:
+                                        uuid: 'cryprox_test_on_status_shared'
+                        generated_proxy_backends:
+                                proxy_options:
+                                    backend_timeout: '60s'
+                                    connect_timeout: '50ms'
+                                    fail_on_5xx: true
+                                    keepalive_count: 1
+                                    keepalive_timeout: '180s'
+                                    need_resolve: false
+                                instances:
+                                    - weight: 1
+                                      host: localhost
+                                      port: 8888
+                - weight: 1
+                  modules:
+                    - errordocument:
+                       status: 404

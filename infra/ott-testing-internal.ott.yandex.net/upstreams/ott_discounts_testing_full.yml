@@ -1,0 +1,76 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - ilagutenkov
+      groups: []
+labels:
+  order: '10000000'
+---
+regexp_section:
+  matcher:
+      match_fsm:
+        host: .*
+  modules:
+    - regexp:
+        sections:
+          ya_main:
+            matcher:
+              match_fsm:
+                uri: /v(.*)?/discount-context/reconciliation
+            modules:
+              - balancer2:
+                  attempts: 3
+                  attempts_rate_limiter:
+                    limit: 0.2
+                  return_last_5xx: true  
+                  status_code_blacklist: [ "5xx" ]                    
+                  dynamic: 
+                    max_pessimized_share: 0.5
+                    active:
+                      delay: "5s"
+                      request: 'GET /ping?l7 HTTP/1.1\nHost: ott-testing-internal.ott.yandex.net\n\n'
+                      weight_normalization_coeff: 1
+                  generated_proxy_backends:
+                    proxy_options:
+                      connect_timeout: 60ms
+                      backend_timeout: 150s
+                      keepalive_count: 1
+                      fail_on_5xx: false
+                    include_backends:
+                      type: BY_ID
+                      ids:
+                        - ott-discounts_testing.backend.context-preparer
+                  on_error:
+                    errordocument:
+                      status: 504
+                      content: Service unavailable
+          default:
+            matcher: {}
+            modules:
+              - balancer2:
+                  attempts: 3
+                  attempts_rate_limiter:
+                    limit: 0.2
+                  return_last_5xx: true  
+                  status_code_blacklist: [ "5xx" ]                    
+                  dynamic: 
+                    max_pessimized_share: 0.5
+                    active:
+                      delay: "5s"
+                      request: 'GET /ping?l7 HTTP/1.1\nHost: ott-testing-internal.ott.yandex.net\n\n'
+                      weight_normalization_coeff: 1
+                  generated_proxy_backends:
+                    proxy_options:
+                      connect_timeout: 60ms
+                      backend_timeout: 10s
+                      keepalive_count: 1
+                      fail_on_5xx: false
+                    include_backends:
+                      type: BY_ID
+                      ids:
+                        - ott-discounts_testing.backend
+                  on_error:
+                    errordocument:
+                      status: 504
+                      content: Service unavailable        

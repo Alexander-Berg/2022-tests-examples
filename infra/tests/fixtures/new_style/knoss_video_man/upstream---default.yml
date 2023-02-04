@@ -1,0 +1,230 @@
+---
+regexp_section:
+  matcher: {}
+  modules:
+    - shared:
+        uuid: video_prod
+    - report:
+        uuid: video
+        ranges: default
+    - geobase_macro: {}
+    - exp_getter_macro:
+        _version: 2
+        service_name: video
+        exp_headers: 'X-Yandex-LogstatUID|X-Yandex-ExpSplitParams'
+    - request_replier:
+        rate_file: './controls/request_replier_video.ratefile'
+        sink:
+          modules:
+            - balancer2:
+                simple_policy: {}
+                rr: {}
+                attempts: 2
+                connection_attempts: 3
+                attempts_rate_limiter:
+                  limit: 0.2 
+                generated_proxy_backends:
+                  proxy_options:
+                    backend_timeout: 10s
+                  instances:
+                    - weight: 1
+                      host: sinkadm.priemka.yandex.ru
+                      port: 80
+    - headers_hasher:
+        header_name: X-Yandex-LogstatUID
+        randomize_empty_match: true
+    - balancer2:
+        attempts: 2
+        connection_attempts: 3
+        attempts_rate_limiter:
+          limit: 0.2
+        attempts_file: ./controls/video.attempts
+        rr: {weights_file: ./controls/search_l7_balancer_switch.json}
+        by_name_from_header_policy:
+          hints:
+            - {hint: 'man', 'backend': 'video_man'}
+            - {hint: 'sas', 'backend': 'video_sas'}
+            - {hint: 'vla', 'backend': 'video_vla'}
+          allow_zero_weights: true
+          strict: true
+          by_hash_policy:
+            unique_policy: {}
+        on_error:
+          modules:
+            - report: {ranges: default, uuid: video_requests_to_onerror}
+            - balancer2:
+                attempts: 2
+                connection_attempts: 2
+                attempts_rate_limiter:
+                  limit: 0.2 
+                rr: {}
+                generated_proxy_backends:
+                  proxy_options:
+                    backend_timeout: 10s
+                  include_backends:
+                    type: BY_ID
+                    ids: [video_pumpkin]
+        backends:
+          - weight: 1
+            name: video_vla
+            modules:
+              - report: {ranges: default, uuid: video_requests_to_vla}
+              - balancer2:
+                  attempts: 1
+                  rr: {
+                    weights_file: ./controls/dynamic_balancing_switch,
+                  }
+                  backends:
+                    - weight: -1
+                      name: dynamic_balancing_enabled
+                      modules:
+                        - report: {ranges: default, uuid: video-default_requests_to_vla_dynamic}
+                        - balancer2:
+                            attempts: 2
+                            connection_attempts: 2
+                            attempts_file: './controls/attempts.count'
+                            attempts_rate_limiter: {
+                              limit: 0.1
+                            }
+                            dynamic: {
+                              max_pessimized_share: 0.1,
+                            }
+                            generated_proxy_backends:
+                              proxy_options:
+                                backend_timeout: 10s
+                              include_backends:
+                                type: BY_ID
+                                ids: [video_vla]
+                    - weight: 1
+                      name: dynamic_balancing_disabled
+                      modules:
+                        - balancer2:
+                            attempts: 2
+                            connection_attempts: 2
+                            attempts_file: './controls/attempts.count'
+                            attempts_rate_limiter: {
+                              limit: 0.1
+                            }
+                            rr: {}
+                            generated_proxy_backends:
+                              proxy_options:
+                                backend_timeout: 10s
+                              include_backends:
+                                type: BY_ID
+                                ids: [video_vla]
+          - weight: 1
+            name: video_sas
+            modules:
+              - report: {ranges: default, uuid: video_requests_to_sas}
+              - balancer2:
+                  attempts: 1
+                  rr: {
+                    weights_file: ./controls/dynamic_balancing_switch,
+                  }
+                  backends:
+                    - weight: -1
+                      name: dynamic_balancing_enabled
+                      modules:
+                        - report: {ranges: default, uuid: video-default_requests_to_sas_dynamic}
+                        - balancer2:
+                            attempts: 2
+                            connection_attempts: 2
+                            attempts_file: './controls/attempts.count'
+                            attempts_rate_limiter: {
+                              limit: 0.1
+                            }
+                            dynamic: {
+                              max_pessimized_share: 0.1,
+                            }
+                            generated_proxy_backends:
+                              proxy_options:
+                                backend_timeout: 10s
+                              include_backends:
+                                type: BY_ID
+                                ids: [video_sas]
+                    - weight: 1
+                      name: dynamic_balancing_disabled
+                      modules:
+                        - balancer2:
+                            attempts: 2
+                            connection_attempts: 2
+                            attempts_file: './controls/attempts.count'
+                            attempts_rate_limiter: {
+                              limit: 0.1
+                            }
+                            rr: {}
+                            generated_proxy_backends:
+                              proxy_options:
+                                backend_timeout: 10s
+                              include_backends:
+                                type: BY_ID
+                                ids: [video_sas]
+          - weight: 1
+            name: video_man
+            modules:
+              - report: {ranges: default, uuid: video_requests_to_man}
+              - balancer2:
+                  attempts: 1
+                  rr: {
+                    weights_file: ./controls/dynamic_balancing_switch,
+                  }
+                  backends:
+                    - weight: -1
+                      name: dynamic_balancing_enabled
+                      modules:
+                        - report: {ranges: default, uuid: video-default_requests_to_man_dynamic}
+                        - balancer2:
+                            attempts: 2
+                            connection_attempts: 2
+                            attempts_file: './controls/attempts.count'
+                            attempts_rate_limiter: {
+                              limit: 0.1
+                            }
+                            dynamic: {
+                              max_pessimized_share: 0.1,
+                            }
+                            generated_proxy_backends:
+                              proxy_options:
+                                backend_timeout: 10s
+                              include_backends:
+                                type: BY_ID
+                                ids: [video_man]
+                    - weight: 1
+                      name: dynamic_balancing_disabled
+                      modules:
+                        - balancer2:
+                            attempts: 2
+                            connection_attempts: 2
+                            attempts_file: './controls/attempts.count'
+                            attempts_rate_limiter: {
+                              limit: 0.1
+                            }
+                            rr: {}
+                            generated_proxy_backends:
+                              proxy_options:
+                                backend_timeout: 10s
+                              include_backends:
+                                type: BY_ID
+                                ids: [video_man]
+          - weight: -1
+            name: video_pumpkin
+            modules:
+              - report: {ranges: default, uuid: video_requests_to_pumpkin}
+              - balancer2:
+                  attempts: 2
+                  connection_attempts: 2
+                  attempts_rate_limiter:
+                    limit: 0.2 
+                  rr: {}
+                  generated_proxy_backends:
+                    proxy_options:
+                      backend_timeout: 10s
+                    include_backends:
+                      type: BY_ID
+                      ids: [video_pumpkin]
+          - weight: -1
+            name: video_devnull
+            modules:
+              - report: {ranges: default, uuid: video_requests_to_devnull}
+              - errordocument:
+                  status: 204

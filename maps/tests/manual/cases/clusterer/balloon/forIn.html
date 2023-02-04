@@ -1,0 +1,168 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Кластеризация: контент балуна из массива значений
+
+Description:
+Проверка подстановки контента балуна кластера через массив значений.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+clusterer
+
+Estimated time:
+90000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан центральной России, с отображением меток кластеров с цифрами "100".
+  При загрузке карты, спан смещается и открывается балун в котором две колонки.
+  В левой колонке список меток вида "0, 1, 2, 3, ...". В правой отображается содержимое Метка №0. У каждой колонки имеется скрол полоса, имеется кнопка закрытия балуна.
+  В правой колонке заголовок "Метка №0", тело балуна: Punkt #0; Point №0; Punto #0.
+
+Step:
+  Action:
+  Выполнить клик в кнопку закрытия панели балуна - крестик.
+  (при нахождении кнопки закрытия балуна под другими кнопками на спане, перемещаем спан карты драгом)
+
+  Expectation:
+  Панель балуна закрывается на спане карты вместо балуна кластерная метка с цифрой "100".
+
+Step:
+  Action:
+  Навести курсор на нижнюю кластерную метку и выполнить клик ЛКМ.
+
+  Expectation:
+  При наведении на метку курсор - палец. 
+  Спан карты может сместится для открытия балуна. На спане карты открывается балун - карусель.
+  В балуне сверху отображается содержимое балуна метки №0, имеются стрелки смены содержимого балуна(слева и справа), снизу имеется список меток 1,2,3..., имеется кнопка закрытия балуна.
+  В содержимом заголовок "Метка №0", тело балуна: Punkt #0; Point №0; Punto #0.
+
+Step:
+  Action:
+  Навести курсор на стрелку смены содержимого балуна и выполнить клик ЛКМ.
+
+  Expectation:
+  Спан карты без изменений. 
+  В балуне сверху отображается содержимое балуна метки №1, имеются стрелки смены содержимого балуна(слева и справа), снизу имеется список меток 1,2,3...(выделена цифра 2), имеется кнопка закрытия балуна.
+  В содержимом заголовок "Метка №1", тело балуна: Punkt #1; Point №1; Punto #1.
+
+Step:
+  Action:
+  Выполнить клик в кнопку закрытия панели балуна - крестик.
+
+  Expectation:
+  Панель балуна закрывается на спане карты вместо балуна кластерная метка с цифрой "100".
+  
+Step:
+  Action:
+  Навести курсор на среднюю кластерную метку(между верхней и нижней меткой) и выполнить клик ЛКМ.
+
+  Expectation:
+  При наведении на метку курсор - палец. 
+  Спан карты может сместится для открытия панели балуна. На спане карты балун - аккордеон.
+  В балуне список меток, напротив каждой метки иконка синего круга с точкой внутри. В балуне имеется скрол полоса, имеется кнопка закрытия балуна.
+
+Step:
+  Action:
+  Навести курсор на метку 1 и выполнить клик ЛКМ.
+
+  Expectation:
+  При наведении на метку курсор - ховер, текст становится красным. 
+  Метка в списке раскрывается вниз, при этом отображается содержимое балуна метки: заголовок "Метка №1", тело балуна: Punkt #1; Point №1; Punto #1.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var center = [55.819543, 37.611619];
+            var map = myMap = new ym.Map('map', {
+                center: [center[0] + 1, center[1]],
+                zoom: 5,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+
+            log.info('balloonContent is generated from array elements: [Метка, , Punkt, Point, Punto]');
+
+            var geoObjects = [];
+            var text = "<div id='balloon'>{% for element in properties.arr %}{{element}}<br/>{% endfor %}</div>";
+            var customItemContentLayout = ymaps.templateLayoutFactory.createClass(text);
+
+            var placemarks1 = [], placemarks2 = [], placemarks3 = [],
+                    clusterer1 = new ym.Clusterer({
+                        clusterBalloonContentLayout: 'cluster#balloonTwoColumns',
+                        clusterBalloonItemContentLayout: customItemContentLayout,
+                        clusterBalloonPanelContentLayout: 'cluster#balloonTwoColumns',
+                        clusterDisableClickZoom: true,
+                        clusterOpenBalloonOnClick: true
+                    }),
+                    clusterer2 = new ym.Clusterer({
+                        clusterBalloonContentLayout: 'cluster#balloonAccordion',
+                        clusterBalloonItemContentLayout: customItemContentLayout,
+                        clusterBalloonPanelContentLayout: 'cluster#balloonAccordion',
+                        clusterDisableClickZoom: true,
+                        clusterOpenBalloonOnClick: true
+                    }),
+                    clusterer3 = new ym.Clusterer({
+                        clusterBalloonContentLayout: 'cluster#balloonCarousel',
+                        clusterBalloonItemContentLayout: customItemContentLayout,
+                        clusterBalloonPanelContentLayout: 'cluster#balloonCarousel',
+                        clusterDisableClickZoom: true,
+                        clusterOpenBalloonOnClick: true
+                    });
+            map.geoObjects.add(clusterer1);
+
+            for (i = 0; i < 100; i++) {
+                placemarks1[i] = new ym.Placemark(center, {
+                    clusterCaption: i,
+                    arr: ['Метка №' + i, '' , 'Punkt #' + i, 'Point №' + i, 'Punto #' + i]
+                });
+                placemarks2[i] = new ym.Placemark([center[0] - 2, center[1]], {
+                    clusterCaption: i,
+                    arr: ['Метка №' + i, '' , 'Punkt #' + i, 'Point №' + i, 'Punto #' + i]
+                });
+                placemarks3[i] = new ym.Placemark([center[0] - 4, center[1]], {
+                    clusterCaption: i,
+                    arr: ['Метка №' + i, '' , 'Punkt #' + i, 'Point №' + i, 'Punto #' + i]
+                });
+            }
+
+            clusterer1.add(placemarks1);
+            clusterer2.add(placemarks2);
+            clusterer3.add(placemarks3);
+
+            map.geoObjects
+                    .add(clusterer1)
+                    .add(clusterer2)
+                    .add(clusterer3);
+
+            var object0State = clusterer1.getObjectState(placemarks1[0]);
+            object0State.cluster.state.set('activeObject', placemarks1[0]);
+            clusterer1.balloon.open(object0State.cluster);
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

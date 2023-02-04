@@ -1,0 +1,152 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Хинт: отлов событий оверлеем хинта 
+
+Description:
+Проверка отлова событий оверлеем хинта.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+hint
+
+Estimated time:
+240000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+  
+  Expectation:
+  Карта отобразилась корректно. 
+  На карте спан Центрального федерального округа, в центре спана хинт "hint", снизу справа кнопка "clear".
+  (кнопка "clear" очищает содержимое под контейнером с картой, после выполнения каждого шага выполнять клик в кнопку)   
+
+Step:
+  Action:
+  Навести курсор на хинт на спане карты. 
+  Увести курсор с хинта.
+  
+  Expectation:
+  При наведении, покидании, кликах и других действиях внутри контейнера с картой(не на хинте) под контейнером появляются события с приставкой "map". 
+  При наведении курсора на хинт под контейнером с картой появлется событие: "overlay: mouseenter".
+  При покидании курсора хинт, появляется событие: "overlay: mouseleave".
+
+Step:
+  Action:
+  Выполнить клик в хинт на спане карты. 
+  
+  Expectation:
+  При наведении, покидании, кликах и других действиях внутри контейнера с картой(не на хинте) под контейнером появляются события с приставкой "map". 
+  При клике в хинт под контейнером с картой появляется событие: "overlay: mousedown; overlay: mouseup; overlay: click".
+
+Step:
+  Action:
+  Выполнить даблклик в хинт на спане карты. 
+  
+  Expectation:
+  При наведении, покидании, кликах и других действиях внутри контейнера с картой(не на хинте) под контейнером появляются события с приставкой "map". 
+  При даблклике в хинт под контейнером с картой появляется событие: "overlay: dblclick".
+
+Step:
+  Action:
+  Выполнить клик ПКМ в хинт на спане карты. 
+  
+  Expectation:
+  При наведении, покидании, кликах и других действиях внутри контейнера с картой(не на хинте) под контейнером появляются события с приставкой "map". 
+  При клике ПКМ в хинт под контейнером с картой появляется событие: "overlay: contextmenu".
+
+Step:
+  Action:
+  Навести курсор на хинт и выполнить скрол колесиком мыши. 
+  
+  Expectation:
+  При наведении, покидании, кликах и других действиях внутри контейнера с картой(не на хинте) под контейнером появляются события с приставкой "map". 
+  При скроле на хинте, под контейнером с картой появляется событие: "overlay: wheel".
+
+Step:
+  Action:
+  При наличии возможности проверить отлов хинтом событий выполняя действия при помощи тачпада.  
+  При отсутствии возможности повторить выполнение действий используя мышь.
+  
+  Expectation:
+  При наведении, покидании, кликах и других действиях внутри контейнера с картой(не на хинте) под контейнером появляются события с приставкой "map". 
+  При выполнении действий на хинте, под контейнером с картой появляются соответствующие выполняемым действиям события.
+
+Step:
+  Action:
+  При наличии возможности мультисенсорного дисплея проверить отлов хинтом событий выполнив пинчзум на хинте.
+  
+  Expectation:
+  При наведении, покидании, кликах и других действиях внутри контейнера с картой(не на хинте) под контейнером появляются события с приставкой "map". 
+  При выполнении пинчзума на хинте, под контейнером с картой появляется событие: "overlay: multitouchstart".
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 6,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+
+            var hint,
+                    pos = myMap.getCenter(),
+                    data = { a: 'hint'},
+                    contentLayout = ymaps.templateLayoutFactory.createClass('$[hintContent]<span id="tst">$[a]$[x]</span>'),
+                    options1 = {contentLayout: contentLayout, openTimeout: 1300, interactivityModel: 'default#transparent'};
+            hint = new ymaps.Hint(myMap);
+
+            hint.options.set(options1).setParent(myMap.options);
+            hint.setData(data);
+            hint.open(pos);
+
+            var domevents = ['click', 'contextmenu', 'dblclick', 'mousedown', 'mouseenter', 'mouseleave', 'mouseup', 'multitouchend',
+                'multitouchstart', 'wheel'];
+
+            var callback1 = function (e) {
+                __log__('overlay: ' + e.get('type'));
+            };
+
+            var callback2 = function (e) {
+                __log__('map: ' + e.get('type'));
+            };
+
+            var overlay = hint.getOverlay().then(function (obj) {
+                obj.events.add(domevents, callback1);
+                console.log('layout: ' + obj.options.get('layout'))
+            });
+
+            var clearButton = new ymaps.control.Button({data: {content: 'clear'}, options: {selectOnClick: false}});
+            clearButton.events.add('click', function () {
+                log.clear();
+            });
+
+            myMap.events.add(domevents, callback2);
+            myMap.controls.add(clearButton, {float: 'none', position: {bottom: 40, right: 10}});
+
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

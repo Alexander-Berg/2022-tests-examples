@@ -1,0 +1,7 @@
+ENABLE(BALANCER_PLUGIN)
+INCLUDE(${ARCADIA_ROOT}/balancer/test/plugin/Plug.inc)
+FORK_SUBTESTS()
+FORK_TESTS()
+
+REQUIREMENTS(cpu:4)
+PEERDIR(balancer/test/util)

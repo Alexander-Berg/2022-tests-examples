@@ -1,0 +1,269 @@
+source office7_main
+{
+    type     = mysql
+    sql_host = mdb-rw-mdbtsj5h5n2mn34nln1f.query.consul
+    sql_user = auto
+    sql_pass = KiX1euph
+    sql_db = office7
+    sql_port = 3306
+}
+
+source office7_clients2 : office7_main
+{
+    sql_query_pre = SET NAMES utf8
+    sql_query_pre = select id into @group_1_inn from client_property_fields where group_id=1 and alias='inn';
+    sql_query_pre = select id into @group_1_kpp from client_property_fields where group_id=1 and alias='kpp';
+    sql_query_pre = select id into @group_1_name from client_property_fields where group_id=1 and alias='name';
+    sql_query_pre = select id into @group_1_nameshort from client_property_fields where group_id=1 and alias='nameshort';
+    sql_query_pre = select id into @group_1_opf from client_property_fields where group_id=1 and alias='opf';
+    sql_query_pre = select id into @group_2_family_name from client_property_fields where group_id=2 and alias='family_name';
+    sql_query_pre = select id into @group_2_first_name from client_property_fields where group_id=2 and alias='first_name';
+    sql_query_pre = select id into @group_2_patronymic from client_property_fields where group_id=2 and alias='patronymic';
+    sql_query_pre = select id into @group_3_ogrn from client_property_fields where group_id=3 and alias='ogrn';
+    sql_query_pre = select id into @emoney_property from client_property_fields where alias='emoney';
+    sql_query_pre = select id into @product_wallet_id from balance.products where type='wallet';
+
+    sql_query = \
+    SELECT \
+    c.`id` as id, \
+    c.`id` as client_id, \
+    c.`group_id` as group_id, \
+    c.`agent_id` as agent_id, \
+    c.`loader_id` as loader_id, \
+    c.`product_id` as product_id, \
+    c.company_id as company_id, \
+    c.new_billing_available as new_billing_available, \
+    c.first_moderated as first_moderated, \
+    IF( \
+        (\
+            c.`is_onmoderate_rejected` = 0 \
+        ) AND ( \
+            c.`is_onmoderate_dealership` OR \
+            c.`is_onmoderate_info` OR \
+            c.`is_onmoderate_salons` OR \
+            c.`is_onmoderate_trademark` \
+        ), 2, c.`is_onmoderate` \
+    ) as is_onmoderate, \
+    IF (c.`last_activation_date` AND c.`paid_till` AND c.`first_activation_date`=c.`last_activation_date`, 1, 0) as first_payment, \
+    GROUP_CONCAT(DISTINCT bp.group_tag SEPARATOR ',') as products, \
+    IF (GROUP_CONCAT(DISTINCT case WHEN bp.unlimit = 1 THEN bp.unlimit END) = 1, 1, 0) as products_unlim, \
+    GROUP_CONCAT(DISTINCT u.email ORDER BY u.email ASC SEPARATOR ',') as email, \
+    GROUP_CONCAT(DISTINCT pp.phone SEPARATOR ',') as phones, \
+    c.`url` as url, \
+    c.`phone` as phone, \
+    c.`origin` as origin, \
+    group_3_ogrn.value as ogrn, \
+    c.`status` as status, \
+    CRC32(c.`status`) as client_status, \
+    CRC32(cpg.`alias`) as group_alias, \
+    emoney_property.value as emoney, \
+    autoload.status_active as autoload, \
+    LOWER(TRIM(agents_group_1_name.value)) as agent_name, \
+    LOWER(TRIM(loaders_group_1_name.value)) as loader_name, \
+    c.`region_id` as region_id, \
+    c.`city_id` as city_id, \
+    CONCAT_WS(', ', city.`name`, c.`adress`) as address, \
+    group_1_inn.value as inn, \
+    group_1_kpp.value as kpp, \
+    LOWER(TRIM(IF(c.`group_id` = 1 , group_1_name.value, CONCAT_WS(' ', group_2_family_name.value, group_2_first_name.value, group_2_patronymic.value)))) as name, \
+    group_1_nameshort.value as nameshort, \
+    group_1_opf.value as opf, \
+    c.`create_date` as create_date, \
+    UNIX_TIMESTAMP(c.`create_date`) as create_date_ts, \
+    c.`paid_till` as paid_till, \
+    UNIX_TIMESTAMP(c.`paid_till`) as paid_till_ts, \
+    c.`last_activation_date` as last_activation_date, \
+    UNIX_TIMESTAMP(c.`last_activation_date`) as last_activation_date_ts, \
+    c.`month_sum` as month_sum, \
+    c.`use_office_tariff` as use_office_tariff, \
+    IF (cc.`office7_client` IS NULL, 0, cc.`office7_client`) as office7_client, \
+    IF (crm_lm.key2 IS NULL, 1, 0) as no_crm_manager, \
+    crm_lm.`key2` as crm_manager_id, \
+    COALESCE(bwo.qty * bwo.amount - bwo.provided, 0) as wallet_balance, \
+    c.money_running_out as money_running_out \
+    FROM `clients` c \
+    LEFT JOIN `client_property_groups` cpg ON cpg.id=c.group_id \
+    LEFT JOIN `clients` agents ON agents.id=c.agent_id \
+    LEFT JOIN `clients` loader ON loader.id=c.loader_id \
+    LEFT JOIN `client_properties` agents_group_1_name ON agents_group_1_name.client_id=agents.id AND agents_group_1_name.field_id=@group_1_name \
+    LEFT JOIN `client_properties` loaders_group_1_name ON loaders_group_1_name.client_id=loader.id AND loaders_group_1_name.field_id=@group_1_name \
+    LEFT JOIN `client_properties` group_1_inn ON group_1_inn.client_id=c.id AND group_1_inn.field_id=@group_1_inn \
+    LEFT JOIN `client_properties` group_1_kpp ON group_1_kpp.client_id=c.id AND group_1_kpp.field_id=@group_1_kpp \
+    LEFT JOIN `client_properties` group_1_name ON group_1_name.client_id=c.id AND group_1_name.field_id=@group_1_name \
+    LEFT JOIN `client_properties` group_1_nameshort ON group_1_nameshort.client_id=c.id AND group_1_nameshort.field_id=@group_1_nameshort \
+    LEFT JOIN `client_properties` group_1_opf ON group_1_opf.client_id=c.id AND group_1_opf.field_id=@group_1_opf \
+    LEFT JOIN `client_properties` group_2_family_name ON group_2_family_name.client_id=c.id AND group_2_family_name.field_id=@group_2_family_name \
+    LEFT JOIN `client_properties` group_2_first_name ON group_2_first_name.client_id=c.id AND group_2_first_name.field_id=@group_2_first_name \
+    LEFT JOIN `client_properties` group_2_patronymic ON group_2_patronymic.client_id=c.id AND group_2_patronymic.field_id=@group_2_patronymic \
+    LEFT JOIN `client_properties` group_3_ogrn ON group_3_ogrn.client_id=c.id AND group_3_ogrn.field_id=@group_3_ogrn \
+    LEFT JOIN `client_properties` emoney_property ON emoney_property.client_id=c.id AND emoney_property.field_id=@emoney_property \
+    LEFT JOIN `bdupload_xml_hosts` autoload ON autoload.client_id=c.id \
+    LEFT JOIN `clients`.`clients` cc ON cc.id=c.id_clients \
+    LEFT JOIN `client_users` cu ON cu.client_id=c.id \
+    LEFT JOIN `users`.`user` u ON u.id=cu.user_id \
+    LEFT JOIN `client_poi` cp ON cp.client_id=c.id \
+    LEFT JOIN `poi7`.`poi_phones` pp ON pp.poi_id=cp.poi_id \
+    LEFT JOIN `autoru`.`cities` city ON city.id=c.city_id \
+    LEFT JOIN `crm`.`links_map` crm_lm ON crm_lm.key1 = c.id AND crm_lm.link_name = 'office7.client.id-crm.manager.id' \
+    LEFT JOIN `balance`.`links_map` b_lm ON b_lm.key1 = c.id AND b_lm.link_name = 'office7.clients.id-balance.clients.id' \
+    LEFT JOIN `balance`.`orders` bo ON bo.client_id = b_lm.key2 AND ((bo.status IN (1, 2, 4)) OR (bo.product_id IN (1199, 1201, 1226) AND bo.qty > 0)) \
+    LEFT JOIN `balance`.`products` bp ON bp.id = bo.product_id \
+    LEFT JOIN `balance`.`clients` as bc ON b_lm.key2=bc.id \
+    LEFT JOIN `balance`.`orders` bwo ON bwo.client_id = bc.id AND bwo.product_id=@product_wallet_id AND bwo.agency_id = bc.agency_id \
+    WHERE c.`is_agent` = 0 \
+    GROUP BY id \
+
+    sql_attr_uint    = client_id
+    sql_attr_uint    = group_id
+    sql_attr_uint    = agent_id
+    sql_attr_uint    = loader_id
+    sql_attr_uint    = product_id
+    sql_attr_uint    = region_id
+    sql_attr_uint    = city_id
+    sql_field_string = products
+    sql_attr_uint    = products_unlim
+    sql_attr_uint    = is_onmoderate
+    sql_attr_uint    = emoney
+    sql_attr_uint    = autoload
+    sql_attr_uint    = office7_client
+    sql_field_string = agent_name
+    sql_field_string = loader_name
+    sql_field_string = status
+    sql_attr_uint    = client_status
+    sql_attr_uint    = group_alias
+    sql_field_string = email
+    sql_field_string = phones
+    sql_field_string = url
+    sql_field_string = phone
+    sql_field_string = origin
+    sql_field_string = ogrn
+    sql_field_string = address
+    sql_field_string = inn
+    sql_field_string = kpp
+    sql_field_string = name
+    sql_field_string = nameshort
+    sql_field_string = opf
+    sql_field_string = create_date
+    sql_attr_uint    = create_date_ts
+    sql_field_string = paid_till
+    sql_attr_uint    = paid_till_ts
+    sql_field_string = last_activation_date
+    sql_attr_uint    = last_activation_date_ts
+    sql_attr_uint    = month_sum
+    sql_attr_uint    = use_office_tariff
+    sql_attr_uint    = no_crm_manager
+    sql_attr_uint    = company_id
+    sql_attr_uint    = crm_manager_id
+    sql_attr_uint    = wallet_balance
+    sql_attr_uint    = first_payment
+    sql_attr_uint    = new_billing_available
+    sql_attr_uint    = money_running_out
+    sql_attr_uint    = first_moderated
+}
+
+source office7_agents2 : office7_main
+{
+    sql_query_pre = SET NAMES utf8
+    sql_query_pre = select id into @group_1_name from client_property_fields where group_id=1 and alias='name';
+    sql_query_pre = select id into @group_1_nameshort from client_property_fields where group_id=1 and alias='nameshort';
+
+    sql_query = \
+    SELECT \
+    c.`id` as id, \
+    c.`id` as client_id, \
+    c.`email` as email, \
+    c.`url` as url, \
+    c.`phone` as phone, \
+    c.`status` as status, \
+    CRC32(c.`status`) as client_status, \
+    c.`is_suspected` as is_suspected, \
+    c.`is_onmoderate` as is_onmoderate, \
+    LOWER(TRIM(group_1_name.value)) as name, \
+    group_1_nameshort.value as nameshort, \
+    COUNT(cl.id) AS clients_amount \
+    FROM `clients` c \
+    LEFT JOIN `clients` cl ON cl.agent_id=c.id AND cl.status!='deleted' \
+    LEFT JOIN `client_properties` group_1_name ON group_1_name.client_id=c.id AND group_1_name.field_id=@group_1_name \
+    LEFT JOIN `client_properties` group_1_nameshort ON group_1_nameshort.client_id=c.id AND group_1_nameshort.field_id=@group_1_nameshort \
+    WHERE c.`is_agent` = 1 \
+    GROUP BY c.id
+
+    sql_attr_uint    = client_id
+    sql_attr_uint    = is_suspected
+    sql_attr_uint    = is_onmoderate
+    sql_field_string = status
+    sql_attr_uint    = client_status
+    sql_field_string = email
+    sql_field_string = url
+    sql_field_string = phone
+    sql_field_string = name
+    sql_field_string = nameshort
+    sql_attr_uint    = clients_amount
+}
+
+
+index office7_clients2
+{
+    type             = plain
+    source           = office7_clients2
+
+    path             = /opt/sphinx_office7/clients2
+
+    docinfo          = extern
+    mlock            = 0
+    morphology       = stem_enru
+    min_stemming_len = 1
+    min_word_len     = 1
+    charset_type     = utf-8
+    charset_table    = 0..9, A..Z->a..z, _, a..z, U+410..U+42F->U+430..U+44F, U+430..U+44F, U+0401->U+0435, U+0451->U+0435
+    min_infix_len    = 1
+    dict             = crc
+    enable_star      = 1
+    html_strip       = 1
+    blend_chars      = -
+}
+
+index office7_agents2
+{
+    type            = plain
+    source          = office7_agents2
+
+    path            = /opt/sphinx_office7/agents2
+
+    docinfo         = extern
+    mlock           = 0
+    morphology      = stem_enru
+    min_stemming_len = 1
+    min_word_len    = 1
+    charset_type    = utf-8
+    charset_table   = 0..9, A..Z->a..z, _, a..z, U+410..U+42F->U+430..U+44F, U+430..U+44F, U+0401->U+0435, U+0451->U+0435
+    min_infix_len   = 2
+    enable_star     = 1
+    html_strip      = 1
+    blend_chars      = -
+}
+
+indexer
+{
+    mem_limit       = 1024M
+}
+
+searchd
+{
+    #compat_sphinxql_magics = 0
+
+    #listen           = 21338
+    listen            = 3310:mysql41
+    query_log_format  = sphinxql
+    max_batch_queries = 0
+
+    log             = /var/log/sphinx/searchd_office7.log
+    #query_log      = /var/log/sphinx/query_office7.log
+    pid_file        = /var/run/sphinx/searchd_office7.pid
+    binlog_path     = /var/log/sphinx/office7/
+
+    read_timeout    = 5
+    max_children    = 0
+    max_matches     = 20000
+    unlink_old      = 1
+}

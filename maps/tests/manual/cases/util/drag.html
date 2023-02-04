@@ -1,0 +1,213 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Util: события драга
+
+Description:
+Проверка событий драга.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components:
+util
+
+Estimated time:
+180000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть страницу и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно со спаном водной поверхности.
+  В левом верхнем углу спана 4 квадрата: белый, красный, зеленый и синий, справа кнопка "hasClass".
+  Под контейнером с картой строка "dragger.isDragging(): false".
+
+Step:
+  Action:
+  Навести курсор на белый квадрат, зажать ЛКМ и переместить курсор. 
+
+  Expectation:
+  Происходит захват и драг белого квадрата(драг немного замедленный).
+  При драге под контейнером с картой появляется блок данных стартовой позиции, движения, строка "dragger.isDragging(): true", позиции остановки.
+
+Step:
+  Action:
+  Навести курсор на красный квадрат, зажать ЛКМ и переместить курсор. 
+
+  Expectation:
+  При нажатии ЛКМ на квадрате под контейнером появляется строка: "red start, position: 11,83".
+  Квадрат не переносится вслед за курсором, после отпускания ЛКМ, под контейнером появляется строка "red stop, position: (координаты); stop delta: 0,0".
+
+Step:
+  Action:
+  Навести курсор на зеленый квадрат, зажать ПКМ и переместить курсор. 
+
+  Expectation:
+  Происходит захват и драг зеленого квадрата.
+
+Step:
+  Action:
+  Навести курсор на синий квадрат, зажать ЛКМ и переместить курсор. 
+
+  Expectation:
+  Происходит захват и драг синего квадрата.
+
+Step:
+  Action:
+  Навести курсор на белый квадрат, зажать ЛКМ и переместить курсор. 
+
+  Expectation:
+  Квадрат не перемещается, захвата объекта не происходит.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "hasClass"
+
+  Expectation:
+  Под контейнером с картой появялется строка "$('#w').hasClass('ymaps-touch-action-none'): false".
+-->
+<html>
+<head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="//yandex.st/jquery/1.6.4/jquery.min.js" type="text/javascript"></script>
+    <style>
+        .drag {
+            position: absolute;
+            width: 32px;
+            height: 32px;
+            background-color: #FFFFFF;
+            top: 0;
+            left: 0;
+        }
+
+        .white {
+            background-color: #FFFFFF;
+            top: 0;
+        }
+
+        .red {
+            background-color: #FF0000;
+            top: 64px;
+        }
+
+        .green {
+            background-color: #00FF00;
+            top: 128px;
+        }
+
+        .blue {
+            background-color: #0000FF;
+            top: 192px;
+        }
+    </style>
+    <script src="../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+            var map = myMap = new ym.Map('map', {
+                center: [33.7610, -37.2654],
+                zoom: 7,
+                controls: ['fullscreenControl']
+            });
+
+            addGrid(map);
+            var log = new Log();
+
+            log.info('white dragger will be destroyed after first drag');
+            log.info('red dragger throws start and stop events');
+            log.info('green dragger: byRightButton is true');
+            log.info('');
+
+            var elementWhite = document.getElementById('w'),
+                    elementRed = document.getElementById('r'),
+                    elementGreen = document.getElementById('g'),
+                    elementBlue = document.getElementById('b'),
+                    dragger = new ym.util.Dragger({
+                        autoStartElement: elementWhite,
+                        tremor: {
+                            offset: 60,
+                            time: 3000
+                        }
+                    }),
+                    draggerRed, draggerGreen, draggerBlue,
+                    setPosition = function (e) {
+                        log.info(e.get('type') + ', position: ' + e.get('position'));
+                        if (e.get('type') === 'stop' || e.get('type') === 'move') {
+                            log.info('stop delta: ' + e.get('delta'))
+                        }
+                        var position = e.get('position');
+                        elementWhite.style.left = position[0] + 'px';
+                        elementWhite.style.top = position[1] + 'px';
+                    },
+                    button = new ym.control.Button({data: {content: 'hasClass'}}, {selectOnClick: false});
+
+            log.info('dragger.isDragging(): ' + dragger.isDragging());
+            dragger.events.add('start', setPosition).once('move', function (e) {
+                log.info(e.get('type') + ', position: ' + e.get('position') + ', delta: ' + e.get('delta'));
+                log.info('dragger.isDragging(): ' + dragger.isDragging());
+                var position = e.get('position');
+                elementWhite.style.left = position[0] + 'px';
+                elementWhite.style.top = position[1] + 'px';
+            }).once('stop', function (e) {
+                dragger.destroy();
+                setPosition(e);
+            });
+
+            draggerRed = new ym.util.Dragger();
+            draggerRed.events.add(['start', 'stop'], function (e) {
+                log.info('red ' + e.get('type') + ', position: ' + e.get('position'));
+                if (e.get('type') === 'stop') {
+                    log.info('stop delta: ' + e.get('delta'));
+                }
+            });
+            draggerRed.events.add('cancel', function (e) {
+                log.info('red ' + e.get('type'))
+            });
+
+            ym.domEvent.manager.add(elementRed, 'mousedown', function (e) {
+                draggerRed.start(e);
+            });
+
+            draggerGreen = new ym.util.Dragger({
+                autoStartElement: elementGreen,
+                byRightButton: true
+            });
+            draggerGreen.events.add(['start', 'move', 'stop'], function (e) {
+                var position = e.get('position');
+                elementGreen.style.left = position[0] + 'px';
+                elementGreen.style.top = position[1] + 'px';
+            });
+
+            draggerBlue = new ym.util.Dragger({
+                autoStartElement: elementBlue
+            });
+            draggerBlue.events.add(['start', 'move', 'stop'], function (e) {
+                var position = e.get('position');
+                elementBlue.style.left = position[0] + 'px';
+                elementBlue.style.top = position[1] + 'px';
+            });
+
+            button.events.add('click', function () {
+                log.info("$('#w').hasClass('ymaps-touch-action-none'): " + $('#w').hasClass('ymaps-touch-action-none'))
+            });
+
+            myMap.controls.add(button, {float: 'right'});
+        }
+    </script>
+</head>
+<body style="padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+<div class="drag white" id="w"></div>
+<div class="drag red" id="r"></div>
+<div class="drag green" id="g"></div>
+<div class="drag blue" id="b"></div>
+</body>
+</html>

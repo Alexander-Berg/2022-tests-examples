@@ -1,0 +1,87 @@
+---
+instance_macro:
+  maxconn: 5000
+  workers: !f get_workers()
+  sections:
+    admin:
+      ips: [127.0.0.1, '::1']
+      ports: [15870]
+      modules:
+        - http: {}
+        - admin: {}
+    stats_storage:
+      ips: [127.0.0.4]
+      ports: [15870]
+      modules:
+        - report:
+            uuid: 'service_total'
+            ranges: 'default'
+            just_storage: true
+        - http: {}
+        - errordocument:
+            status: 204
+    https_section:
+      ips: ['2a02:6b8::126', '87.250.250.126']
+      ports: [443]
+      local_ips: [local_v4_addr, local_v6_addr]
+      local_ports: [15871]
+      stats_attr: 'https'
+      extended_http_macro:
+        port: 15871
+        report_uuid: 'https'
+        enable_ssl: true
+        ssl_sni_contexts:
+          suggest-maps.yandex.az:
+            servername_regexp: 'suggest-maps\\.yandex\\.(az|com.am|co.il|kg|lv|lt|md|tj|tm|fr|ee)'        
+          suggest-maps.yandex.ru:
+            servername_regexp: default
+        modules:
+          - headers:
+              create_func:
+                X-Start-Time: starttime
+                X-Req-Id: reqid
+                X-Source-Port-Y: realport
+                X-Forwarded-For-Y: realip
+          - response_headers:
+              create_weak:
+                X-XSS-Protection: '1; mode=block'
+                X-Content-Type-Options: 'nosniff'
+          - hasher:
+              mode: subnet
+              subnet_v4_mask: 32
+              subnet_v6_mask: 128
+          - shared:
+              uuid: upstreams
+    http_section:
+      ips: ['2a02:6b8::126', '87.250.250.126']
+      ports: [80]
+      local_ips: [local_v4_addr, local_v6_addr]
+      local_ports: [15870]
+      stats_attr: 'http'
+      extended_http_macro:
+        port: 15870
+        report_uuid: 'http'
+        modules:
+          - headers:
+              create_func:
+                X-Start-Time: starttime
+                X-Req-Id: reqid
+                X-Source-Port-Y: realport
+                X-Forwarded-For-Y: realip
+          - response_headers:
+              create_weak:
+                X-XSS-Protection: '1; mode=block'
+                X-Content-Type-Options: 'nosniff'
+          - hasher:
+              mode: subnet
+              subnet_v4_mask: 32
+              subnet_v6_mask: 128
+          - shared:
+              uuid: upstreams
+          - regexp:
+              include_upstreams:
+                filter:
+                  any: true
+                order:
+                  label:
+                    name: order

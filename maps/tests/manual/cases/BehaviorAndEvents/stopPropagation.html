@@ -1,0 +1,151 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+События: распространение событий на метке, кнопке, карте
+
+Description:
+Независимый отлов событий разными объектами на карте.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+behavior
+
+Estimated time:
+240000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно, на карте спан Москвы. 
+  В центре спана метка коллекции, сверху слева кнопка "button".
+
+Step:
+  Action:
+  Навести курсор на карту и выполнить клик ЛКМ.
+
+  Expectation:
+  При наведении курсора в контейнер с картой под контейнером появляется текст событий наведения/выведения курсора.
+  По клику под контейнером появляется текст: "mousedown; mouseup; click" c приставкой container(original).
+
+Step:
+  Action:
+  Навести курсор на метку коллекции на карте и выполнить клик ЛКМ.
+
+  Expectation:
+  При наведении курсора в контейнер с картой под контейнером появляется текст событий наведения/выведения курсора c приставкой container(original).
+  По клику вместо метки открывается балун с содержимым "balloon", под контейнером появляется текст: "mousedown; mouseup; click" c приставкой placemark.
+
+Step:
+  Action:
+  Навести курсор на кнопку "button" и выполнить клик ЛКМ.
+
+  Expectation:
+  При наведении курсора в контейнер с картой под контейнером появляется текст событий наведения/выведения курсора c приставкой container(original).
+  По клику вместо метки открывается балун с содержимым "balloon", под контейнером появляется текст: "mousedown; mouseup; click" c приставкой defaultaction; originalEvent. 
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 10,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+
+            log.info('Events will not be propagated from:');
+            log.info('- button to container');
+            log.info('- placemark to collection');
+            log.info('- container to map');
+            log.info('Now click the button, map or placemark.');
+
+            var placemark = new ymaps.Placemark(map.getCenter(), {balloonContent: 'balloon', hintContent: 'hint'});
+            var collection = new ymaps.GeoObjectCollection();
+            collection.add(placemark);
+            map.geoObjects.add(collection);
+
+            map.setCenter([55.735007, 37.619791]);
+
+            var events = ['clickdefaultaction', 'mouseenterdefaultaction', 'mouseleavedefaultaction',
+                'contextmenudefaultaction', 'dblclickdefaultaction', 'mousedowndefaultaction', 'mouseupdefaultaction',
+                'wheeldefaultaction', 'multitouchstartdefaultaction', 'multitouchenddefaultaction'];
+
+            var originalEvents = ['click', 'contextmenu', 'dblclick', 'mousedown', 'mouseenter', 'mouseleave',
+                'mouseup', 'multitouchend', 'multitouchstart', 'wheel'];
+
+            var testButton = new ymaps.control.Button({data: {content: 'button'}, options: {selectOnClick: false}});
+            testButton.events.add(originalEvents, function (e) {
+                e.get('domEvent').callMethod('stopPropagation'); // событие приходит от кнопки, но не распространится на контейнер
+                log.info('button: ' + e.get('type'));
+            });
+
+            testButton.events.add(events, function (e) {
+                //e.get('originalEvent').callMethod('stopPropagation');
+                log.info('defaultaction: ' + e.get('type') + ', originalEvent: ' + e.get('originalEvent').get('type'));
+            });
+
+            map.controls.add(testButton);
+
+            placemark.events.add(originalEvents, function (e) {
+                e.stopPropagation(); // событие приходит от метки, но не распространяется на коллекцию
+                log.info('placemark: ' + e.get('type'));
+            });
+
+            collection.events.add(originalEvents, function (e) {
+                log.info('collection: ' + e.get('type'));
+            });
+
+            map.container.events.add(originalEvents, function (e) {
+                e.stopPropagation(); // событие приходит от контейнера, но не распространяется на карту
+                log.info('container (original): ' + e.get('type'))
+            });
+
+            map.events.add(originalEvents, function (e) {
+                log.info('map: ' + e.get('type'))
+            });
+
+            document.onclick = function (e) {
+                var event = e || window.event;
+                log.info(event.type)
+            };
+
+            document.onmousedown = function (e) {
+                var event = e || window.event;
+                log.info(event.type)
+            };
+
+            document.onmouseup = function (e) {
+                var event = e || window.event;
+                log.info(event.type)
+            };
+
+            document.ondblclick = function (e) {
+                var event = e || window.event;
+                log.info(event.type)
+            }
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

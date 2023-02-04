@@ -1,0 +1,129 @@
+<!DOCTYPE HTML>
+<!--(skip)(description)
+
+-->
+<!--(version)
+
+-->
+<!--(commands)
+
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script src="../../../js/objectSource.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var map = myMap = new ymaps.Map('map', {
+                center: [55.716901946294286, 37.30336807048247],
+                zoom: 15,
+                // Добавим к стандартным поведениям карты зум колесом мыши.
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+            objectManagerSource(ym, myMap, this);
+
+            var objectManager = new ym.ObjectManager({clusterize: false,
+                geoObjectHasHint: false,
+                clusterOpenEmptyHint: true,
+                clusterHasHint: false
+            });
+
+            //objectManager.objects.options.set('hasHint', false);
+            //objectManager.clusters.options.set('hasHint', false);
+            objectManager.options.set('clusterHasHint', true);
+            objectManager.options.set('geoObjectHasHint', true);
+
+            var hintButton = new ymaps.control.Button({data: {content: '!hasHint'}, options: {
+                selectOnClick: true,
+                maxWidth: 160
+            }});
+            hintButton.events
+                    .add('select', function () {
+                        objectManager.options.set('clusterHasHint', false);
+                        objectManager.options.set('geoObjectHasHint', false);
+                        log.info('hasHintGeoObject: ' + objectManager.options.get('clusterHasHint'));
+                        log.info('hasHintCluster: ' + objectManager.options.get('geoObjectHasHint'));
+                    })
+                    .add('deselect', function () {
+                        objectManager.options.set('clusterHasHint', true);
+                        objectManager.options.set('geoObjectHasHint', true);
+                        log.info('hasHintGeoObject: ' + objectManager.options.get('clusterHasHint'));
+                        log.info('hasHintCluster: ' + objectManager.options.get('geoObjectHasHint'));
+                    });
+
+            map.controls.add(hintButton);
+
+            var button = new ymaps.control.Button('clusterize');
+            button.events
+                    .add('select', function () {
+                        objectManager.options.set('clusterize', true)
+                    })
+                    .add('deselect', function () {
+                        objectManager.options.set('clusterize', false)
+                    });
+            map.controls.add(button);
+
+            log.info('Cluster and geoObject hasHint - TRUE.');
+
+            var placemarksNumber = 500;
+            var bounds = map.getBounds();
+            var newPlacemarks = createGeoObjects(placemarksNumber, bounds);
+
+            objectManager.objects.add(newPlacemarks);
+            objectManager.objects.add(objectManagerArrayNonPointObjects);
+            objectManager.objects.add(objectManagerCollectionNonPointObjects);
+            objectManager.objects.add(objectManagerPolygon);
+            objectManager.objects.add(objectManagerPolyline);
+            objectManager.objects.add(objectManagerCircle);
+            objectManager.objects.add(objectManagerRectangle);
+            map.geoObjects.add(objectManager);
+
+            function createGeoObjects(number, bounds) {
+                var placemarks = [];
+                // Создаем нужное количество меток
+                for (var i = 0; i < number; i++) {
+                    // Генерируем координаты метки случайным образом.
+                    var coordinates = getRandomCoordinates(bounds);
+                    // Создаем метку со случайными координатами.
+                    var myPlacemark = {
+                        "type": "Feature",
+                        "id": 500 + i,
+                        "geometry": {
+                            "type": "Point",
+                            "coordinates": coordinates
+                        },
+                        "properties": {
+                            "balloonContent": i,
+                            "clusterCaption": i,
+                            "hintContent": i
+                        }
+                    };
+                    placemarks.push(myPlacemark);
+                }
+                return placemarks;
+            }
+
+            function getRandomCoordinates(bounds) {
+                var size = [bounds[1][0] - bounds[0][0], bounds[1][1] - bounds[0][1]];
+                return [Math.random() * size[0] + bounds[0][0], Math.random() * size[1] + bounds[0][1]];
+            }
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

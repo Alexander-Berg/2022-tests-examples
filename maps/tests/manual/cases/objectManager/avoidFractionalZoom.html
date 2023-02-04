@@ -1,0 +1,139 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Менеджер объектов: установка дробного зума в объектами менеджера объектов
+
+Description:
+Проверка установки дробного зума в объектами менеджера объектов. 
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+objectManager
+
+Estimated time:
+90000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась корректно, на спане множество меток коллекций, два синих круга, два синих прямоугольника, две линии, синий многоугольник и многоугольник с желтой заливкой.
+  В контейнере контрол зума, кнопка "setZoom".
+  
+Step:
+  Action:
+  Выполнить клик в кнопку "setZoom".
+
+  Expectation:
+  Происходит отзум спана карты, на спане карта мира, ползунок зума смещается вниз, но не до конца. 
+  Контрол зума "-" активен. На спане отображается метка коллекции с тенью.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "setZoom".
+
+  Expectation:
+  Происходит призум спана карты, на спане видны объекты, ползунок зума смещается вверх, примерно в центре линейки. 
+  Контролы зума "+/-" активны.
+
+Step:
+  Action:
+  Выполнить пять кликов в контрол зума "+".
+
+  Expectation:
+  Происходит корректный призум области спана, объектыи карта не пропадают, не мигают цветами.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../helper.js"></script>
+    <script src="../../js/objectSource.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var map = myMap = new ymaps.Map('map', {
+                center: [55.716901946294286, 37.30336807048247],
+                zoom: 15,
+                // Добавим к стандартным поведениям карты зум колесом мыши.
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl', 'zoomControl']
+            }, {
+                avoidFractionalZoom: false
+            });
+            var zoomButton = new ymaps.control.Button('setZoom');
+            zoomButton.events
+                    .add('select', function () {
+                        map.setZoom(0.4);
+                    })
+                    .add('deselect', function () {
+                        map.setZoom(10.5);
+                    });
+            map.controls.add(zoomButton);
+            objectManagerSource(ym, myMap, this);
+            addGrid(myMap);
+            var log = new Log();
+            log.info('avoidFractionalZoom = false. Объекты не должны пропадать при зуме и драге.');
+            log.info('setZoom - 0.4 / 10.5');
+
+            var objectManager = new ymaps.ObjectManager({clusterize: false});
+            var placemarksNumber = 50;
+            var bounds = map.getBounds();
+            var newPlacemarks = createGeoObjects(placemarksNumber, bounds);
+
+            objectManager.objects.add(newPlacemarks);
+
+            objectManager.objects.add(objectManagerArrayNonPointObjects);
+            objectManager.objects.add(objectManagerCollectionNonPointObjects);
+            objectManager.objects.add(objectManagerPolygon);
+            objectManager.objects.add(objectManagerPolyline);
+            objectManager.objects.add(objectManagerCircle);
+            objectManager.objects.add(objectManagerRectangle);
+            map.geoObjects.add(objectManager);
+
+            function createGeoObjects(number, bounds) {
+                var placemarks = [];
+                // Создаем нужное количество меток
+                for (var i = 0; i < number; i++) {
+                    // Генерируем координаты метки случайным образом.
+                    var coordinates = getRandomCoordinates(bounds);
+                    // Создаем метку со случайными координатами.
+                    var myPlacemark = {
+                        "type": "Feature",
+                        "id": i,
+                        "geometry": {
+                            "type": "Point",
+                            "coordinates": coordinates
+                        },
+                        "properties": {
+                            "balloonContent": i,
+                            "clusterCaption": i,
+                            "hintContent": i
+                        }
+                    };
+                    placemarks.push(myPlacemark);
+                }
+                return placemarks;
+            }
+
+            function getRandomCoordinates(bounds) {
+                var size = [bounds[1][0] - bounds[0][0], bounds[1][1] - bounds[0][1]];
+                return [Math.random() * size[0] + bounds[0][0], Math.random() * size[1] + bounds[0][1]];
+            }
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

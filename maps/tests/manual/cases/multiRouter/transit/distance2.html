@@ -1,0 +1,153 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Мультимаршрут-ОТ: проверка корректности дистанции маршрута по частям и сегментам
+
+Description:
+Проверка корректности дистанции маршрута по частям и сегментам.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+multiRouter
+
+Estimated time:
+30000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  При загрузке первоначально загружается карта со спаном Москвы, затем происходит смена спана на спан СПб, на спане появляется маршрут ОТ из 4 точек("A", "B", "C", "D").
+  На маршруте имеются метки общественного траспорта, основная и альтернативные нитки маршрута.
+  Под контейнером с картой информация о длине мрашруте, длинах участков и сегментов, после каждого маршрута блок "Result", с отображением данных. 
+  В блоках имеются строки с текстом "OK:...", ошибок нет.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 10,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+
+            var multiRoute = new ymaps.multiRouter.MultiRoute({
+                referencePoints: ['питер, мебельная 35', 'питер, невский 124', 'питер, степана разина 8',
+                    'питер, бухарестская 120'],
+                params: {
+                    routingMode: 'masstransit'
+                }
+            }, {
+                boundsAutoApply: true,
+                wayPointDraggable: true,
+                editorDrawOver: false
+            });
+            map.geoObjects.add(multiRoute);
+
+            multiRoute.editor.start({
+                addWayPoints: true,
+                dragWayPoints: true,
+                dragViaPoints: true,
+                removeWayPoints: true,
+                removeViaPoints: true
+            });
+
+            var routes, paths, segments;
+
+            multiRoute.model.events
+                    .add("requestsuccess", function (event) {
+
+                        var routeN = 0;
+                        var pathN = 0;
+                        var segmentN = 0;
+                        log.clear();
+
+                        setTimeout(function () {
+                            try {
+                                routes = multiRoute.getRoutes();
+                                routes.each(function (route) {
+                                    var routeDistance1 = 0;
+                                    var routeDistance2 = 0;
+                                    var routeDistance3 = 0;
+                                    routeN++;
+                                    __log__('route ' + routeN + ': ' + route.properties.get('distance').text);
+                                    __log__('route ' + routeN + ': ' + route.properties.get('distance').value);
+                                    notZero(route.properties.get('distance').text);
+                                    notZero(route.properties.get('distance').value);
+                                    paths = route.getPaths();
+                                    paths.each(function (path) {
+                                        pathN++;
+                                        __log__('path ' + pathN + ': ' + path.properties.get('distance').text);
+                                        __log__('path ' + pathN + ': ' + path.properties.get('distance').value);
+                                        notZero(path.properties.get('distance').text);
+                                        notZero(path.properties.get('distance').value);
+                                        routeDistance1 += path.properties.get('distance').value;
+                                        segments = path.getSegments();
+                                        segments.each(function (segment) {
+                                            segmentN++;
+                                            __log__('segment ' + segmentN + ': ' + segment.properties.get('distance').text);
+                                            __log__('segment ' + segmentN + ': ' + segment.properties.get('distance').value);
+                                            notZero(segment.properties.get('distance').text);
+                                            notZero(segment.properties.get('distance').value);
+                                            routeDistance2 += segment.properties.get('distance').value;
+                                        });
+                                        __log__('----- path ' + pathN + ': ' + routeDistance2);
+                                        routeDistance3 += routeDistance2;
+                                        routeDistance2 = 0;
+                                    });
+                                    __log__('');
+                                    __log__('RESULT');
+                                    __log__('----- route: ' + route.properties.get('distance').value);
+                                    __log__('----- path sum: ' + routeDistance3);
+                                    __log__('----- route ' + routeN + ': ' + routeDistance1);
+
+                                    validateValue(route.properties.get('distance').value, routeDistance3);
+                                    validateValue(routeDistance1, routeDistance3);
+                                    __log__('');
+
+                                    routeDistance1 = 0;
+
+                                });
+                            } catch (err) {
+                                __log__(err.message);
+                            }
+
+                        }, 3000);
+
+                    });
+
+
+            function notZero(value) {
+                if ((value == 0) || (value == '0 км') || (value.toString().indexOf('0') == 0)) {
+                    __logFail__('FAILED: "' + value + '" is 0 (км) ');
+                } else {
+                    __logPass__('OK: distance does not equal 0');
+                }
+            }
+
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

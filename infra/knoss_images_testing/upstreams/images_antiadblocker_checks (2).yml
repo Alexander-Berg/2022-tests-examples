@@ -1,0 +1,63 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - anoh
+      - keepclean
+      groups: []
+labels:
+  order: '00001000'
+---
+regexp_section:
+  matcher:
+    match_and:
+      - match_fsm:
+          match: 'POST.*'
+      - match_fsm:
+          header:
+            name: x-aab-http-check
+            value: '.*'
+      - match_or:
+          - match_fsm: {cookie: 'yacob=1', surround: True}
+          - match_fsm: {cookie: 'bltsr=1', surround: True}
+  modules:
+    - shared:
+        uuid: images_antiadblocker_checks
+    - balancer2:
+        attempts: 1
+        rr: {weights_file: ./controls/images_antiadblock.txt}
+        simple_policy: {}
+        backends:
+          - weight: -1
+            name: images_antiadblock
+            modules:
+              - headers:
+                  create:
+                    X-AAB-PartnerToken: !f get_str_env_var("AAB_TOKEN")
+                    Y-Service: images_antiadblock
+                    X-Yandex-Service-L7-Port: '81'
+                    X-Forwarded-Proto: 'https'
+                  #create_func:
+                  #  X-Yandex-Service-L7-Host: localip
+                  #create_func_weak:
+                  #  X-Forwarded-Proto: scheme
+              - report:
+                  uuid: images_antiadblock
+                  ranges: default
+              - balancer2:
+                  attempts: 2
+                  simple_policy: {}
+                  rr: {}
+                  generated_proxy_backends:
+                    proxy_options:
+                      backend_timeout: 30s
+                      connect_timeout: 60ms
+                    instances:
+                      - weight: 1
+                        host: cryprox-test.yandex.net
+                        port: 80
+          - weight: 1
+            name: images_prod
+            modules:
+              - shared:
+                  uuid: images_prod

@@ -1,0 +1,250 @@
+<!DOCTYPE HTML>
+<!--(skip)(description)
+
+-->
+<!--(version)
+
+-->
+<!--(commands)
+
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <link href="//yandex.st/bootstrap/2.3.2/css/bootstrap.min.css" rel="stylesheet">
+    <script src="//yandex.st/jquery/2.0.3/jquery.min.js" type="text/javascript"></script>
+    <style>
+        .popover {
+            display: block;
+        }
+
+        .popover .close {
+            position: absolute;
+            right: 5px;
+            top: 1px;
+        }
+
+        .btn {
+            margin-top: 10px;
+        }
+    </style>
+    <script src="../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+
+            var map = myMap = new ymaps.Map('map', {
+                center: [55.831903, 37.411961],
+                zoom: 11,
+                // Добавим к стандартным поведениям карты зум колесом мыши.
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl', 'zoomControl']
+            }, {
+                avoidFractionalZoom: false
+            });
+            __log__('Поддержать маппинг balloon & hint');
+            __log__('Слева балуны и хинты курсивом справа жирным');
+            var MyBalloonLayout = ymaps.templateLayoutFactory.createClass(
+                                    '<div class="popover top">' +
+                                    '<a class="close" href="#">&times;</a>' +
+                                    '<div class="arrow"></div>' +
+                                    '<div class="popover-inner">' +
+                                    '$[[options.contentLayout observeSize minWidth=35 maxWidth=135 maxHeight=100]]' +
+                                    '</div>' +
+                                    '</div>', {
+                                /**
+                                 * Строит экземпляр макета на основе шаблона и добавляет его в родительский HTML-элемент.
+                                 * @see https://api.yandex.ru/maps/doc/jsapi/2.1/ref/reference/layout.templateBased.Base.xml#build
+                                 * @function
+                                 * @name build
+                                 */
+                                build: function () {
+                                    this.constructor.superclass.build.call(this);
+
+                                    this._$element = $('.popover', this.getParentElement());
+
+                                    this.applyElementOffset();
+
+                                    this._$element.find('.close')
+                                            .on('click', $.proxy(this.onCloseClick, this));
+                                },
+
+                                /**
+                                 * Удаляет содержимое макета из DOM.
+                                 * @see https://api.yandex.ru/maps/doc/jsapi/2.1/ref/reference/layout.templateBased.Base.xml#clear
+                                 * @function
+                                 * @name clear
+                                 */
+                                clear: function () {
+                                    this._$element.find('.close')
+                                            .off('click');
+
+                                    this.constructor.superclass.clear.call(this);
+                                },
+
+                                /**
+                                 * Метод будет вызван системой шаблонов АПИ при изменении размеров вложенного макета.
+                                 * @see https://api.yandex.ru/maps/doc/jsapi/2.1/ref/reference/IBalloonLayout.xml#event-userclose
+                                 * @function
+                                 * @name onSublayoutSizeChange
+                                 */
+                                onSublayoutSizeChange: function () {
+                                    MyBalloonLayout.superclass.onSublayoutSizeChange.apply(this, arguments);
+
+                                    if (!this._isElement(this._$element)) {
+                                        return;
+                                    }
+
+                                    this.applyElementOffset();
+
+                                    this.events.fire('shapechange');
+                                },
+
+                                /**
+                                 * Сдвигаем балун, чтобы "хвостик" указывал на точку привязки.
+                                 * @see https://api.yandex.ru/maps/doc/jsapi/2.1/ref/reference/IBalloonLayout.xml#event-userclose
+                                 * @function
+                                 * @name applyElementOffset
+                                 */
+                                applyElementOffset: function () {
+                                    this._$element.css({
+                                        left: -(this._$element[0].offsetWidth / 2),
+                                        top: -(this._$element[0].offsetHeight + this._$element.find('.arrow')[0].offsetHeight)
+                                    });
+                                },
+
+                                /**
+                                 * Закрывает балун при клике на крестик, кидая событие "userclose" на макете.
+                                 * @see https://api.yandex.ru/maps/doc/jsapi/2.1/ref/reference/IBalloonLayout.xml#event-userclose
+                                 * @function
+                                 * @name onCloseClick
+                                 */
+                                onCloseClick: function (e) {
+                                    e.preventDefault();
+
+                                    this.events.fire('userclose');
+                                },
+
+                                /**
+                                 * Используется для автопозиционирования (balloonAutoPan).
+                                 * @see https://api.yandex.ru/maps/doc/jsapi/2.1/ref/reference/ILayout.xml#getClientBounds
+                                 * @function
+                                 * @name getClientBounds
+                                 * @returns {Number[][]} Координаты левого верхнего и правого нижнего углов шаблона относительно точки привязки.
+                                 */
+                                getShape: function () {
+                                    if (!this._isElement(this._$element)) {
+                                        return MyBalloonLayout.superclass.getShape.call(this);
+                                    }
+
+                                    var position = this._$element.position();
+
+                                    return new ymaps.shape.Rectangle(new ymaps.geometry.pixel.Rectangle([
+                                        [position.left, position.top],
+                                        [
+                                                    position.left + this._$element[0].offsetWidth,
+                                                    position.top + this._$element[0].offsetHeight + this._$element.find('.arrow')[0].offsetHeight
+                                        ]
+                                    ]));
+                                },
+
+                                /**
+                                 * Проверяем наличие элемента (в ИЕ и Опере его еще может не быть).
+                                 * @function
+                                 * @private
+                                 * @name _isElement
+                                 * @param {jQuery} [element] Элемент.
+                                 * @returns {Boolean} Флаг наличия.
+                                 */
+                                _isElement: function (element) {
+                                    return element && element[0] && element.find('.arrow')[0];
+                                }
+                            }),
+
+            // Создание вложенного макета содержимого балуна.
+                    MyBalloonContentLayout = ymaps.templateLayoutFactory.createClass(
+                                    '<h3 class="popover-title">$[properties.balloonHeader]</h3>' +
+                                    '<div class="popover-content">$[properties.balloonContent]</div>'
+                    );
+
+            var objectManager = new ymaps.ObjectManager();
+            var data = {
+                "type": "FeatureCollection",
+                "features": [
+                    {"type": "Feature", "id": 1, "geometry": {"type": "Point", "coordinates": [55.831903, 37.411961]}, "properties": {"balloonContent": "Содержимое балуна", "clusterCaption": "Еще одна метка", "hintContent": "Текст подсказки"}, "options": { "preset": "i#layout"}},
+                    {"type": "Feature", "id": 2, "geometry": {"type": "Point", "coordinates": [55.763338, 37.565466]}, "properties": {"balloonContent": "Содержимое балуна", "clusterCaption": "Еще одна метка", "hintContent": "Текст подсказки"}, "options": { "preset": "b#layout"}}
+                ]};
+            ymaps.option.presetStorage.add('b#layout', { balloonContentLayout: ymaps.templateLayoutFactory.createClass('<b>{{ properties.balloonContent }}</b>'), hintContentLayout: ymaps.templateLayoutFactory.createClass('<b>{{ properties.balloonContent }}</b>') });
+            ymaps.option.presetStorage.add('i#layout', { balloonContentLayout: ymaps.templateLayoutFactory.createClass('<i>{{ properties.balloonContent }}</i>'), hintContentLayout: ymaps.templateLayoutFactory.createClass('<i>{{ properties.balloonContent }}</i>')});
+
+            myMap.geoObjects.add(objectManager);
+            objectManager.add(data);
+
+            var objectManager1 = new ymaps.ObjectManager();
+            var data1 = {
+                "type": "FeatureCollection",
+                "features": [
+                    {"type": "Feature", "id": 3, "geometry": {"type": "Point", "coordinates": [55.841903, 37.421961]}, "properties": {"balloonContent": "Содержимое балуна1", "clusterCaption": "Еще одна метка1", "hintContent": "Текст подсказки1"}, "options": { "balloonContentLayout": "i#layout1", "hintContentLayout": "i#layout1"}},
+                    {"type": "Feature", "id": 4, "geometry": {"type": "Point", "coordinates": [55.773338, 37.575466]}, "properties": {"balloonContent": "Содержимое балуна1", "clusterCaption": "Еще одна метка1", "hintContent": "Текст подсказки1"}, "options": { "balloonContentLayout": "b#layout1", "hintContentLayout": "b#layout1"}}
+                ]};
+            ymaps.layout.storage.add('b#layout1', ymaps.templateLayoutFactory.createClass('<b>{{ properties.balloonContent }}</b>'));
+            ymaps.layout.storage.add('i#layout1', ymaps.templateLayoutFactory.createClass('<i>{{ properties.balloonContent }}</i>'));
+
+            myMap.geoObjects.add(objectManager1);
+            objectManager1.add(data1);
+
+            var objectManager2 = new ymaps.ObjectManager();
+            var data2 = {
+                "type": "FeatureCollection",
+                "features": [
+                    {"type": "Feature", "id": 3, "geometry": {"type": "Point", "coordinates": [55.851903, 37.431961]}, "properties": {"balloonContent": "Содержимое балуна2", "clusterCaption": "Еще одна метка2", "hintContent": "Текст подсказки2"}},
+                    {"type": "Feature", "id": 4, "geometry": {"type": "Point", "coordinates": [55.783338, 37.585466]}, "properties": {"balloonContent": "Содержимое балуна2", "clusterCaption": "Еще одна метка2", "hintContent": "Текст подсказки2"}}
+                ]};
+            ymaps.layout.storage.add('b#layout2', ymaps.templateLayoutFactory.createClass('<b>{{ properties.balloonContent }}</b>'));
+            ymaps.layout.storage.add('i#layout2', ymaps.templateLayoutFactory.createClass('<i>{{ properties.balloonContent }}</i>'));
+
+            myMap.geoObjects.add(objectManager2);
+            objectManager2.add(data2);
+            setTimeout(function () {
+                objectManager2.objects.setObjectOptions(3, {
+                    balloonContentLayout: "i#layout2",
+                    hintContentLayout: "i#layout2"
+                });
+                objectManager2.objects.setObjectOptions(4, {
+                    balloonContentLayout: "b#layout2",
+                    hintContentLayout: "b#layout2"
+                });
+                __log__('balloonContentLayout change');
+            }, 5000);
+
+
+            var objectManager3 = new ymaps.ObjectManager();
+            var data = {
+                "type": "FeatureCollection",
+                "features": [
+                    {"type": "Feature", "id": 1, "geometry": {"type": "Point", "coordinates": [55.871903, 37.411961]}, "properties": {"balloonContent": "Содержимое балунаСодержимое балунаСодержимое балунаСодержимое балунаСодержимое балуна", "clusterCaption": "Еще одна метка", "hintContent": "Текст подсказки"}, "options": { "preset": "islands#blackStretchyIcon"}},
+                    {"type": "Feature", "id": 2, "geometry": {"type": "Point", "coordinates": [55.803338, 37.565466]}, "properties": {"balloonContent": "Содержимое балуна", "clusterCaption": "Еще одна метка", "hintContent": "Текст подсказки"}, "options": { "preset": "islands#blackStretchyIcon"}}
+                ]};
+
+            myMap.geoObjects.add(objectManager3);
+            objectManager3.add(data);
+
+            objectManager3.objects.events.add('mouseenter', function (e) {
+                var objectId = e.get('objectId');
+                objectManager3.objects.setObjectOptions(objectId, { balloonLayout: MyBalloonLayout });
+                objectManager3.objects.setObjectOptions(objectId, { balloonContentLayout: MyBalloonContentLayout});
+                objectManager3.objects.balloon.open(objectId);
+
+            });
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

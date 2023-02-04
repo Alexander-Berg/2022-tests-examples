@@ -1,0 +1,76 @@
+---
+
+- hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    host: sre_vertis_test_mdb
+    clusters:
+      - mdbv3g8g9d4jd28gf6an
+      - mdbr2315cdq5nadm34li
+      - mdb50ifhjj66soaqgk69
+      - mdbpnoco5b6vfi23fvgb
+      - mdbip67b9m8aa25l7oda
+      - mdbm1k2h1hsk3nhh2kkp
+      - mdbtsj5h5n2mn34nln1f
+      - mdbhivtamm43n1ttfguc
+      - mdbgaq32umqnon8vpctu
+    host_tags:
+      - vertis_sre
+      - vertis_sre_test
+
+  pre_tasks:
+    - juggler_facts: jserver_api={{ jserver_api }}
+
+  post_tasks:
+    - juggler_cleanup: jcheck_mark={{ host }}
+
+  tasks:
+    - name: 'Add unispace check'
+      juggler_check:
+      args: >
+        {{ mdb_check | 
+        mdb_add_clusters(clusters, 'vertis-mdb-mysql-unispace', 'vertis-mdb-postgresql-unispace') | 
+        combine(crit_disabled, {'service': 'vertis-mdb-unispace'}, recursive=True) }}
+
+    - name: 'Add alive check'
+      juggler_check:
+      args: >
+        {{ mdb_check | 
+        mdb_add_clusters(clusters, 'vertis-mdb-mysql-alive', 'vertis-mdb-postgresql-alive') | 
+        combine(crit_disabled, {'service': 'vertis-mdb-alive'}, recursive=True) }}
+
+    - name: 'Add replication lag check'
+      juggler_check:
+      args: >
+        {{ mdb_check | 
+        mdb_add_clusters(clusters, 'vertis-mdb-mysql-lag', 'vertis-mdb-postgresql-lag') | 
+        combine(crit_disabled, {'service': 'vertis-mdb-lag'}, recursive=True) }}
+
+    - name: 'Add disk IO check'
+      juggler_check:
+      args: >
+        {{ mdb_check |
+        mdb_add_clusters(clusters, 'vertis-mdb-io') |
+        combine(crit_disabled, {'service': 'vertis-mdb-io'}, recursive=True) }}
+
+    - name: 'Add CPU usage check'
+      juggler_check:
+      args: >
+        {{ mdb_check |
+        mdb_add_clusters(clusters, 'vertis-mdb-cpu-usage') |
+        combine(crit_disabled, {'service': 'vertis-mdb-cpu-usage'}, recursive=True) }}
+
+    - name: 'Add memory usage check'
+      juggler_check:
+      args: >
+        {{ mdb_check |
+        mdb_add_clusters(clusters, 'vertis-mdb-memory-usage') |
+        combine(crit_disabled, {'service': 'vertis-mdb-memory-usage'}, recursive=True) }}
+
+    - name: 'Add network usage check'
+      juggler_check:
+      args: >
+        {{ mdb_check |
+        mdb_add_clusters(clusters, 'vertis-mdb-network-usage') |
+        combine(crit_disabled, {'service': 'vertis-mdb-network-usage'}, recursive=True) }}

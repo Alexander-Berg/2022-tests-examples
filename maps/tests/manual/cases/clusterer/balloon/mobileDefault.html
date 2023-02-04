@@ -1,0 +1,168 @@
+<!doctype html>
+<!--
+Title:
+Кластерная метка с балуном - две колонки
+
+Description:
+Мобильные девайсы: кластерная метка с балуном - две колонки.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components:
+mobile
+
+Estimated time:
+240000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась корректно, со спаном Российских городов.
+  В центре спана кластерная метка  со значением "50".
+  Сверху справа кнопка "clusterBalloonPanelMaxMapArea".
+
+Step:
+  Action:
+  Выполнить тап в метку кластера.
+
+  Expectation:
+  Спан карты может немного сместится для открытия балуна.
+  В открывшемся балуне две колонки, в левой - список меток, в правой: содержимое балуна метки №0: заголовок, тело(стих), футер("футер метки №0"), скрол полоса справа, кнопка закрытия.
+
+Step:
+  Action:
+  Проскролить лвеую колонку со списком меток балуна.
+  Выполнить тап в "Заголовок метки №49".
+
+  Expectation:
+  В списке меток выделяется серым фоном "Заголовок метки №49".
+  В правой колонке, содержимое балуна метки №49: заголовок, тело(стих), футер("футер метки №49"), скрол полоса справа, кнопка закрытия.
+ 
+Step:
+  Action:
+  Выполнить тап в кнопку "clusterBalloonPanelMaxMapArea".
+
+  Expectation:
+  Спан карты смещается, балун закрывается, снизу появляется панель балуна, метка кластера в центре оставшегося спана карты.
+  В панели балуна аналогично две колонки, слева список меток, справа содержимое метки №49. 
+
+Step:
+  Action:
+  Закрыть панель балуна тапом в крестик.
+
+  Expectation:
+  Балун закрылся, спан карты без изменений, метка кластера не пропадает.
+  
+Step:
+  Action:
+  Выполнить тап в кнопку "clusterBalloonPanelMaxMapArea".
+  Выполнить тап в метку кластера.
+
+  Expectation:
+  Спан карты смещается, вместо метки кластера на спане открывается балун.
+  В открывшемся балуне две колонки, в левой - список меток, в правой: содержимое балуна метки №49: заголовок, тело(стих), футер("футер метки №49"), скрол полоса справа, кнопка закрытия.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
+    <script src="../../../helper.js"></script>
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+    <script type="text/javascript">
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var map = myMap = new ymaps.Map('map', {
+                center: [55.755381, 37.619044],
+                zoom: 6,
+                controls: []
+            });
+
+            addGrid(map);
+            var log = new Log();
+
+            var clusterer = new ymaps.Clusterer({
+                clusterBalloonContentLayout: 'cluster#balloonTwoColumns',
+                clusterBalloonPanelContentLayout: 'cluster#balloonTwoColumns',
+                clusterDisableClickZoom: true,
+                clusterOpenBalloonOnClick: true,
+                clusterBalloonPanelMaxMapArea: 0
+            });
+            map.geoObjects.add(clusterer);
+
+            var geoObjects = [];
+
+            var customItemContentLayout = ymaps.templateLayoutFactory.createClass('<b>123 {{ properties.balloonContentBody|raw }}</b>');
+
+            var panelSwitcherButton = new ymaps.control.Button('clusterBalloonPanelMaxMapArea');
+
+
+            panelSwitcherButton.options.set('maxWidth', 99999);
+
+            panelSwitcherButton.events.add('click', function () {
+                clusterer.options.set('clusterBalloonPanelMaxMapArea',
+                                clusterer.options.get('clusterBalloonPanelMaxMapArea') == 0 ? Infinity : 0
+                );
+            });
+
+            map.controls.add(panelSwitcherButton, { float: 'right', floatIndex: 100 });
+
+            var content = [
+                '',
+                'Этот город завёрнут, как в саван, в туман, ',
+                'И царит в нём безумье, порок и обман. ',
+                'Город мрачных трущоб, весь изглоданный злом, ',
+                'По ночам его мгла накрывает крылом.. . ',
+                '',
+                'И в глазницы домов смотрит ночь, словно ворон, ',
+                'Этот город безукоризненно чёрен. ',
+                'Только толпы теней, только Темзы свинец — ',
+                'Этот город страшней, чем оживший мертвец. ',
+                '',
+                'И в роскошных дворцах вечный холод и тлен, ',
+                'И часы мертвецам отбивает Биг-Бен. ',
+                'Вы не бывали в Лондоне, сэр? ',
+                'Этот город безукоризненно сер...'
+            ].join('<br/>');
+
+            for (var i = 0, l = 50; i < l; i++) {
+                var placemark = new ymaps.GeoObject({
+                    geometry: {
+                        type: "Point",
+                        coordinates: map.getCenter()
+                    },
+                    properties: {
+                        balloonContentHeader: 'Заголовок метки №' + i,
+                        balloonContentBody: 'Тело метки №' + i + content,
+                        balloonContentFooter: 'Футер метки №' + i
+                    }
+                });
+                geoObjects.push(placemark);
+            }
+
+            clusterer.add(geoObjects);
+
+        }
+
+    </script>
+    <style>
+        html, body, #map {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+    </style>
+</head>
+<body>
+<div id="map"></div>
+</body>
+</html>

@@ -1,0 +1,309 @@
+<!DOCTYPE HTML>
+<!--(skip)(description)
+geoObject.editor: editor events
+-->
+<!--(version)
+2.1
+-->
+<!--(commands)
+click(2);
+click(39);
+test();
+click(4);
+click(70);
+test();
+click(7);
+click(83);
+test();
+click(10);
+test();
+click(2);
+click(4);
+click(7);
+click(10);
+test();
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script src="../geoCS.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym; // hack
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.73259667357658, 37.70153663432529],
+                zoom: 9,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+            //TODO: разделить
+            geoCSSource(ym, map, this);
+            addGrid(map);
+            var log = new Log();
+            __log__("Drag и pointdrag на точке кидается только если нет корректора." +
+                    "'pointdragcorrect','vertexdragcorrect', 'edgedragcorrect' только если есть корректор")
+
+            __log__('Polyline - 3 vertexes, polygon - 4+3 vertexes');
+            __log__('Listening for all vertex and edge events');
+
+            var events = [ 'beforevertexadd', 'statechange', 'vertexadd'];
+            var drawEvents = ['beforevertexdraw', 'vertexdraw'];
+            var dragEvents = ['beforeedgedrag', 'beforeedgedragstart', 'beforevertexdrag', 'beforevertexdragstart',
+                'edgedrag', 'edgedragend', 'edgedragstart', 'vertexdrag', 'vertexdragend', 'vertexdragstart','pointdrag',
+                'pointdragend','pointdragcorrect','vertexdragcorrect', 'edgedragcorrect'];
+            var callback = function (e) {
+                __log__('object : ' + e.get('type') + ' (parentModel: ' +
+                        e.get('parentModel') + ', vertexIndex: ' + e.get('vertexIndex') +
+                        ', globalPixels: ' + e.get('globalPixels') + ')')
+            };
+
+            var collection = new ymaps.GeoObjectCollection();
+            collection
+                    .add(geoObjectPlacemark)
+                    .add(geoObjectPolyline)
+                    .add(geoObjectPolygon)
+                    .add(placemark)
+                    .add(polyline)
+                    .add(polygon);
+
+            var editorButton = new ymaps.control.Button({data: {content: 'editor'}, options: {selectOnClick: true}});
+            var placemarkButton = new ymaps.control.Button({data: {content: 'placemark'}, options: {selectOnClick: true}});
+            var polylineButton = new ymaps.control.Button({data: {content: 'polyline'}, options: {selectOnClick: true}});
+            var polygonButton = new ymaps.control.Button({data: {content: 'polygon'}, options: {selectOnClick: true}});
+            var clearButton = new ymaps.control.Button({data: {content: 'clear log'}, options: {selectOnClick: false}});
+            var drawButton = new ymaps.control.Button({data: {content: 'drawEvents'}, options: {selectOnClick: true}});
+
+            editorButton.events
+                    .add('select', function () {
+                        collection.each(function (obj) {
+                            obj.editor.startEditing();
+                        });
+                    })
+                    .add('deselect', function () {
+                        collection.each(function (obj) {
+                            obj.editor.stopEditing();
+                        });
+                    });
+
+            placemarkButton.events
+                    .add('select', function () {
+                        placemark.editor.startDrawing();
+                    })
+                    .add('deselect', function () {
+                        placemark.editor.stopDrawing();
+                    });
+
+            polylineButton.events
+                    .add('select', function () {
+                        polyline.editor.startDrawing();
+                    })
+                    .add('deselect', function () {
+                        polyline.editor.stopDrawing();
+                    });
+
+            polygonButton.events
+                    .add('select', function () {
+                        polygon.editor.startDrawing();
+                    })
+                    .add('deselect', function () {
+                        polygon.editor.stopDrawing();
+                    });
+
+            drawButton.events
+                    .add('select', function () {
+                        collection.each(function (obj) {
+                            obj.editor.events.add(drawEvents, callback)
+                        })
+                    })
+                    .add('deselect', function () {
+                        collection.each(function (obj) {
+                            obj.editor.events.remove(drawEvents, callback);
+                        })
+                    });
+
+            clearButton.events.add('click', function () {
+                log.clear();
+            });
+
+            collection.each(function (obj) {
+                obj.editor.events.add(events, function (e) {
+                    __log__(obj.options.get('id') + ': ' + e.get('type'));
+                    if (e.get('type') == 'beforevertexadd' ||
+                            e.get('type') == 'vertexadd') {
+                        __log__('(parentModel: ' +
+                                e.get('parentModel') + ', vertexIndex: ' + e.get('vertexIndex') +
+                                ', globalPixels: ' + e.get('globalPixels') + ')');
+                    }
+                });
+                obj.events.add(["drag","dragend"], function (e) {
+                    __log__(obj.options.get('id') + ': ' + e.get('type'));
+                });
+                obj.editor.events.add(dragEvents, function (e) {
+                    __log__(obj.options.get('id') + ': ' + e.get('type'));
+                    if (e.get('type') == 'beforevertexdrag' ||
+                            e.get('type') == 'beforeedgedrag' ||
+                            e.get('type') == 'vertexdrag' ||
+                            e.get('type') == 'edgedrag') {
+                        __log__('pixelOffset: ' + e.get('pixelOffset') + ', globalPixels: ' + e.get('globalPixels'))
+                    }
+
+                    if (e.get('type') == 'beforevertexdragstart' ||
+                            e.get('type') == 'beforeedgedragstart' ||
+                            e.get('type') == 'vertexdragstart' ||
+                            e.get('type') == 'edgedragstart') {
+                        __log__('domEvent: ' + e.get('domEvent') + ', globalPixels: ' + e.get('globalPixels'));
+                        console.log(e.get('domEvent'))
+                    }
+
+                    if (e.get('type') == 'beforevertexdragstart' ||
+                            e.get('type') == 'vertexdragstart' ||
+                            e.get('type') == 'vertexdrag' ||
+                            e.get('type') == 'beforevertexdrag') {
+                        __log__('vertexModel: ' + e.get('vertexModel'));
+                        console.log(e.get('vertexModel'));
+                        __log__('vertexModel.coords: ' + e.get('vertexModel').geometry.getCoordinates())
+                    }
+
+                    if (e.get('type') == 'beforeedgedragstart' ||
+                            e.get('type') == 'edgedragstart' ||
+                            e.get('type') == 'edgedrag' ||
+                            e.get('type') == 'beforeedgedrag') {
+                        __log__('edgeModel: ' + e.get('edgeModel'));
+                        console.log(e.get('edgeModel'));
+                    }
+                });
+
+            });
+
+            map.geoObjects.add(collection);
+            var correctorButton = new ymaps.control.Button({data: {content: 'corrector'}, options: {selectOnClick: true}});
+
+            correctorButton.events
+                    .add('select', function () {
+                        polyline.options.set({
+                            editorDrawingCorrector: function (coords, index) {
+                                var coord = coords[index].slice();
+                                coord[0] += 10;
+                                coord[1] += 10;
+                                var deferred = ymaps.vow.defer();
+                                setTimeout(function () {
+                                    deferred.resolve(coord);
+                                }, 100);
+                                return deferred.promise();
+                            },
+                            editorDrawingCorrectorTimeout: 200,
+                            editorDraggingCorrector: function (coords, index) {
+                                var coord = coords[index].slice();
+                                coord[0] -= 10;
+                                coord[1] -= 10;
+                                return ymaps.vow.resolve(coord);
+                            },
+                            editorDraggingCorrectorTimeout: 1500
+                        });
+
+                        polygon.options.set({
+                            editorDrawingCorrector: function (coords, pathIndex, vertexIndex) {
+                                var coord = coords[pathIndex][vertexIndex].slice();
+                                coord[0] += 10;
+                                coord[1] += 10;
+                                var deferred = ymaps.vow.defer();
+                                setTimeout(function () {
+                                    deferred.resolve(coord);
+                                }, 200);
+                                return deferred.promise();
+                            },
+                            editorDrawingCorrectorTimeout: 100,
+                            editorDraggingCorrector: function (coords, pathIndex, vertexIndex) {
+                                var coord = coords[pathIndex][vertexIndex].slice();
+                                coord[0] -= 10;
+                                coord[1] -= 10;
+                                var deferred = ymaps.vow.defer();
+                                setTimeout(function () {
+                                    deferred.resolve(coord);
+                                }, 1000);
+                                return deferred.promise();
+                            },
+                            editorDraggingCorrectorTimeout: 1500
+                        });
+
+                        var coords0 = placemark.geometry.getCoordinates();
+
+                        placemark.options.set({
+
+                            editorDrawingCorrector: function (coords, index) {
+                                var coord = coords.slice();
+                                coord[0] += 10;
+                                coord[1] += 10;
+                                return ymaps.vow.resolve(coord);
+                            },
+                            editorDrawingCorrectorTimeout: 100,
+
+                            editorDraggingCorrector: function (coords, index) {
+                                var coord = coords.slice();
+                                coord[0] = Math.round(coord[0] / 10) * 10;
+                                coord[1] = Math.round(coord[1] / 10) * 10;
+                                return ymaps.vow.resolve(coord);
+
+                            },
+                            editorDraggingCorrectorTimeout: 1500
+                        });
+                    })
+                    .add('deselect', function () {
+                        polyline.options.set({
+                            editorDrawingCorrector: function (coords, index) {
+                                var coord = coords[index].slice();
+                                coord[0] += 10;
+                                coord[1] += 10;
+                                var deferred = ymaps.vow.defer();
+                                setTimeout(function () {
+                                    deferred.resolve(coord);
+                                }, 100);
+                                return deferred.promise();
+                            },
+                            editorDrawingCorrectorTimeout: 200,
+                            editorDraggingCorrector: function (coords, index) {
+                                var coord = coords[index].slice();
+                                coord[0] -= 10;
+                                coord[1] -= 10;
+                                return ymaps.vow.resolve(coord);
+                            },
+                            editorDraggingCorrectorTimeout: 1500
+                        });
+                        polyline.options.unset('editorDrawingCorrector');
+                        polyline.options.unset('editorDrawingCorrectorTimeout');
+                        polyline.options.unset('editorDraggingCorrector');
+                        polyline.options.unset('editorDraggingCorrectorTimeout');
+                        polygon.options.unset('editorDrawingCorrector');
+                        polygon.options.unset('editorDrawingCorrectorTimeout');
+                        polygon.options.unset('editorDraggingCorrector');
+                        polygon.options.unset('editorDraggingCorrectorTimeout');
+                        placemark.options.unset('editorDrawingCorrector');
+                        placemark.options.unset('editorDrawingCorrectorTimeout');
+                        placemark.options.unset('editorDraggingCorrector');
+                        placemark.options.unset('editorDraggingCorrectorTimeout');
+
+                    });
+            map.controls
+                    .add(editorButton)
+                    .add(placemarkButton)
+                    .add(polygonButton)
+                    .add(polylineButton)
+                    .add(correctorButton)
+                    .add(drawButton, {float: 'right'})
+                    .add(clearButton, {float: 'none', position: {bottom: 35, right: 10}});
+
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

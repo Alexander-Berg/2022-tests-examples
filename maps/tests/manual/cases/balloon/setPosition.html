@@ -1,0 +1,105 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Позиция отображения балуна
+
+Description:
+Задаём позиции отображения балуна.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components:
+balloon
+
+Estimated time:
+60000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась.
+  При загрузке карты у Москвы открыт пустой балун.
+  Под контейнером с картой текст: "Expected values - true; event: open, overlay: [object Object], isOpen: true".
+  Через секунду после загрузки карты балун у Москвы закрывается, спан карты немного смещается и открывается пустой балун у Санкт-Петербурга.
+  Под контейнером с картой появляется текст: "overlay: true".
+  Еще через секунду балун у Санкт-Петербурга закрывается, и открывается пустой балун у ближе к Великому Новгороду.
+  Под контейнером с картой появляется текст: "position: true".
+  Сверху слева имеется кнопка "setCenter".
+ 
+Step:
+  Action:
+  Выполнить клик в кнопку "setCenter".
+
+  Expectation:
+  Происходит корректное перемещение и призум спана карты на спан в центре которого последний открытый балун(территориально возле Великого Новгорода).
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var myMap = new ym.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 5,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+
+            log.info('Expected values - true');
+
+            var balloon,
+                    pos = myMap.getCenter(),
+                    newPos1 = [60, 30],
+                    newPos2 = [59, 31],
+                    contentLayout = ymaps.templateLayoutFactory.createClass('$[balloonContent]<span id="tst">$[a]$[x]</span>'),
+                    data = { a: 'b' },
+                    options = { contentLayout: contentLayout, preventPanelMode: true };
+            window.balloon = balloon = new ymaps.Balloon(myMap);
+            balloon.options.set(options).setParent(myMap.options);
+
+            balloon.events.add(['open', 'close', 'userclose'], function (e) {
+                log.info('event: ' + e.get('type') + ', overlay: ' + balloon.getOverlaySync().getMap() + ', isOpen: ' + balloon.isOpen());
+            });
+
+            balloon.open(pos);
+            setTimeout(function () {
+                balloon.setPosition(newPos1);
+                balloon.getOverlay().then(function (overlay) {
+                    log.info('overlay: ' + (overlay == balloon.getOverlaySync()))
+                });
+            }, 1000);
+
+            setTimeout(function () {
+                balloon.setPosition(newPos2, true).then(function () {
+                    log.info('position: ' + (balloon.getPosition().toString() == newPos2.toString()))
+                });
+            }, 2000);
+
+            // change map center manually
+            var centerButton = new ymaps.control.Button({data: {content: 'setCenter'}, options: {selectOnClick: false}});
+            centerButton.events.add('click', function () {
+                myMap.setCenter(newPos2, 6)
+            });
+            myMap.controls.add(centerButton)
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

@@ -1,0 +1,109 @@
+<!DOCTYPE HTML>
+<!--(skip)(description)
+GeoObject: currentTarget field
+-->
+<!--(version)
+2.1
+-->
+<!--(commands)
+sleep(1000);
+test();
+click(77);
+test();
+click(139);
+test();
+drag(84, 86);
+test();
+click(86);
+drag(84, 86);
+test();
+-->
+<html>
+<head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../helper.js"></script>
+    <script src="geoCS.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym; // hack
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.73259667357658, 37.70153663432529],
+                zoom: 9,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            geoCSSource(ym, myMap, this);
+            addGrid(myMap);
+            var log = new Log();
+
+            var collection = new ymaps.GeoObjectCollection();
+
+            collection
+                    .add(geoObjectPlacemark)
+                    .add(geoObjectPolyline)
+                    .add(geoObjectPolygon)
+                    .add(geoObjectRectangle)
+                    .add(geoObjectRectangle)
+                    .add(geoObjectCircle)
+                    .add(placemark)
+                    .add(polyline)
+                    .add(polygon)
+                    .add(rectangle)
+                    .add(circle);
+
+            collection.each(function (obj) {
+                obj.properties.set('balloonContent', 'text');
+                obj.properties.set('hintContent', 'text');
+            });
+
+            myMap.geoObjects
+                    .add(collection);
+
+            var events = ['click', 'contextmenu', 'dblclick', 'mousedown', 'mouseenter', 'mouseleave', 'mouseup', 'multitouchend',
+                'multitouchstart', 'wheel'];
+
+            var callback = function (e) {
+                log.info(e.get('target').options.get('id') + ': ' + e.get('type') + ', currentTarget.indexOf: ' + e.get('currentTarget').indexOf(e.get('target')));
+                console.log(e.get('currentTarget'));
+            };
+
+            collection.events.add(events, callback);
+
+            var clearButton = new ymaps.control.Button({data: {content: 'clear log'}, options: {selectOnClick: false}});
+            clearButton.events.add('click', function () {
+                log.clear();
+            });
+
+            myMap.controls
+                    .add(clearButton, {float: 'none', position: {bottom: 25, right: 10}})
+                    .add(new ymaps.control.FullscreenControl(), {float: 'none', position: {bottom: 125, right: 10}})
+                    .add(new ymaps.control.TypeSelector(), {float: 'none', position: {bottom: 155, right: 10}});
+
+            var placemark1 = new ymaps.Placemark([55.81, 37.29753265380539], {
+                iconContent: 'getCoordinates',
+                balloonContent: 'balloon'
+            }, {
+                preset: 'islands#redStretchyIcon',
+                hideIconOnBalloonOpen: false,
+                draggable: true
+            });
+            placemark1.events.add('geometrychange', function (e) {
+                placemark1.properties.set('iconContent', placemark1.geometry.getCoordinates())
+            });
+            myMap.geoObjects.add(placemark1)
+
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

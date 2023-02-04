@@ -1,0 +1,188 @@
+<!doctype html>
+<!--
+Title:
+Гео запрос: сортировка по дистанции от объекта
+
+Description:
+Проверка сортировки по дистанции от объекта.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+geoQuery
+
+Estimated time:
+180000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+  
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан Московской области, карта отображается в слое гибрид(спутниковый снимок с подписями топонимов и нитками дорог).
+  На спане карты множество меток(голубых и синих), объекты полупрозрачных синих прямоугольников, кругов, синие линии разной толщины.
+  В центрне спана имеется зеленая точка. 
+  Сверху слева кнопки "geodesic", "iterator".
+
+Step:
+  Action:
+  Навести курсор на метки и объекты вокруг зеленой точки. 
+  
+  Expectation:
+  При наведении курсора на метку или объект курсор - палец, появляется хинт, в хинте номер объекта в зависимости от расстояния до зеленой точки(чем ближе тем значение хинта меньше).
+
+Step:
+  Action:
+  Навести курсор на прямоугольник в верхнем левом углу.
+  Навести курсор на линию в верхнем правом углу.
+  Навести курсор на метку над зеленой точкой.
+  
+  Expectation:
+  При наведении курсора на метку или объект курсор - палец, появляется хинт, в хинте номер объекта в зависимости от расстояния до зеленой точки(чем ближе тем значение хинта меньше).
+  Хинт прямоугольника в верхнем левом углу "133".
+  Хинт линии в верхнем правом углу "134".
+  Хинт метки над точкой "1".
+
+Step:
+  Action:
+  Выполнить клик кнопку "geodesic". 
+  
+  Expectation:
+  Объекты прямоугольников и кругов промигивают и остаются на спане карты.
+  Под контейнером с картой появляется строка: "geodesic mode enabled.".
+
+Step:
+  Action:
+  Навести курсор на прямоугольник в верхнем левом углу.
+  Навести курсор на линию в верхнем правом углу.
+  Навести курсор на метку над зеленой точкой.
+  
+  Expectation:
+  При наведении курсора на метку или объект курсор - палец, появляется хинт, в хинте номер объекта в зависимости от расстояния до зеленой точки(чем ближе тем значение хинта меньше).
+  Хинт прямоугольника в верхнем левом углу "133".
+  Хинт линии в верхнем правом углу "134".
+  Хинт метки над точкой "1".
+
+Step:
+  Action:
+  Выполнить клик кнопку "iterator". 
+  
+  Expectation:
+  Под ближайшей к зеленой точке метке появляется красная точка.
+
+Step:
+  Action:
+  Навести курсор на прямоугольник в верхнем левом углу.
+  Навести курсор на линию в верхнем правом углу.
+  Навести курсор на метку над зеленой точкой.
+  
+  Expectation:
+  При наведении курсора на метку или объект курсор - палец, появляется хинт, в хинте номер объекта в зависимости от расстояния до зеленой точки(чем ближе тем значение хинта меньше).
+  Хинт прямоугольника в верхнем левом углу "133".
+  Хинт линии в верхнем правом углу "134".
+  Хинт метки над точкой "1".
+-->
+<html>
+<head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../helper.js"></script>
+    <script src="../../js/wgs84MercatorSource.js"></script>
+    <script type="text/javascript">
+        Api('init');
+
+        function init(ymaps) {
+
+            ymaps = ym;
+
+            var myMap = new ym.Map('myMap', {
+                center: [55.5541584321358, 37.93061981201168],
+                zoom: 9,
+                type: 'yandex#hybrid',
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            }, {geoObjectStrokeWidth: 4});
+
+            wgs84MercatorSource(ymaps, myMap, this);
+
+
+            var i = 0, log = new Log(), collection = new ym.GeoObjectCollection(),
+                    line = new ym.Polyline([], {}, {strokeColor: '#00FF00'}),
+                    iterator, result = ym.geoQuery(geoQueryResult),
+                    object = new ym.Circle([
+                        [55.5541584321358, 37.93061981201168],
+                        500
+                    ]);
+
+            addGrid(myMap);
+            myMap.geoObjects.add(collection);
+            result.addToMap(myMap);
+
+            log.info('Objects are sorted by distance to the green circle.');
+
+            var sortButton = new ym.control.Button({data: {content: 'iterator'}, options: {selectOnClick: false}});
+            var geodesicButton = new ymaps.control.Button({data: {content: 'geodesic'}, options: {selectOnClick: true}});
+
+            var getGeoQuery = function () {
+                object.options.set({strokeColor: '#00FF00', fillOpacity: 0});
+                collection.add(object);
+                var sorted = result.sortByDistance(object);
+                sorted.then(function () {
+                    var color = 0;
+                    iterator = sorted.getIterator();
+                    sorted.each(function (obj) {
+                        color++;
+                        obj.properties.set({
+                            hintContent: color
+                        });
+                    });
+                });
+            };
+
+            result.then(getGeoQuery);
+
+            // draw circles in the center of the closest object
+            sortButton.events.add('click', function (e) {
+                var next = iterator.getNext();
+                var object = ym.geoQuery(next);
+                if (next == iterator.STOP_ITERATION) {
+                    log.info('STOP_ITERATION returned')
+                } else {
+                    var circle = new ym.Circle([object.getCenter(myMap), 500]);
+                    circle.options.set({strokeColor: '#FF0000', fillColor: '#FF000066'});
+                    collection.add(circle);
+                    sortButton.deselect();
+                }
+
+
+            });
+            // geodesic option
+
+            geodesicButton.events
+                    .add('select', function () {
+                        result.setOptions('geodesic', true);
+                        log.info('geodesic mode enabled.');
+                    })
+                    .add('deselect', function () {
+                        result.setOptions('geodesic', false);
+                        log.info('geodesic mode disabled.');
+                    });
+
+            myMap.controls
+                    .add('zoomControl')
+                    .add(sortButton)
+                    .add(geodesicButton, {right: 5, top: 5});
+
+        }
+
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="myMap" style="height: 512px; width: 512px;">
+</div>
+</body>
+</html>

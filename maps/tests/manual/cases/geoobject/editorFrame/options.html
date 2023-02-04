@@ -1,0 +1,241 @@
+<!DOCTYPE HTML>
+<!--(skip)(description)
+geoObject.editor: geoobject events
+-->
+<!--(version)
+2.1
+-->
+<!--(commands)
+click(2);
+click(4);
+click(7);
+click(10);
+test();
+click(2);
+click(4);
+click(7);
+click(10);
+test();
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script src="../../../js/geoCS.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym; // hack
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.73259667357658, 37.70153663432529],
+                zoom: 9,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            }, {
+                geoObjectEditorFrameContourDraggable: true
+            });
+
+            geoCSSource(ym, map, this);
+            addGrid(map);
+            var log = new Log();
+
+            __log__('');
+
+            var collection = new ymaps.GeoObjectCollection();
+            collection
+                    .add(geoObjectPolyline)
+                    .add(geoObjectPolygon)
+                    .add(polyline)
+                    .add(polygon);
+            var polylineButton = new ymaps.control.Button({data: {content: 'polyline'}, options: {selectOnClick: true}});
+            var draggableContButton = new ymaps.control.Button({data: {content: 'dragCont'}, options: {selectOnClick: true}});
+            var draggableEdgeButton = new ymaps.control.Button({data: {content: 'dragEdge'}, options: {selectOnClick: true}});
+            var draggableVertexButton = new ymaps.control.Button({data: {content: 'dragVertex'}, options: {selectOnClick: true}});
+            var polygonButton = new ymaps.control.Button({data: {content: 'polygon'}, options: {selectOnClick: true}});
+            var addRemoveButton = new ymaps.control.Button({data: {content: 'addRemove'}, options: {selectOnClick: true}});
+            var addRemoveCollectionButton = new ymaps.control.Button({data: {content: 'remCollection'}, options: {selectOnClick: true}});
+            var setCoordButton = new ymaps.control.Button({data: {content: 'setCoord'}, options: {selectOnClick: false}});
+            var setHorizontalCoordButton = new ymaps.control.Button({data: {content: 'horizontal'}, options: {selectOnClick: false}});
+            var rotateButton = new ymaps.control.Button({data: {content: 'rotate'}, options: {selectOnClick: true}});
+            var editorFramePreserveAspectRatioButton = new ymaps.control.Button({data: {content: 'сохрПропорц'}, options: {selectOnClick: true}});
+            editorFramePreserveAspectRatioButton.events
+                    .add('select', function () {
+                        collection.each(function (obj) {
+                            obj.editor.options.set('framePreserveAspectRatio', false);
+                        });
+                    })
+                    .add('deselect', function () {
+                        collection.each(function (obj) {
+                            obj.editor.options.set('framePreserveAspectRatio', true);
+                        });
+                    });
+            rotateButton.events
+                    .add('select', function () {
+                        collection.each(function (obj) {
+                            obj.editor.options.set('frameRotationControlDisabled', false);
+                        });
+                    })
+                    .add('deselect', function () {
+                        collection.each(function (obj) {
+                            obj.editor.options.set('frameRotationControlDisabled', true);
+                        });
+                    });
+            draggableContButton.events
+                    .add('select', function () {
+                        collection.each(function (obj) {
+                            obj.options.set('editorFrameContourDraggable', false);
+                        });
+                    })
+                    .add('deselect', function () {
+                        collection.each(function (obj) {
+                            obj.options.set('editorFrameContourDraggable', true);
+                        });
+                    });
+            draggableEdgeButton.events
+                    .add('select', function () {
+                        collection.each(function (obj) {
+                            obj.options.set('editorFrameEdgeDraggable', false);
+                        });
+                    })
+                    .add('deselect', function () {
+                        collection.each(function (obj) {
+                            obj.options.set('editorFrameEdgeDraggable', true);
+                        });
+                    });
+            draggableVertexButton.events
+                    .add('select', function () {
+                        collection.each(function (obj) {
+                            obj.options.set('editorFrameVertexDraggable', false);
+                        });
+                    })
+                    .add('deselect', function () {
+                        collection.each(function (obj) {
+                            obj.options.set('editorFrameVertexDraggable', true);
+                        });
+                    });
+
+            polylineButton.events
+                    .add('select', function () {
+                        polyline.editor.startFraming();
+                        geoObjectPolyline.editor.startFraming();
+                    })
+                    .add('deselect', function () {
+                        polyline.editor.stopFraming();
+                        geoObjectPolyline.editor.stopFraming();
+                    });
+
+            polygonButton.events
+                    .add('select', function () {
+                        polygon.editor.startFraming();
+                        geoObjectPolygon.editor.startFraming();
+                    })
+                    .add('deselect', function () {
+                        polygon.editor.stopFraming();
+                        geoObjectPolygon.editor.stopFraming();
+                    });
+            addRemoveButton.events
+                    .add('select', function () {
+                        map.geoObjects.remove(collection);
+                    })
+                    .add('deselect', function () {
+                        map.geoObjects.add(collection);
+                    });
+            addRemoveCollectionButton.events
+                    .add('deselect', function () {
+                        collection
+                                .add(geoObjectPolyline)
+                                .add(geoObjectPolygon)
+                                .add(polyline)
+                                .add(polygon);
+                    })
+                    .add('select', function () {
+                        collection
+                                .remove(geoObjectPolyline)
+                                .remove(geoObjectPolygon)
+                                .remove(polyline)
+                                .remove(polygon);
+                    });
+            setCoordButton.events
+                    .add('click', function () {
+                        polyline.geometry.setCoordinates([
+                            [55.97596807270264, 37.49213562011659],
+                            [55.86646804437069, 37.43433227538992],
+                            [55.97395964586614, 37.37896423339792]
+                        ]);
+                        polygon.geometry.setCoordinates([
+                            [
+                                [55.8102998430802, 37.84619140624934],
+                                [55.68021866533682, 37.85649108886626],
+                                [55.68754896639797, 37.57658996581947],
+                                [55.78474860376539, 37.57684020996037],
+                                [55.831656343514226, 37.64385841166903],
+                                [55.8102998430802, 37.84619140624934]
+                            ],
+                            [
+                                [55.785253613347884, 37.63287208354402],
+                                [55.78061028463263, 37.805906751512794],
+                                [55.71709574699599, 37.696043470262794],
+                                [55.785253613347884, 37.63287208354402]
+                            ]
+                        ]);
+                    });
+
+            setHorizontalCoordButton.events
+                    .add('click', function () {
+                        polyline.geometry.setCoordinates([
+                            [55.97596807270264, 37.49213562011659],
+                            [56.97596807270264, 37.49213562011659]
+                        ]);
+
+                        geoObjectPolyline.geometry.setCoordinates([
+                            [55.97596807270264, 37.49213562011659],
+                            [55.97596807270264, 38.49213562011659]
+                        ]);
+                        polygon.geometry.setCoordinates([
+                            [
+                                [55.8102998430802, 37.84619140624934],
+                                [56.8102998430802, 37.84619140624934],
+                                [55.8102998430802, 37.84619140624934]
+                            ]
+                        ]);
+                        geoObjectPolygon.geometry.setCoordinates([
+                            [
+                                [55.8102998430802, 37.84619140624934],
+                                [55.8102998430802, 36.84619140624934],
+                                [55.8102998430802, 37.84619140624934]
+                            ]
+                        ]);
+                    });
+
+
+            collection.each(function (obj) {
+                obj.properties.set('hintContent', 'blalala');
+                obj.properties.set('balloonContent', 'blalalalala');
+            });
+
+            map.geoObjects.add(collection);
+
+            map.controls
+                    .add(draggableVertexButton)
+                    .add(rotateButton)
+                    .add(draggableEdgeButton)
+                    .add(draggableContButton)
+                    .add(polygonButton)
+                    .add(polylineButton)
+                    .add(addRemoveButton)
+                    .add(addRemoveCollectionButton)
+                    .add(setCoordButton)
+                    .add(editorFramePreserveAspectRatioButton)
+                    .add(setHorizontalCoordButton);
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

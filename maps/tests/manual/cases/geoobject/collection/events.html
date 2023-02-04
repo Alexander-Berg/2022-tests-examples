@@ -1,0 +1,216 @@
+<!DOCTYPE HTML>
+<!--(skip)(description)
+GeoObjectCollection: event
+-->
+<!--(version)
+2.1.0
+-->
+<!--(commands)
+click(7);
+click(66);
+dblclick(66);
+click(7);
+test();
+click(9);
+mouseover(59);
+click(9);
+test();
+click(239);
+click(14);
+click(206);
+click(11);
+drag(59, 44);
+test();
+click(239);
+click(4);
+click(2);
+test();
+-->
+<html>
+<head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script src="../geoCS.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym; // hack
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.73259667357658, 37.70153663432529],
+                zoom: 9,
+                behaviors: ['default', 'scrollZoom'],
+                controls: []
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+            geoCSSource(ym, myMap, this);
+
+            var collection = new ymaps.GeoObjectCollection({
+                properties: {
+                    /*hintContent: 'collection',
+                     balloonContent: 'collection'*/
+                },
+                children: [geoObjectPlacemark, geoObjectPolygon, geoObjectPolyline, geoObjectCircle, geoObjectRectangle, placemark, polygon, polyline, circle, rectangle]
+            }, {
+                preset: 'islands#redCircleIcon',
+                strokeColor: '#FF0000',
+                fillColor: '#FF0000',
+                fillOpacity: 0.3
+            });
+
+            collection.each(function (obj) {
+                obj.properties.set('balloonContent', 'some text');
+            });
+
+            var newPlacemark1 = new ymaps.GeoObject({
+                geometry: { type: "Point", coordinates: [55.71574031323344, 37.20] }, properties: {custom: true}
+            }, {id: 'newPlacemark1', preset: 'islands#yellowIcon'});
+            var newPlacemark2 = new ymaps.Placemark([55.912150224943986, 37.2], {custom: true}, {
+                id: 'newPlacemark2', preset: 'islands#nightCircleIcon'});
+
+            var events = ['add', 'geometrychange', 'boundschange', 'mapchange', 'overlaychange', 'parentchange',
+                'pixelboundschange', 'optionschange', 'propertieschange', 'remove', 'set', 'balloonopen', 'balloonclose',
+                'hintopen', 'hintclose'];
+
+            var domevents = ['click', 'contextmenu', 'dblclick', 'mousedown', 'mouseenter', 'mouseleave', 'mouseup', 'multitouchend',
+                'multitouchstart', 'wheel'];
+
+            var moveevents = ['mousemove', 'multitouchmove'];
+
+            var callback = function (e) {
+                // MAPSAPI-7862
+                if (e.get('type') === 'balloonopen' ||
+                        e.get('type') === 'balloonclose' ||
+                        e.get('type') === 'hintopen' ||
+                        e.get('type') === 'hintclose') {
+                    log.info(e.get('type') + ' on ' + e.get('target').options.get('id'));
+                    console.log(e.get('currentTarget'));
+                } else if (e.get('type') === 'add') {
+                    log.info(e.get('type') + ', index: ' + e.get('index') + ', child: ' + e.get('child'));
+                } else {
+                    log.info(e.get('type'));
+                }
+            };
+
+            map.geoObjects.add(collection);
+
+            var listenerButton = new ymaps.control.Button({data: {content: 'listen'}, options: {selectOnClick: true}});
+            var addButton = new ymaps.control.Button({data: {content: 'add'}, options: {selectOnClick: true}});
+            var optionButton = new ymaps.control.Button({data: {content: 'option'}, options: {selectOnClick: true}});
+            var freezeButton = new ymaps.control.Button({data: {content: 'freeze'}, options: {selectOnClick: true}});
+            var moveButton = new ymaps.control.Button({data: {content: 'move'}, options: {selectOnClick: true}});
+            var domButton = new ymaps.control.Button({data: {content: 'DOM'}, options: {selectOnClick: true}});
+            var propertiesButton = new ymaps.control.Button({data: {content: 'properties'}, options: {selectOnClick: true}});
+            var removeButton = new ymaps.control.Button({data: {content: 'remove'}, options: {selectOnClick: true}});
+            var clearButton = new ymaps.control.Button({data: {content: 'clear log'}, options: {selectOnClick: false}});
+
+            //С версии 2.1.18 каждый элемент коллекции будет кидать событие "pixelboundschange"
+            listenerButton.events
+                    .add('deselect', function () {
+                        log.info('Events will be ignored.');
+                        collection.events.remove(events, callback);
+                    })
+                    .add('select', function () {
+                        log.info('Waiting for events...');
+                        collection.events.add(events, callback);
+                    });
+
+            addButton.events
+                    .add('select', function () {
+                        collection
+                                .add(newPlacemark1)
+                                .add(newPlacemark2);
+                    })
+                    .add('deselect', function () {
+                        collection
+                                .remove(newPlacemark1)
+                                .remove(newPlacemark2);
+                    });
+
+            optionButton.events
+                    .add('select', function () {
+                        collection.options.set('draggable', true);
+                        collection.each(function (obj) {
+                            obj.properties.set('hintContent', 'hint')
+                        })
+                    })
+                    .add('deselect', function () {
+                        collection.options.unset('draggable');
+                        collection.each(function (obj) {
+                            obj.properties.unset('hintContent')
+                        })
+                    });
+
+            freezeButton.events
+                    .add('select', function () {
+                        collection.options.freeze();
+                    })
+                    .add('deselect', function () {
+                        collection.options.unfreeze();
+                    });
+
+            moveButton.events
+                    .add('select', function () {
+                        log.info('Waiting for move events...');
+                        collection.events.add(moveevents, callback);
+                    })
+                    .add('deselect', function () {
+                        log.info('Move events will be ignored.');
+                        collection.events.remove(moveevents, callback);
+                    });
+
+            domButton.events
+                    .add('select', function () {
+                        log.info('Waiting for DOM events...');
+                        collection.events.add(domevents, callback);
+                    })
+                    .add('deselect', function () {
+                        log.info('DOM events will be ignored.');
+                        collection.events.remove(domevents, callback);
+                    });
+
+            propertiesButton.events
+                    .add('select', function () {
+                        collection.properties.set('id', 'geoobjects');
+                    })
+                    .add('deselect', function () {
+                        collection.properties.unset('id');
+                    });
+
+            removeButton.events
+                    .add('select', function () {
+                        myMap.geoObjects.remove(collection)
+                    })
+                    .add('deselect', function () {
+                        myMap.geoObjects.add(collection)
+                    });
+
+            clearButton.events.add('click', function () {
+                log.clear();
+            });
+
+            map.controls
+                    .add(listenerButton, {float: 'left'})
+                    .add(optionButton, {float: 'left'})
+                    .add(freezeButton, {float: 'none', position: {bottom: 55, right: 10}})
+                    .add(clearButton, {float: 'none', position: {bottom: 25, right: 10}})
+                    .add(addButton, {float: 'none', position: {bottom: 85, right: 10}})
+                    .add(new ymaps.control.FullscreenControl(), {float: 'none', position: {bottom: 125, right: 10}})
+                    .add(new ymaps.control.TypeSelector(), {float: 'none', position: {bottom: 155, right: 10}})
+                    .add(moveButton, {float: 'left'})
+                    .add(domButton, {float: 'left'})
+                    .add(propertiesButton, {float: 'left'})
+                    .add(removeButton, {float: 'left'});
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

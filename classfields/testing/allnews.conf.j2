@@ -1,0 +1,211 @@
+source news
+{
+    type = mysql
+    sql_host = 127.0.0.1
+    sql_user = auto
+    sql_pass = KiX1euph
+    sql_db =
+    sql_port = 1401
+
+    sql_query_pre = SET NAMES utf8
+    sql_query_pre = SET wait_timeout=30
+    sql_query_pre = SET interactive_timeout=30
+
+    sql_query_range = SELECT MIN(id), MAX(id) FROM news2.news
+    sql_range_step = 20000
+
+
+    sql_query = SELECT SQL_NO_CACHE \
+                id, id as i, \
+                'news' as type, \
+                title, \
+                text, \
+                time, \
+                short_text as preview, \
+                main_image_index, \
+                images, \
+                "" as image_name \
+                FROM news2.news \
+                WHERE news.id >= $start AND news.id <= $end
+                
+    sql_attr_uint       = i
+    sql_field_string    = title
+    sql_field_string    = type
+    sql_attr_timestamp  = time
+    sql_field_string    = text
+    sql_field_string    = preview
+    sql_field_string    = main_image_index
+    sql_field_string    = images
+    sql_field_string    = image_name
+
+    
+#    sql_query_info = SELECT id FROM news2.news WHERE id = $id
+}
+
+index news
+{
+    type          = plain
+    source = news
+
+    path = /opt/sphinx_allnews/news/
+
+    docinfo         = extern
+    html_strip      = 1
+    charset_type    = utf-8
+    charset_table    = 0..9, A..Z->a..z, _, a..z, U+410..U+42F->U+430..U+44F, U+430..U+44F, U+0401->U+0435, U+0451->U+0435
+
+}
+
+
+
+source testdrives
+{
+    type = mysql
+    sql_host = 127.0.0.1
+    sql_user = auto
+    sql_pass = KiX1euph
+    sql_db =
+    sql_port = 1401
+
+    sql_query_pre = SET NAMES utf8
+    sql_query_pre = SET wait_timeout=30
+    sql_query_pre = SET interactive_timeout=30
+
+    sql_query_range = SELECT MIN(id), MAX(id) FROM news2.testdrives
+    sql_range_step = 20000
+
+    sql_query = SELECT SQL_NO_CACHE\
+                id, id as i, \
+                'testdrive' as type, \
+                testdrives.title, \
+                UNIX_TIMESTAMP(testdrives.set_date) as time, \
+                testdrives.body as text, \
+                announce as preview, \
+                "" as main_image_index, \
+                "" as images, \
+                testdrives.image_name \
+                FROM news2.testdrives \
+                WHERE testdrives.id >= $start AND testdrives.id <= $end
+                
+    sql_attr_uint       = i
+    sql_field_string    = title
+    sql_field_string    = type
+    sql_attr_timestamp  = time
+    sql_field_string    = text
+    sql_field_string    = preview
+    sql_field_string    = main_image_index
+    sql_field_string    = images
+    sql_field_string    = image_name
+  
+}
+
+index testdrives
+{
+    type          = plain
+    source = testdrives
+
+    path = /opt/sphinx_allnews/testdrives/
+
+    docinfo         = extern
+    html_strip      = 1
+    charset_type    = utf-8
+    charset_table    = 0..9, A..Z->a..z, _, a..z, U+410..U+42F->U+430..U+44F, U+430..U+44F, U+0401->U+0435, U+0451->U+0435
+
+}
+
+
+
+
+
+
+source articles
+{
+    type = mysql
+    sql_host = 127.0.0.1
+    sql_user = auto
+    sql_pass = KiX1euph
+    sql_db =
+    sql_port = 1401
+
+    sql_query_pre = SET NAMES utf8
+    sql_query_pre = SET wait_timeout=30
+    sql_query_pre = SET interactive_timeout=30
+
+    sql_query_range = SELECT MIN(id), MAX(id) FROM news2.articles
+    sql_range_step = 20000
+
+
+    sql_query = SELECT SQL_NO_CACHE \
+                id, id as i, \
+                'articles' as type, \
+                title, \
+                text, \
+                short_text as preview, \
+                time, \
+                main_image_index, \
+                images, \
+                "" as image_name \
+                FROM news2.articles \
+                WHERE articles.id >= $start AND articles.id <= $end
+                
+    sql_attr_uint       = i
+    sql_field_string    = title
+    sql_field_string    = type
+    sql_attr_timestamp  = time
+    sql_field_string    = text
+    sql_field_string    = preview
+    sql_field_string    = main_image_index
+    sql_field_string    = images
+    sql_field_string    = image_name
+
+}
+
+index articles
+{
+    type          = plain
+    source = articles
+
+    path = /opt/sphinx_allnews/articles/
+
+    docinfo         = extern
+    html_strip      = 1
+    charset_type    = utf-8
+    charset_table    = 0..9, A..Z->a..z, _, a..z, U+410..U+42F->U+430..U+44F, U+430..U+44F, U+0401->U+0435, U+0451->U+0435
+
+}
+
+
+
+
+
+
+
+
+indexer
+{
+    mem_limit       = 2047M
+    write_buffer    = 160M
+    max_file_field_buffer = 128M
+}
+
+searchd
+{
+    listen          = 21559
+
+    log             = /var/log/sphinx/searchd_allnews.log
+#    query_log       = /var/log/sphinx/query_allnews.log
+    pid_file        = /var/run/sphinx/searchd_allnews.pid
+    binlog_path     = /var/log/sphinx/allnews
+    read_timeout    = 2
+    max_children    = 0
+    max_matches     = 10000
+    unlink_old      = 1
+
+    seamless_rotate = 1
+    preopen_indexes = 1
+
+    #query_log_format = sphinxql
+    workers = threads
+    read_buffer = 98M
+    read_unhinted = 98M
+}

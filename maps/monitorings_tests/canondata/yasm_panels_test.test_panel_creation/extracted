@@ -1,0 +1,514 @@
+
+{
+    "title": "core-ecstatic-coordinator.stable",
+    "type": "panel",
+    "editors": [],
+    "links": [
+        {
+            "url": "https://yasm.yandex-team.ru/template/panel/maps-core-ecstatic-coordinator-stable-panel-main",
+            "title": "All handles"
+        },
+        {
+            "url": "https://yasm.yandex-team.ru/template/panel/maps-core-ecstatic-coordinator-stable-panel-main/handles_end=0",
+            "title": "No handles"
+        },
+        {
+            "url": "https://yasm.yandex-team.ru/template/panel/maps-core-ecstatic-coordinator-stable-panel-main/handles_begin=0;handles_end=20",
+            "title": "Handles 0:20"
+        },
+        {
+            "url": "https://yasm.yandex-team.ru/template/panel/maps-core-ecstatic-coordinator-stable-panel-main/handles_begin=20;handles_end=32",
+            "title": "Handles 20:32"
+        },
+        {
+            "url": "https://yasm.yandex-team.ru/template/panel/maps-core-ecstatic-coordinator-stable-panel-main/timings_quantiled=1",
+            "title": "Timings by quantiles"
+        },
+        {
+            "url": "https://yasm.yandex-team.ru/template/panel/maps-core-ecstatic-coordinator-stable-panel-main/geo=man",
+            "title": "man"
+        },
+        {
+            "url": "https://yasm.yandex-team.ru/template/panel/maps-core-ecstatic-coordinator-stable-panel-main/geo=vla",
+            "title": "vla"
+        },
+        {
+            "url": "https://yasm.yandex-team.ru/template/panel/maps-core-ecstatic-coordinator-stable-panel-main/geo=sas",
+            "title": "sas"
+        },
+    ],
+    <% set host = host or "ASEARCH" %>
+    <% set balancer_host = balancer_host or "ASEARCH" %>
+    <% set geo_tag = ";geo=" + geo|string if geo else  "" %>
+    <% set main_layout = create_main_layout('vertical') %>
+    "charts": [
+    <% set alerts_layout = main_layout.sub('flow', default_height=1, default_width=1, columns=6) %>
+        {
+            "type": "graphic",
+            <<main_layout.coords(width=6, height=2)>>,
+            "minValue": 0,
+            "title": "Total RPS codes",
+            "yAxis": [{"log": true}],
+            "signals": [
+                <% if list_signals(pattern='roquefort-external_ok_ammv', itype='maps', ctype='prestable,stable', prj='maps-core-ecstatic-coordinator', limit=1) %>
+                <% for code, metric, color in (('2xx', 'ok', 'green'), ('3xx', '3xx', 'blue'), ('4xx', '4xx', 'gold'),
+                    ('404', '404', 'orange'), ('429', '429', 'darkred'), ('499', '499', 'grey'), ('5xx', 'error', 'red')) %>
+                {
+                    "title": "<<code>>",
+                    "color": "<<color>>",
+                    "tag": "itype=maps;ctype=prestable,stable;prj=maps-core-ecstatic-coordinator<<geo_tag>>",
+                    "host": "<<host>>",
+                    "name": "roquefort-external_<<metric>>_ammv"
+                },
+                <% endfor %>
+                {
+                    "title": "total-5xx",
+                    "color": "orangered",
+                    "tag": "itype=maps;ctype=prestable,stable;prj=maps-core-ecstatic-coordinator<<geo_tag>>",
+                    "host": "<<host>>",
+                    "name": "roquefort-total_error_ammv"
+                },
+                <% else %>
+                <% for code, attributes in {'2xx': ('ok', 'green'), '5xx': ('error', 'red'), '4xx': ('4xx', 'gold'),
+                    '404': ('404', 'orange'), '429': ('429', 'darkred'), '499': ('499', 'grey'), '3xx': ('3xx', 'blue')}.items() %>
+                {
+                    "title": "<<code>>",
+                    "color": "<<attributes[1]>>",
+                    "tag": "itype=maps;ctype=prestable,stable;prj=maps-core-ecstatic-coordinator<<geo_tag>>",
+                    "host": "<<host>>",
+                    "name": "roquefort-total_<<attributes[0]>>_ammv"
+                },
+                <% endfor %>
+                <% endif %>
+                <% set ping_metrics = ['ecstatic-coordinator_/ping'] %>
+                <% for code, attributes in {'2xx': ('ok', 'lightgreen'), '5xx': ('error', 'magenta')}.items() %>
+                {
+                    "title": "ping-<<code>>",
+                    "color": "<<attributes[1]>>",
+                    "tag": "itype=maps;ctype=prestable,stable;prj=maps-core-ecstatic-coordinator<<geo_tag>>",
+                    "host": "<<host>>",
+                    "name": "sum(<%for ping_metric in ping_metrics%>roquefort-<<ping_metric>>_<<attributes[0]>>_ammv,<%endfor%>0)"
+                },
+                <% endfor %>
+            ],
+            "consts": []
+        },
+        {
+            "type": "graphic",
+            <<main_layout.coords(width=6, height=1)>>,
+            "minValue": 0,
+            "title": "Total 2xx & 3xx rps",
+            "signals": [
+                <% for geo, _ in list_tags_combinations('maps', ctype=['prestable','stable'], prj=['maps-core-ecstatic-coordinator'], fill_tags=['geo']) | groupby('geo') %>
+                {
+                    "title": "<<geo>>",
+                    "tag": "itype=maps;ctype=prestable,stable;prj=maps-core-ecstatic-coordinator;geo=<<geo>>",
+                    "host": "<<host>>",
+                    "name": "sum(roquefort-total_ok_ammv, roquefort-total_3xx_ammv)"
+                },
+                <% endfor %>
+            ],
+            "consts": []
+        },
+        {
+            "type": "graphic",
+            <<main_layout.coords(width=6, height=1)>>,
+            "title": "Default balancer RPS codes",
+            "yAxis": [{"log": true}],
+            "normalize": true,
+            "signals": [
+                <% for code, color in {'1xx': 'black', '2xx': 'green', '3xx': 'blue',
+                    '4xx': 'gold', '404': 'orange', '5xx': 'red'}.items() %>
+                {
+                    "title": "<<code>>",
+                    "color": "<<color>>",
+                    "tag": "itype=balancer;ctype=prod;prj=core-ecstatic-coordinator-maps<<geo_tag>>",
+                    "host": "<<balancer_host>>",
+                    "name": "balancer_report-report-service_total-outgoing_<<code>>_summ"
+                },
+                <% endfor %>
+                {
+                    "title": "ping_5xx",
+                    "color": "magenta",
+                    "tag": "itype=balancer;ctype=prod;prj=core-ecstatic-coordinator-maps<<geo_tag>>",
+                    "host": "<<balancer_host>>",
+                    "name": "balancer_report-report-slbping-outgoing_5xx_summ"
+                },
+            ],
+            "consts": []
+        },
+        {
+            "type": "graphic",
+            <<main_layout.coords(width=6, height=1)>>,
+            "title": "Default balancer timings",
+            "signals": [
+                <% for timing_or_quantile in ([0.1, 0.25, 0.5, 1, 2, 10] if not timings_quantiled else [99, 98, 95, 90, 50])%>
+                {
+                    "tag": "itype=balancer;ctype=prod;prj=core-ecstatic-coordinator-maps<<geo_tag>>",
+                    "host": "<<balancer_host>>",
+                    <%- if timings_quantiled %>
+                    "title": "<<timing_or_quantile>> quantile",
+                    "name": "quant(balancer_report-report-service_total-processing_time_hgram,<<timing_or_quantile>>)"
+                    <%- else %>
+                    "title": "<<timing_or_quantile>> s",
+                    "name": "hperc(balancer_report-report-service_total-processing_time_hgram,0,<<timing_or_quantile>>)"
+                    <%- endif %>
+                },
+                <% endfor %>
+            ],
+            "consts": []
+        },
+        {
+            "type": "graphic",
+            <<main_layout.coords(width=6, height=1)>>,
+            "minValue": 0,
+            "title": "Default balancer 2xx & 3xx rps",
+            "normalize": true,
+            "signals": [
+                <% for geo in list_geo(itype='balancer', ctype='prod', prj='core-ecstatic-coordinator-maps') %>
+                {
+                    "title": "<<geo>>",
+                    "tag": "itype=balancer;ctype=prod;prj=core-ecstatic-coordinator-maps;geo=<<geo>>",
+                    "host": "<<balancer_host>>",
+                    "name": "sum(balancer_report-report-service_total-outgoing_2xx_summ, balancer_report-report-service_total-outgoing_3xx_summ)"
+                },
+                <% endfor %>
+            ],
+            "consts": []
+        },
+        {
+            "type": "graphic",
+            <<main_layout.coords(width=6, height=1)>>,
+            "maxValue": 100,
+            "minValue": 0,
+            "title": "CPU & Memory %",
+            "signals": [
+                {
+                    "title": "CPU max",
+                    "tag": "itype=maps;ctype=prestable,stable;prj=maps-core-ecstatic-coordinator<<geo_tag>>",
+                    "host": "<<host>>",
+                    "name": "quant(portoinst-cpu_limit_usage_perc_hgram, max)"
+                },
+                {
+                    "title": "CPU median",
+                    "tag": "itype=maps;ctype=prestable,stable;prj=maps-core-ecstatic-coordinator<<geo_tag>>",
+                    "host": "<<host>>",
+                    "name": "quant(portoinst-cpu_limit_usage_perc_hgram, med)"
+                },
+                {
+                    "title": "Total memory max",
+                    "tag": "itype=maps;ctype=prestable,stable;prj=maps-core-ecstatic-coordinator<<geo_tag>>",
+                    "host": "<<host>>",
+                    "name": "quant(portoinst-memory_anon_unevict_limit_usage_perc_hgram, max)"
+                },
+                {
+                    "title": "Total memory median",
+                    "tag": "itype=maps;ctype=prestable,stable;prj=maps-core-ecstatic-coordinator<<geo_tag>>",
+                    "host": "<<host>>",
+                    "name": "quant(portoinst-memory_anon_unevict_limit_usage_perc_hgram, med)"
+                },
+                {
+                    "title": "Anonymous memory max",
+                    "tag": "itype=maps;ctype=prestable,stable;prj=maps-core-ecstatic-coordinator<<geo_tag>>",
+                    "host": "<<host>>",
+                    "name": "quant(portoinst-anon_limit_usage_perc_hgram, max)"
+                },
+                {
+                    "title": "Anonymous memory median",
+                    "tag": "itype=maps;ctype=prestable,stable;prj=maps-core-ecstatic-coordinator<<geo_tag>>",
+                    "host": "<<host>>",
+                    "name": "quant(portoinst-anon_limit_usage_perc_hgram, med)"
+                }
+            ],
+            "consts": []
+        },
+        {
+            "type": "graphic",
+            <<main_layout.coords(width=6, height=1)>>,
+            "minValue": 0,
+            "title": "Yacare pools loading",
+            "signals": [
+                {
+                    "tag": "itype=maps;ctype=prestable,stable;prj=maps-core-ecstatic-coordinator<<geo_tag>>",
+                    "host": "<<host>>",
+                    "name": "yacare-*_load_axxv"
+                }
+            ],
+            "consts": []
+        },
+        <% set sub_layout = main_layout.sub('horizontal', default_width=3, default_height=1) %>
+        {
+            "type": "graphic",
+            <<sub_layout.coords()>>,
+            "maxValue": 100,
+            "minValue": 0,
+            "title": "Disk %",
+            "signals": [
+                {
+                    "title": "/cores",
+                    "tag": "itype=maps;ctype=prestable,stable;prj=maps-core-ecstatic-coordinator<<geo_tag>>",
+                    "host": "<<host>>",
+                    "name": "portoinst-volume_/cores_usage_perc_txxx"
+                },
+                {
+                    "title": "/logs",
+                    "tag": "itype=maps;ctype=prestable,stable;prj=maps-core-ecstatic-coordinator<<geo_tag>>",
+                    "host": "<<host>>",
+                    "name": "portoinst-volume_/logs_usage_perc_txxx"
+                },
+                {
+                    "title": "cwd",
+                    "tag": "itype=maps;ctype=prestable,stable;prj=maps-core-ecstatic-coordinator<<geo_tag>>",
+                    "host": "<<host>>",
+                    "name": "portoinst-volume_cwd_usage_perc_txxx"
+                },
+                {
+                    "title": "root",
+                    "tag": "itype=maps;ctype=prestable,stable;prj=maps-core-ecstatic-coordinator<<geo_tag>>",
+                    "host": "<<host>>",
+                    "name": "portoinst-volume_root_usage_perc_txxx"
+                },
+            ],
+            "consts": []
+        },
+        {
+            "type": "graphic",
+            <<sub_layout.coords()>>,
+            "minValue": 0,
+            "normalize": true,
+            "title": "Disk ops",
+            "signals": [
+                {
+                    "title": "read fs MBytes/s",
+                    "normalizable": true,
+                    "tag": "itype=maps;ctype=prestable,stable;prj=maps-core-ecstatic-coordinator<<geo_tag>>",
+                    "host": "<<host>>",
+                    "name": "conv(portoinst-io_read_fs_bytes_tmmv,Mi)"
+                },
+                {
+                    "title": "write fs MBytes/s",
+                    "normalizable": true,
+                    "tag": "itype=maps;ctype=prestable,stable;prj=maps-core-ecstatic-coordinator<<geo_tag>>",
+                    "host": "<<host>>",
+                    "name": "conv(portoinst-io_write_fs_bytes_tmmv,Mi)"
+                },
+                {
+                    "title": "iops fs",
+                    "normalizable": true,
+                    "tag": "itype=maps;ctype=prestable,stable;prj=maps-core-ecstatic-coordinator<<geo_tag>>",
+                    "host": "<<host>>",
+                    "name": "portoinst-io_ops_fs_tmmv"
+                },
+                {
+                    "title": "read disk MBytes/s",
+                    "normalizable": true,
+                    "tag": "itype=maps;ctype=prestable,stable;prj=maps-core-ecstatic-coordinator<<geo_tag>>",
+                    "host": "<<host>>",
+                    "name": "conv(portoinst-io_read_bytes_tmmv,Mi)"
+                },
+                {
+                    "title": "write disk MBytes/s",
+                    "normalizable": true,
+                    "tag": "itype=maps;ctype=prestable,stable;prj=maps-core-ecstatic-coordinator<<geo_tag>>",
+                    "host": "<<host>>",
+                    "name": "conv(portoinst-io_write_bytes_tmmv,Mi)"
+                },
+                {
+                    "title": "iops disk",
+                    "normalizable": true,
+                    "tag": "itype=maps;ctype=prestable,stable;prj=maps-core-ecstatic-coordinator<<geo_tag>>",
+                    "host": "<<host>>",
+                    "name": "portoinst-io_ops_tmmv"
+                }
+            ],
+            "consts": []
+        },
+        <% set sub_layout = main_layout.sub('horizontal', default_width=3, default_height=1) %>
+        {
+            "type": "graphic",
+            <<sub_layout.coords()>>,
+            "minValue": 0,
+            "normalize": true,
+            "title": "Net MByte/s",
+            "signals": [
+                <% for title, net_suffix in {'rx': 'rx_', 'tx': '', 'rx-fb': 'fastbone_rx_', 'tx-fb': 'fastbone_'}.items() %>
+                {
+                    "title": "<<title>>",
+                    "tag": "itype=maps;ctype=prestable,stable;prj=maps-core-ecstatic-coordinator<<geo_tag>>",
+                    "host": "<<host>>",
+                    "name": "portoinst-net_<<net_suffix>>mb_summ"
+                },
+                <% endfor %>
+            ],
+            "consts": []
+        },
+        {
+            "type": "graphic",
+            <<sub_layout.coords()>>,
+            "minValue": 0,
+            "normalize": true,
+            "title": "Net drop/s",
+            "signals": [
+                <% for title, net_suffix in {'rx': 'rx_', 'tx': ''}.items() %>
+                {
+                    "title": "<<title>>",
+                    "tag": "itype=maps;ctype=prestable,stable;prj=maps-core-ecstatic-coordinator<<geo_tag>>",
+                    "host": "<<host>>",
+                    "name": "portoinst-net_<<net_suffix>>drops_summ"
+                },
+                <% endfor %>
+            ],
+            "consts": []
+        },
+        <% set sub_layout = main_layout.sub('horizontal', default_width=2, default_height=1) %>
+        {
+            "type": "graphic",
+            <<sub_layout.coords()>>,
+            "title": "Default Balancer CPU",
+            "maxValue": 100,
+            "minValue": 0,
+            "signals": [
+                {
+                    "title": "CPU max",
+                    "tag": "itype=balancer;ctype=prod;prj=core-ecstatic-coordinator-maps<<geo_tag>>",
+                    "host": "<<balancer_host>>",
+                    "name": "quant(portoinst-cpu_limit_usage_perc_hgram, max)"
+                },
+                <% for geo in list_geo(itype='balancer', ctype='prod', prj='core-ecstatic-coordinator-maps') %>
+                {
+                    "title": "CPU median@<<geo>>",
+                    "tag": "itype=balancer;ctype=prod;prj=core-ecstatic-coordinator-maps;geo=<<geo>>",
+                    "host": "<<balancer_host>>",
+                    "name": "quant(portoinst-cpu_limit_usage_perc_hgram, med)"
+                },
+                <% endfor %>
+            ],
+            "consts": [
+                {
+                    "value": 33,
+                    "color": "red",
+                    "yAxis": 0
+                }
+            ]
+        },
+        {
+            "type": "graphic",
+            <<sub_layout.coords()>>,
+            "title": "Default Balancer Memory",
+            "maxValue": 100,
+            "minValue": 0,
+            "signals": [
+                {
+                    "title": "Memory max",
+                    "tag": "itype=balancer;ctype=prod;prj=core-ecstatic-coordinator-maps<<geo_tag>>",
+                    "host": "<<balancer_host>>",
+                    "name": "quant(portoinst-memory_anon_unevict_limit_usage_perc_hgram, max)"
+                },
+                <% for geo in list_geo(itype='balancer', ctype='prod', prj='core-ecstatic-coordinator-maps') %>
+                {
+                    "title": "Memory median@<<geo>>",
+                    "tag": "itype=balancer;ctype=prod;prj=core-ecstatic-coordinator-maps;geo=<<geo>>",
+                    "host": "<<balancer_host>>",
+                    "name": "quant(portoinst-memory_anon_unevict_limit_usage_perc_hgram, med)"
+                },
+                <% endfor %>
+            ],
+            "consts": [
+                {
+                    "value": 33,
+                    "color": "red",
+                    "yAxis": 0
+                }
+            ]
+        },
+        {
+            "type": "graphic",
+            <<sub_layout.coords()>>,
+            "title": "Default Balancer Logs",
+            "maxValue": 100,
+            "minValue": 0,
+            "signals": [
+                {
+                    "title": "Logs max",
+                    "tag": "itype=balancer;ctype=prod;prj=core-ecstatic-coordinator-maps<<geo_tag>>",
+                    "host": "<<balancer_host>>",
+                    "name": "perc(quant(portoinst-volume_/logs_usage_hgram, max), quant(portoinst-volume_/logs_quota_hgram, 1))"
+                }
+            ],
+            "consts": []
+        },
+        {
+            "type": "text",
+            "text": "Custom metrics",
+            <<main_layout.coords(width=6, height=1)>>
+        },
+        {
+            "type": "graphic",
+            <<main_layout.coords(width=6, height=1)>>,
+            "minValue": 0,
+            "title": "Active mongo connections",
+            "signals": [
+                {
+                    "title": "active mongo connections",
+                    "tag": "itype=maps;ctype=prestable,stable;prj=maps-core-ecstatic-coordinator<<geo_tag>>",
+                    "host": "<<host>>",
+                    "name": "yacare-ecstatic-coordinator_mongo_connections_count_axxv"
+                },
+            ],
+            "consts": []
+        },
+<% set all_handles = [{'name': 'ecstatic-coordinator: /current_versions', 'metric': 'ecstatic-coordinator_/current_versions', 'timings': [100, 250, 500, 1000, 2000], 'codes': [('2xx', 'ok', 'green'), ('3xx', '3xx', 'blue'), ('401', '401', 'darkblue'), ('403', '403', 'purple'), ('404', '404', 'orange'), ('429', '429', 'darkred'), ('499', '499', 'grey'), ('4xx', '4xx', 'gold'), ('5xx', 'error', 'red')]}, {'name': 'ecstatic-coordinator: /dataset/list', 'metric': 'ecstatic-coordinator_/dataset/list', 'timings': [100, 250, 500, 1000, 2000], 'codes': [('2xx', 'ok', 'green'), ('3xx', '3xx', 'blue'), ('401', '401', 'darkblue'), ('403', '403', 'purple'), ('404', '404', 'orange'), ('429', '429', 'darkred'), ('499', '499', 'grey'), ('4xx', '4xx', 'gold'), ('5xx', 'error', 'red')]}, {'name': 'ecstatic-coordinator: /download', 'metric': 'ecstatic-coordinator_/download', 'timings': [100, 250, 500, 1000, 2000], 'codes': [('2xx', 'ok', 'green'), ('3xx', '3xx', 'blue'), ('401', '401', 'darkblue'), ('403', '403', 'purple'), ('404', '404', 'orange'), ('429', '429', 'darkred'), ('499', '499', 'grey'), ('4xx', '4xx', 'gold'), ('5xx', 'error', 'red')]}, {'name': 'ecstatic-coordinator: /exists', 'metric': 'ecstatic-coordinator_/exists', 'timings': [100, 250, 500, 1000, 2000], 'codes': [('2xx', 'ok', 'green'), ('3xx', '3xx', 'blue'), ('401', '401', 'darkblue'), ('403', '403', 'purple'), ('404', '404', 'orange'), ('429', '429', 'darkred'), ('499', '499', 'grey'), ('4xx', '4xx', 'gold'), ('5xx', 'error', 'red')]}, {'name': 'ecstatic-coordinator: /is_adopted', 'metric': 'ecstatic-coordinator_/is_adopted', 'timings': [100, 250, 500, 1000, 2000], 'codes': [('2xx', 'ok', 'green'), ('3xx', '3xx', 'blue'), ('401', '401', 'darkblue'), ('403', '403', 'purple'), ('404', '404', 'orange'), ('429', '429', 'darkred'), ('499', '499', 'grey'), ('4xx', '4xx', 'gold'), ('5xx', 'error', 'red')]}, {'name': 'ecstatic-coordinator: /is_managed', 'metric': 'ecstatic-coordinator_/is_managed', 'timings': [100, 250, 500, 1000, 2000], 'codes': [('2xx', 'ok', 'green'), ('3xx', '3xx', 'blue'), ('401', '401', 'darkblue'), ('403', '403', 'purple'), ('404', '404', 'orange'), ('429', '429', 'darkred'), ('499', '499', 'grey'), ('4xx', '4xx', 'gold'), ('5xx', 'error', 'red')]}, {'name': 'ecstatic-coordinator: /list_status', 'metric': 'ecstatic-coordinator_/list_status', 'timings': [100, 250, 500, 1000, 2000], 'codes': [('2xx', 'ok', 'green'), ('3xx', '3xx', 'blue'), ('401', '401', 'darkblue'), ('403', '403', 'purple'), ('404', '404', 'orange'), ('429', '429', 'darkred'), ('499', '499', 'grey'), ('4xx', '4xx', 'gold'), ('5xx', 'error', 'red')]}, {'name': 'ecstatic-coordinator: /list_versions', 'metric': 'ecstatic-coordinator_/list_versions', 'timings': [100, 250, 500, 1000, 2000], 'codes': [('2xx', 'ok', 'green'), ('3xx', '3xx', 'blue'), ('401', '401', 'darkblue'), ('403', '403', 'purple'), ('404', '404', 'orange'), ('429', '429', 'darkred'), ('499', '499', 'grey'), ('4xx', '4xx', 'gold'), ('5xx', 'error', 'red')]}, {'name': 'ecstatic-coordinator: /locks/extend', 'metric': 'ecstatic-coordinator_/locks/extend', 'timings': [100, 250, 500, 1000, 2000], 'codes': [('2xx', 'ok', 'green'), ('3xx', '3xx', 'blue'), ('401', '401', 'darkblue'), ('403', '403', 'purple'), ('404', '404', 'orange'), ('429', '429', 'darkred'), ('499', '499', 'grey'), ('4xx', '4xx', 'gold'), ('5xx', 'error', 'red')]}, {'name': 'ecstatic-coordinator: /locks/get', 'metric': 'ecstatic-coordinator_/locks/get', 'timings': [100, 250, 500, 1000, 2000], 'codes': [('2xx', 'ok', 'green'), ('3xx', '3xx', 'blue'), ('401', '401', 'darkblue'), ('403', '403', 'purple'), ('404', '404', 'orange'), ('429', '429', 'darkred'), ('499', '499', 'grey'), ('4xx', '4xx', 'gold'), ('5xx', 'error', 'red')]}, {'name': 'ecstatic-coordinator: /locks/list', 'metric': 'ecstatic-coordinator_/locks/list', 'timings': [100, 250, 500, 1000, 2000], 'codes': [('2xx', 'ok', 'green'), ('3xx', '3xx', 'blue'), ('401', '401', 'darkblue'), ('403', '403', 'purple'), ('404', '404', 'orange'), ('429', '429', 'darkred'), ('499', '499', 'grey'), ('4xx', '4xx', 'gold'), ('5xx', 'error', 'red')]}, {'name': 'ecstatic-coordinator: /locks/release', 'metric': 'ecstatic-coordinator_/locks/release', 'timings': [100, 250, 500, 1000, 2000], 'codes': [('2xx', 'ok', 'green'), ('3xx', '3xx', 'blue'), ('401', '401', 'darkblue'), ('403', '403', 'purple'), ('404', '404', 'orange'), ('429', '429', 'darkred'), ('499', '499', 'grey'), ('4xx', '4xx', 'gold'), ('5xx', 'error', 'red')]}, {'name': 'ecstatic-coordinator: /notify', 'metric': 'ecstatic-coordinator_/notify', 'timings': [100, 250, 500, 1000, 2000], 'codes': [('2xx', 'ok', 'green'), ('3xx', '3xx', 'blue'), ('401', '401', 'darkblue'), ('403', '403', 'purple'), ('404', '404', 'orange'), ('429', '429', 'darkred'), ('499', '499', 'grey'), ('4xx', '4xx', 'gold'), ('5xx', 'error', 'red')]}, {'name': 'ecstatic-coordinator: /ping', 'metric': 'ecstatic-coordinator_/ping', 'timings': [100, 250, 500, 1000, 2000], 'codes': [('2xx', 'ok', 'green'), ('3xx', '3xx', 'blue'), ('401', '401', 'darkblue'), ('403', '403', 'purple'), ('404', '404', 'orange'), ('429', '429', 'darkred'), ('499', '499', 'grey'), ('4xx', '4xx', 'gold'), ('5xx', 'error', 'red')]}, {'name': 'ecstatic-coordinator: /pkg/_/_/errlogs/_', 'metric': 'ecstatic-coordinator_/pkg/_/_/errlogs/_', 'timings': [100, 250, 500, 1000, 2000], 'codes': [('2xx', 'ok', 'green'), ('3xx', '3xx', 'blue'), ('401', '401', 'darkblue'), ('403', '403', 'purple'), ('404', '404', 'orange'), ('429', '429', 'darkred'), ('499', '499', 'grey'), ('4xx', '4xx', 'gold'), ('5xx', 'error', 'red')]}, {'name': 'ecstatic-coordinator: /pkg/_/_/status', 'metric': 'ecstatic-coordinator_/pkg/_/_/status', 'timings': [100, 250, 500, 1000, 2000], 'codes': [('2xx', 'ok', 'green'), ('3xx', '3xx', 'blue'), ('401', '401', 'darkblue'), ('403', '403', 'purple'), ('404', '404', 'orange'), ('429', '429', 'darkred'), ('499', '499', 'grey'), ('4xx', '4xx', 'gold'), ('5xx', 'error', 'red')]}, {'name': 'ecstatic-coordinator: /pkg/_/versions', 'metric': 'ecstatic-coordinator_/pkg/_/versions', 'timings': [100, 250, 500, 1000, 2000], 'codes': [('2xx', 'ok', 'green'), ('3xx', '3xx', 'blue'), ('401', '401', 'darkblue'), ('403', '403', 'purple'), ('404', '404', 'orange'), ('429', '429', 'darkred'), ('499', '499', 'grey'), ('4xx', '4xx', 'gold'), ('5xx', 'error', 'red')]}, {'name': 'ecstatic-coordinator: /pkg/list', 'metric': 'ecstatic-coordinator_/pkg/list', 'timings': [100, 250, 500, 1000, 2000], 'codes': [('2xx', 'ok', 'green'), ('3xx', '3xx', 'blue'), ('401', '401', 'darkblue'), ('403', '403', 'purple'), ('404', '404', 'orange'), ('429', '429', 'darkred'), ('499', '499', 'grey'), ('4xx', '4xx', 'gold'), ('5xx', 'error', 'red')]}, {'name': 'ecstatic-coordinator: /postdl', 'metric': 'ecstatic-coordinator_/postdl', 'timings': [100, 250, 500, 1000, 2000], 'codes': [('2xx', 'ok', 'green'), ('3xx', '3xx', 'blue'), ('401', '401', 'darkblue'), ('403', '403', 'purple'), ('404', '404', 'orange'), ('429', '429', 'darkred'), ('499', '499', 'grey'), ('4xx', '4xx', 'gold'), ('5xx', 'error', 'red')]}, {'name': 'ecstatic-coordinator: /postdl_failed', 'metric': 'ecstatic-coordinator_/postdl_failed', 'timings': [100, 250, 500, 1000, 2000], 'codes': [('2xx', 'ok', 'green'), ('3xx', '3xx', 'blue'), ('401', '401', 'darkblue'), ('403', '403', 'purple'), ('404', '404', 'orange'), ('429', '429', 'darkred'), ('499', '499', 'grey'), ('4xx', '4xx', 'gold'), ('5xx', 'error', 'red')]}, {'name': 'ecstatic-coordinator: /postdl_started', 'metric': 'ecstatic-coordinator_/postdl_started', 'timings': [100, 250, 500, 1000, 2000], 'codes': [('2xx', 'ok', 'green'), ('3xx', '3xx', 'blue'), ('401', '401', 'darkblue'), ('403', '403', 'purple'), ('404', '404', 'orange'), ('429', '429', 'darkred'), ('499', '499', 'grey'), ('4xx', '4xx', 'gold'), ('5xx', 'error', 'red')]}, {'name': 'ecstatic-coordinator: /remove', 'metric': 'ecstatic-coordinator_/remove', 'timings': [100, 250, 500, 1000, 2000], 'codes': [('2xx', 'ok', 'green'), ('3xx', '3xx', 'blue'), ('401', '401', 'darkblue'), ('403', '403', 'purple'), ('404', '404', 'orange'), ('429', '429', 'darkred'), ('499', '499', 'grey'), ('4xx', '4xx', 'gold'), ('5xx', 'error', 'red')]}, {'name': 'ecstatic-coordinator: /replication_config', 'metric': 'ecstatic-coordinator_/replication_config', 'timings': [100, 250, 500, 1000, 2000], 'codes': [('2xx', 'ok', 'green'), ('3xx', '3xx', 'blue'), ('401', '401', 'darkblue'), ('403', '403', 'purple'), ('404', '404', 'orange'), ('429', '429', 'darkred'), ('499', '499', 'grey'), ('4xx', '4xx', 'gold'), ('5xx', 'error', 'red')]}, {'name': 'ecstatic-coordinator: /reset_errors', 'metric': 'ecstatic-coordinator_/reset_errors', 'timings': [100, 250, 500, 1000, 2000], 'codes': [('2xx', 'ok', 'green'), ('3xx', '3xx', 'blue'), ('401', '401', 'darkblue'), ('403', '403', 'purple'), ('404', '404', 'orange'), ('429', '429', 'darkred'), ('499', '499', 'grey'), ('4xx', '4xx', 'gold'), ('5xx', 'error', 'red')]}, {'name': 'ecstatic-coordinator: /retire', 'metric': 'ecstatic-coordinator_/retire', 'timings': [100, 250, 500, 1000, 2000], 'codes': [('2xx', 'ok', 'green'), ('3xx', '3xx', 'blue'), ('401', '401', 'darkblue'), ('403', '403', 'purple'), ('404', '404', 'orange'), ('429', '429', 'darkred'), ('499', '499', 'grey'), ('4xx', '4xx', 'gold'), ('5xx', 'error', 'red')]}, {'name': 'ecstatic-coordinator: /self_fqdn', 'metric': 'ecstatic-coordinator_/self_fqdn', 'timings': [100, 250, 500, 1000, 2000], 'codes': [('2xx', 'ok', 'green'), ('3xx', '3xx', 'blue'), ('401', '401', 'darkblue'), ('403', '403', 'purple'), ('404', '404', 'orange'), ('429', '429', 'darkred'), ('499', '499', 'grey'), ('4xx', '4xx', 'gold'), ('5xx', 'error', 'red')]}, {'name': 'ecstatic-coordinator: /step_in', 'metric': 'ecstatic-coordinator_/step_in', 'timings': [100, 250, 500, 1000, 2000], 'codes': [('2xx', 'ok', 'green'), ('3xx', '3xx', 'blue'), ('401', '401', 'darkblue'), ('403', '403', 'purple'), ('404', '404', 'orange'), ('429', '429', 'darkred'), ('499', '499', 'grey'), ('4xx', '4xx', 'gold'), ('5xx', 'error', 'red')]}, {'name': 'ecstatic-coordinator: /switch_failed', 'metric': 'ecstatic-coordinator_/switch_failed', 'timings': [100, 250, 500, 1000, 2000], 'codes': [('2xx', 'ok', 'green'), ('3xx', '3xx', 'blue'), ('401', '401', 'darkblue'), ('403', '403', 'purple'), ('404', '404', 'orange'), ('429', '429', 'darkred'), ('499', '499', 'grey'), ('4xx', '4xx', 'gold'), ('5xx', 'error', 'red')]}, {'name': 'ecstatic-coordinator: /torrents', 'metric': 'ecstatic-coordinator_/torrents', 'timings': [100, 250, 500, 1000, 2000], 'codes': [('2xx', 'ok', 'green'), ('3xx', '3xx', 'blue'), ('401', '401', 'darkblue'), ('403', '403', 'purple'), ('404', '404', 'orange'), ('429', '429', 'darkred'), ('499', '499', 'grey'), ('4xx', '4xx', 'gold'), ('5xx', 'error', 'red')]}, {'name': 'ecstatic-coordinator: /tracker/announce', 'metric': 'ecstatic-coordinator_/tracker/announce', 'timings': [100, 250, 500, 1000, 2000], 'codes': [('2xx', 'ok', 'green'), ('3xx', '3xx', 'blue'), ('401', '401', 'darkblue'), ('403', '403', 'purple'), ('404', '404', 'orange'), ('429', '429', 'darkred'), ('499', '499', 'grey'), ('4xx', '4xx', 'gold'), ('5xx', 'error', 'red')]}, {'name': 'ecstatic-coordinator: /upload', 'metric': 'ecstatic-coordinator_/upload', 'timings': [100, 250, 500, 1000, 2000], 'codes': [('2xx', 'ok', 'green'), ('3xx', '3xx', 'blue'), ('401', '401', 'darkblue'), ('403', '403', 'purple'), ('404', '404', 'orange'), ('429', '429', 'darkred'), ('499', '499', 'grey'), ('4xx', '4xx', 'gold'), ('5xx', 'error', 'red')]}, {'name': 'ecstatic-coordinator: /versions', 'metric': 'ecstatic-coordinator_/versions', 'timings': [100, 250, 500, 1000, 2000], 'codes': [('2xx', 'ok', 'green'), ('3xx', '3xx', 'blue'), ('401', '401', 'darkblue'), ('403', '403', 'purple'), ('404', '404', 'orange'), ('429', '429', 'darkred'), ('499', '499', 'grey'), ('4xx', '4xx', 'gold'), ('5xx', 'error', 'red')]}] %>
+<% set handles_end = handles_end | int if handles_end else None %>
+<% set handles_begin = handles_begin | default(0) | int %>
+<% set handles_slice = all_handles[handles_begin : handles_end] %>
+<% if handles_slice %>
+    {
+        "type": "text",
+        "text": "Handles",
+        <<main_layout.coords(width=6, height=1)>>
+    },
+<% endif %>
+<% for handle in handles_slice %>
+        <% set sub_layout = main_layout.sub('horizontal', default_width=3, default_height=1) %>
+        {
+            "type": "graphic",
+            <<sub_layout.coords()>>,
+            "minValue": 0,
+            "title": "<<handle.name>> RPS codes",
+            "signals": [
+                <% for code, suf, color in handle.codes %>
+                {
+                    "title": "<<code>>",
+                    "color": "<<color>>",
+                    "tag": "itype=maps;ctype=prestable,stable;prj=maps-core-ecstatic-coordinator<<geo_tag>>",
+                    "host": "<<host>>",
+                    "name": "roquefort-<<handle.metric>>_<<suf>>_ammv"
+                },
+                <% endfor %>
+            ],
+            "consts": []
+        },
+        {
+            "type": "graphic",
+            <<sub_layout.coords()>>,
+            "title": "<<handle.name>> timings",
+            "signals": [
+                <% for timing_or_quantile in (handle.timings if not timings_quantiled else [99, 98, 95, 90, 50])%>
+                {
+                    "tag": "itype=maps;ctype=prestable,stable;prj=maps-core-ecstatic-coordinator<<geo_tag>>",
+                    "host": "<<host>>",
+                    <%- if timings_quantiled %>
+                    "title": "<<timing_or_quantile>> percentile",
+                    "name": "quant(roquefort-<<handle.metric>>_request_timings_ahhh,<<timing_or_quantile>>)"
+                    <%- else %>
+                    "title": "<<timing_or_quantile>> ms",
+                    "name": "hperc(roquefort-<<handle.metric>>_request_timings_ahhh,0,<<timing_or_quantile>>)"
+                    <% endif %>
+                },
+                <% endfor %>
+            ],
+            "consts": []
+        },
+<% endfor %>
+    ]
+}

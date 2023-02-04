@@ -1,0 +1,39 @@
+#!/usr/bin/env python2
+import logging
+import sys
+import time
+
+import click
+import cx_Oracle
+
+log = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
+
+
+def db_is_up(dsn, user, password):
+    try:
+        cx_Oracle.connect(dsn=dsn, user=user, password=password)
+        return True
+    except cx_Oracle.DatabaseError as e:
+        log.info('DB is not ready')
+        log.debug(e)
+        return False
+
+
+@click.command()
+@click.option('--user')
+@click.option('--password')
+@click.option('--dsn')
+@click.option('--wait-sec', default=300)
+def main(dsn, user, password, wait_sec, retry_sec=5):
+    for i in range(0, wait_sec, retry_sec):
+        if db_is_up(dsn=dsn, user=user, password=password):
+            sys.exit(0)
+        time.sleep(retry_sec)
+
+    log.error('Could not wait for DB to be up')
+    sys.exit(1)
+
+
+if __name__ == '__main__':
+    main()

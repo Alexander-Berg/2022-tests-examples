@@ -1,0 +1,40 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - keepclean
+      groups: []
+labels:
+  order: '10000000'
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      uri: "/(api(-slb)?|v1)(/.*)?"
+  modules:
+    - rewrite:
+        actions:
+          - regexp: "/v1(/.*)?"
+            rewrite: "/api%1"
+    - threshold:
+        lo_bytes: 524288
+        hi_bytes: 1048576
+        pass_timeout: 9s
+        recv_timeout: 1s
+    - headers:
+        create_func_weak:
+          X-Forwarded-For-Y: realip
+    - stats_eater: {}
+    - balancer2:
+        attempts: 2
+        active:
+          delay: '10s'
+          request: 'GET /ping HTTP/1.1\r\nHost: juggler-testing-api.search.yandex.net\r\n\r\n'
+        generated_proxy_backends:
+          proxy_options:
+            backend_timeout: 75s
+            connect_timeout: 100ms
+            fail_on_5xx: false
+          include_backends:
+            type: BY_ID
+            ids: [apiv1]

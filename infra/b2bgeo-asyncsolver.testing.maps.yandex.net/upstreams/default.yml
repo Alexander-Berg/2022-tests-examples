@@ -1,0 +1,57 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - robot-maps-sandbox
+      groups:
+      - svc_maps-b2bgeo-asyncsolver
+      - svc_maps-infra
+      - svc_vops_maps
+      - svc_maps-duty-b2bgeo
+labels:
+  balancer_deployer_commit_id: '9401790'
+  balancer_deployer_sign: 925b298d692374ebe937e89b9b5dcf4c
+  order: '99999999'
+---
+regexp_section:
+  matcher: {}
+  modules:
+    - report:
+        uuid: 'default'
+        ranges: default
+    - threshold:
+        lo_bytes: 734003
+        hi_bytes: 838860
+        pass_timeout: 10s
+        recv_timeout: 1s
+    - headers:
+        append_func:
+          X-Forwarded-For: realip
+        create_func_weak:
+          X-Real-IP: realip
+          X-Source-Port-Y: realport
+          X-Yandex-Ja3: ja3
+        create:
+          Host: 'b2bgeo-asyncsolver.testing.maps.yandex.net'
+          X-Ya-Backend-Timeout-Ms: '120000'
+    - balancer2:
+        attempts: 3
+        active:
+          steady: true
+          delay: '10s'
+          request: 'GET /ping HTTP/1.1\nHost: b2bgeo-asyncsolver.testing.maps.yandex.net\r\n\r\n'
+        attempts_rate_limiter:
+          limit: 0.34
+        generated_proxy_backends:
+          proxy_options:
+            connect_timeout: 70ms
+            backend_timeout: 120s
+            keepalive_count: 100
+            fail_on_5xx: true
+          include_backends:
+            type: BY_ID
+            ids: [maps_b2bgeo_asyncsolver_testing_sas,maps_b2bgeo_asyncsolver_testing_vla]
+        on_error:
+          errordocument:
+            status: 504
+            content: "Service unavailable"

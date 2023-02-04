@@ -1,0 +1,42 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - astandrik
+      groups: []
+labels:
+  order: '10000000'
+config_mode: easy2
+---
+l7_upstream_macro:
+  flat_scheme:
+    backend_ids:
+    # - maps-front-booking-int_testing_man
+    - maps-front-booking-int_testing_sas
+    - maps-front-booking-int_testing_vla
+    balancer:
+      attempts: 2
+      backend_timeout: 5s
+      connect_timeout: 0.5s
+      health_check:
+        delay: 5s
+        request: 'GET /ping HTTP/1.1\nHost: front-testing.slb.maps.yandex.net\nUser-agent:
+          l7-balancer\n\n'
+      max_pessimized_endpoints_share: 0.5
+      max_reattempts_share: 0.2
+      retry_http_responses:
+        codes:
+        - 5xx
+    on_error:
+      static:
+        content: Service unavailable
+        status: 504
+  id: maps-front-booking-int
+  matcher:
+    host_re: booking-int.tst.c.maps.yandex.net
+  rewrite:
+  - pattern:
+      re: /v1/takeout(.*)?
+    replacement: /404
+    target: PATH
+  version: 0.2.0

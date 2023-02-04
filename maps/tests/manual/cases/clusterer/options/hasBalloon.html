@@ -1,0 +1,200 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Кластер: отключаем опции открытия балуна
+
+Description:
+Проверка отключения опции открытия балуна.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+clusterer
+
+Estimated time:
+90000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан Северо-Западного региона России и части европейских стран.
+  В районе Санкт-Петербурга кластерные метки.
+  Сверху слева кнопки "object balloon", "disable balloon".
+
+Step:
+  Action:
+  Скролом мыши выполнить призум карты на три значения.
+
+  Expectation:
+  Происходит корректный призум карты. Метки кластеров распадаются на кластеры с меньшим значением, метки коллекций.
+
+Step:
+  Action:
+  Выполнить клик в метку кластера.
+
+  Expectation:
+  Вместо метки кластера на спане карты открывается балун, спан карты смещается для открытия балуна.
+  В балуне две колонки: в левой список меток, в правой отображается заголовок и содержимое метки(номер метки).
+
+Step:
+  Action:
+  Выполнить клик в метку коллекции.
+
+  Expectation:
+  Предыдущий балун кластера закрывается, на спане снова метка кластера.
+  Вместо метки коллекции открывается балун, спан карты может сместится для открытия балуна.
+  В балуне номер метки.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "object balloon".
+  Выполнить клик в метку коллекции.
+
+  Expectation:
+  Предыдущий балун метки закрылся, на спане метка коллекции.
+  Под контейнером с картой текст: "geoObjectHasBalloon: false".
+  При клике в метку коллекции балун не открывается, спан карты без изменений.
+
+Step:
+  Action:
+  Выполнить клик в метку кластера.
+
+  Expectation:
+  Вместо метки кластера на спане карты открывается балун, спан карты смещается для открытия балуна.
+  В балуне две колонки: в левой список меток, в правой отображается заголовок и содержимое метки(номер метки).
+
+Step:
+  Action:
+  Выполнить клик в кнопку "object balloon".
+  Выполнить клик в кнопку "disable balloon".
+  Выполнить клик в метку кластера.
+
+  Expectation:
+  Предыдущий балун метки закрылся, на спане метка коллекции.
+  После клика в "object balloon" под контейнером с картой текст: "geoObjectHasBalloon: true".
+  После клика в кнопку "disable balloon" под контейнером с картой: "hasBalloon: false".
+  При клике в метку кластера балун не открывается, спан карты без изменений.
+
+Step:
+  Action:
+  Выполнить клик в метку коллекции.
+
+  Expectation:
+  Вместо метки коллекции открывается балун, спан карты может сместится для открытия балуна.
+  В балуне номер метки.
+-->
+<html>
+<head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script src="https://yandex.st/jquery/1.6.4/jquery.min.js" type="text/javascript"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            var map = myMap = new ymaps.Map('map', {
+                center: [59.96343157514998, 30.317977733422868],
+                zoom: 7,
+                // Добавим к стандартным поведениям карты зум колесом мыши.
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+
+            log.info('Placemarks and clusters have to have balloons by default.');
+            log.info('Buttons change option "hasBalloon" in clusterer and geoobjects');
+
+            var clusterer = new ymaps.Clusterer({
+                preset: 'islands#redClusterIcons',
+                disableClickZoom: true,
+                clusterBalloonContentLayoutHeight: 200,
+                clusterBalloonContentLayoutWidth: 200
+            });
+            var i = 0;
+            var placemarksNumber = 200;
+            var bounds = myMap.getBounds();
+            var newPlacemarks = createGeoObjects(placemarksNumber, bounds);
+
+            map.geoObjects.add(clusterer);
+            clusterer.add(newPlacemarks);
+
+            var balloonButton = new ymaps.control.Button({data: {content: 'disable balloon'}, options: {
+                selectOnClick: true,
+                maxWidth: 160
+            }});
+
+            var geoBalloonButton = new ymaps.control.Button({data: {content: 'object balloon'}, options: {
+                selectOnClick: true,
+                maxWidth: 160
+            }});
+
+            balloonButton.events
+                    .add('select', function () {
+                        clusterer.options.set('hasBalloon', false);
+                        log.info('hasBalloon: ' + clusterer.options.get('hasBalloon'))
+                    })
+                    .add('deselect', function () {
+                        clusterer.options.set('hasBalloon', true);
+                        log.info('hasBalloon: ' + clusterer.options.get('hasBalloon'))
+                    });
+
+            geoBalloonButton.events
+                    .add('select', function () {
+                        clusterer.options.set('geoObjectHasBalloon', false);
+                        log.info('geoObjectHasBalloon: ' + clusterer.options.get('geoObjectHasBalloon'))
+                    })
+                    .add('deselect', function () {
+                        clusterer.options.set('geoObjectHasBalloon', true);
+                        log.info('geoObjectHasBalloon: ' + clusterer.options.get('geoObjectHasBalloon'))
+                    });
+
+            myMap.controls
+                    .add(balloonButton, {top: 5, left: 5})
+                    .add(geoBalloonButton, {top: 5, left: 5});
+
+            // change map zoom
+            setTimeout(function () {
+                map.setZoom(4)
+            }, 1000);
+
+            function createGeoObjects(number, bounds) {
+                var placemarks = [];
+                // Создаем нужное количество меток
+                for (var i = 0; i < number; i++) {
+                    // Генерируем координаты метки случайным образом.
+                    coordinates = getRandomCoordinates(bounds);
+                    // Создаем метку со случайными координатами.
+                    if (Math.random() > 0.5) {
+                        myPlacemark = new ymaps.Placemark(coordinates, {
+                            balloonContent: i, hintContent: i, clusterCaption: i}, {});
+                    } else {
+                        myPlacemark = new ymaps.Placemark(coordinates, {
+                            balloonContent: i, hintContent: i, iconContent: 'point', clusterCaption: 'point ' + i}, {preset: 'islands#greenStretchyIcon'});
+                    }
+                    placemarks.push(myPlacemark);
+                }
+                return placemarks;
+            }
+
+            function getRandomCoordinates(bounds) {
+                var size = [bounds[1][0] - bounds[0][0], bounds[1][1] - bounds[0][1]];
+                return [Math.random() * size[0] + bounds[0][0], Math.random() * size[1] + bounds[0][1]];
+            }
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

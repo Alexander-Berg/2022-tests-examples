@@ -1,0 +1,35 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - azhakov
+      groups: []
+labels:
+  order: '10000000'
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      uri: '/v1/rubrics/suggest(.*)?'
+  modules:
+    - rewrite:
+        actions:
+          - regexp: '/v1/rubrics/suggest'
+            rewrite: '/external/v1/rubrics/suggest'
+    - report:
+        uuid: api
+        ranges: default
+    - balancer2:
+        attempts: 3
+        attempts_rate_limiter:
+          limit: 0.3
+        weighted2: {}
+        generated_proxy_backends:
+          proxy_options:
+            backend_timeout: 10s
+            connect_timeout: 70ms
+            keepalive_count: 0
+            fail_on_5xx: true
+          include_backends:
+            type: BY_ID
+            ids: [public-api-testing-deploy]

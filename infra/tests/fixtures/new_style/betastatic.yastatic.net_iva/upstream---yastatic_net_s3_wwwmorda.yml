@@ -1,0 +1,78 @@
+---
+regexp_path_section:
+  pattern: '/(www|morda)/_(/.*)?'
+  modules:
+    - report:
+        uuid: 'yastatic_net_s3_wwwmorda'
+        ranges: 'default'
+        matcher_map:
+            'www':
+                match_fsm:
+                    path: '/www.*'
+            'morda':
+                match_fsm:
+                    path: '/morda.*'
+    - response_headers:
+        delete:
+            'aw_info|aw_info2'
+        create:
+            Cache-Control: 'public, immutable'
+            Access-Control-Allow-Origin: '*'
+            Timing-Allow-Origin: '*'
+            Strict-Transport-Security: 'max-age=43200000; includeSubDomains;'
+    - headers:
+         create:
+            'Host': 'yastatic.s3.yandex.net'
+    - regexp:
+        sections:
+          br_section:
+              matcher:
+                match_and:
+                - match_fsm:
+                    path: '.*(\\.js|\\.css|\\.svg)'
+                - match_fsm:
+                    header:
+                      name: 'accept-encoding'
+                      value: '(.*,\\s*|)br(\\s*;\\s*q\\s*=\\s*(1|0\\.0*[1-9]).*|\\s*,.*|)'
+              modules:
+              - rewrite:
+                  actions:
+                    - regexp: '([^\\?]+)(.*)'
+                      rewrite: '%1.br'
+              - response_headers:
+                  create:
+                    Content-Encoding: br
+              - shared:
+                  uuid: 'yastatic_net_s3_wwwmorda_common'
+          gzip_section:
+              matcher:
+                match_and:
+                - match_fsm:
+                    path: '.*(\\.js|\\.css|\\.svg)'
+                - match_fsm:
+                    header:
+                      name: 'accept-encoding'
+                      value: '(.*,\\s*|)gzip(\\s*;\\s*q\\s*=\\s*(1|0\\.0*[1-9]).*|\\s*,.*|)'
+              modules:
+              - rewrite:
+                  actions:
+                    - regexp: '([^\\?]+)(.*)'
+                      rewrite: '%1.gz'
+              - response_headers:
+                  create:
+                    Content-Encoding: gzip
+              - shared:
+                  uuid: 'yastatic_net_s3_wwwmorda_common'
+          default:
+              matcher: {}
+              modules:
+              - shared:
+                  uuid: 'yastatic_net_s3_wwwmorda_common'
+              - headers:
+                  delete:
+                    'authorization|accept-encoding'
+              - response_headers:
+                    create:
+                        Cache-Control: 'public, max-age=216013'
+              - shared:
+                    uuid: 'yastatic_s3_cryprox_test_shared'

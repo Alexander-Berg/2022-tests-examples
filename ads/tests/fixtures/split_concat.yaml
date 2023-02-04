@@ -1,0 +1,147 @@
+inputs:
+  - x1: {type: dense, shape: [null, 8]}
+  - x2: {type: dense, shape: [null, 4]}
+  - x3: {type: dense, shape: [null, 12]}
+  - multidim: {type: dense, shape: [null, 12, 6]}
+
+subnetworks:
+  # this concat with 1 and 1.0 is the only corner case when we could go into ambiguity
+  # (which branch to choose - int or float?). However, for this corner case, they are equivalent
+
+  concat_float:
+    sequential:
+      - branch:
+          - input: x1
+          - input: x2
+          - input: x3
+      - split_concat:
+          proportions: [1.0]
+
+  concat_int:
+    sequential:
+      - branch:
+          - input: x1
+          - input: x2
+          - input: x3
+      - split_concat:
+          proportions: [1]
+
+  # non-trivial
+
+  split_float:
+    sequential:
+      - branch:
+          - input: x1
+          - input: x2
+          - input: x3
+      - split_concat:
+          proportions: [0.7, 0.3]
+
+  split_float_four:
+    sequential:
+      - branch:
+          - input: x1
+          - input: x2
+          - input: x3
+      - split_concat:
+          proportions: [0.7, 0.1, 0.1, 0.1]
+
+  split_int:
+    sequential:
+      - branch:
+          - input: x1
+          - input: x2
+          - input: x3
+      - split_concat:
+          proportions: [3, 1]
+
+  # errors
+
+  split_int_not_divisible:
+    sequential:
+      - branch:
+          - input: x1
+          - input: x2
+          - input: x3
+      - split_concat:
+          proportions: [5, 1]
+
+  split_float_proportion_sum:
+    sequential:
+      - branch:
+          - input: x1
+          - input: x2
+          - input: x3
+      - split_concat:
+          proportions: [0.7, 0.2]
+
+  split_type_mixture:
+    sequential:
+      - branch:
+          - input: x1
+          - input: x2
+          - input: x3
+      - split_concat:
+          proportions: [0.7, 2]
+
+  split_negative_int:
+    sequential:
+      - branch:
+          - input: x1
+          - input: x2
+          - input: x3
+      - split_concat:
+          proportions: [2, -1, 5]
+
+  split_zero_int:
+    sequential:
+      - branch:
+          - input: x1
+          - input: x2
+          - input: x3
+      - split_concat:
+          proportions: [2, 0, 5]
+
+  split_negative_float:
+    sequential:
+      - branch:
+          - input: x1
+          - input: x2
+          - input: x3
+      - split_concat:
+          proportions: [0.7, -0.2, 0.5]
+
+  split_zero_float:
+    sequential:
+      - branch:
+          - input: x1
+          - input: x2
+          - input: x3
+      - split_concat:
+          proportions: [0.7, 0., 0.3]
+
+  split_string_in_argument_list:
+    sequential:
+      - branch:
+          - input: x1
+          - input: x2
+          - input: x3
+      - split_concat:
+          proportions: ["0.1", "0.9"]
+
+  split_string_argument:
+    sequential:
+      - branch:
+          - input: x1
+          - input: x2
+          - input: x3
+      - split_concat:
+          proportions: "1.0"
+
+  split_unconcatable:
+    sequential:
+      - branch:
+          - input: x3
+          - input: multidim
+      - split_concat:
+          proportions: [1, 2]

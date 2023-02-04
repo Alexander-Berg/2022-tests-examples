@@ -1,0 +1,250 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - juver
+      groups: []
+labels:
+  order: '10000000'
+---
+regexp_section:
+  matcher:
+    match_or:
+      - match_fsm: {
+          path: '/(video/[0-9]+|video|video/touch.*|video/pad.*|video/search.*|video/preview.*|video/p/.*|video/result.*|video/%D0%B7%D0%B0%D0%BF%D1%80%D0%BE%D1%81.*|video/tv.*|video/tvapp.*|video/db)/?'
+      }
+  modules:
+    - rewrite:
+        actions: 
+          - regexp: '/video/p/(.*)'
+            split: 'path'
+            rewrite: '/video/preview/%1'
+    - rewrite:
+        actions:
+          - regexp: '(.*)targetDeepsearch=1(.*)'
+            split: 'cgi'
+            rewrite: '%1targetDeepsearch=1%2&timeout=2000000&waitall=da'
+    - report:
+        uuid: video_main
+        ranges: default
+    - rps_limiter_macro: 
+        record_name: video_test
+        installation: COMMON_V2
+    - geobase_macro:
+        version: 0.0.3
+    - exp_getter_macro:
+        _version: 3
+        service_name: video
+        exp_headers: 'X-Yandex-LogstatUID|X-Yandex-ExpSplitParams'
+    - shared:
+        uuid: video_requests_to_video_backend
+    - request_replier:
+        rate_file: './controls/request_replier_video_api.ratefile'
+        sink:
+          modules:
+            - balancer2:
+                simple_policy: {}
+                rr: {}
+                attempts: 2
+                connection_attempts: 3
+                attempts_rate_limiter:
+                  limit: 0.2 
+                generated_proxy_backends:
+                  proxy_options:
+                    backend_timeout: 10s
+                  instances:
+                    - weight: 1
+                      host: sinkadm.priemka.yandex.ru
+                      port: 80
+    - headers_hasher:
+        header_name: X-Yandex-LogstatUID
+        randomize_empty_match: true
+    - regexp:
+        sections:
+          light_apache:
+            matcher: 
+              match_fsm: { header: { name: 'X-Yandex-ExpBoxes', value: '.*249833,.*' } }
+            modules:
+              - report:
+                  uuid: video_main_report
+                  ranges: default
+                  output_size_ranges: "512,1024,4096,8192,16384,36384,56384,66384,76384,86384,96384,106384,124288,224288,324288,424288,524288,624288,724288,824288"
+              - balancer2:
+                  attempts: 2                
+                  connection_attempts: 3
+                  attempts_file: ./controls/video.attempts
+                  rr: {weights_file: ./controls/production.weights}
+                  by_hash_policy:
+                    unique_policy: {}
+                  on_error:
+                    modules:
+                      - report: {ranges: default, uuid: video_requests_to_onerror}
+                      - balancer2:
+                          attempts: 2
+                          connection_attempts: 2
+                          attempts_rate_limiter:
+                            limit: 0.2 
+                          rr: {}
+                          generated_proxy_backends:
+                            proxy_options:
+                              backend_timeout: 10s
+                            include_backends:
+                              type: BY_ID
+                              ids: [video_pumpkin]
+                  backends:
+                    - weight: 1
+                      name: vla_video_hamster
+                      modules:
+                        - report: {ranges: default, uuid: video_requests_to_vla}
+                        - balancer2:
+                            attempts: 2
+                            connection_attempts: 2
+                            attempts_file: './controls/attempts.count'
+                            attempts_rate_limiter: {
+                              limit: 0.1
+                            }
+                            dynamic: {
+                              max_pessimized_share: 0.1,
+                              min_pessimization_coeff: 0.1,
+                              weight_increase_step: 0.1,
+                              history_interval: "10s",
+                              backends_name: "default_requests_to_vla",
+                            }
+                            generated_proxy_backends:
+                              proxy_options:
+                                backend_timeout: 10s
+                              include_backends:
+                                type: BY_ID
+                                ids: [vla_video_hamster]
+                    - weight: 1
+                      name: sas_video_hamster
+                      modules:
+                        - report: {ranges: default, uuid: video_requests_to_sas}
+                        - balancer2:
+                            attempts: 2
+                            connection_attempts: 2
+                            attempts_file: './controls/attempts.count'
+                            attempts_rate_limiter: {
+                              limit: 0.1
+                            }
+                            rr: {}
+                            generated_proxy_backends:
+                              proxy_options:
+                                backend_timeout: 10s
+                              include_backends:
+                                type: BY_ID
+                                ids: [sas_video_hamster]
+                    - weight: 1
+                      name: man_video_hamster
+                      modules:
+                        - report: {ranges: default, uuid: video_requests_to_man}
+                        - balancer2:
+                            attempts: 2
+                            connection_attempts: 2
+                            attempts_file: './controls/attempts.count'
+                            attempts_rate_limiter: {
+                              limit: 0.1
+                            }
+                            rr: {}
+                            generated_proxy_backends:
+                              proxy_options:
+                                backend_timeout: 10s
+                              include_backends:
+                                type: BY_ID
+                                ids: [man_video_hamster]
+                    - weight: -1
+                      name: video_pumpkin
+                      modules:
+                        - report: {ranges: default, uuid: video_requests_to_pumpkin}
+                        - balancer2:
+                            attempts: 2
+                            connection_attempts: 2
+                            attempts_rate_limiter:
+                              limit: 0.2 
+                            rr: {}
+                            generated_proxy_backends:
+                              proxy_options:
+                                backend_timeout: 10s
+                              include_backends:
+                                type: BY_ID
+                                ids: [video_pumpkin]
+                    - weight: -1
+                      name: video_devnull
+                      modules:
+                        - report: {ranges: default, uuid: video_requests_to_devnull}
+                        - errordocument:
+                            status: 204
+          default:
+            matcher: {}
+            modules:
+              - report:
+                  uuid: video_main_apphost
+                  ranges: default
+                  output_size_ranges: "512,1024,4096,8192,16384,36384,56384,66384,76384,86384,96384,106384,124288,224288,324288,424288,524288,624288,724288,824288"
+              - balancer2:
+                  attempts: 2
+                  attempts_file: ./controls/video_api.attempts
+                  rr: {weights_file: ./controls/production.weights}
+                  by_hash_policy:
+                    unique_policy: {}
+                  backends:
+                    - weight: 1
+                      name: video_yp_sas
+                      modules:
+                        - report: {ranges: default, uuid: video_apphost_yp_sas}
+                        - balancer2:
+                            attempts: 2
+                            connection_attempts: 2
+                            attempts_file: './controls/attempts.count'
+                            attempts_rate_limiter: {
+                              limit: 0.1
+                            }
+                            rr: {}
+                            generated_proxy_backends:
+                              proxy_options:
+                                backend_timeout: 10s
+                              include_backends:
+                                type: BY_ID
+                                ids: [video_apphost_yp_sas]
+                    - weight: 1
+                      name: video_yp_man
+                      modules:
+                        - report: {ranges: default, uuid: video_apphost_yp_man}
+                        - balancer2:
+                            attempts: 2
+                            connection_attempts: 2
+                            attempts_file: './controls/attempts.count'
+                            attempts_rate_limiter: {
+                              limit: 0.1
+                            }
+                            rr: {}
+                            generated_proxy_backends:
+                              proxy_options:
+                                backend_timeout: 10s
+                              include_backends:
+                                type: BY_ID
+                                ids: [video_apphost_yp_man]
+                    - weight: 1
+                      name: video_yp_vla
+                      modules:
+                        - report: {ranges: default, uuid: video_apphost_yp_vla}
+                        - balancer2:
+                            attempts: 2
+                            connection_attempts: 2
+                            attempts_file: './controls/attempts.count'
+                            attempts_rate_limiter: {
+                              limit: 0.1
+                            }
+                            rr: {}
+                            generated_proxy_backends:
+                              proxy_options:
+                                backend_timeout: 10s
+                              include_backends:
+                                type: BY_ID
+                                ids: [video_apphost_yp_vla]
+                    - weight: -1
+                      name: video_devnull
+                      modules:
+                        - report: {ranges: default, uuid: video_api_requests_to_devnull}
+                        - errordocument:
+                            status: 204

@@ -1,0 +1,110 @@
+<!DOCTYPE HTML>
+<!--(skip)(description)
+-->
+<!--(version)
+-->
+<!--(commands)
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../helper.js"></script>
+    <script src="https://yandex.st/jquery/1.8.0/jquery.min.js" type="text/javascript"></script>
+    <script type=text/javascript>
+
+        Api("", "package.full,yandex.layer.poi", "tr_Tr");
+
+        function init(ymaps) {
+            //ymaps = ym;
+            var map = myMap = new ymaps.Map('map', {
+                center: [41.015917, 28.962240],
+                zoom: 14,
+                controls: ['typeSelector', 'fullscreenControl']
+            }, {
+                yandexMapDisablePoiInteractivity: false
+            });
+            addGrid(myMap);
+            __log__("Test case: validate value. ");
+
+            var poiManager = ymaps.yandex.layer.poi.get(map);
+
+            validateValue(poiManager.getHostpotLayerSync(), null);
+
+            poiManager.getHostpotLayer().then(function (poiLayer) {
+                validateValue(poiManager.getHostpotLayerSync(), "[object Object]");
+                poiManager.getHostpotLayerSync().getObjectInPosition([41.01110607716177, 28.983182687988243]).then(function (hotspotObject) {
+                    __log__("Имя: " + hotspotObject.getProperties().name +
+                            " Рубрика: " + hotspotObject.getProperties().rubrics +
+                            " Хинт: " + hotspotObject.getProperties().hint +
+                            " Координаты: " + hotspotObject.getGeometry().coordinates);
+                });
+                poiLayer.getObjectInPosition([41.01110607716177, 28.983182687988243]).then(function (object) {
+                    validateValue(object.getProperties().name, 'Topkapı Sarayı');
+                });
+            }, function (error) {
+                debugger;
+            });
+
+            // same function but with the corrected method name
+            __log__("same tests for the corrected method names:");
+            validateValue(poiManager.getHotspotLayerSync(), null);
+            poiManager.getHotspotLayer().then(function (poiLayer) {
+                validateValue(poiManager.getHotspotLayerSync(), "[object Object]");
+                poiManager.getHotspotLayerSync().getObjectInPosition([41.01110607716177, 28.983182687988243]).then(function (hotspotObject) {
+                    __log__("Имя: " + hotspotObject.getProperties().name +
+                            " Рубрика: " + hotspotObject.getProperties().rubrics +
+                            " Хинт: " + hotspotObject.getProperties().hint +
+                            " Координаты: " + hotspotObject.getGeometry().coordinates);
+                });
+                poiLayer.getObjectInPosition([41.01110607716177, 28.983182687988243]).then(function (object) {
+                    validateValue(object.getProperties().name, 'Topkapı Sarayı');
+                });
+            }, function (error) {
+                debugger;
+            });
+
+
+            var syncButton = new ymaps.control.Button('sync');
+            var asyncButton = new ymaps.control.Button('async');
+            var enablePoiButton = new ymaps.control.Button('DisablePoi');
+
+            syncButton.events
+                    .add('click', function () {
+                        __log__(poiManager.getHostpotLayerSync());
+                        __log__(poiManager.getHotspotLayerSync());
+                    });
+            asyncButton.events
+                    .add('click', function () {
+                        poiManager.getHostpotLayer().then(function (poiLayer) {
+                            __log__(poiLayer);
+                        },function(err) {
+                            __log__("old name promise rejected "+ err.message)
+                        });
+                        poiManager.getHotspotLayer().then(function (poiLayer) {
+                            __log__(poiLayer);
+                        },function(err) {
+                            __log__("new name promise rejected "+ err.message)
+                        });
+                    });
+
+            enablePoiButton.events
+                    .add('select', function () {
+                        map.options.set('yandexMapDisablePoiInteractivity', true);
+                    })
+                    .add('deselect', function () {
+                        map.options.set('yandexMapDisablePoiInteractivity', false);
+                    });
+            map.controls.add(syncButton)
+                    .add(enablePoiButton)
+                    .add(asyncButton);
+
+
+        }
+    </script>
+</head>
+<body>
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

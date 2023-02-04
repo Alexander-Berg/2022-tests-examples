@@ -1,0 +1,46 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - kent
+      groups: []
+labels:
+  order: '10000000'
+config_mode: easy2
+---
+l7_upstream_macro:
+  version: 0.0.1
+  id: room_passport_backend_upstream
+  headers:
+    - create: {target: X-Real-IP, func: realip, keep_existing: false}
+    - create: {target: X-Forwarded-For-Y, func: realip, keep_existing: false}
+  matcher:
+    or_:
+      - path_re: '/admin(/.*)?'
+      - path_re: '/back(/.*)?'
+      - path_re: '/idm(/.*)?'
+      - path_re: '/api(/.*)?'
+  monitoring:
+    uuid: room_passport_backend_upstream
+  by_dc_scheme:
+    dc_balancer:
+      weights_section_id: bygeo
+      method: LOCAL_THEN_BY_DC_WEIGHT
+      attempts: 1
+    balancer:
+      attempts: 2
+      max_reattempts_share: 0.15
+      max_pessimized_endpoints_share: 0.2
+      fast_attempts: 2
+      do_not_retry_http_responses: true
+      retry_non_idempotent: false
+      connect_timeout: 200ms
+      backend_timeout: 120s
+    dcs:
+      - name: sas
+        backend_ids:
+          - room_passport_backend_sas
+    on_error:
+      static:
+        status: 504
+        content: 'Service unavailable'

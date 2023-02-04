@@ -1,0 +1,224 @@
+#!/bin/sh -e
+
+# This script is designed to be triggered by team city agent
+# It checks out specified package to working directory, 
+# builds and uploads it to repository
+
+[ -d "$HOME_DIR" ] || HOME_DIR="/home/buildfarm"
+TEAMCITY="$HOME_DIR/teamcity"
+PACKAGES_DIR="$TEAMCITY/packages-repo"
+MAPSCORE_DIR="$TEAMCITY/mapscore-repo"
+PROJECTS_DIR="$TEAMCITY/projects"
+DUPLOAD_CONF="$HOME_DIR/.dupload.conf"
+
+export EMAIL=buildfarm@yandex-team.ru
+export DEBEMAIL=buildfarm@yandex-team.ru
+export DEBFULLNAME=buildfarm
+
+msg() { echo "$@"; }
+
+die() { echo "build: $*" >&2; exit 1; }
+
+usage() { cat <<__USAGE__ >&2 && exit 1
+Building packages:
+    Build package labeled with git-pkg
+        build <package[=version]>
+    Build package from current master
+        build <package> <path_to_package>
+    Build package from any repository (package would not be uploaded to repository)
+        build <package> <path_to_package> <repository> <branch> <commit>
+Work with shared repositories
+    Init shared repository
+        build --init "repo-with-packages"
+    Remove Shared repository
+        build --remove
+
+__USAGE__
+}
+
+clean_package_dir() {
+    local build_dir
+    build_dir=$1
+    rm -rf "$build_dir" && mkdir -p "$build_dir" && cd "$build_dir"
+}
+
+git_clone() {
+    local git_url dir options
+    git_url=$1
+    dir=$2
+    options=
+    if [ ! -d "$dir" ]; then
+        if [ -n "$3" ]; then
+            options=$3
+        fi
+        umask 000
+        mkdir -p "$dir" && cd "$dir"
+        git clone $options "$git_url" . || die "Cannot clone repo $git_url"
+        if [ -z `git remote` ]; then
+            git remote add origin "$git_url"
+        fi
+    fi
+}
+
+init_shared_repo() {
+    local repo_path
+    repo_path=$1
+    git_clone "$repo_path/packages.git" "$PACKAGES_DIR" "--bare"
+    git_clone "$repo_path/mapscore.git" "$MAPSCORE_DIR"
+    if [ -n "$BEWARE_THIS_IS_A_TEST" ]; then
+        cd "$PACKAGES_DIR" && git_config from_file "$repo_path/mapscore.git/.git/config"
+        cd "$MAPSCORE_DIR" && git_config from_file "$repo_path/mapscore.git/.git/config"
+    fi
+}
+
+clone_project() {
+    local package build_dir package_with_version branch build_subdir
+    package=$1
+    full_package=${2%%=*}
+
+    cd /var/cache/yandex/maps/pkg/cache && git pkg update-cache
+
+    build_dir="$PROJECTS_DIR/$package"
+    branch="refs/heads/pkgs/$package"
+    cd "$PACKAGES_DIR" && git fetch origin "$branch:$branch" || die "Cannot fetch repo"
+    clean_package_dir "$build_dir"
+    git clone -q "$PACKAGES_DIR" -s -n . || die "Cannot perform local copy of repo"
+    if [ -n "$BEWARE_THIS_IS_A_TEST" ]; then
+        git_config from_file "$TEAMCITY/packages-repo/config"
+    fi
+
+    if ! echo "$2" | grep -q '='; then
+        PATH="$PATH:/usr/lib/yandex/maps/build-farm/" package_with_version=`git pkg versions "$package" | grep "$full_package=" | sort_versions.py | head -1`
+    else
+        package_with_version="$2"
+    fi
+
+    git pkg checkout-tree "$package_with_version"
+}
+
+clone_full_repo() {
+    local package build_dir
+    package=$1
+    build_dir="$PROJECTS_DIR/$package"
+    cd "$MAPSCORE_DIR" && git pull origin || die "Cannot pull repo"
+    clean_package_dir "$build_dir"
+    git clone -q "$MAPSCORE_DIR" -s . || die "Cannot perform local copy of repo"
+}
+
+clone_custom_repo() {
+    local package build_dir package_path
+    package=$1
+    repository="$2"
+    branch="$3"
+    commit="$4"
+    build_dir="$PROJECTS_DIR/$package"
+    clean_package_dir "$build_dir"
+    git clone -q --branch="$branch" "$repository" . || die "Cannot clone repo"
+    git checkout "$commit"
+    git config user.name "Buildfarm"
+    git config user.email "buildfarm@yandex-team.ru"
+}
+
+changelog_field() {
+    local value
+    value=`dpkg-parsechangelog | awk -F': ' '$1 == "'"$1"'" { print $2; }'`
+    [ -n "$value" ] || die "There is no field $1 in changelog."
+    echo $value
+}
+
+build_project() {
+    echo "Building package in" `pwd`
+    [ -r debian/changelog -a -r debian/control -a -r debian/rules ] || make bootstrap
+    [ -r debian/changelog -o -r debian/control ] || \
+        die "There are no debian/changelog or debian/control"
+
+    # Add source/format for exclude CVS files
+    [ -r debian/source/format ] || make debian/source/format || die "debian/source/format not found"
+    
+    # Do no updates or checks while testing
+    if [ -z "$BEWARE_THIS_IS_A_TEST" ]; then
+        echo "##teamcity[progressMessage 'Installing dependencies ']"
+        sudo apt-get update > /dev/null || die "Cannot perform apt-get update"
+        sudo /usr/lib/pbuilder/pbuilder-satisfydepends-aptitude || die "Cannot satisfy dependencies"
+    fi
+
+    echo "##teamcity[progressMessage 'Building ']"
+    env -i \
+        PATH=/usr/bin:/bin \
+        BUILD_VERBOSE=yes \
+        USER=$USER \
+        HOME=$HOME \
+        dpkg-buildpackage -j16 \
+        -m$USER@yandex-team.ru \
+        -I.git \
+        `[ -z "$BEWARE_THIS_IS_A_TEST" ] || echo "-us -uc"` || die "Could not build package"
+}
+
+upload_package() {
+    echo "##teamcity[progressMessage 'Uploading ']"
+    local arch version source reponame changes_file changes_message
+    arch=`dpkg-architecture | grep DEB_BUILD_ARCH= | sed 's/.*=//'`
+    version=`changelog_field Version`
+    source=`changelog_field Source`
+    reponame=`perl -le 'do $ARGV[0] or die "cannot read $ARGV[0]: $!"; print $config::default_host' $DUPLOAD_CONF`
+    [ -n "$reponame" ] || die "no repository to upload to"
+    changes_file="${source}_${version}_${arch}.changes"
+    
+    # Do not upload while testing
+    [ -z "$BEWARE_THIS_IS_A_TEST" ] || return 0
+    if [ -n "$DO_NOT_UPLOAD" ] ; then
+        echo "Package has been successfully built. DO_NOT_UPLOAD set: NOT UPLOADING TO REPOSITORY." >&2
+        return 0
+    fi
+    if [ ! `ssh dist.yandex.ru "test -r /repo/$reponame/unstable/$changes_file"` ]; then
+        dupload --nomail "../$changes_file" || die "Cannot dupload package"
+    else
+        echo "WARNING: Upload skipped because package ${source}_${version} is already available"
+    fi
+}
+
+strip_name() {
+    echo "$1" | sed -r 's/[^A-Za-z]+$//'
+}
+
+CMD=$1; shift || usage
+
+if [ "$CMD" = "--init" ]; then
+    repo=$1; shift || usage
+    init_shared_repo "$repo"
+elif [ "$CMD" = "--remove" ]; then
+    rm -rf "$PACKAGES_DIR" "$MAPSCORE_DIR"
+else
+    full_package=$CMD
+
+    package=`strip_name "${CMD%%=*}"`
+    perform_cleanup=""
+    
+    echo "##teamcity[progressMessage 'Checking out GIT ']"
+    if [ -n "$1" ]; then
+        relative_path=$1; shift || usage
+        if [ -n "$1" ]; then
+            repository=$1; shift || usage
+            branch=$1; shift || usage
+            commit=$1; shift || usage
+            clone_custom_repo $package $repository $branch $commit
+            DO_NOT_UPLOAD="y"
+            perform_cleanup="y"
+            path="$relative_path"
+        else
+            clone_full_repo "$package"
+            path="$MAPSCORE_DIR/$relative_path"
+        fi
+        cd "$path" || die "Path to package '$path' doesn't exist"
+    else
+        clone_project "$package" "$full_package"
+    fi
+
+    build_project
+    upload_package
+
+    if [ -n "$perform_cleanup" ] ; then
+        # If build went well do not waste space for custom builds
+        clean_package_dir "$PROJECTS_DIR/$package"
+    fi
+fi

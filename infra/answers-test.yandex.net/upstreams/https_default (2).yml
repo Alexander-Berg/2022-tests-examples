@@ -1,0 +1,41 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - anoh
+      - keepclean
+      groups: []
+labels:
+  order: '10000000'
+---
+regexp_section:
+  matcher: {}
+  modules:
+    - threshold:
+        lo_bytes: 262144
+        hi_bytes: 419430
+        pass_timeout: 10s
+        recv_timeout: 2s
+    - shared:
+        uuid: backends
+    - balancer2:
+        attempts: 2
+        rr: {weights_file: ./controls/traffic_control.weights}
+        backends:
+        - weight: 1
+          name: answers_man
+          modules:
+            - report: {ranges: default, uuid: requests_nodejs_to_man}
+            - balancer2:
+                attempts: 3
+                weighted2: {}
+                generated_proxy_backends:
+                  proxy_options:
+                    backend_timeout: 5s
+                    connect_timeout: 100ms
+                  include_backends:
+                    type: BY_ID
+                    ids: [answers_nodejs_man]
+                on_error:
+                  modules:
+                  - errordocument: {content: "Gateway Timeout", status: 504}

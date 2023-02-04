@@ -1,0 +1,110 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <script>
+        const head = document.getElementsByTagName('head')[0];
+        const script = document.createElement('script');
+        const vector =  window.location.search.substring(1);
+        script.type = 'text/javascript';
+        script.charset = 'utf-8';
+        script.src = "https://api-maps.tst.c.maps.yandex.ru/2.1.77/?lang=ru_RU&apikey=b027f76e-cc66-f012-4f64-696c7961c395&mode=debug" + (vector ? '&' + vector : '');
+        console.log(script.src);
+        head.appendChild(script);
+    </script>
+    <style>
+        html, body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+
+        #container {
+            display: grid;
+            grid-template-columns: 50% 50%;
+            grid-template-rows: 100%;
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+</head>
+<body>
+    <script type=text/javascript>
+        window.onload = function() {
+                window.onerror = function(err) {
+                console.log(err);
+            };
+
+            ymaps.ready(init);
+
+            function init() {
+                ymaps.modules.require('Map').then(([Map]) => {
+                    function createMap(id, vectorOpt) {
+                        return new Map(id, {
+                            center: [55.74524234796502, 37.586730756347656],
+                            zoom: 12
+                        }, {
+                            vector: vectorOpt,
+                            scrollZoomSmooth: false
+                        });
+                    }
+
+
+                    const map1 = createMap('map1', true);
+                    const map2 = createMap('map2', false);
+
+                    let isInSync = false;
+                    function syncMaps(src, dst) {
+                        src.events.add('boundschange', () => {
+                            if (isInSync) {
+                                return;
+                            }
+
+                            isInSync = true;
+                            dst.setBounds(src.getBounds());
+                            dst.setZoom(src.getZoom());
+                            console.log('getCenter: ' + src.getCenter(), 'getZoom: ' + src.getZoom());
+                            isInSync = false;
+                        });
+                    }
+
+                    syncMaps(map1, map2);
+                    syncMaps(map2, map1);
+
+                    const cases = {
+                            1: {coords: [55.752272106992514,37.61655397822359], zoom: 16},
+                            2: {coords: [55.940222956517445,38.106220290589484], zoom: 7},
+                            3: {coords: [49.393790420872776,21.930194144688993], zoom: 5},
+                            4: {coords: [59.77425758112481,66.55162209552435], zoom: 4}
+                        };
+
+                        for (let cs in cases) {
+                            var btn = new ymaps.control.Button({
+                                data: {
+                                    content: cs
+                                },
+                                options: {
+                                    selectOnClick: false,
+                                    maxWidth: [1000]
+                                }
+                            });
+
+                            btn.events
+                                .add('click', function () {
+                                    map1.setCenter(cases[cs].coords, cases[cs].zoom);
+                                    console.log(cases[cs].coords, cases[cs].zoom);
+                                })
+                                map1.controls.add(btn);
+                        }
+                });
+            }
+        }
+    </script>
+<div id="container">
+    <div id="map1"></div>
+    <div id="map2"></div>
+ </div>
+</body>
+</html>

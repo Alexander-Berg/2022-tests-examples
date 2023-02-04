@@ -1,0 +1,46 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - salavat
+      groups: []
+labels:
+  order: '10000000'
+config_mode: easy2
+---
+l7_upstream_macro:
+  flat_scheme:
+    backend_ids:
+    - trust-test-web
+    balancer:
+      attempts: 1
+      backend_timeout: 15s
+      connect_timeout: 70ms
+      do_not_retry_http_responses: true
+      fast_attempts: 1
+      keepalive_count: 100
+      max_pessimized_endpoints_share: 0.2
+      max_reattempts_share: 0.15
+      use_https_to_endpoints: {}
+    on_error:
+      static:
+        content: Service web deploy redirect unavailable
+        status: 504
+  headers:
+  - create:
+      keep_existing: false
+      target: Host
+      value: trust.test.yandex.ru
+  id: web_deploy_redirect
+  matcher:
+    or_:
+    - cgi_re: .*&url=.*
+    - header:
+        name: Referer
+        re: .*&url=.*
+  monitoring:
+    response_codes:
+    - 429
+    - 499
+    uuid: web_deploy_redirect
+  version: 0.2.0

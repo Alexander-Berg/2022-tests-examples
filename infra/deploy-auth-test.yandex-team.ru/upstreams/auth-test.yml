@@ -1,0 +1,46 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - oplachkin
+      groups: []
+labels:
+  order: '10000000'
+---
+regexp_section:
+    matcher:
+        match_fsm:
+            host: 'deploy-auth-test\\.yandex-team\\.ru'
+    modules:
+        - headers_forwarder:
+            actions:
+                - request_header: 'Origin'
+                  response_header: 'Access-Control-Allow-Origin'
+                  erase_from_request: true
+                  erase_from_response: true
+                  weak: false
+        - response_headers:
+            create:
+                Access-Control-Allow-Credentials: 'true'
+                Access-Control-Allow-Headers: 'X-Auth-Request-Id'
+        - headers:
+            create_func:
+                X-Forwarded-For: realip
+                X-Real-IP: realip
+            create:
+                X-Forwarded-Proto: https
+        - balancer2:
+            attempts: 2
+            attempts_rate_limiter:
+                limit: 0.33
+            dynamic: 
+                max_pessimized_share: 0.2
+            generated_proxy_backends:
+                proxy_options:
+                    connect_timeout: 5s
+                    backend_timeout: 60s
+                    keepalive_count: 3
+                    fail_on_5xx: false
+                include_backends:
+                    type: BY_ID
+                    ids: [deploy-auth-test]

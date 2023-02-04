@@ -1,0 +1,50 @@
+#cloud-config
+runcmd:
+  - [ hostnamectl, set-hostname, ${hostname} ]
+  - [ chmod, "1777", /logs ]
+  - [ /usr/local/bin/set_dc.sh ]
+
+users:
+  - name: toor
+    lock_passwd: false
+    groups: sudo
+    passwd: $6$RBLzT4VKrzrEyQax$lMk4jDmU1hQ0CJaWc5KJE6UQeRx96ENbkOrD2fvgM5q9KnsMVYPjTjMnWn.VvjBCR6BnEggYP7use9MnT5wZC.
+    shell: /bin/bash
+    sudo: [ "ALL=(ALL) NOPASSWD:ALL" ]
+    ssh-authorized-keys:
+      - ssh-rsa ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDo7QEpoUfs0pwZceIjretNthamcEvOwagVz15KMOaAI43hTBx3XEGVVHGcYFwybnYIfbXwX2XVUEbBvb80XciyvBzK5RedfpA7QcOCV8dWlgdFdzL5HUXTWC4Nys1nc8bXu7WHbJTkkMYAuikLvPz6BZIEQYEt/sOLiUbOzmQQ0MwVYHZiuNTbNrwjJRP4N+Im58V8ltW/R5oggoXe0p+4xYsAfXosqzDIlE9PqIzAteH2fiIM7FfyWQJl/hGTLG9F1gVwr7slIPxOqWuhOU7RmtwRtAYHasEBLQzeCAZsXyIAqLZaNa+lHajh4yDqHzyw9I9ZhsZg4Ih5cJhU0dPZ knuzhdin@knpc
+
+preserve_hostname: true
+
+write_files:
+  - path: /etc/solomon/env
+    content: |-
+      ${service_env}
+
+  # use ns64-cache.yandex.net
+  # XXX change for GPN to nameserver 2a0d:d6c0:2:200::3ea; nameserver 2a0d:d6c0:2:201::2f4; nameserver 2a0d:d6c0:2:202::302
+  - path: /etc/resolv.dnsmasq
+    content: |-
+      nameserver 2a02:6b8:0:3400::5005
+
+disk_setup:
+  /dev/disk/by-id/virtio-${disk_id}:
+    layout:
+    - "100"
+    overwrite: false
+    table_type: gpt
+
+fs_setup:
+  - device: /dev/disk/by-id/virtio-${disk_id}
+    filesystem: ext4
+    label: logs-disk
+    partition: "1"
+    overwrite: false
+
+mounts:
+  - - /dev/disk/by-label/logs-disk
+    - /logs
+    - auto
+    - defaults
+    - "0"
+    - "0"

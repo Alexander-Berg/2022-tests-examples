@@ -1,0 +1,300 @@
+---
+instance_macro:
+  workers: 1
+  private_address: 127.0.0.10
+  default_tcp_rst_on_error: false
+  shutdown_close_using_bpf: true
+  storage_gc_required: true
+  sections:
+    admin:
+      ips:
+        - 127.0.0.1
+        - '::1'
+      ports:
+        - 16100
+      http:
+        maxlen: 65536
+        maxreq: 65536
+        admin: {}
+    local:
+      ips: [127.0.0.4]
+      ports: [16100]
+      modules:
+        - report:
+            uuid: "service_total"
+            ranges: "default"
+            input_size_ranges: '1,5,3,1000'
+            output_size_ranges: '50,500,3000'
+        - http: {}
+        - errordocument:
+            status: 200
+    stats_storage_2:  # added to test report modules glueing
+      ips: [127.0.0.5]
+      ports: [16100]
+      modules:
+        - report:
+            uuid: "service_total"
+            ranges: "default"
+            just_storage: true
+        - http: {}
+        - errordocument:
+            status: 200
+    remote_ips_80:
+      ips:
+        - '2a02:6b8:0:3400::107e'
+      ports:
+        - 80
+      extended_http_macro:
+        port: 16100
+        report_uuid: http
+        regexp:
+          include_upstreams:
+            type: BY_ID
+            ids:
+              - ping
+              - gobabygo
+              - atomsearch
+    local_ips_16100:
+      ips:
+        - local_v4_addr
+        - local_v6_addr
+      ports:
+        - 16100
+      extended_http_macro:
+        port: 16100
+        report_uuid: http
+        regexp:
+          include_upstreams:
+            type: BY_ID
+            ids:
+              - ping
+              - gobabygo
+              - atomsearch
+    remote_ips_443:
+      ips:
+        - '2a02:6b8:0:3400::107e'
+      ports:
+        - 443
+      modules:
+        - errorlog:
+            log: /place/db/www/logs/current-error_log-balancer-16101
+            log_level: ERROR
+        - ssl_sni:
+            force_ssl: true
+            contexts:
+              default:
+                cert: /dev/shm/balancer/allCAs-rcss-ext.search.yandex.net.pem
+                priv: /dev/shm/balancer/priv/rcss-ext.search.yandex.net.pem
+                ocsp: ./ocsp/allCAs-rcss-ext.search.yandex.net.der
+                log: /place/db/www/logs/current-ssl_sni-balancer-16101
+                disable_sslv3: true
+                ticket_keys:
+                  - {keyfile: /dev/shm/balancer/priv/1st.rcss-ext.search.yandex.net.key}
+                  - {keyfile: /dev/shm/balancer/priv/2nd.rcss-ext.search.yandex.net.key}
+                  - {keyfile: /dev/shm/balancer/priv/3rd.rcss-ext.search.yandex.net.key}
+                secondary:
+                  cert: /dev/shm/balancer/allCAs-rcss-ext.search.yandex.net_secondary.pem
+                  priv: /dev/shm/balancer/priv/rcss-ext.search.yandex.net_secondary.pem
+        - http:
+            maxlen: 65536
+            maxreq: 65536
+            keepalive: true
+            no_keepalive_file: ./controls/keepalive_disabled
+        - accesslog:
+            log: /place/db/www/logs/current-access_log-balancer-16101
+        - report:
+            uuid: https
+            refers: service_total
+            ranges: default
+            just_storage: false
+        - headers:
+            create_func:
+              X-Start-Time: starttime
+              X-Req-Id: reqid
+              X-Source-Port-Y: realport
+              X-Yandex-RandomUID: yuid
+              X-Yandex-HTTPS-Info: ssl_handshake_info
+              X-SSL-Client-CN: ssl_client_cert_cn
+              X-SSL-Client-Subject: ssl_client_cert_subject
+              X-SSL-Client-Verify: ssl_client_cert_verify_result
+            create_func_weak:
+              X-Forwarded-For: realip
+              X-Forwarded-For-Y: realip
+              X-Time: 'time:+2h'
+        - response_headers:
+            create_weak:
+              X-XSS-Protection: '1; mode=block'
+              X-Content-Type-Options: 'nosniff'
+        - rpcrewrite:
+            host: 'bolver.yandex-team.ru'
+            url: '/proxy'
+            dry_run: false
+            rpc_success_header: 'X-Metabalancer-Answered'
+            rpc:
+              balancer2:
+                rr: {}
+                attempts: 3
+                connection_attempts: !f count_backends()
+                simple_policy: {}
+                generated_proxy_backends:
+                  proxy_options:
+                    backend_timeout: 10s
+                    connect_timeout: 150ms
+                  instances:
+                    - weight: 1.000
+                      host: bolver.yandex-team.ru
+                      port: 80
+            on_rpc_error:
+              modules:
+                - cache2:
+                    cache_ttl: 10s
+                    shard_number: 10
+                    ignore_cgi: false
+                - errordocument:
+                    status: 500
+        - regexp:
+            include_upstreams:
+              filter:
+                any: true
+    local_ips_16101:
+      ips:
+        - local_v4_addr
+        - local_v6_addr
+      ports:
+        - 16101
+      modules:
+        - errorlog:
+            log: /place/db/www/logs/current-error_log-balancer-16101
+            log_level: ERROR
+        - ssl_sni:
+            force_ssl: true
+            contexts:
+              default:
+                cert: /dev/shm/balancer/allCAs-rcss-ext.search.yandex.net.pem
+                priv: /dev/shm/balancer/priv/rcss-ext.search.yandex.net.pem
+                ocsp: ./ocsp/allCAs-rcss-ext.search.yandex.net.der
+                log: /place/db/www/logs/current-ssl_sni-balancer-16101
+                disable_sslv3: true
+                ticket_keys:
+                  - {keyfile: /dev/shm/balancer/priv/1st.rcss-ext.search.yandex.net.key}
+                  - {keyfile: /dev/shm/balancer/priv/2nd.rcss-ext.search.yandex.net.key}
+                  - {keyfile: /dev/shm/balancer/priv/3rd.rcss-ext.search.yandex.net.key}
+                secondary:
+                  cert: /dev/shm/balancer/allCAs-rcss-ext.search.yandex.net_secondary.pem
+                  priv: /dev/shm/balancer/priv/rcss-ext.search.yandex.net_secondary.pem
+        - http:
+            keepalive: true
+            no_keepalive_file: ./controls/keepalive_disabled
+        - accesslog:
+            log: /place/db/www/logs/current-access_log-balancer-16101
+        - report:
+            uuid: https
+            refers: service_total
+            ranges: default
+            just_storage: false
+        - headers:
+            create_func:
+              X-Start-Time: starttime
+              X-Req-Id: reqid
+              X-Source-Port-Y: realport
+              X-Yandex-RandomUID: yuid
+              X-Yandex-HTTPS-Info: ssl_handshake_info
+              X-SSL-Client-CN: ssl_client_cert_cn
+              X-SSL-Client-Subject: ssl_client_cert_subject
+              X-SSL-Client-Verify: ssl_client_cert_verify_result
+            create_func_weak:
+              X-Forwarded-For: realip
+              X-Forwarded-For-Y: realip
+              X-Time: 'time:+2h'
+        - response_headers:
+            create_weak:
+              X-XSS-Protection: '1; mode=block'
+              X-Content-Type-Options: 'nosniff'
+        - rpcrewrite:
+            rpc:
+              balancer2:
+                rr: {}
+                attempts: 3
+                connection_attempts: !f count_backends()
+                simple_policy: {}
+                generated_proxy_backends:
+                  proxy_options:
+                    backend_timeout: 10s
+                    connect_timeout: 150ms
+                  instances:
+                    - weight: 1.000
+                      host: bolver.yandex-team.ru
+                      port: 80
+            on_rpc_error:
+              modules:
+                - cache2:
+                    cache_ttl: 10s
+                    shard_number: 10
+                    ignore_cgi: false
+                - errordocument:
+                    status: 500
+        - regexp:
+            include_upstreams:
+              filter:
+                any: true
+    local_ips_16102:
+      ips:
+        - local_v4_addr
+        - local_v6_addr
+      ports:
+        - 16102
+      extended_http_macro:
+        port: 16102
+        report_uuid: https
+        enable_ssl: true
+        ssl_sni_contexts:
+          exp.yandex-team.ru:
+            servername_regexp: '(exp|exp-beta|ab)\\\\.test\\\\.yandex-team\\\\.ru'
+          ab.yandex-team.ru:
+            servername_regexp: default
+            secondary_cert_postfix: secondary
+        disable_sslv3: true
+        force_ssl: true
+        additional_ip_header: X-Forwarded-For-Y
+        additional_port_header: X-Source-Port-Y
+        modules:
+          - headers:
+              create_func:
+                X-Start-Time: starttime
+                X-Req-Id: reqid
+                X-Source-Port-Y: realport
+                X-Yandex-RandomUID: yuid
+                X-Yandex-HTTPS-Info: ssl_handshake_info
+                X-SSL-Client-CN: ssl_client_cert_cn
+                X-SSL-Client-Subject: ssl_client_cert_subject
+                X-SSL-Client-Verify: ssl_client_cert_verify_result
+              create_func_weak:
+                X-Forwarded-For: realip
+                X-Forwarded-For-Y: realip
+                X-Time: 'time:+2h'
+          - response_headers:
+              create_weak:
+                X-XSS-Protection: '1; mode=block'
+                X-Content-Type-Options: 'nosniff'
+          - rpcrewrite_macro: {}
+          - regexp:
+              include_upstreams:
+                filter:
+                  any: true
+    remote_ips_8080:
+      ips: ['2a02:6b8:0:3400::107e']
+      ports: [8080]
+      extended_http_macro:
+        port: 8080
+        report_uuid: http
+        modules:
+          - http_to_https_macro: {}
+    remote_ips_9090:
+      ips: ['2a02:6b8:0:3400::107e']
+      ports: [9090]
+      extended_http_macro:
+        port: 9090
+        report_uuid: http
+        modules:
+          - http_to_https_macro:
+              permanent: true

@@ -1,0 +1,62 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - nanny-robot
+      groups: []
+config_transport:
+  nanny_static_file:
+    service_id: rtc_balancer_knoss_video_testing_vla
+    instance_tags:
+      ctype: testing
+      itype: balancer
+      prj: l7-balancer-knoss-video-testing
+---
+instance_macro:
+  thread_mode: true
+  unistat: {}
+  sd: {}
+  workers: !f get_workers()
+  tcp_listen_queue: 128
+  maxconn: 5000
+  state_directory: /dev/shm/balancer-state
+  sections:
+    admin:
+      ips: [127.0.0.1, '::1']
+      ports:
+        - !f get_port_var('port')
+      modules:
+        - http: {}
+        - admin: {}
+    http_section:
+      ips: ['*']
+      ports:
+        - 80
+        - !f get_port_var('port')
+      extended_http_macro:
+        modules:
+          - log_headers:
+              name_re: 'X-Req-Id'
+          - regexp:
+              include_upstreams:
+                filter:
+                  any: true
+                order:
+                  label:
+                    name: order
+    http_no_cryprox_section:
+      ips: ['*']
+      ports:
+        - 81
+      extended_http_macro:
+        modules:
+          - log_headers:
+              name_re: 'X-Req-Id'
+          - regexp:
+              include_upstreams:
+                filter:
+                  not:
+                    id_prefix: video_antiadblocker
+                order:
+                  label:
+                    name: order

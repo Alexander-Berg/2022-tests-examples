@@ -1,0 +1,180 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Вектор: применение опции яркости
+
+Description:
+Проверка применения опции яркости.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components:
+vector
+
+Estimated time:
+120000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+  
+  Expectation:
+  Карта отобразилась корректно. В контейнере дефолтный набор контролов, и кнопки "LN_01", "LN_02", "LN_03".
+  
+Step:
+  Action:
+  Открыть инструменты разработчика командами Windows: Ctrl + Shift + I если у вас MacOS: ⌥ + ⌘ + I, вкладку Console.
+  Выполнить клик в кнопку "LN_01".
+  
+  Expectation:
+  Применяется опция яркости, карта затемнена, на карте нет участков светлее или темнее, тон карты равномерный.
+  При применении опции не было странных визуальных эффектов, миганий цветами.
+  В консоли строка: "Option lightness = -0.8".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "LN_01".
+  
+  Expectation:
+  Применяется опция яркости, карта отображается стандратно и корректно, на карте нет участков светлее или темнее, тон карты равномерный.
+  При применении опции не было странных визуальных эффектов, миганий цветами.
+  В консоли строка: "Option lightness = 0".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "LN_02".
+  
+  Expectation:
+  Применяется опция яркости, карта осветлена (почти белая), на карте нет участков светлее или темнее, тон карты равномерный.
+  При применении опции не было странных визуальных эффектов, миганий цветами.
+  В консоли строка: "Option lightness = 0.8".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "LN_02".
+  
+  Expectation:
+  Применяется опция яркости, карта становится однотонно черной.
+  При применении опции не было странных визуальных эффектов, миганий цветами.
+  В консоли строка: "Option lightness = -1".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "LN_03".
+  
+  Expectation:
+  Применяется опция яркости, карта становится однотонно белой.
+  При применении опции не было странных визуальных эффектов, миганий цветами.
+  В консоли строка: "Option lightness = 0.99".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "LN_03".
+  
+  Expectation:
+  Применяется опция яркости, карта отображается стандратно и корректно, на карте нет участков светлее или темнее, тон карты равномерный.
+  При применении опции не было странных визуальных эффектов, миганий цветами.
+  В консоли строка: "Option lightness = 0.01".
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <script src="../../helper.js"></script>
+    <!-- <script type="text/javascript" src="https://api-maps.tst.c.maps.yandex.ru/2.1.77/?lang=ru_RU&apikey=b027f76e-cc66-f012-4f64-696c7961c395&mode=debug"></script> -->
+    <script type=text/javascript>
+        
+        Api('init', undefined, undefined, undefined, undefined, 'ymaps', undefined);
+
+        window.onerror = function(err) {
+            __log__(err);
+        };
+        
+        const CONFIG = {
+        		brightness: 0.75, 
+						vectorGlyphsUrl: "https://core-renderer-tiles.maps.yandex.net/vmap2/glyphs?lang={{lang}}&font_id={{fontId}}&range={{range}}",
+            vectorImageUrl: "https://core-renderer-tiles.maps.yandex.net/vmap2/icons?id={{id}}&scale={{scale}}",
+            vectorMeshUrl: "https://core-renderer-tiles.maps.yandex.net/vmap2/meshes?id={{id}}",
+            vectorTileUrl: "https://core-renderer-tiles.maps.yandex.net/vmap2/tiles?lang={{lang}}&x={{x}}&y={{y}}&z={{z}}&zmin={{zmin}}&zmax={{zmax}}&v={{version}}",
+        };
+
+        function init(ymaps) {
+          ymaps.modules.require(['Map', 'vectorEngine.VectorMapLayer'], process);
+        }
+        
+        function makeCustomization(lightness) {
+          return [{
+            stylers: { lightness }
+          }];
+        }
+        
+        function process(Map, VectorMapLayer) {
+            var map = new Map('map', {
+            center: [55.753930, 37.621401],
+            zoom: 10.77,
+            controls: ['default']
+          });
+            
+          var layer = new VectorMapLayer({
+          	vectorCustomization: makeCustomization(0)
+          }, CONFIG);
+        
+        	map.layers.get(0).removeAll();
+        	map.layers.get(0).add(layer);
+            
+          function requestChange(lightness, timeout) {
+          	setTimeout(() => {
+          	  layer.options.set('vectorCustomization', makeCustomization(lightness));
+            }, timeout);
+            console.log("Option lightness = " + lightness);
+          }
+
+          var buttonlightness1 = new ymaps.control.Button('LN_01');
+            buttonlightness1.events
+            .add('select', function () {
+              requestChange(-0.8, 500);
+            })
+            .add('deselect', function () {
+              requestChange(0, 500);
+            });       
+          map.controls.add(buttonlightness1);   
+            
+          var buttonlightness2 = new ymaps.control.Button('LN_02');
+            buttonlightness2.events
+            .add('select', function () {
+              requestChange(0.8, 500);
+            })
+            .add('deselect', function () {
+              requestChange(-1, 500);
+            });       
+          map.controls.add(buttonlightness2);
+            
+          var buttonlightness3 = new ymaps.control.Button('LN_03');
+            buttonlightness3.events
+            .add('select', function () {
+              requestChange(0.99, 500);
+            })
+            .add('deselect', function () {
+              requestChange(0.01, 500);
+            });       
+          map.controls.add(buttonlightness3); 
+          console.log('zoom: ' + map1.getZoom());
+        }
+    </script>
+    <style>
+        html, body, #map {
+            width: 100%;
+            height: 95%;
+            margin: 0;
+            padding: 0;
+        }
+    </style>
+</head>
+<body>
+<div id="map"></div>
+</body>
+</html>

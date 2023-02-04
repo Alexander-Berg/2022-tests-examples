@@ -1,0 +1,235 @@
+monitoring:
+  port: 12501
+  tvm:
+    client_id: 2010000
+    allowed_clients:
+      - 2012024
+      - 2012026
+      - 2012028
+    disk_cache_directory: /push-agent/internal/tvm-cache/monitoring
+  static_labels:
+    - name: Project
+      env: DEPLOY_PROJECT
+    - name: Stage
+      env: DEPLOY_STAGE
+    - name: DeployUnit
+      env: DEPLOY_DEPLOY_UNIT
+  static_sensors:
+    - name: BuildTaskId
+      value: 1005299706
+
+status:
+  port: 12502
+
+services:
+  - type: tvm_client
+    name: yd-tvm
+    config:
+      client_id: 2010000
+      disk_cache_directory: /push-agent/internal/tvm-cache/logbroker-yd-format-v2
+      fetch:
+        secret:
+          env: TVM_SECRET
+        destinations: [logbroker]
+
+pipes:
+  - name: batch-and-compress
+    pipe:
+      - filter:
+          plugin: batch
+          config:
+            delimiter: "\n"
+            flush_period: 300ms
+            limit:
+              bytes: 100kb
+      - filter:
+          plugin: compress
+          config:
+            codec: gzip
+            compression_quality: 6
+
+channels:
+  - name: main-channel
+    channel:
+      pipe:
+        - storage_ref:
+            name: main
+            flow_control:
+              inflight:
+                limit: 30mb
+                limit_messages: 30000
+        - filter:
+            plugin: combine_backtraces
+            enable_if:
+              session:
+                deploy_logger_name:
+                  - stdout
+                  - stderr
+            config:
+              flush_period: 300ms
+        - filter:
+            plugin: assign
+            config:
+              session:
+                - log_type_def: "{log_type|grpc}"
+      case:
+        - when:
+            session:
+              log_type_def: errorbooster
+          channel:
+            pipe:
+              - pipe_ref:
+                  name: batch-and-compress
+            output:
+              plugin: logbroker
+              id: output-logbroker-errorbooster-universal
+              config:
+                endpoint: logbroker.yandex.net
+                topic: error-booster/deploy/universal-errors
+                tvm_ref:
+                  name: yd-tvm
+        - when:
+            session:
+              log_type_def: sentry
+          channel:
+            pipe:
+              - pipe_ref:
+                  name: batch-and-compress
+            output:
+              plugin: logbroker
+              id: output-logbroker-errorbooster-sentry
+              config:
+                endpoint: logbroker.yandex.net
+                topic: error-booster/deploy/sentry-errors
+                tvm_ref:
+                  name: yd-tvm
+        - when:
+            session:
+              log_type_def: grpc
+          channel:
+            pipe:
+              - filter:
+                  plugin: yd_throttle
+                  config:
+                    stage_rate_limit: 2tb
+                    stage_messages_rate_limit: 123456
+                    rate_adjustment:
+                      resolve_endpoints_url: "http://sd.yandex.net:8080/resolve_endpoints/json"
+                      poll_period: 1h
+                      poll_time_random_shift: 15m
+                      cluster_names:
+                        - sas-test
+                      endpoint_set_id: stage_id.deploy_unit_id
+                      client_name: deploy_logs_stage_discovery_stage_id
+                      cache_file_name: /push-agent/internal/unified_agent_pods_count
+              - filter:
+                  plugin: assign
+                  config:
+                    session:
+                      - deploy_project: "{$env('DEPLOY_PROJECT')}"
+                      - deploy_stage: "{$env('DEPLOY_STAGE')}"
+                      - deploy_unit: "{$env('DEPLOY_DEPLOY_UNIT')}"
+                      - deploy_pod: "{$env('DEPLOY_POD_ID')}"
+                      - deploy_pod_transient_fqdn: "{$env('DEPLOY_POD_TRANSIENT_FQDN')}"
+                      - deploy_pod_persistent_fqdn: "{$env('DEPLOY_POD_PERSISTENT_FQDN')}"
+                      - deploy_node_fqdn: "{$env('DEPLOY_NODE_FQDN')}"
+              - filter:
+                  plugin: yd_format
+                  config:
+                    format_version: v2
+              - pipe_ref:
+                  name: batch-and-compress
+            output:
+              plugin: logbroker
+              id: output-logbroker-yd-format-v2
+              config:
+                endpoint: logbroker.yandex.net
+                topic: test/logs
+                tvm_ref:
+                  name: yd-tvm
+
+routes:
+  - input:
+      plugin: grpc
+      config:
+        uri: localhost:12500
+        shared_secret_key: TEST_STATIC_SECRET
+      flow_control:
+        inflight:
+          limit: 30mb
+          limit_messages: 100000
+    channel:
+      pipe:
+        - filter:
+            plugin: assign
+            config:
+              session:
+                - log_type: grpc
+      channel_ref:
+        name: main-channel
+
+  - input:
+      plugin: http
+      config:
+        port: 12520
+        path: "/api/111/store/"
+    channel:
+      pipe:
+        - filter:
+            plugin: assign
+            config:
+              session:
+                - log_type: sentry
+      channel_ref:
+        name: main-channel
+
+  - input:
+      plugin: syslog
+      config:
+        address: "127.0.0.1:12521"
+        format: permissive
+    channel:
+      pipe:
+        - filter:
+            plugin: assign
+            config:
+              session:
+                - log_type: errorbooster
+      channel_ref:
+        name: main-channel
+
+  - input:
+      plugin: http
+      config:
+        port: 12522
+        path: "/errorbooster"
+    channel:
+      pipe:
+        - filter:
+            plugin: assign
+            config:
+              session:
+                - log_type: errorbooster
+      channel_ref:
+        name: main-channel
+
+storages:
+  - name: main
+    plugin: fs
+    config:
+      directory: /push-agent/logs
+      max_partition_size: 1gb
+      max_segment_size: 50mb
+      data_retention:
+        by_age: 20d
+      unacknowledged_eviction_log_priority: WARNING
+
+system:
+  lock_executable_in_memory: true
+
+main_thread_pool:
+  threads: 3
+
+flow_graph:
+  memory_quota:
+    limit: 150mb

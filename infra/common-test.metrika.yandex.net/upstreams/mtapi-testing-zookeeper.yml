@@ -1,0 +1,57 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - velom
+      groups: []
+labels:
+  order: '001050'
+---
+regexp_section:
+  matcher:
+    match_and:
+      - match_or:
+        - match_fsm:
+            host: 'mtapi-test\\.metrika\\.yandex\\.net'
+        - match_fsm:
+            host: 'mtapi-test\\.mtrs\\.yandex-team\\.ru'
+      - match_or:
+        - match_fsm:
+            path: '/v1/zookeeper.*'
+        - match_fsm:
+            path: '/zookeeper.*'
+  modules:
+    - rewrite:
+        actions:
+            - regexp: '/v1/zookeeper'
+              rewrite: '/zookeeper'
+
+    - report:
+        uuid: "mtapi_zookeeper"
+        ranges: "default"
+
+    - balancer2:
+        attempts: 2
+        attempts_rate_limiter:
+          limit: 0.15
+        connection_attempts: !f count_backends()
+        unique_policy: {}
+        dynamic:
+          max_pessimized_share: 0.2
+          active:
+            delay: 1s
+            weight_normalization_coeff: 1
+            request: 'GET /zookeeper/ping HTTP/1.1\nHost: mtapi-test.metrika.yandex.net\nUser-agent: l7-balancer\n\n'
+        generated_proxy_backends:
+          proxy_options:
+            backend_timeout: 15s
+            connect_timeout: 60ms
+            fail_on_5xx: false
+            keepalive_count: 2
+          include_backends:
+            type: BY_ID
+            ids: [mtapi-testing-zookeeper]
+        on_error:
+          errordocument:
+            status: 504
+            content: '{\"error\": \"Service unavailable, l7-balancer\"}'

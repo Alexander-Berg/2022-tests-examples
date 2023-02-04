@@ -1,0 +1,51 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - vyacheslav
+      - epinkovskii
+      groups: []
+labels:
+  order: '10000000'
+config_mode: easy2
+---
+l7_upstream_macro:
+  version: 0.0.1
+  id: kp-apphost
+  matcher:
+    path_re: '(/.*)?'
+  monitoring:
+    uuid: kp-apphost
+  by_dc_scheme:
+    dc_balancer:
+      weights_section_id: bygeo
+      method: BY_DC_WEIGHT
+      attempts: 1
+    balancer:
+      max_reattempts_share: 0.15
+      max_pessimized_endpoints_share: 0.2
+      attempts: 1
+      retry_non_idempotent: false
+      connect_timeout: 60ms
+      backend_timeout: 300s
+      retry_http_responses:
+        codes: [5xx]
+        on_last_failed_retry: PROXY_RESPONSE_AS_IS
+      keepalive_count: 2
+    dcs:
+      - name: man
+        backend_ids:
+          - hamster_app_host_sas_kinopoisk
+          - hamster_app_host_vla_kinopoisk
+      - name: sas
+        backend_ids:
+          - hamster_app_host_sas_kinopoisk
+          - hamster_app_host_vla_kinopoisk
+      - name: vla
+        backend_ids:
+          - hamster_app_host_sas_kinopoisk
+          - hamster_app_host_vla_kinopoisk
+    on_error:
+      static:
+        status: 504
+        content: 'Service unavailable'

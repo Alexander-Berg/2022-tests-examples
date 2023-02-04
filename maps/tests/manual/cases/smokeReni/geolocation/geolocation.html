@@ -1,0 +1,149 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Геолокация по ip-адресу и геолокация браузера
+
+Description:
+Сравниваем местоположение вычисленное по ip-адресу и установленное средствами браузера.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+Перед проведением теста необходимо настроить браузер для запроса геоданных. В Google Chrome в настройках "Конфиденциальность и безопастность" в блоке "Геоданные" выставить флаг "Спрашивать разрешение на доступ".
+При этом в списке разрешенных адресов вкладки "Геоданные" в подблоках "Разрешить" и "Блокировать" не должно быть URL адресов ...yandex.ru...Если URL адреса "yandex.ru" имеются удалите их, для корректного прохождения теста и появления запроса на определение местоположения.
+В зависимости от браузера шаги №№2-3 могут приводить к иным ожидаемым результатам. Синяя метка может не появляться на спане карты, как и может не появляться черная метка и соотвественно балун при открытии метки.
+Обязательными для указанного теста является наличие красной и желтой меток.
+
+Components: 
+smoke
+
+Estimated time:
+300000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть открывшееся окно. 
+
+  Expectation:
+  При открытии появляется диалоговое окно о разрешении доступа к данным о вашем местоположении, с кнопками "разрешить", "блокировать". 
+  (конфигурация кнопок и диалогового окна может варьироваться в зависимости от браузера).
+  В контейнере появляется спан карты по центру спана метка с красной кромкой(геолокация по ip).
+
+Step:
+  Action:
+  Клик в кнопку "Разрешить" в диалоговом окне браузера.
+
+  Expectation:
+  Спан карты может изменится, в центре карты может появится метка с синей кромкой(геолокация браузера).
+
+Step:
+  Action:
+  Клик в метку с синей кромкой.
+
+  Expectation:
+  Над меткой появляется балун с содержимым "Санкт-Петербург; Россия"(наименование города и страны).
+  Кромка метки меняет цвет на черный.
+
+Step:
+  Action:
+  Клик в метку с красной кромкой.
+
+  Expectation:
+  Над меткой появляется балун с содержимым "Мое местоположение".
+  Кромка метки меняет цвет на желтый.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            //ymaps = ym;
+            var geolocation = ymaps.geolocation;
+                    myMap = new ymaps.Map('map', {
+                        center: [55, 34],
+                        zoom: 10
+                    }, {
+                        backgroundVisible: false
+                    });
+            addGrid(myMap);
+            var log = new Log();
+
+            log.info("Test case: Красная метка - геолокация по ip");
+            log.info("Синяя метка - геолокация браузера(может отсутствовать)");
+            log.info("Желтая метка - геолокация по ip без ОГ");
+            log.info("Черная метка - геолокация браузера без ОГ (может отсутствовать)");
+
+            // Сравним положение, вычисленное по ip пользователя и
+            // положение, вычисленное средствами браузера.
+            geolocation.get({
+                provider: 'yandex',
+                mapStateAutoApply: true
+            }).then(function (result) {
+                // Красным цветом пометим положение, вычисленное через ip.
+                result.geoObjects.options.set('preset', 'islands#redCircleIcon');
+                result.geoObjects.get(0).properties.set({
+                    balloonContentBody: 'Мое местоположение'
+                });
+                __log__('red');
+                __log__(result.geoObjects);
+                myMap.geoObjects.add(result.geoObjects);
+            });
+
+            geolocation.get({
+                provider: 'browser',
+                mapStateAutoApply: true
+            }).then(function (result) {
+                // Синим цветом пометим положение, полученное через браузер.
+                // Если браузер не поддерживает эту функциональность, метка не будет добавлена на карту.
+                result.geoObjects.options.set('preset', 'islands#blueCircleIcon');
+                __log__('blue');
+                __log__(result.geoObjects);
+                myMap.geoObjects.add(result.geoObjects);
+            },function(err){
+                __log__('blue');
+                __log__(err);
+            });
+
+            //и то же самое без обратного геокодирования
+            geolocation.get({
+                provider: 'yandex',
+                mapStateAutoApply: true,
+                autoReverseGeocode: false
+            }).then(function (result) {
+                // Красным цветом пометим положение, вычисленное через ip.
+                result.geoObjects.options.set('preset', 'islands#yellowCircleIcon');
+                result.geoObjects.get(0).properties.set({
+                    balloonContentBody: 'Мое местоположение'
+                });
+                __log__('yellow');
+                __log__(result.geoObjects);
+                myMap.geoObjects.add(result.geoObjects);
+            });
+
+            geolocation.get({
+                provider: 'browser',
+                mapStateAutoApply: true,
+                autoReverseGeocode: false
+            }).then(function (result) {
+                // Синим цветом пометим положение, полученное через браузер.
+                // Если браузер не поддерживает эту функциональность, метка не будет добавлена на карту.
+                result.geoObjects.options.set('preset', 'islands#blackCircleIcon');
+                __log__('black');
+                __log__(result.geoObjects);
+                myMap.geoObjects.add(result.geoObjects);
+            });
+
+
+        }
+    </script>
+</head>
+<body>
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

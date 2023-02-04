@@ -1,0 +1,258 @@
+GET /mtroute/route   | headers | ! grep  'Status: 200'
+                     | body    | grep    'rll parameter missing'
+GET /mtroute/ping    | headers | grep    'Status: 200'
+                     | headers | grep    'Content-Type: text/plain'
+                     | body    | grep    'pong'
+GET /mtroute/update  | headers | grep    'Status: 405'
+                     | headers | grep    'Allow: POST'
+POST /mtroute/update | headers | grep    'Status: 200'
+
+GET /mtroute/route?rll=123 | headers | grep 'Status: 400'
+
+GET /dir/            | body    | grep    'dir generic'
+GET /dir/1/          | body    | grep    '^dir arg = 1$'
+
+GET /multiple?rll=1,2          | body    | grep 'multiple, rll given'
+GET /multiple?rll=1,2~3,4      | body    | grep 'multiple, rll given'
+GET /multiple?rll=1.1,2.2~3.3,4.4
+                               | body    | grep 'multiple, rll given'
+GET /multiple?where=x          | body    | grep 'multiple, where given'
+GET /multiple?rll=1,2&where=x  | body    | grep 'multiple, rll and where given'
+GET /multiple                  | headers | grep 'Status: 400'
+
+GET /box?ll=10,20&spn=1,2      | body    | grep 'll = 10 20'
+                               | body    | grep 'spn = 1 2'
+
+GET /testparse/apll?apll=~50.1,60.1;50.2,60.2~70.1,80.1;70.2,80.2;70.3,80.3
+                               | body | grep 'apll={}{50.1,60.1 50.2,60.2 }{70.1,80.1 70.2,80.2 70.3,80.3 }'
+GET /testparse/apll?apll=50.1,60.1;50.2,60.2
+                               | body | grep 'apll={50.1,60.1 50.2,60.2 }'
+GET /testparse/apll?apll=50.1,60.1
+                               | body | grep 'apll={50.1,60.1 }'
+GET /testparse/apll?           | body | grep 'apll='
+GET /testparse/apll?apll=      | headers | grep "Status: 400"
+
+GET /mtroute/route?rll=1,2         | body | grep 'rtm defaulted'
+GET /mtroute/route?rll=1,2&rtm=atm | body | grep 'rtm given'
+
+HEAD /mtroute/route?rll=1,2        | headers | grep 'Status: 200'
+                                   | body    | ! grep .
+
+HEAD /mtroute/matrix?srcll=1,2~2,3&dstll=2,3~4,5             | headers | grep 'Status: 200'
+                                                             | body    | ! grep .
+HEAD /mtroute/matrix?srcll=1,2~2,3&dstll=2,3+4,5             | headers | grep 'Status: 400'
+                                                             | body    | ! grep .
+GET /mtroute/matrix?srcll=1,2~2,3&dstll=2,3~4,5~4,6          | headers | grep 'Status: 200'
+                                                             | body    | grep "srcll.size = 2 dstll.size = 3"
+GET /mtroute/matrix?srcll=1,2~2,3&dstll=2,3~4,5~4,6&srcdir=sss    | headers | grep 'Status: 400'
+                                                                  | body    | grep "srcdir parameter malformed"
+GET /mtroute/matrix?srcll=1,2~2,3&dstll=2,3~4,5~4,6&dstdir=ddd    | headers | grep 'Status: 400'
+                                                                  | body    | grep "dstdir parameter malformed"
+GET /mtroute/matrix?srcll=1,2~2,3&dstll=2,3~4,5~4,6&srcdir=1~2    | headers | grep 'Status: 200'
+                                                                  | body    | grep "srcll.size = 2 dstll.size = 3 srcdir.size = 2"
+GET /mtroute/matrix?srcll=1,2~2,3&dstll=2,3~4,5~4,6&dstdir=10~    | headers | grep 'Status: 200'
+                                                                  | body    | grep "srcll.size = 2 dstll.size = 3 dstdir.size = 2"
+GET /mtroute/matrix?srcll=1,2~2,3&dstll=2,3~4,5~4,6&srcdir=1~2&dstdir=10~~    | headers | grep 'Status: 200'
+                                                                              | body    | grep "srcll.size = 2 dstll.size = 3 srcdir.size = 2 dstdir.size = 3"
+
+GET /bool?flag=true   | body | grep 'flag = true'
+GET /bool?flag=yes    | body | grep 'flag = true'
+GET /bool?flag=1      | body | grep 'flag = true'
+GET /bool?flag=false  | body | grep 'flag = false'
+GET /bool?flag=no     | body | grep 'flag = false'
+GET /bool?flag=0      | body | grep 'flag = false'
+
+GET /query_param?str=POST | body | grep POST
+GET /query_param          | body | grep GET
+
+GET /pathname_param/765/upgrade | body | grep 'do upgrade with id: 765'
+
+GET /http_headers         | headers | grep 'Status: 200'
+                          | body    | ! grep .
+GET /http_headers\        | headers | grep 'Status: 400'
+GET /http_headers\x       | headers | grep 'Status: 400'
+
+GET /http_headers HTTP/1.1\na: "foo\\\\"\nc: bar\n\n
+                          | headers | grep 'Status: 200'
+                          | body    | ! grep 'HTTP_B'
+                          | body    | grep 'HTTP_A = "foo\\\\"'
+                          | body    | grep 'HTTP_C = bar'
+<<EOF
+GET /http_headers HTTP/1.1
+a: "foo\\"
+c: bar
+
+
+EOF                       | headers | grep 'Status: 200'
+                          | body    | ! grep 'HTTP_B'
+                          | body    | grep 'HTTP_A = "foo\\\\"'
+                          | body    | grep 'HTTP_C = bar'
+<<EOF
+GET /http_headers HTTP/1.1
+a: foo
+   bar
+	baz
+b: baz1
+b: baz2
+
+
+EOF                       | headers | grep 'Status: 200'
+                          | body    | grep 'HTTP_A = foo bar baz'
+                          | body    | grep 'HTTP_B = baz1, baz2'
+<<EOF
+GET /http_headers
+a: foo
+
+
+EOF                       | headers | grep 'Status: 400'
+                          | body    | grep 'Junk after request'
+
+<<EOF
+POST /post_body HTTP/1.1
+
+test
+EOF                       | headers | grep 'Status: 200'
+                          | body    | grep "body = \`test'"
+
+# Testing if trailing spaces aren't trimmed during parsing
+# WARN: Last line contain trailing space, do not remove it
+<<EOF
+POST /post_body HTTP/1.1
+
+first
+second
+third
+ 
+EOF                       | headers | grep 'Status: 200'
+                          | body    | grep '^body = `first\nsecond\nthird\n '\''$'
+
+GET /ping                 | headers | grep 'Status: 200'
+POST /yacare/detach       | headers | grep 'Status: 200'
+GET /ping                 | headers | grep 'Status: 503'
+POST /yacare/attach       | headers | grep 'Status: 200'
+GET /ping                 | headers | grep 'Status: 200'
+
+GET /test_method?method=foo | body | grep foo
+
+GET /box_overload?l=a&ll=10,20&spn=30,40 | body | grep 'l,box'
+GET /box_overload?l=a&ll=10,20           | body | grep 'l,ll'
+GET /box_overload | body | grep 'l parameter missing or mismatched'
+
+GET /i18n/distance?value=100             | body | grep '^100(\s|\xC2\xA0)+м$'
+GET /i18n/distance?value=100&lang=en_US  | body | grep '^330(\s|\xC2\xA0)+ft$'
+GET /i18n/distance?value=100&lang=ru_RU  | body | grep '^100(\s|\xC2\xA0)+м$'
+GET /i18n/distance?value=100&lang=ru_RU&i18n_prefs=imperial  | body | grep '^330(\s|\xC2\xA0)+(фт|фут\.|футов)$'
+
+GET /errors_reset_response | body    | grep '<error><status>400</status><message>error</message></error>'
+                           | headers | grep 'Status: 400'
+
+GET /param_overload?variant=1 | body    | grep 'param overload, variant 1'
+GET /param_overload?variant=2 | body    | grep 'param overload, variant 2'
+GET /param_overload           | headers | grep 'Status: 400'
+
+GET /constraints/z?z=10 | headers | grep 'Status: 200'
+GET /constraints/z?z=40 | headers | grep 'Status: 400'
+GET /constraints/z      | headers | grep 'Status: 400'
+
+GET /constraints/cval          | headers | grep 'Status: 200'
+                               | body    | grep '^15$'
+GET /constraints/cval?cval=12  | body    | grep '^12$'
+GET /constraints/cval?cval=40  | headers | grep 'Status: 400'
+
+GET /constraints/dval?dval=3.5 | headers | grep 'Status: 200'
+GET /constraints/dval?dval=4.1 | headers | grep 'Status: 400'
+GET /constraints/dval?dval=2.9 | headers | grep 'Status: 400'
+
+GET /custom_http_code | headers | grep 'Status: 418'
+
+GET /special_param_names?name=foo&type=bar&optional=yes | headers | grep 'Status: 200'
+                                                        | body    | grep 'name = foo'
+                                                        | body    | grep 'type = bar'
+
+
+GET /param_with_none?optional_unsigned=123      | body    | grep 'optional_unsigned=123'
+GET /param_with_none                            | body    | grep 'optional_unsigned=none'
+GET /param_with_none?optional_unsigned=         | headers | grep 'Status: 400'
+GET /param_with_none?optional_unsigned=hello    | headers | grep 'Status: 400'
+
+GET /foo/bar HTTP/1.0\nHost: testapp2.maps.yandex.ru\n\n                  | body    | grep 'hello from testapp2'
+GET /foo/bar HTTP/1.0\nHost: 2x.testapp.tst.maps.yandex.ru\n\n            | body    | grep 'hello from testapp2'
+GET /foo/bar HTTP/1.0\nHost: testapp3.load.maps.yandex.ru\n\n             | body    | grep 'hello from testapp3'
+GET /foo/bar HTTP/1.0\nHost: tback01g.maps.yandex.net\n\n                 | body    | grep 'hello from testapp3'
+GET /foo/bar HTTP/1.0\nHost: testapp.maps.kinopoisk.ru\n\n                | body    | grep 'hello from testapp3'
+GET /foo/bar HTTP/1.0\nHost: testapp4.albireo.maps.dev.yandex.net\n\n     | body    | grep 'hello from testapp4'
+GET /foo/bar                                                              | headers | grep 'Status: 404'
+
+GET /test_custom_option  | body | grep testvalue
+                                | grep DerivedOption
+
+<<EOF
+GET /multiple HTTP/1.0
+Content-Type: multipart/form-data; boundary=-----bound
+
+-------bound
+Content-Disposition: form-data; name="rll"
+
+1,2
+-------bound
+Content-Disposition: form-data; name=where
+
+x
+-------bound--
+EOF                  | body | grep 'multiple, rll and where given'
+
+<<EOF
+GET /etag HTTP/1.1
+If-None-Match: "123"
+Range: 0-0
+
+
+EOF                       | headers | grep 'Status: 304'
+                          | body    | ! grep .
+<<EOF
+GET /etag HTTP/1.1
+If-None-Match: "123"
+
+
+EOF                       | headers | grep 'Status: 304'
+                          | body    | ! grep .
+<<EOF
+GET /etag HTTP/1.1
+If-None-Match: W/"123"
+
+
+EOF                       | headers | grep 'Status: 304'
+                          | body    | ! grep .
+<<EOF
+GET /etag HTTP/1.1
+If-None-Match: W/"124"
+
+
+EOF                       | headers | grep 'Status: 200'
+                          | body    | grep .
+<<EOF
+GET /etag HTTP/1.1
+If-None-Match: W/"124"
+
+
+EOF                       | headers | grep 'Status: 200'
+                          | body    | grep .
+<<EOF
+GET /etag HTTP/1.1
+
+
+EOF                       | headers | grep 'Status: 200'
+                          | body    | grep .
+GET /ping                 | headers | ! grep 'etag'
+GET /ping                 | headers | ! grep 'Etag'
+
+GET /custom_exception     | body    | grep .
+GET /large_response       | body    | count_bytes 47185920
+
+<<EOF
+GET /etag HTTP/1.1
+If-None-Match: const char*
+
+
+EOF                       | headers | grep 'Status: 400'
+                          | body    | grep 'Cannot process etag:'

@@ -1,0 +1,155 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Контрол: вывод состояний контрола фулскрин
+
+Description:
+Проверка вывода состояний контрола фулскрин.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+control
+
+Estimated time:
+300000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан Москвы, сверху слева имеются 3 контрола масштабирования контейнера с картой(контрол с серым фоном, контрол с желтым фоном, контрол с белым фоном).
+  Под контейнером с картой 3 блока логов(fullscreen1, fullscreen2, fullscreen3) со значениями полей. Selected - нажата ли кнопка; enabled - признак, активна ли кнопка; pressed - кнопка зажата пользователем(у всех кнопок undefined); size - размер(у всех кнопок small). 
+  В левом нижнем углу кнопка "Clear".
+  Проверить соответствие значений: 
+  fullscreen1: selected == undefined; enabled == true.
+  fullscreen2: selected == true; enabled == true.
+  fullscreen3 selected == undefined; enabled == false.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "clear", после клик в контрол масштабирования контейнера с картой, расположенный по центру(фон окрашен желтым).
+
+  Expectation:
+  После клика в кнопку "clear", информация под контейнером с картой пропадает.
+  При клике в контрол масштабирования - спан карты и размер контейнера без изменений, контрол становится неактивным, фон окрашен белым.
+  Под контейнером с картой появляется блок значений контрола fullscreen2, проверить корректность состояний нажатия и активности кнопки по аналогии первого шага.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "clear", после клик в контрол масштабирования контейнера с картой, расположенный справа.
+
+  Expectation:
+  Контейнер с картой разворачивается на всю страницу браузера.
+  Два контрола масштабирования активны - окрашен желтым, внутри контролов стрелки направлены внутрь.  
+
+Step:
+  Action:
+  Выполнить клик в контрол масштабирования контейнера с картой, расположенный по центру.
+
+  Expectation:
+  Контейнер с картой свернулся до первоначальных размеров.
+  Контролы масштабирования неактивны - фон окрашен белым, внутри контролов стрелки направлены наружу.
+  Под контейнером с картой блоки логов(fullscreen1, fullscreen2, fullscreen3). При этом первые три блока отражают состояния кнопок на момент развернутого контейнера, вторые три блока на момент сворачивания контейнера с картой.
+  Проверить соответствие состояний контрол по аналогии с описанием в первом шаге.
+-->
+<html>
+<head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            var map = myMap = new ym.Map('map', {
+                        center: [55.73259667357658, 37.70153663432529],
+                        zoom: 9,
+                        behaviors: ['default', 'scrollZoom'],
+                        controls: []
+                    }),
+                    log = new Log();
+
+            addGrid(myMap);
+
+            var fullscreen1 = new ymaps.control.FullscreenControl({
+                data: {
+                    title: '1'
+                },
+                options: {
+                    float: 'left'
+                }
+            });
+
+            var fullscreen2 = new ymaps.control.FullscreenControl({
+                data: {
+                    title: '2'
+                },
+                options: {
+                    float: 'left'
+                },
+                state: {
+                    selected: true
+                }
+            });
+
+            var fullscreen3 = new ymaps.control.FullscreenControl({
+                data: {
+                    title: '3'
+                },
+                options: {
+                    float: 'left'
+                },
+                state: {
+                    enabled: false
+                }
+            });
+
+            var monitor1 = new ymaps.Monitor(fullscreen1.state)
+                    .add(['selected', 'enabled', 'pressed', 'size'], function (values) {
+                        log.info('fullscreen1 selected == ' + monitor1.get('selected'));
+                        log.info('fullscreen1 enabled == ' + monitor1.get('enabled'));
+                        log.info('fullscreen1 pressed == ' + monitor1.get('pressed'));
+                        log.info('fullscreen1 size == ' + monitor1.get('size'));
+                    });
+
+            var monitor2 = new ymaps.Monitor(fullscreen2.state)
+                    .add(['selected', 'enabled', 'pressed', 'size'], function (values) {
+                        log.info('fullscreen2 selected == ' + monitor2.get('selected'));
+                        log.info('fullscreen2 enabled == ' + monitor2.get('enabled'));
+                        log.info('fullscreen2 pressed == ' + monitor2.get('pressed'));
+                        log.info('fullscreen2 size == ' + monitor2.get('size'));
+                    });
+
+            var monitor3 = new ymaps.Monitor(fullscreen3.state)
+                    .add(['selected', 'enabled', 'pressed', 'size'], function (values) {
+                        log.info('fullscreen3 selected == ' + monitor3.get('selected'));
+                        log.info('fullscreen3 enabled == ' + monitor3.get('enabled'));
+                        log.info('fullscreen3 pressed == ' + monitor3.get('pressed'));
+                        log.info('fullscreen3 size == ' + monitor3.get('size'));
+                    });
+
+            myMap.controls
+                    .add(fullscreen1)
+                    .add(fullscreen2)
+                    .add(fullscreen3);
+
+            var clearButton = new ymaps.control.Button('clear');
+            clearButton.events.add('click', function () {
+                log.clear();
+            });
+            map.controls.add(clearButton, {float: 'none', position: {bottom: 35, left: 10}});
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

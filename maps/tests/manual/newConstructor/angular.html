@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="ru" data-framework="angularjs" ng-app="yandex-api-test">
+<head>
+    <meta charset="utf-8" />
+    <title>Пример бага API Яндекс Карт</title>
+    <script src="https://code.jquery.com/jquery-2.2.3.js" integrity="sha256-laXWtGydpwqJ8JA+X9x2miwmaiKhn8tVmOVEigRNtP4=" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/angular.js/1.5.5/angular.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/angular.js/1.5.5/angular-route.js"></script>
+
+    <script>
+        angular.module("yandex-api-test", ["ngRoute"])
+                .directive("yaMap", function() {
+                    const baseUrl = "https://api-maps.tst.c.maps.yandex.ru/services/constructor/1.0/js/";
+                    return {
+                        restrict: "E",
+                        link: function(scope, $element, attr) {
+                            attr.$observe("sid", (value) => {
+                                const id = "map-" + (Math.random() * 100000000).toFixed(0);
+                            const params = {
+                                sid: value,
+                                width: attr["width"],
+                                height: attr["height"] || 450,
+                                id: id
+                            };
+                            const $mapContainer = $(`<div class="map">&nbsp;</div>`);
+                            const $mapScript = $(`<script type="text/javascript" charset="utf-8"></scr` + `ipt>`);
+                            $mapContainer.attr("id", id);
+                            $mapContainer.css("width", params.width + "px");
+                            $mapContainer.css("height", params.height + "px");
+                            $mapScript.attr("src", baseUrl + "?" + $.param(params));
+                            $mapContainer.append($mapScript);
+                            $element.append($mapContainer);
+                            /* Solution hack
+                             scope.$on("$destroy", function() {
+                             $mapContainer.find('iframe')[0].postMessage = function() {};
+                             });
+                             */
+                        });
+                        }
+                    };
+                })
+                .config(function($routeProvider) {
+                    $routeProvider.when("/page1", {
+                        templateUrl: "page1"
+                    });
+                    $routeProvider.when("/page2", {
+                        templateUrl: "page2"
+                    });
+                    $routeProvider.otherwise({
+                        redirectTo: "/page1"
+                    });
+                });
+    </script>
+</head>
+<body>
+<div ng-view></div>
+<script type="text/ng-template" id="page1">
+    <h1>Page1</h1>
+    <a href="#/page2">Go to page2 to see errors.</a>
+    <ya-map sid="YQ80azlNTZeLgks6RBS7mczQIE477OYG" />
+</script>
+<script type="text/ng-template" id="page2">
+    <h1>Page2</h1>
+    <a href="#/page1">page1</a>
+    <p>See console!</p>
+</script>
+</body>
+</html>

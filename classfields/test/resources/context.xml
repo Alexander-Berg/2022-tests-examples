@@ -1,0 +1,168 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:util="http://www.springframework.org/schema/util"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+       http://www.springframework.org/schema/beans/spring-beans-3.1.xsd http://www.springframework.org/schema/util http://www.springframework.org/schema/util/spring-util.xsd"
+    default-autowire="byName">
+
+    <bean class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer"
+          lazy-init="false">
+        <property name="locations">
+            <list>
+                <value>classpath:context.properties</value>
+                <value>classpath:auto-searcher.properties</value>
+                <value>classpath:auto-core.properties</value>
+                <value>classpath:auto-core-local.properties</value>
+            </list>
+        </property>
+        <property name="ignoreUnresolvablePlaceholders" value="false"/>
+        <property name="order" value="-1"/>
+        <property name="ignoreResourceNotFound" value="true"/>
+    </bean>
+
+    <import resource="query.xml"/>
+    <import resource="verba-test.xml"/>
+
+
+    <bean id="catalogCardYoctoSearchTemplate"
+          factory-bean="yoctoCatalogCardUpdateListener" factory-method="buildSearcher"/>
+
+    <bean id="initialCatalogCardPhaser"
+          class="java.util.concurrent.Phaser">
+        <constructor-arg value="1"/>
+    </bean>
+
+    <bean id="yoctoDocumentConverter"
+          class="ru.yandex.auto.core.search2.conversion.yocto.CatalogCardYoctoEntityConverter"/>
+
+    <bean id="yoctoCatalogCardUpdateListener"
+          class="ru.yandex.auto.indexer.yocto.handler.catalog.CatalogCardUpdateListener">
+        <constructor-arg name="catalogDataType" ref="catalogDataType"/>
+        <constructor-arg name="converter" ref="yoctoDocumentConverter"/>
+        <constructor-arg name="extDataService" ref="extDataService"/>
+        <constructor-arg name="phaser" ref="initialCatalogCardPhaser"/>
+        <constructor-arg name="catalogCardsRootDirectory" value="${auto.shard.catalog-dir}"/>
+    </bean>
+
+
+    <bean id="dataTypeRegistry"
+          class="ru.yandex.extdata.common.meta.DataTypeRegistry">
+        <constructor-arg>
+            <list>
+                <ref bean="rawVerbaType"/>
+                <ref bean="rawVerbaTrucksType"/>
+                <ref bean="rawVerbaMotoType"/>
+                <ref bean="rawVerbaCarServiceType"/>
+                <ref bean="rawCarsReviewsDataType"/>
+                <ref bean="rawMotoReviewsDataType"/>
+                <ref bean="rawTrucksReviewsDataType"/>
+                <ref bean="regionsDataType"/>
+                <ref bean="currencyDataType"/>
+                <ref bean="verbaDataType"/>
+                <ref bean="trucksVerbaDataType"/>
+                <ref bean="motoVerbaDataType"/>
+                <ref bean="carServiceVerbaDataType"/>
+                <ref bean="catalogDataType"/>
+                <ref bean="trucksCatalogDataType"/>
+                <ref bean="motoCatalogDataType"/>
+                <ref bean="catalogStatProxyDataType"/>
+                <ref bean="showcaseStatDataType"/>
+                <ref bean="newRelatedDataType"/>
+                <ref bean="dealersDataType"/>
+                <ref bean="taxDataType"/>
+                <ref bean="carServiceDataType"/>
+                <ref bean="autoRuOffersStatDataType"/>
+                <ref bean="trucksOffersStatDataType"/>
+                <ref bean="motoOffersStatDataType"/>
+                <ref bean="verbaDictionariesDataType"/>
+                <ref bean="office7ClientsDataType"/>
+                <ref bean="zenDataType"/>
+                <ref bean="carsModificationCodesDataType"/>
+                <ref bean="carsReviewsDataType"/>
+                <ref bean="motoReviewsDataType"/>
+                <ref bean="trucksReviewsDataType"/>
+                <ref bean="callAuctionParticipantsDataType"/>
+                <ref bean="campaignByClientDataType"/>
+            </list>
+        </constructor-arg>
+    </bean>
+
+    <bean id="catalogCardGroupingService" class="org.mockito.Mockito" factory-method="mock">
+        <constructor-arg value="ru.yandex.auto.core.catalog.grouping.CatalogCardGroupingCachingImpl"/>
+        <property name="yoctoSearchTemplate" ref="catalogCardYoctoSearchTemplate"/>
+    </bean>
+
+    <bean id="searchConfigurationBuilder" class="ru.yandex.auto.searcher.configuration.SearchConfigurationBuilder">
+        <property name="queryProcessor" ref="queryProcessor"/>
+        <property name="sortFactory" ref="sortFactory"/>
+        <property name="offersPagerFactory" ref="pagerFactory"/>
+        <property name="carsPagerFactory" ref="pagerFactory"/>
+        <property name="currencyByRegionProvider" ref="currencyByRegionProvider"/>
+    </bean>
+
+    <bean id="langsProvider" class="ru.yandex.auto.core.dictionary.SimpleLangsProvider">
+        <constructor-arg>
+            <list>
+                <util:constant static-field="ru.yandex.auto.core.AutoLang.RU"/>
+            </list>
+        </constructor-arg>
+    </bean>
+
+    <bean id="sortFactory" class="ru.yandex.auto.searcher.configuration.SortFactory"/>
+
+    <bean id="currencyByRegionProvider" class="ru.yandex.auto.core.currency.CurrencyByRegionProvider">
+        <property name="regionService" ref="regionService"/>
+    </bean>
+
+
+    <bean id="searchContext" class="ru.yandex.auto.searcher.core.SearchContext">
+        <property name="queryProcessor" ref="queryProcessor"/>
+        <property name="optionsManager" ref="optionManagerHolder"/>
+    </bean>
+
+    <bean id="pagerFactory" class="ru.yandex.common.util.db.pager.DefaultPagerFactory">
+        <property name="neighbourPageCount" value="4"/>
+        <property name="showAllSupport" value="false"/>
+    </bean>
+
+    <bean id="complexFieldsManager" class="org.mockito.Mockito" factory-method="mock">
+        <constructor-arg value="ru.yandex.auto.core.filter.complex_field.ComplexFieldsManager"/>
+        <property name="configLocalPath" value="${auto.ext-data.dir}/filter/options.xml"/>
+    </bean>
+
+    <bean id="priceConverter" class="org.mockito.Mockito" factory-method="mock">
+        <constructor-arg value="ru.yandex.auto.core.stock.http.PriceConverter"/>
+    </bean>
+
+    <bean id="regionTree" class="org.mockito.Mockito" factory-method="mock">
+        <constructor-arg value="ru.yandex.auto.core.region.RegionTree"/>
+    </bean>
+
+    <bean id="catalogStatProxyHolder" class="org.mockito.Mockito" factory-method="mock">
+        <constructor-arg value="ru.yandex.auto.searcher.statistics.CatalogStatProxy"/>
+    </bean>
+
+    <bean id="carSearchParamsFactory" class="ru.yandex.auto.searcher.core.CarSearchParamsFactoryImpl">
+    </bean>
+
+    <bean id="regionService" class="org.mockito.Mockito" factory-method="mock">
+        <constructor-arg value="ru.yandex.auto.searcher.main.region.RegionServiceImpl"/>
+        <property name="loader">
+            <bean class="ru.yandex.extdata.provider.loader.ExtDataLoader">
+                <property name="service" ref="extDataService"/>
+                <property name="type" ref="verbaDataType"/>
+            </bean>
+        </property>
+    </bean>
+
+    <bean id="vendorManager" class="org.mockito.Mockito" factory-method="mock">
+        <constructor-arg value="ru.yandex.auto.core.vendor.VendorManager"/>
+    </bean>
+
+    <bean id="optionManagerHolder" class="org.mockito.Mockito" factory-method="mock">
+        <constructor-arg value="ru.yandex.auto.core.filter.option.OptionManagerHolder"/>
+        <property name="configLocalPath" value="${auto.ext-data.dir}/filter/options.xml"/>
+    </bean>
+
+    <bean id="optionManager" class="ru.yandex.auto.core.filter.option.OptionManager"/>
+</beans>

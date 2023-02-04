@@ -1,0 +1,183 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Карта: опция выхода из полноэкранного режима Esc
+
+Description:
+Проверка работы опции выхода из полноэкранного режима на кнопке Esc.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+map
+
+Estimated time:
+180000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+  
+  Expectation:
+  Карта отобразилась корректно со спаном Москвы.
+  Сверху имеются кнопки "unset", "Esc", "prevent", справа контрол фулскрин.
+
+Step:
+  Action:
+  Выполнить клик в контрол фулскрин. 
+  
+  Expectation:
+  Контейнер с картой разворачивается на всю ширину страницы браузера.
+
+Step:
+  Action:
+  Нажать кнопку "Esc" на клавиатуре компьютера.
+  
+  Expectation:
+  Спан карты и размер контейнера без изменений.
+
+Step:
+  Action:
+  Выполнить клик в контрол фулскрин. 
+  
+  Expectation:
+  Контейнер с картой сворачивается до первоначальных размеров.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "unset", затем клик в контрол фулскрин. 
+  
+  Expectation:
+  Контейнер с картой разворачивается на всю ширину страницы браузера.
+
+Step:
+  Action:
+  Нажать кнопку "Esc" на клавиатуре компьютера.
+  
+  Expectation:
+  Контейнер с картой сворачивается до первоначальных размеров.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "Esc", затем клик в контрол фулскрин. 
+  
+  Expectation:
+  Контейнер с картой разворачивается на всю ширину страницы браузера.
+
+Step:
+  Action:
+  Нажать кнопку "Esc" на клавиатуре компьютера.
+  
+  Expectation:
+  Спан карты и размер контейнера без изменений.
+
+Step:
+  Action:
+  Выполнить клик в контрол фулскрин. 
+  
+  Expectation:
+  Контейнер с картой сворачивается до первоначальных размеров.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "Esc", затем клик в контрол фулскрин. 
+  
+  Expectation:
+  Контейнер с картой разворачивается на всю ширину страницы браузера.
+
+Step:
+  Action:
+  Нажать кнопку "Esc" на клавиатуре компьютера.
+  
+  Expectation:
+  Контейнер с картой сворачивается до первоначальных размеров.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "prevent", затем клик в контрол фулскрин. 
+  
+  Expectation:
+  Контейнер с картой разворачивается на всю ширину страницы браузера.
+
+Step:
+  Action:
+  Нажать кнопку "Esc" на клавиатуре компьютера.
+  
+  Expectation:
+  Происходит смена спана на спан Санкт-Петербурга.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 10,
+                behaviors: ['default'],
+                controls: ['fullscreenControl']
+            }, {
+                exitFullscreenByEsc: false
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+            log.info('Возможность выхода из полноэкранного режима по Esc отключена');
+            log.info('Esc button - change option exitFullscreenByEsc');
+            log.info('unset button - unset option exitFullscreenByEsc');
+            log.info('prevent button - превентим "beforefullscreenexit", меняем center and zoom map и отвязываемся от события');
+            log.info(' ');
+
+
+            map.container.events.add(['fullscreenenter', 'fullscreenexit', 'beforefullscreenexit'], function (e) {
+                log.info(e.get('type'));
+            });
+
+            var escButton = new ymaps.control.Button({data: {content: 'Esc'}, options: {selectOnClick: true}});
+            var unSetEscButton = new ymaps.control.Button({data: {content: 'unset'}, options: {selectOnClick: false}});
+            var preventButton = new ymaps.control.Button({data: {content: 'prevent'}, options: {selectOnClick: false}});
+
+            var callback = function (e) {
+                e.preventDefault();
+                log.info('catch beforefullscreenexit, change center and zoom map');
+                map.setCenter([60, 30], 7);
+                map.container.events.remove(['beforefullscreenexit'], callback);
+            };
+
+            escButton.events
+                    .add('select', function () {
+                        map.options.set('exitFullscreenByEsc', false);
+                    })
+                    .add('deselect', function () {
+                        map.options.set('exitFullscreenByEsc', true);
+                    });
+            unSetEscButton.events
+                    .add('click', function () {
+                        map.options.unset('exitFullscreenByEsc');
+                    });
+            preventButton.events
+                    .add('click', function () {
+                        map.container.events.add(['beforefullscreenexit'], callback);
+                    });
+
+
+            map.controls.add(preventButton)
+                    .add(escButton)
+                    .add(unSetEscButton);
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

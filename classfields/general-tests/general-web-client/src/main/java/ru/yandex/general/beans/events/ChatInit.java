@@ -1,0 +1,18 @@
+package ru.yandex.general.beans.events;
+
+import lombok.Getter;
+import lombok.Setter;
+import lombok.experimental.Accessors;
+
+@Setter
+@Getter
+@Accessors(chain = true)
+public class ChatInit {
+
+    Offer offer;
+
+    public static ChatInit chatInit() {
+        return new ChatInit();
+    }
+
+}

@@ -1,0 +1,78 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - nanny-robot
+      groups:
+      - svc_partnjorskijjinterfejjsjandeksa_development
+labels:
+  order: '99999999'
+---
+# https://wiki.yandex-team.ru/partner/w/dev/infrastructure/systems/common-services/deploy/balancer/
+regexp_section:
+  matcher: {}
+  modules:
+    - headers:
+        create_func_weak:
+          X-Real-IP: realip
+    - report: {uuid: deploy_test, ranges: default}
+    - balancer2:
+        attempts: !f count_backends()
+        # PUT и DELETE ретраются! см. AWACS-1210
+        retry_non_idempotent: false
+        # любители закрывать ДЦ сами понижают вес (если GroupId = common)
+        rr: {weights_file: ./controls/traffic_control.weights}
+        status_code_blacklist: ["5xx"]
+        return_last_5xx: true
+        on_error:
+          errordocument:
+            status: 504
+            content: "Service unavailable"
+        backends:
+          - weight: 1
+            name: "bygeo_sas"
+            modules:
+              - report: {uuid: "bygeo_sas", ranges: default}
+              - balancer2:
+                  attempts: !f count_backends()
+                  retry_non_idempotent: false
+                  attempts_rate_limiter:
+                    limit: 0.2
+                    coeff: 0.99
+                  dynamic:
+                    # 0.5 - макс. возможное значение 
+                    max_pessimized_share: 0.5
+                    history_interval: "10s"
+                  status_code_blacklist: ["5xx"]
+                  return_last_5xx: true
+                  generated_proxy_backends:
+                    proxy_options:
+                      connect_timeout: 50ms
+                      backend_timeout: 180s
+                      fail_on_5xx: false
+                    include_backends:
+                      type: BY_ID
+                      ids: [partner_test_stage_deploy_sas]
+          - weight: 1
+            name: "bygeo_vla"
+            modules:
+              - report: {uuid: "bygeo_vla", ranges: default}
+              - balancer2:
+                  attempts: !f count_backends()
+                  retry_non_idempotent: false
+                  attempts_rate_limiter:
+                    limit: 0.2
+                    coeff: 0.99
+                  dynamic:
+                    max_pessimized_share: 0.5
+                    history_interval: "10s"
+                  status_code_blacklist: ["5xx"]
+                  return_last_5xx: true
+                  generated_proxy_backends:
+                    proxy_options:
+                      connect_timeout: 50ms
+                      backend_timeout: 180s
+                      fail_on_5xx: false
+                    include_backends:
+                      type: BY_ID
+                      ids: [partner_test_stage_deploy_vla]

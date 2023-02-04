@@ -1,0 +1,45 @@
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      url: '/ping'
+  modules:
+    - report:
+        uuid: 'slbping'
+        ranges: default
+    - headers:
+        append_func:
+          X-Forwarded-For: realip
+        create_func_weak:
+          X-Real-IP: realip
+          X-Source-Port-Y: realport
+        create:
+          Host: 'core-graph-tile-builder.testing.maps.yandex.net'
+    - balancer2:
+        rr: {
+          weights_file: './controls/maps_slb_check.weights'
+        }
+        attempts: 1
+        backends:
+          - weight: 1
+            name: to_upstream
+            modules:
+              - balancer2:
+                  attempts: !f count_backends_sd()
+                  weighted2: {}
+                  disable_attempts_rate_limiter: true
+                  generated_proxy_backends:
+                    proxy_options:
+                      connect_timeout: 70ms
+                      backend_timeout: 700ms
+                    include_backends:
+                      type: BY_ID
+                      ids: [maps_core_graph_tile_builder_testing_sas,maps_core_graph_tile_builder_testing_vla]
+                  on_error:
+                    errordocument:
+                      status: 504
+                      content: "Service unavailable"
+          - weight: -1
+            name: switch_off
+            errordocument:
+              status: 503

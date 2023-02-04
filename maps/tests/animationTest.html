@@ -1,0 +1,165 @@
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title>graphics Test.</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <!--
+        Подключаем API карт 2.x
+        Параметры:
+          - load=package.full - полная сборка;
+          - lang=ru-RU - язык русский.
+    -->
+    <script src="http://localhost:8080/2.0/?mode=debug&load=package.full,graphics.render.detect.all&lang=ru-RU"
+            type="text/javascript"></script>
+    <!--<script src="http://api-maps.yandex.ru/2.0?mode=debug&load=package.full,graphics.render.detect.all&lang=ru-RU"-->
+            <!--type="text/javascript"></script>-->
+    <script type="text/javascript">
+        // Как только будет загружен API и готов DOM, выполняем инициализацию
+        ymaps.ready(init);
+
+        var polygon1, myMap;
+
+        function init () {
+            var center = [57.550442644802594, 44.12109375000001];
+            myMap = new ymaps.Map("map", {
+                center: center,
+                zoom: 4
+            });
+            window.yMap = myMap;
+
+            var limitSet = document.getElementById('limit'),
+                    step = document.getElementById('step')
+            t = 0;
+
+            function gen () {
+                var limit = parseInt(limitSet.value),
+                        nstep = parseInt(step.value),
+                        result = [],
+                        outer = [],
+                        R = 2, R2 = 0.3,
+                        R3 = 0.5, R4 = 0.2,
+                        ang, i;
+                for (i = 0; i < limit; ++i) {
+                    ang = Math.PI * 2 * (i / limit) + t;
+                    R = 2 + 0.5 * Math.cos(ang * 20 - t);
+                    outer.push([center[0] + Math.cos(ang) * R, center[1] + Math.sin(ang) * R]);
+                }
+                outer.push(outer[0]);
+                result.push(outer);
+                if (nstep > 1) {
+                    var inner = [];
+                    for (i = 0; i < limit; ++i) {
+                        ang = Math.PI * 2 * (i / limit) + t;
+                        R = 0.9 + 0.1 * Math.cos(ang * 20 + t);
+                        var x = Math.cos(t / 10) * 3;
+                        inner.push([center[0] + Math.cos(ang) * R, center[1] + Math.sin(ang) * R + x]);
+                    }
+                    inner.push(inner[0]);
+                    result.push(inner);
+                }
+                if (nstep > 2) {
+                    var inner = [];
+                    for (i = 0; i < limit; ++i) {
+                        ang = Math.PI * 2 * (i / limit) + t;
+                        R = 0.9 + 0.1 * Math.cos(ang * 20 + t);
+                        var x = Math.cos(0.7 + t / 8) * 3;
+                        inner.push([x + center[0] + Math.cos(ang) * R, center[1] + Math.sin(ang) * R]);
+                    }
+                    inner.push(inner[0]);
+                    result.push(inner);
+                }
+                if (nstep > 3) {
+                    var inner = [];
+                    for (i = 0; i < limit; ++i) {
+                        ang = Math.PI * 2 * (i / limit) + t;
+                        R = 0.9 + 0.1 * Math.cos(ang * 20 + t);
+                        var x = Math.cos(0.7 + t / 8) * 3;
+                        var y = Math.sin(0.7 + t / 8) * 3;
+                        inner.push([x + center[0] + Math.cos(ang) * R, center[1] + Math.sin(ang) * R + y]);
+                    }
+                    inner.push(inner[0]);
+                    result.push(inner);
+                }
+
+                if (nstep > 4) {
+                    var inner = [];
+                    for (i = 0; i < limit; ++i) {
+                        ang = Math.PI * 2 * (i / limit) + t;
+                        R = 0.9 + 0.1 * Math.cos(ang * 20 + t);
+                        var x = Math.cos(0.7 - t / 6) * 3;
+                        var y = Math.sin(0.7 - t / 7) * 3;
+                        inner.push([x + center[0] + Math.cos(ang) * R, center[1] + Math.sin(ang) * R + y]);
+                    }
+                    result.push(inner);
+                }
+                return result;
+            }
+
+            polygon1 = new ymaps.GeoObject({
+                geometry: {
+                    type: 'Polygon',
+                    coordinates: gen()
+                }
+            }, {
+                overlayFactory: ymaps.geoObject.overlayFactory.staticGraphics,
+
+                strokeColor: '#000000',
+                strokeWidth: 15,
+                fillColor:'#FFF'
+               // opacity: 0.4
+            });
+
+            myMap.geoObjects.add(polygon1);
+
+            myMap.options.set('geoObjectStrokeWidth', 2);
+            var startValue = 0;
+            var steps=0;
+            //if(0)
+            setInterval(function () {
+                t += 0.1;
+                if(0){
+                myMap.options.set('geoObjectStrokeStyle', {
+                    style: [1,2],
+                    offset: startValue
+                });
+                }
+
+               // startValue -= 1;
+                polygon1.geometry.setCoordinates(gen());
+
+                steps++;
+            }, 10);
+
+            setInterval(function(){
+                document.getElementById('fps').value=steps/2;
+                steps=0;
+            },2000);
+
+            var startValue = 0;
+
+
+        }
+    </script>
+</head>
+
+<body>
+
+<div id="map" style="width:100%;height:400px"></div>
+limit: <input id='limit' value='100'>
+steps:limit: <input id='step' value='1'>
+<input id="fps">
+
+<input type=button value="SVG" onClick="myMap.options.set('geoObjectRenderType','SVG')">
+<input type=button value="Canvas" onClick="myMap.options.set('geoObjectRenderType','Canvas')">
+
+<input type=button value="even-odd" onClick="polygon1.geometry.setFillRule('evenOdd')">
+<input type=button value="nonzero" onClick="polygon1.geometry.setFillRule('nonZero')">
+
+<style>
+    _canvas{
+        border:1px solid #F00;
+    }
+</style>
+
+</body>

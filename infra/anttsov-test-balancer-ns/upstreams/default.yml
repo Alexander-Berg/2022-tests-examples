@@ -1,0 +1,41 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - anttsov
+      - nanny-robot
+      groups: []
+labels:
+  order: '99999999'
+config_mode: easy2
+---
+l7_upstream_macro:
+  version: '0.3.0'
+  id: default
+  matcher:
+    any: true
+  response_headers:
+    - copy_from_request:
+        source: X-Test
+        target: X-Test
+        keep_existing: false
+  by_dc_scheme:
+    dc_balancer:
+      weights_section_id: 'bygeo'
+      method: BY_DC_WEIGHT
+      attempts: 1
+    balancer:
+      attempts: 2
+      backend_timeout: 1s
+      connect_timeout: 100ms
+      retry_http_responses:
+        codes: [5xx, 429]
+        on_last_failed_retry: PROXY_RESPONSE_AS_IS
+      max_reattempts_share: 0.2
+      max_pessimized_endpoints_share: 0.2
+    dcs:
+      - name: man
+        backend_ids:
+        - anttsov-test-balancer-backend   
+    on_error:
+      rst: true

@@ -1,0 +1,803 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+       http://www.springframework.org/schema/beans/spring-beans.xsd"
+       default-lazy-init="true">
+
+    <bean class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer"
+          lazy-init="false">
+        <property name="locations">
+            <list>
+                <value>classpath:context.properties</value>
+                <value>classpath:auto-searcher.properties</value>
+                <value>classpath:auto-core.properties</value>
+            </list>
+        </property>
+        <property name="ignoreUnresolvablePlaceholders" value="false"/>
+        <property name="order" value="-1"/>
+        <property name="ignoreResourceNotFound" value="false"/>
+    </bean>
+
+    <import resource="auto-searcher-verba-dependent.xml"/>
+    <import resource="query.xml"/>
+
+
+    <bean id="langsProvider" class="ru.yandex.auto.core.dictionary.ConfiguredLangsProvider">
+        <constructor-arg name="langsStr" value="ru"/>
+    </bean>
+
+
+    <bean id="runtime" class="java.lang.Runtime" factory-method="getRuntime"/>
+
+    <bean id="availableProcessors" class="java.lang.Integer">
+        <constructor-arg>
+            <bean factory-bean="runtime" factory-method="availableProcessors"/>
+        </constructor-arg>
+    </bean>
+
+    <bean id="carsPagerFactory"
+          class="ru.yandex.common.util.db.pager.DefaultPagerFactory">
+        <property name="neighbourPageCount" value="4"/>
+        <property name="showAllSupport" value="false"/>
+        <property name="pageNumParamName" value="page_num"/>
+        <property name="defaultPageSize" value="30"/>
+    </bean>
+
+    <bean id="offersPagerFactory"
+          class="ru.yandex.common.util.db.pager.DefaultPagerFactory">
+        <property name="neighbourPageCount" value="4"/>
+        <property name="showAllSupport" value="false"/>
+        <property name="pageNumParamName" value="page_num_offers"/>
+        <property name="pageSizeParamName" value="page_size_offers"/>
+        <property name="defaultPageSize" value="20"/>
+        <property name="maxTotalItemCount" value="${auto.searcher.offers.pager.max.total.items}"/>
+    </bean>
+
+    <bean id="carSearchParamsFactory"
+          class="ru.yandex.auto.searcher.core.CarSearchParamsFactoryImpl">
+        <property name="regionService" ref="regionService"/>
+        <property name="vendorManager" ref="vendorManager"/>
+        <property name="langsProvider" ref="langsProvider"/>
+    </bean>
+
+    <!--                                           VENDOR MANAGER                                        -->
+
+    <bean id="vendorManager" class="ru.yandex.auto.core.vendor.VendorManagerFactoryBeanImpl">
+        <property name="vendorFileName" value="${auto.ext-data.dir}/filter/vendor.xml"/>
+        <property name="regionService" ref="regionService"/>
+    </bean>
+
+    <bean id="servRequestBuilder"
+          class="ru.yandex.auto.searcher.request.ServRequestBuilder">
+        <property name="carSearchParamsFactory" ref="carSearchParamsFactory"/>
+    </bean>
+
+    <!-- currency exchange center 1-->
+    <bean id="priceConverter"
+          class="ru.yandex.auto.core.stock.http.ExternalHttpStockPriceConverter">
+        <property name="externalStockService" ref="externalStockService"/>
+    </bean>
+
+    <bean id="priceConverterWrapper" class="ru.yandex.auto.core.stock.http.PriceConverterWrapper">
+        <property name="priceConverter" ref="priceConverter"/>
+    </bean>
+
+    <bean id="externalStockService"
+          class="ru.yandex.auto.core.stock.http.CurrencyService">
+        <property name="conversions">
+            <list>
+                <value>USD_TO_RUR</value>
+                <value>EUR_TO_RUR</value>
+                <value>BYR_TO_RUR</value>
+                <value>UAH_TO_RUR</value>
+                <value>KZT_TO_RUR</value>
+                <value>EUR_TO_TRY</value>
+                <value>USD_TO_TRY</value>
+                <value>UAH_TO_TRY</value>
+            </list>
+        </property>
+        <property name="loader">
+            <bean class="ru.yandex.extdata.provider.loader.ExtDataLoader">
+                <property name="service" ref="extDataService"/>
+                <property name="type" ref="currencyDataType"/>
+            </bean>
+        </property>
+    </bean>
+
+    <bean id="multiCurrencyPriceBuilder"
+          class="ru.yandex.auto.searcher.builders.price.MultiCurrencyPriceBuilder">
+        <property name="priceConverter" ref="priceConverterWrapper"/>
+    </bean>
+
+    <bean id="showcaseStatsProvider" class="ru.yandex.auto.core.showcase.ShowcaseStatisticsProvider">
+
+        <property name="loader">
+            <bean class="ru.yandex.extdata.provider.loader.ExtDataLoader">
+                <property name="service" ref="extDataService"/>
+                <property name="type" ref="showcaseStatDataType"/>
+            </bean>
+        </property>
+    </bean>
+
+    <bean id="catalogStatProxyHolder" class="ru.yandex.auto.searcher.statistics.CatalogStatProxyHolder">
+        <constructor-arg name="extDataService" ref="extDataService"/>
+        <constructor-arg name="dataType" ref="catalogStatProxyDataType"/>
+    </bean>
+
+    <bean name="reviewsDataProvider" class="ru.yandex.auto.reviews.ReviewsDataProvider">
+        <property name="carsReviewsDataType" ref="carsReviewsDataType"/>
+        <property name="motoReviewsDataType" ref="motoReviewsDataType"/>
+        <property name="trucksReviewsDataType" ref="trucksReviewsDataType"/>
+        <property name="extDataService" ref="extDataService"/>
+    </bean>
+
+    <bean name="photoUtils" class="ru.yandex.auto.util.photo.PhotoUtils"/>
+
+    <bean id="regionService"
+          class="ru.yandex.auto.searcher.main.region.RegionServiceImpl">
+        <property name="loader">
+            <bean class="ru.yandex.extdata.provider.loader.ExtDataLoader">
+                <property name="service" ref="extDataService"/>
+                <property name="type" ref="regionsDataType"/>
+            </bean>
+        </property>
+        <property name="unifiers">
+            <list>
+                <bean class="ru.yandex.auto.searcher.main.region.unifiers.AutoruGraphUnifier">
+                    <constructor-arg name="filePath" value="${auto.ext.data.region.graph.file.path}"/>
+                </bean>
+                <bean class="ru.yandex.auto.searcher.main.region.unifiers.TransliterationUnifier">
+                    <constructor-arg name="filePath" value="${auto.ext.data.region.transliteration.file.path}"/>
+                </bean>
+            </list>
+        </property>
+    </bean>
+
+    <bean id="regionpromptServantlet"
+          class="ru.yandex.auto.searcher.http.action.RegionPromptAction">
+        <property name="autoruOfferStatsProvider" ref="autoruOfferStatsProvider"/>
+        <property name="regionService" ref="regionService"/>
+        <property name="langsProvider" ref="langsProvider"/>
+        <property name="servRequestBuilder" ref="servRequestBuilder"/>
+    </bean>
+
+    <bean id="compareParamsBuilder" class="ru.yandex.auto.searcher.result.data.compare.builders.CompareParamsBuilder">
+        <property name="catalogCardGroupingService" ref="catalogCardGroupingService"/>
+        <property name="currencyByRegionProvider" ref="currencyByRegionProvider"/>
+        <property name="regionService" ref="regionService"/>
+    </bean>
+
+    <bean id="compareServantlet"
+          class="ru.yandex.auto.searcher.http.action.CompareAction">
+        <property name="compareParamsBuilder" ref="compareParamsBuilder"/>
+        <property name="compareResultBuilder" ref="compareResultBuilder"/>
+        <property name="servRequestBuilder" ref="servRequestBuilder"/>
+    </bean>
+
+
+    <bean id="compareResultBuilder" class="ru.yandex.auto.searcher.result.data.compare.builders.CompareResultBuilder">
+        <property name="catalogCardGroupingService" ref="catalogCardGroupingService"/>
+        <property name="catalogResultBuilder" ref="catalogResultBuilder"/>
+    </bean>
+
+    <bean id="catalogResultBuilder" class="ru.yandex.auto.searcher.result.data.compare.builders.CatalogResultBuilder">
+        <property name="compareUtils" ref="compareUtils"/>
+        <property name="markBuilder" ref="markBuilder"/>
+        <property name="modelBuilder" ref="modelBuilder"/>
+        <property name="superGenerationBuilder" ref="superGenerationBuilder"/>
+        <property name="generationBuilder" ref="generationBuilder"/>
+        <property name="configurationBuilder" ref="configurationBuilder"/>
+        <property name="photoBuilder" ref="photoBuilder"/>
+        <property name="complectationGroupResultBuilder" ref="complectationGroupResultBuilder"/>
+        <property name="specificationResultBuilder" ref="specificationResultBuilder"/>
+    </bean>
+
+    <bean id="markBuilder" class="ru.yandex.auto.searcher.result.data.compare.builders.MarkBuilder">
+        <property name="fieldPersistenceManager" ref="fieldPersistenceManager"/>
+    </bean>
+
+    <bean id="modelBuilder" class="ru.yandex.auto.searcher.result.data.compare.builders.ModelBuilder">
+        <property name="fieldPersistenceManager" ref="fieldPersistenceManager"/>
+    </bean>
+
+    <bean id="superGenerationBuilder"
+          class="ru.yandex.auto.searcher.result.data.compare.builders.SuperGenerationBuilder">
+        <property name="fpm" ref="fieldPersistenceManager"/>
+    </bean>
+
+    <bean id="generationBuilder" class="ru.yandex.auto.searcher.result.data.compare.builders.GenerationBuilder">
+        <property name="fpm" ref="fieldPersistenceManager"/>
+    </bean>
+
+    <bean id="configurationBuilder" class="ru.yandex.auto.searcher.result.data.compare.builders.ConfigurationBuilder">
+        <property name="catalogUtils" ref="catalogUtils"/>
+        <property name="showcaseStatisticsProvider" ref="showcaseStatsProvider"/>
+    </bean>
+
+    <bean id="photoBuilder" class="ru.yandex.auto.searcher.result.data.compare.builders.PhotoBuilder"/>
+
+    <bean id="complectationGroupResultBuilder"
+          class="ru.yandex.auto.searcher.result.data.compare.builders.ComplectationGroupResultBuilder">
+        <property name="compareUtils" ref="compareUtils"/>
+    </bean>
+
+
+    <bean id="specificationResultBuilder"
+          class="ru.yandex.auto.searcher.result.data.compare.builders.SpecificationResultBuilder">
+        <property name="compareUtils" ref="compareUtils"/>
+        <property name="optionPackageResultBuilder" ref="optionPackageResultBuilder"/>
+    </bean>
+
+    <bean id="compareUtils" class="ru.yandex.auto.searcher.result.data.compare.builders.CompareUtils">
+        <property name="catalogStatProxyHolder" ref="catalogStatProxyHolder"/>
+        <property name="priceConverter" ref="priceConverter"/>
+    </bean>
+
+    <bean id="showcaseServantlet"
+          class="ru.yandex.auto.searcher.http.action.ShowcaseAction">
+        <property name="regionService" ref="regionService"/>
+        <property name="priceConverter" ref="priceConverter"/>
+        <property name="catalogStatProxyHolder" ref="catalogStatProxyHolder"/>
+        <property name="currencyByRegionProvider" ref="currencyByRegionProvider"/>
+        <property name="fieldPersistenceManager" ref="fieldPersistenceManager"/>
+        <property name="photoBuilder" ref="photoBuilder"/>
+        <property name="showcaseStatisticsProvider" ref="showcaseStatsProvider"/>
+        <property name="catalogCardGroupingService" ref="catalogCardGroupingService"/>
+        <property name="servRequestBuilder" ref="servRequestBuilder"/>
+    </bean>
+
+    <bean id="apishowcaseServantlet"
+          class="ru.yandex.auto.searcher.http.action.api.ApiShowcaseAction">
+        <property name="regionService" ref="regionService"/>
+        <property name="priceConverter" ref="priceConverter"/>
+        <property name="catalogStatProxyHolder" ref="catalogStatProxyHolder"/>
+        <property name="currencyByRegionProvider" ref="currencyByRegionProvider"/>
+        <property name="fieldPersistenceManager" ref="fieldPersistenceManager"/>
+        <property name="photoBuilder" ref="photoBuilder"/>
+        <property name="showcaseStatsProvider" ref="showcaseStatsProvider"/>
+        <property name="catalogCardGroupingService" ref="catalogCardGroupingService"/>
+        <property name="servRequestBuilder" ref="servRequestBuilder"/>
+    </bean>
+
+    <!--
+        http
+    -->
+
+    <bean id="jsonBuilder" class="ru.yandex.auto.core.search2.JacksonJsonBuilder">
+        <constructor-arg name="moduleName" value="AutoSearcher"/>
+        <constructor-arg name="version" value="1"/>
+        <constructor-arg name="introspector">
+            <bean class="com.fasterxml.jackson.module.jaxb.JaxbAnnotationIntrospector"/>
+        </constructor-arg>
+        <constructor-arg name="serializers">
+            <list>
+                <bean class="ru.yandex.auto.searcher.result.converter.PagerResultSerializer"/>
+                <bean class="ru.yandex.auto.searcher.result.converter.RegionSerializer"/>
+                <bean class="ru.yandex.auto.searcher.result.converter.DealerSerializer"/>
+                <bean class="ru.yandex.auto.searcher.result.converter.VendorSerializer"/>
+                <bean class="ru.yandex.auto.searcher.result.converter.ErrorSerializer"/>
+                <bean class="ru.yandex.auto.searcher.result.converter.SubscriptionQuerySerializer"/>
+                <bean class="ru.yandex.auto.searcher.result.converter.ProtoV3ResponseSerializer"/>
+                <bean class="ru.yandex.auto.searcher.result.converter.RawOfferSerializer"/>
+            </list>
+        </constructor-arg>
+    </bean>
+
+    <bean id="sovetnikSnippetBuilder" class="ru.yandex.auto.searcher.result.data.sovetnik.SovetnikSnippetBuilder">
+        <property name="fieldPersistenceManager" ref="fieldPersistenceManager"/>
+    </bean>
+    <bean id="sovetnikVenicleDetector" class="ru.yandex.auto.searcher.result.data.sovetnik.SovetnikVenicleDetector">
+        <property name="queryProcessor" ref="queryProcessor"/>
+        <property name="carSearchParamsFactory" ref="carSearchParamsFactory"/>
+        <property name="searchConfigurationBuilder" ref="searcherSearchConfigurationBuilder"/>
+    </bean>
+
+    <bean name="currenciesServantlet" class="ru.yandex.auto.searcher.http.action.CurrencyAction">
+        <property name="stockService" ref="externalStockService"/>
+        <property name="servRequestBuilder" ref="servRequestBuilder"/>
+    </bean>
+
+    <!--Filters-->
+
+
+    <!--Dealers beans-->
+    <bean name="dealerNetServantlet" class="ru.yandex.auto.searcher.http.action.dealers.DealerNetAction">
+        <property name="dealerNetResultBuilder" ref="dealerNetResultBuilder"/>
+        <property name="dealersProvider" ref="dealersProvider"/>
+        <property name="servRequestBuilder" ref="servRequestBuilder"/>
+    </bean>
+    <bean name="dealersServantlet" class="ru.yandex.auto.searcher.http.action.dealers.DealersSearchAction">
+        <property name="dealerSearcher" ref="dealerSearcher"/>
+        <property name="dealerSearchResultBuilder" ref="dealerSearchResultBuilder"/>
+        <property name="searchConfigurationBuilder" ref="dealersSearchConfigurationBuilder"/>
+        <property name="servRequestBuilder" ref="servRequestBuilder"/>
+    </bean>
+    <bean name="apiDealersServantlet" class="ru.yandex.auto.searcher.http.action.api.dealer.ApiDealersAction">
+        <property name="searchConfigurationBuilder" ref="dealersSearchConfigurationBuilder"/>
+        <property name="dealerSearcher" ref="dealerSearcher"/>
+        <property name="apiDealersBuilder" ref="apiDealerBuilder"/>
+        <property name="servRequestBuilder" ref="servRequestBuilder"/>
+        <property name="beanName" value=""/>
+    </bean>
+    <bean name="dealerSuggestServantlet" class="ru.yandex.auto.searcher.http.action.dealers.DealersSuggestAction">
+        <property name="dealersProvider" ref="dealersProvider"/>
+        <property name="regionService" ref="regionService"/>
+        <property name="servRequestBuilder" ref="servRequestBuilder"/>
+    </bean>
+    <bean name="apidealerServantlet" class="ru.yandex.auto.searcher.http.action.api.dealers.ApiDealerCardAction">
+        <property name="dealersProvider" ref="dealersProvider"/>
+        <property name="apiDealersBuilder" ref="apiDealerBuilder"/>
+        <property name="servRequestBuilder" ref="servRequestBuilder"/>
+    </bean>
+
+    <bean id="dealersListServantlet" class="ru.yandex.auto.searcher.http.action.list_pages.DealersListPageAction">
+        <property name="resultBuilder" ref="dealersListPageResultBuilder"/>
+        <property name="servRequestBuilder" ref="servRequestBuilder"/>
+    </bean>
+
+    <bean id="dealersSearchConfigurationBuilder"
+          class="ru.yandex.auto.searcher.configuration.dealers.DealersSearchConfigurationBuilder">
+        <property name="queryProcessor" ref="queryProcessor"/>
+    </bean>
+    <bean id="dealersPagerFactory" class="ru.yandex.common.util.db.pager.DefaultPagerFactory">
+        <property name="neighbourPageCount" value="4"/>
+        <property name="showAllSupport" value="false"/>
+        <property name="pageNumParamName" value="page_num"/>
+        <property name="defaultPageSize" value="30"/>
+    </bean>
+
+    <bean id="dealerSearchResultBuilder"
+          class="ru.yandex.auto.searcher.result.data.dealers.builder.search.DealerSearchResultBuilder">
+        <property name="dealerSearchResultEntryBuilder" ref="dealerSearchResultEntryBuilder"/>
+        <property name="scWrapperResultBuilder" ref="scWrapperResultBuilder"/>
+    </bean>
+
+    <bean id="scWrapperResultBuilder"
+          class="ru.yandex.auto.searcher.result.data.dealers.builder.search.DealerSearchConfigurationResultWrapperBuilder">
+        <property name="fieldPersistenceManager" ref="fieldPersistenceManager"/>
+    </bean>
+
+    <bean id="dealerSearchResultEntryBuilder"
+          class="ru.yandex.auto.searcher.result.data.dealers.builder.search.DealerSearchResultEntryBuilder">
+        <property name="fieldPersistenceManager" ref="fieldPersistenceManager"/>
+        <property name="catalogCardGroupingService" ref="catalogCardGroupingService"/>
+        <property name="dealersProvider" ref="dealersProvider"/>
+    </bean>
+
+    <bean id="dealerSearcher" class="ru.yandex.auto.searcher.search.dealers.YoctoDealerSearcher">
+        <property name="dealersProvider" ref="dealersProvider"/>
+        <property name="dealersQueryCompiler" ref="dealersQueryCompiler"/>
+    </bean>
+
+    <bean id="dealersQueryCompiler" class="ru.yandex.auto.searcher.dealers.DealersQueryCompiler"/>
+
+    <bean id="dealerNetResultBuilder"
+          class="ru.yandex.auto.searcher.result.data.dealers.builder.card.DealerNetResultBuilder"/>
+
+    <bean id="dealerSubNetResultBuilder"
+          class="ru.yandex.auto.searcher.result.data.dealers.builder.card.DealerSubNetResultBuilder">
+    </bean>
+
+    <!--END Dealers beans-->
+
+    <bean id="similarOfferDetailsCompanionV1"
+          class="ru.yandex.auto.searcher.http.action.similar_offer.v1.SimilarOfferDetailsCompanion">
+        <constructor-arg name="fpm" ref="fieldPersistenceManager"/>
+        <constructor-arg name="dealersProvider" ref="dealersProvider"/>
+    </bean>
+    <!-- END. Similar offer searcher beans v1 -->
+
+    <!-- Catalog API action beans -->
+
+    <bean id="cardAction" class="ru.yandex.auto.searcher.http.action.api.catalog.card.CardAction">
+        <constructor-arg name="catalogCardGroupingService" ref="catalogCardGroupingService"/>
+        <constructor-arg name="catalogModelConverter" ref="catalogModelConverter"/>
+    </bean>
+
+    <bean id="techParamAction" class="ru.yandex.auto.searcher.http.action.api.catalog.techparam.TechParamAction">
+        <constructor-arg name="catalogCardGroupingService" ref="catalogCardGroupingService"/>
+        <constructor-arg name="catalogModelConverter" ref="catalogModelConverter"/>
+    </bean>
+
+    <bean id="complectListAction" class="ru.yandex.auto.searcher.http.action.api.catalog.complect.ComplectListAction">
+        <constructor-arg name="catalogCardGroupingService" ref="catalogCardGroupingService"/>
+        <constructor-arg name="complectationConverter" ref="complectationConverter"/>
+    </bean>
+
+    <bean id="complectationConverter" class="ru.yandex.auto.searcher.model.ComplectationConverter">
+        <constructor-arg name="catalogCardGroupingService" ref="catalogCardGroupingService"/>
+        <constructor-arg name="modificationCodesProvider" ref="modificationCodesProvider"/>
+        <constructor-arg name="multiCurrencyPriceBuilder" ref="multiCurrencyPriceBuilder"/>
+    </bean>
+
+    <bean name="catalogModelConverter" class="ru.yandex.auto.searcher.http.action.api.catalog.CatalogModelConverter">
+        <constructor-arg name="catalogCardGroupingService" ref="catalogCardGroupingService"/>
+        <constructor-arg name="apiCommonUtils" ref="apiCommonUtils"/>
+        <constructor-arg name="complectationConverter" ref="complectationConverter"/>
+    </bean>
+
+    <bean id="optionsAction" class="ru.yandex.auto.searcher.http.action.api.catalog.options.OptionsCodesAction">
+        <constructor-arg name="catalogOptionsProvider" ref="catalogOptionsProvider"/>
+    </bean>
+    <!-- END. Catalog API action beans -->
+
+    <!--ParseQuery Action-->
+    <bean name="parseServantlet" class="ru.yandex.auto.searcher.http.action.ParseQueryAction">
+        <property name="searchConfigurationBuilder" ref="searcherSearchConfigurationBuilder"/>
+        <property name="servRequestBuilder" ref="servRequestBuilder"/>
+    </bean>
+
+    <bean name="offerCardBuilder" class="ru.yandex.auto.searcher.result.data.offer_card.builder.OfferCardBuilder">
+        <property name="fieldPersistenceManager" ref="fieldPersistenceManager"/>
+        <property name="priceConverter" ref="priceConverter"/>
+        <property name="dealersProvider" ref="dealersProvider"/>
+        <property name="catalogCardGroupingService" ref="catalogCardGroupingService"/>
+        <property name="offerSpecificationsBuilder" ref="offerSpecificationsBuilder"/>
+        <property name="carsFieldsBuilder" ref="carsFieldsBuilder"/>
+        <property name="catalogOptionsProvider" ref="catalogOptionsProvider"/>
+        <property name="multiCurrencyPriceBuilder" ref="multiCurrencyPriceBuilder"/>
+    </bean>
+
+    <bean name="carsFieldsBuilder" class="ru.yandex.auto.searcher.result.data.offer_card.builder.CarsFieldsBuilder">
+        <property name="catalogCardGroupingService" ref="catalogCardGroupingService"/>
+        <property name="fpm" ref="fieldPersistenceManager"/>
+    </bean>
+
+    <bean name="offerSpecificationsBuilder"
+          class="ru.yandex.auto.searcher.builders.OfferSpecificationsBuilder">
+        <property name="catalogCardGroupingService" ref="catalogCardGroupingService"/>
+        <property name="complexFieldsManager" ref="complexFieldsManager"/>
+    </bean>
+
+    <!--End of Offer card beans-->
+
+    <bean name="dealersProvider" class="ru.yandex.auto.dealers.DealersProvider">
+        <constructor-arg name="dataType" ref="dealersDataType"/>
+        <constructor-arg name="extDataService" ref="extDataService"/>
+    </bean>
+
+    <bean id="modificationCodesProvider" class="ru.yandex.auto.core.modifications.ModificationCodesProvider">
+        <constructor-arg name="dataType" ref="carsModificationCodesDataType"/>
+        <constructor-arg name="extDataService" ref="extDataService"/>
+    </bean>
+
+    <bean name="apiDealerBuilder" class="ru.yandex.auto.searcher.search.api.ApiDealersBuilder">
+        <property name="dealersProvider" ref="dealersProvider"/>
+        <property name="regionService" ref="regionService"/>
+        <property name="catalogCardGroupingService" ref="catalogCardGroupingService"/>
+        <property name="photoUtils" ref="photoUtils"/>
+    </bean>
+
+    <bean id="apiCommonUtils" class="ru.yandex.auto.searcher.search.api.api_common.ApiCommonUtils">
+        <property name="fieldPersistenceManager" ref="fieldPersistenceManager"/>
+    </bean>
+
+    <bean name="zenProvider" class="ru.yandex.auto.zen.ZenProvider">
+        <property name="dataType" ref="zenDataType"/>
+        <property name="extDataService" ref="extDataService"/>
+    </bean>
+
+    <!--list page-->
+    <bean id="pofferServantlet"
+          class="ru.yandex.auto.searcher.http.action.list_pages.autoru.PofferAction">
+        <property name="pofferResultBuilder" ref="pofferResultBuilder"/>
+        <property name="servRequestBuilder" ref="servRequestBuilder"/>
+    </bean>
+    <bean id="apiPofferServantlet"
+          class="ru.yandex.auto.searcher.http.action.list_pages.autoru.PofferAction">
+        <property name="pofferResultBuilder" ref="apiPofferResultBuilder"/>
+        <property name="servRequestBuilder" ref="servRequestBuilder"/>
+    </bean>
+    <bean id="pofferResultBuilder"
+          class="ru.yandex.auto.searcher.result.data.list_pages.builder.PofferResultBuilderImpl">
+        <property name="catalogCardGroupingService" ref="catalogCardGroupingService"/>
+        <property name="fieldPersistenceManager" ref="fieldPersistenceManager"/>
+        <property name="autoruOfferStatsProvider" ref="autoruOfferStatsProvider"/>
+    </bean>
+    <bean id="apiPofferResultBuilder"
+          class="ru.yandex.auto.searcher.result.data.list_pages.builder.ApiPofferResultBuilderImpl">
+        <property name="catalogCardGroupingService" ref="catalogCardGroupingService"/>
+        <property name="fieldPersistenceManager" ref="fieldPersistenceManager"/>
+        <property name="autoruOfferStatsProvider" ref="autoruOfferStatsProvider"/>
+    </bean>
+
+    <bean id="autoruOffersListServantlet"
+          class="ru.yandex.auto.searcher.http.action.list_pages.autoru.AutoruListPageAction">
+        <property name="autoruOfferStatsProvider" ref="autoruOfferStatsProvider"/>
+        <property name="catalogCardGroupingService" ref="catalogCardGroupingService"/>
+        <property name="persistenceManager" ref="fieldPersistenceManager"/>
+        <property name="vendorManager" ref="vendorManager"/>
+        <property name="apiCommonUtils" ref="apiCommonUtils"/>
+        <property name="reviewsDataProvider" ref="reviewsDataProvider"/>
+        <property name="servRequestBuilder" ref="servRequestBuilder"/>
+    </bean>
+    <bean id="autoruBreadcrumbsServantlet"
+          class="ru.yandex.auto.searcher.http.action.list_pages.autoru.NewAutoRuBreadcrumbsAction">
+        <property name="autoruOfferStatsProvider" ref="autoruOfferStatsProvider"/>
+        <property name="catalogCardGroupingService" ref="catalogCardGroupingService"/>
+        <property name="persistenceManager" ref="fieldPersistenceManager"/>
+        <property name="vendorManager" ref="vendorManager"/>
+        <property name="apiCommonUtils" ref="apiCommonUtils"/>
+        <property name="reviewsDataProvider" ref="reviewsDataProvider"/>
+        <property name="servRequestBuilder" ref="servRequestBuilder"/>
+        <property name="beanName" value=""/>
+    </bean>
+    <bean id="apiAutoBreadcrumbsServantlet"
+          class="ru.yandex.auto.searcher.http.action.api.ApiAutoruBreadcrumbsAction">
+        <property name="autoruOfferStatsProvider" ref="autoruOfferStatsProvider"/>
+        <property name="catalogCardGroupingService" ref="catalogCardGroupingService"/>
+        <property name="persistenceManager" ref="fieldPersistenceManager"/>
+        <property name="vendorManager" ref="vendorManager"/>
+        <property name="reviewsDataProvider" ref="reviewsDataProvider"/>
+        <property name="bodyTypeMapper">
+            <bean class="ru.yandex.auto.catalog.BodyTypeMapper"/>
+        </property>
+        <property name="apiCommonUtils" ref="apiCommonUtils"/>
+        <property name="servRequestBuilder" ref="servRequestBuilder"/>
+        <property name="beanName" value=""/>
+    </bean>
+
+    <bean id="generationsServantlet"
+          class="ru.yandex.auto.searcher.http.action.list_pages.GenerationsAction">
+        <property name="autoruOfferStatsProvider" ref="autoruOfferStatsProvider"/>
+        <property name="catalogCardGroupingService" ref="catalogCardGroupingService"/>
+        <property name="persistenceManager" ref="fieldPersistenceManager"/>
+        <property name="vendorManager" ref="vendorManager"/>
+        <property name="apiCommonUtils" ref="apiCommonUtils"/>
+        <property name="reviewsDataProvider" ref="reviewsDataProvider"/>
+        <property name="servRequestBuilder" ref="servRequestBuilder"/>
+    </bean>
+
+    <bean id="autoruDescriptionModelOrMarkServantlet"
+          class="ru.yandex.auto.searcher.http.action.list_pages.autoru.DescriptionModelOrMarkAction">
+        <property name="catalogCardGroupingService" ref="catalogCardGroupingService"/>
+        <property name="servRequestBuilder" ref="servRequestBuilder"/>
+    </bean>
+    <bean id="autoruOfferStatsProvider" class="ru.yandex.auto.searcher.statistics.autoru.AutoruOfferStatsProvider">
+        <constructor-arg name="dataType" ref="autoRuOffersStatDataType"/>
+        <constructor-arg name="extDataService" ref="extDataService"/>
+    </bean>
+
+    <bean id="trucksOfferStatsProvider" class="ru.yandex.auto.searcher.statistics.trucks.TrucksOfferStatsProvider">
+        <constructor-arg name="dataType" ref="trucksOffersStatDataType"/>
+        <constructor-arg name="extDataService" ref="extDataService"/>
+    </bean>
+
+    <bean id="motoOfferStatsProvider" class="ru.yandex.auto.searcher.statistics.moto.MotoOfferStatsProvider">
+        <constructor-arg name="dataType" ref="motoOffersStatDataType"/>
+        <constructor-arg name="extDataService" ref="extDataService"/>
+    </bean>
+
+    <bean id="catalogListServantlet" class="ru.yandex.auto.searcher.http.action.list_pages.CatalogListPageAction">
+        <property name="resultBuilder" ref="catalogListPageResultBuilder"/>
+        <property name="servRequestBuilder" ref="servRequestBuilder"/>
+    </bean>
+    <bean id="catalogListPageResultBuilder"
+          class="ru.yandex.auto.searcher.result.data.list_pages.builder.CatalogListPageResultBuilder">
+        <property name="catalogCardGroupingService" ref="catalogCardGroupingService"/>
+        <property name="fieldPersistenceManager" ref="fieldPersistenceManager"/>
+        <property name="vendorManager" ref="vendorManager"/>
+    </bean>
+
+    <bean id="reviewsListServantlet" class="ru.yandex.auto.searcher.http.action.list_pages.ReviewListPageAction">
+        <property name="builder" ref="reviewListPageResultBuilder"/>
+        <property name="servRequestBuilder" ref="servRequestBuilder"/>
+    </bean>
+
+    <bean id="reviewListPageResultBuilder"
+          class="ru.yandex.auto.searcher.result.data.list_pages.builder.ReviewListPageResultBuilder">
+        <property name="catalogCardGroupingService" ref="catalogCardGroupingService"/>
+        <property name="fieldPersistenceManager" ref="fieldPersistenceManager"/>
+        <property name="vendorManager" ref="vendorManager"/>
+    </bean>
+
+    <bean id="articlesListServantlet" class="ru.yandex.auto.searcher.http.action.list_pages.ArticlesListPageAction">
+        <property name="builder" ref="articlesListPageResultBuilder"/>
+        <property name="servRequestBuilder" ref="servRequestBuilder"/>
+    </bean>
+
+    <bean id="articlesListPageResultBuilder"
+          class="ru.yandex.auto.searcher.result.data.list_pages.builder.ArticlesListPageResultBuilder">
+        <property name="catalogCardGroupingService" ref="catalogCardGroupingService"/>
+        <property name="fieldPersistenceManager" ref="fieldPersistenceManager"/>
+        <property name="vendorManager" ref="vendorManager"/>
+    </bean>
+
+    <bean id="dealersListPageResultBuilder"
+          class="ru.yandex.auto.searcher.result.data.list_pages.builder.DealersListPageResultBuilder">
+        <property name="catalogCardGroupingService" ref="catalogCardGroupingService"/>
+        <property name="dealersProvider" ref="dealersProvider"/>
+        <property name="fieldPersistenceManager" ref="fieldPersistenceManager"/>
+        <property name="vendorManager" ref="vendorManager"/>
+    </bean>
+
+    <bean id="offersListServantlet" class="ru.yandex.auto.searcher.http.action.list_pages.OfferListPageAction">
+        <property name="resultBuilder" ref="offersListPageResultBuilder"/>
+        <property name="servRequestBuilder" ref="servRequestBuilder"/>
+    </bean>
+
+    <bean id="stocksListServantlet" class="ru.yandex.auto.searcher.http.action.list_pages.StockListPageAction">
+        <property name="resultBuilder" ref="stocksListPageResultBuilder"/>
+        <property name="servRequestBuilder" ref="servRequestBuilder"/>
+    </bean>
+
+    <bean id="offersListPageResultBuilder"
+          class="ru.yandex.auto.searcher.result.data.list_pages.builder.OffersListPageResultBuilder">
+        <property name="catalogCardGroupingService" ref="catalogCardGroupingService"/>
+        <property name="catalogStatProxy" ref="catalogStatProxyHolder"/>
+        <property name="fieldPersistenceManager" ref="fieldPersistenceManager"/>
+        <property name="vendorManager" ref="vendorManager"/>
+    </bean>
+
+    <bean id="stocksListPageResultBuilder"
+          class="ru.yandex.auto.searcher.result.data.list_pages.builder.StockListPageResultBuilder">
+        <property name="catalogCardGroupingService" ref="catalogCardGroupingService"/>
+        <property name="catalogStatProxy" ref="catalogStatProxyHolder"/>
+        <property name="fieldPersistenceManager" ref="fieldPersistenceManager"/>
+        <property name="vendorManager" ref="vendorManager"/>
+    </bean>
+    <!--end list page-->
+
+    <bean name="unifyMarkModelServantlet" class="ru.yandex.auto.searcher.http.action.UnifyMarkModelAction">
+        <property name="contentType" value="application/xml"/>
+        <property name="markAndModelUnifier" ref="markModelUnifier"/>
+        <property name="servRequestBuilder" ref="servRequestBuilder"/>
+    </bean>
+
+    <bean name="markModelUnifier" class="ru.yandex.auto.searcher.external.ExternalMarkAndModelUnifier">
+        <property name="queryProcessor" ref="queryProcessor"/>
+        <property name="searchConfigurationBuilder" ref="searcherSearchConfigurationBuilder"/>
+        <property name="catalogCardGroupingService" ref="catalogCardGroupingService"/>
+        <property name="fieldPersistenceManager" ref="fieldPersistenceManager"/>
+    </bean>
+
+    <bean name="relatedServantlet"
+          class="ru.yandex.auto.searcher.http.action.RelatedAction">
+        <property name="catalogCardGroupingService"
+                  ref="catalogCardGroupingService"/>
+        <property name="catalogUtils" ref="catalogUtils"/>
+        <property name="regionService" ref="regionService"/>
+        <property name="currencyByRegionProvider"
+                  ref="currencyByRegionProvider"/>
+        <property name="searchResultBuilder" ref="searchResultBuilder"/>
+        <property name="newRelatedContainerHolder" ref="newRelatedContainerHolder"/>
+        <property name="servRequestBuilder" ref="servRequestBuilder"/>
+    </bean>
+
+    <bean name="newRelatedContainerHolder" class="ru.yandex.auto.searcher.statistics.related.NewRelatedContainerHolder">
+        <constructor-arg name="dataType" ref="newRelatedDataType"/>
+        <constructor-arg name="extDataService" ref="extDataService"/>
+    </bean>
+
+    <bean name="catalogUtils"
+          class="ru.yandex.auto.searcher.catalog.CatalogUtils">
+        <property name="catalogCardGroupingService" ref="catalogCardGroupingService"/>
+    </bean>
+
+    <bean name="optionPackageResultBuilder"
+          class="ru.yandex.auto.searcher.result.data.compare.builders.OptionPackageResultBuilder">
+        <property name="priceConverter" ref="priceConverter"/>
+    </bean>
+
+    <bean id="showLog" class="ru.yandex.auto.searcher.utils.ShowLog"/>
+
+    <bean id="searchResultBuilder" class="ru.yandex.auto.searcher.search.SearchResultBuilder">
+        <property name="priceConverter" ref="priceConverter"/>
+        <property name="catalogCardGroupingService" ref="catalogCardGroupingService"/>
+        <property name="fieldPersistenceManager" ref="fieldPersistenceManager"/>
+        <property name="regionService" ref="regionService"/>
+        <property name="catalogStatProxyHolder" ref="catalogStatProxyHolder"/>
+        <property name="langsProvider" ref="langsProvider"/>
+        <property name="catalogUtils" ref="catalogUtils"/>
+        <property name="dealersProvider" ref="dealersProvider"/>
+        <property name="catalogOptionsProvider" ref="catalogOptionsProvider"/>
+        <property name="photoBuilder" ref="photoBuilder"/>
+        <property name="autoruOfferStatsProvider" ref="autoruOfferStatsProvider"/>
+        <property name="multiCurrencyPriceBuilder" ref="multiCurrencyPriceBuilder"/>
+        <property name="decayManager" ref="decayManager"/>
+    </bean>
+
+    <bean id="apiSearchResultBuilder" class="ru.yandex.auto.searcher.search.api.cars.ApiSearchResultBuilder">
+        <property name="fieldPersistenceManager" ref="fieldPersistenceManager"/>
+        <property name="multiCurrencyPriceBuilder" ref="multiCurrencyPriceBuilder"/>
+        <property name="catalogCardGroupingService" ref="catalogCardGroupingService"/>
+        <property name="offerSpecificationsBuilder" ref="offerSpecificationsBuilder"/>
+        <property name="regionService" ref="regionService"/>
+        <property name="apiDealersBuilder" ref="apiDealerBuilder"/>
+        <property name="apiCommonUtils" ref="apiCommonUtils"/>
+    </bean>
+
+    <bean name="apiAllOptionsHandler" class="ru.yandex.auto.searcher.http.action.api.catalog.options.AllOptionsHandler">
+        <constructor-arg name="catalogOptionsProvider" ref="catalogOptionsProvider"/>
+    </bean>
+
+    <bean id="catalogOptionsProvider" class="ru.yandex.auto.equipments.CatalogOptionsProvider">
+        <constructor-arg name="catalogDataType" ref="catalogDataType"/>
+        <constructor-arg name="extDataService" ref="extDataService"/>
+    </bean>
+
+    <bean id="decayManager" class="ru.yandex.auto.searcher.utils.DecayManager"/>
+
+    <bean id="sortableAdComparatorFactory" class="ru.yandex.auto.searcher.sort.comparator.SortableAdComparatorFactory">
+        <property name="catalogCardGroupingService" ref="catalogCardGroupingService"/>
+        <property name="newRelatedContainerHolder" ref="newRelatedContainerHolder"/>
+    </bean>
+
+    <bean id="handlerFactory"
+          class="ru.yandex.auto.searcher.statistics.HandlerFactory">
+        <property name="catalogCardGroupingService" ref="catalogCardGroupingService"/>
+        <property name="regionService" ref="regionService"/>
+    </bean>
+
+    <bean id="yoctoSearchQueryCompiler"
+          class="ru.yandex.auto.searcher.core.YoctoSearchQueryCompiler">
+    </bean>
+
+    <bean id="trucksYoctoSearchQueryCompiler"
+          class="ru.yandex.auto.searcher.core.TrucksYoctoSearchQueryCompiler"/>
+
+    <bean id="motoYoctoSearchQueryCompiler"
+          class="ru.yandex.auto.searcher.core.MotoYoctoSearchQueryCompiler"/>
+
+    <bean abstract="true" id="abstractSearchConfigurationBuilder"
+          class="ru.yandex.auto.searcher.configuration.SearchConfigurationBuilder">
+        <property name="queryProcessor" ref="queryProcessor"/>
+        <property name="currencyByRegionProvider" ref="currencyByRegionProvider"/>
+        <property name="catalogCardGroupingService" ref="catalogCardGroupingService"/>
+        <property name="fieldPersistenceManager" ref="fieldPersistenceManager"/>
+        <property name="offersPagerFactory" ref="offersPagerFactory"/>
+        <property name="dealersProvider" ref="dealersProvider"/>
+        <property name="searchContext" ref="searchContext"/>
+        <property name="langsProvider" ref="langsProvider"/>
+        <property name="sortFactory" ref="sortFactory"/>
+        <property name="carsPagerFactory" ref="carsPagerFactory"/>
+    </bean>
+
+
+    <bean name="currencyByRegionProvider"
+          class="ru.yandex.auto.core.currency.CurrencyByRegionProvider">
+        <property name="regionService" ref="regionService"/>
+    </bean>
+
+    <bean id="searcherSearchConfigurationBuilder"
+          parent="abstractSearchConfigurationBuilder">
+        <property name="sortFactory" ref="sortFactory"/>
+        <property name="carsPagerFactory" ref="carsPagerFactory"/>
+        <property name="offersPagerFactory" ref="offersPagerFactory"/>
+        <property name="searchContext" ref="searchContext"/>
+        <property name="fieldPersistenceManager" ref="fieldPersistenceManager"/>
+        <property name="dealersProvider" ref="dealersProvider"/>
+        <property name="langsProvider" ref="langsProvider"/>
+        <property name="featureManager" ref="featureManager"/>
+    </bean>
+
+    <bean id="sortFactory" class="ru.yandex.auto.searcher.configuration.SortFactory"/>
+    <bean id="cachingSortSelector" class="ru.yandex.auto.searcher.sort.CachingSortSelector"/>
+
+    <bean id="searchContext" class="ru.yandex.auto.searcher.core.SearchContext">
+        <property name="queryProcessor" ref="queryProcessor"/>
+        <property name="optionsManager" ref="optionsManager"/>
+        <property name="complexFieldsManager" ref="complexFieldsManager"/>
+        <property name="conditionCreator" ref="conditionCreator"/>
+        <property name="vendorManager" ref="vendorManager"/>
+        <property name="priceConverter" ref="priceConverter"/>
+    </bean>
+
+    <bean id="conditionCreator"
+          class="ru.yandex.auto.searcher.core.ConditionCreator"/>
+
+    <bean id="optionsManager"
+          class="ru.yandex.auto.core.filter.option.OptionManagerHolder">
+        <property name="configLocalPath"
+                  value="${auto.ext-data.dir}/filter/options.xml"/>
+    </bean>
+
+    <bean id="complexFieldsManager"
+          class="ru.yandex.auto.core.filter.complex_field.ComplexFieldsManager">
+        <property name="configLocalPath"
+                  value="${auto.ext-data.dir}/filter/complex-fields.xml"/>
+    </bean>
+
+
+</beans>

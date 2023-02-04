@@ -1,0 +1,53 @@
+---
+regexp_section:
+  matcher:
+    match_and:
+      - match_fsm:
+          path: '/push/?'
+      - match_fsm:
+          host: qyp.yandex-team.ru
+  modules:
+    - report:
+        ranges: default
+        uuid: qyp_yasm_push
+    - stats_eater: {}
+    - regexp:
+        sections:
+          headers_hash:
+            matcher:
+              match_fsm:
+                header:
+                  name: 'X-Golovan-Push-Request'
+                  value: '.*'
+            modules:
+              - headers_hasher:
+                  header_name: 'X-Golovan-Push-Request'
+                  randomize_empty_match: true
+              - shared:
+                  uuid: push_backends
+              - balancer2:
+                  attempts: !f count_backends()
+                  rendezvous_hashing:
+                    weights_file: './controls/traffic_control.weights'
+                    reload_duration: '1s'
+                  unique_policy: {}
+                  backends:
+                    - weight: 1
+                      name: qyp_yasm_push
+                      modules:
+                        - balancer2:
+                            attempts: 1
+                            unique_policy: {}
+                            hashing: {}
+                            generated_proxy_backends:
+                              proxy_options:
+                                backend_timeout: 5s
+                                keepalive_count: 0
+                              include_backends:
+                                type: BY_ID
+                                ids: [qyp_yasm_push]
+          default:
+            matcher: {}
+            modules:
+              - shared:
+                  uuid: push_backends

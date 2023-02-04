@@ -1,0 +1,50 @@
+---
+regexp_path_section:
+  pattern: '/lingvo_xml(/.*)?'
+  modules:
+    - report:
+        uuid: 'yastatic_net_s3_lingvo_xml'
+        ranges: 'default'
+    - shared:
+        uuid: yastatic_net_s3_lingvo_xml
+    - response_headers:
+        create:
+            Cache-Control: 'public'
+            Strict-Transport-Security: 'max-age=43200000; includeSubDomains;'
+            Access-Control-Allow-Origin: '*'
+            Timing-Allow-Origin: '*'
+    - headers:
+        create:
+            'Host': 'yastatic.s3.yandex.net'
+    - rewrite:
+        actions:
+          - regexp: '^/lingvo_xml/([^\\?]+)(.*)$'
+            rewrite: '/iso-lingvo_xml/%1'
+    - regexp:
+        sections:
+          xml:
+            matcher:
+                match_fsm:
+                  path: '.*(\\.xml|\\.htm|\\.html)'    
+            modules:
+                - response_headers_if:
+                    matcher:
+                        match_response_codes:
+                            codes: [200, 204, 206]
+                    create_header:
+                        'Content-Type': 'application/xml'
+                - shared:
+                    uuid: 'yastatic_net_s3_lingvo_xml_common'
+                - headers:
+                    delete:
+                        'authorization'
+                - shared:
+                    uuid: 'yastatic_s3_cached_shared'
+          default:
+            matcher: {}
+            modules:
+            - shared:
+                uuid: 'yastatic_net_s3_lingvo_xml_common'
+
+    
+    

@@ -1,0 +1,42 @@
+---
+regexp_section:
+  matcher:
+    match_and:
+      - match_fsm:
+          uri: "/((m)?search/)?atomsearch(/.*)?"
+      - match_method:
+          methods: ['post', 'put']
+  modules:
+    - rewrite:
+        actions:
+          - regexp: "/(m)?search/(.*)"
+            rewrite: /%2
+    - exp_getter_macro:
+        exp_headers: X-Yandex-LogstatUID
+        service_name: atomsearch
+        testing_mode: {}
+    - stats_eater: {}
+    - balancer2:
+        attempts: 2
+        rewind_limit: 1024
+        disable_attempts_rate_limiter: true
+        by_name_from_header_policy:
+          header_name: X-Test
+          allow_zero_weights: true
+          strict: true
+          hints:
+          - hint: pum
+            backend: purum
+          unique_policy: {}
+        leastconn: {}
+        check_backends:
+          name: kek
+          quorum: 0.1
+        generated_proxy_backends:
+          proxy_options:
+            backend_timeout: 5s
+            connect_timeout: 150ms
+            allow_connection_upgrade: true
+          nanny_snapshots:
+            - service_id: mobile_heroism
+              snapshot_id: a7d60569bc7aba83f88583b02ce3998aedbf5d67

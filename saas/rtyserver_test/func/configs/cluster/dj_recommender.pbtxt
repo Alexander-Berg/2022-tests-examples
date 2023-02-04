@@ -1,0 +1,233 @@
+SharedComponents {
+    Component {
+        Name: "counter_key_type_mapping.proto"
+        [NDJ.CounterKeyTypeMapping] {}
+    }
+    Component {
+        Name: "object_id_mapping.wad"
+        [NDJ.Wad] {}
+    }
+    Component {
+        Name: "card_counters.wad"
+        [NDJ.Wad] {}
+    }
+    Component: {
+        Name: "OT_Card_ET_TextHistoryDssmCard.wad"
+        [NDJ.Wad] {}
+    }
+}
+Components {
+    Component {
+        Name: "object_id_mapping"
+        [NDJ.ObjectIdWadMapping] {
+            Wad: "object_id_mapping.wad"
+        }
+    }
+    Component {
+        Name: "candidates_from_request"
+        [NDJ.FromRequestCandidateGenerator] {}
+    }
+    Component {
+        Name: "all_cards_generator"
+        [NDJ.Shard2CandidateGenerator] {
+            ObjectMappingComponentName: "object_id_mapping"
+            ObjectType: "PN_Collections#OT_Card"
+            MaxCount: 5
+        }
+    }
+    Component {
+        Name: "card_embeddings_wad"
+        [NDJ.EmbeddingsWadProvider] {
+            ObjectType: "PN_Collections#OT_Card"
+            EmbeddingKeyProvider {
+                EmbeddingKey {
+                    EmbeddingType: "PN_Collections#ET_TextHistoryDssmCard"
+                    Reducer: RT_Sum
+                }
+                EmbeddingFormat: EF_i8
+                Multiplier: 1.0
+                Wad: "OT_Card_ET_TextHistoryDssmCard.wad"
+            }
+        }
+    }
+    Component {
+        Name: "card_counters_wad"
+        [NDJ.CountersWadProvider] {
+            ObjectType: "PN_Collections#OT_Card"
+            Wad: "card_counters.wad"
+            CounterKeyTypeMapping: "counter_key_type_mapping.proto"
+            ObjectIdMapping: "object_id_mapping"
+            CounterSlices {
+                ObjectType: "PN_Collections#OT_Flag"
+                CounterType: "PN_Collections#CT_CardFlags"
+                Reducer: RT_Sum
+            }
+            CounterSlices {
+                ObjectType: "PN_Collections#OT_OntoId"
+                CounterType: "PN_Collections#CT_CardOntoId"
+                Reducer: RT_Sum
+            }
+            CounterSlices {
+                ObjectType: "PN_Collections#OT_ContentImageStats"
+                CounterType: "PN_Collections#CT_CardStats"
+                Reducer: RT_Sum
+            }
+            CounterSlices {
+                ObjectType: "PN_Collections#OT_Stats"
+                CounterType: "PN_Collections#CT_CardStats"
+                Reducer: RT_Sum
+            }
+            CounterSlices {
+                ObjectType: "PN_Collections#OT_CardText"
+                CounterType: "PN_Collections#CT_CardText"
+                Reducer: RT_Sum
+            }
+            CounterSlices {
+                ObjectType: "PN_Collections#OT_Flag"
+                CounterType: "PN_Collections#CT_Freshness"
+                Reducer: RT_Sum_7d
+            }
+            CounterSlices {
+                ObjectType: "PN_Collections#OT_Flag"
+                CounterType: "PN_Collections#CT_Freshness"
+                Reducer: RT_Sum_21d
+            }
+            CounterSlices {
+                ObjectType: "PN_Collections#OT_Board"
+                CounterType: "PN_Collections#CT_Link"
+                Reducer: RT_Sum
+            }
+            CounterSlices {
+                ObjectType: "PN_Collections#OT_BroadTheme"
+                CounterType: "PN_Collections#CT_Link"
+                Reducer: RT_Sum
+            }
+            CounterSlices {
+                ObjectType: "PN_Collections#OT_Channel"
+                CounterType: "PN_Collections#CT_Link"
+                Reducer: RT_Sum
+            }
+            CounterSlices {
+                ObjectType: "PN_Collections#OT_Image"
+                CounterType: "PN_Collections#CT_Link"
+                Reducer: RT_Sum
+            }
+            CounterSlices {
+                ObjectType: "PN_Collections#OT_ImageDup"
+                CounterType: "PN_Collections#CT_Link"
+                Reducer: RT_Sum
+            }
+            CounterSlices {
+                ObjectType: "PN_Collections#OT_ImageSemidup"
+                CounterType: "PN_Collections#CT_Link"
+                Reducer: RT_Sum
+            }
+            CounterSlices {
+                ObjectType: "PN_Collections#OT_MainContentType"
+                CounterType: "PN_Collections#CT_Link"
+                Reducer: RT_Sum
+            }
+        }
+    }
+    Component {
+        Name: "wad_profile_provider"
+        [NDJ.WadProfileProvider] {
+            ObjectIdMapping: "object_id_mapping"
+            ObjectTypeProvider: "card_counters_wad"
+            ObjectTypeProvider: "card_embeddings_wad"
+        }
+    }
+    Component {
+        Name: "only_embedding_wad_profile_provider"
+        [NDJ.WadProfileProvider] {
+            ObjectIdMapping: "object_id_mapping"
+            ObjectTypeProvider: "card_embeddings_wad"
+        }
+    }
+    Component {
+        Name: "all_embeddings_extractor"
+        [NDJ.ProfileRequestProcessor] {
+            ProfileProvider: "only_embedding_wad_profile_provider"
+            Objects {
+                ObjectFromItem {
+                }
+            }
+        }
+    }
+    Component {
+        Name: "similarity_feature_extractor"
+        [NDJ.ProfileFeatureExtractor] {
+            EmbeddingPairs {
+                FirstObject {
+                    ObjectFromItem {
+                    }
+                }
+                FirstEmbeddingType: "PN_Collections#ET_TextHistoryDssmCard"
+                FirstEmbeddingVersion: 0
+                FirstReducer: RT_Sum
+                SecondObject {
+                    ExplicitObject {
+                        ObjectType: "PN_Common#OT_Context"
+                        ObjectId: ""
+                    }
+                    Links {
+                        Aggregator: AG_SUM
+                        ObjectType: "PN_Collections#OT_Card"
+                        CounterType: "PN_Collections#CT_Link"
+                        Reducer: RT_Sum
+                    }
+                }
+                SecondEmbeddingType: "PN_Collections#ET_TextHistoryDssmCard"
+                SecondEmbeddingVersion: 0
+                SecondReducer: RT_Sum
+                Features {
+                    Name: "foo"
+                    Feature: EPF_COS
+                }
+            }
+        }
+    }
+    Component {
+        Name: "foo_extractor"
+        [NDJ.ProfileFeatureExtractor] {
+            Counters {
+                Name: "foo"
+                # Something that looks like a config
+                OuterObject {
+                    ObjectFromItem {}
+                }
+                InnerObject {
+                    ObjectFromItem {}
+                }
+                CounterType: "PN_Common#CT_NumEvents"
+                Reducer: RT_Sum
+            }
+        }
+    }
+    Component {
+        Name: "similarity_ranker"
+        [NDJ.SortRanker] {
+            FeatureName: "foo"
+            Reverse: true
+        }
+    }
+    Component {
+        Name: "top_5"
+        [NDJ.TopRanker] {
+            Count: 5
+        }
+    }
+}
+Experiments {
+    Experiment {
+        Name: "prod"
+        Alias: "empty"
+        Alias: ""
+
+        Step: "all_cards_generator"
+        Step: "all_embeddings_extractor"
+        Step: "similarity_feature_extractor"
+        Step: "similarity_ranker"
+        Step: "top_5"
+    }
+}

@@ -1,0 +1,235 @@
+<!DOCTYPE HTML>
+<!--(skip)(description)
+-->
+<!--(version)
+-->
+<!--(commands)
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script src="../geoCS.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ym) {
+            ymaps = ym; // hack
+
+            __log__('Corrector case: вершина не должна отрыватся от направляющих при драге и рисовании');
+            //при драге при выходе курсором за пределы ограничений происходи рассинхрон курсора и вершины - это норм, пока никому не мешает
+
+            var map = geoMap = myMap = new ym.Map('map', {
+                center: [55.73259667357658, 37.70153663432529],
+                zoom: 3,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            }, {
+                buttonMaxWidth: 99999
+            });
+
+            geoCSSource(ym, map, this);
+            addGrid(map);
+            var log = new Log();
+
+            polyline = new ymaps.GeoObject({
+                geometry: {
+                    type: "LineString",
+                    coordinates: [
+                        [55, 55],
+                        [60, 60],
+                        [100, 65],
+                        [60, 70],
+                        [60, 60],
+                        [65, 55]
+                    ]
+                }
+            }, {
+                // graphicsPolylineStrokeStyle: "dot",
+                strokeColor: '#aaaa0088',
+                opacity: 0.5,
+                strokeWidth: 5,
+                editorDrawing: true,
+//            editorDrawOver: false,
+                editorMaxPoints: 8,
+                editorHideGuideLinesOnVertexHover: false,
+                geodesic: true,
+                editorDrawingCorrector: function (coords, index) {
+                    var coord = coords[index].slice();
+                    coord[0] += 10;
+                    coord[1] += 10;
+                    var deferred = ymaps.vow.defer();
+                    setTimeout(function () {
+                        deferred.resolve(coord);
+                    }, 1);
+                    return deferred.promise();
+                },
+                editorDrawingCorrectorTimeout: 100,
+                editorDraggingCorrector: function (coords, index) {
+                    var coord = coords[index].slice();
+                    coord[0] += 10;
+                    coord[1] += 10;
+                    return ymaps.vow.resolve(coord);
+                }
+            });
+
+            geoMap.geoObjects.add(polyline);
+            polyline.editor.startEditing();
+            polyline.editor.startDrawing();
+
+            createPolygon();
+        }
+        function getSimpleCoords() {
+            return [
+                [
+                    [70, 55],
+                    [70, 60],
+                    [95, 60],
+                    [95, 55]
+                ],
+                [
+                    [71, 56],
+                    [71, 59],
+                    [74, 59],
+                    [74, 56]
+                ],
+                [
+                    [72, 57],
+                    [72, 58],
+                    [73, 58],
+                    [73, 57]
+                ]
+                // [[-120, 57], [0, 78], [120, 78], [-120, 57]] // Контур на несколько миров.
+            ];
+        }
+        function createPolygon() {
+            polygon = new ymaps.GeoObject({
+                geometry: {
+                    type: "Polygon",
+                    fillRule: "evenOdd",
+//                fillRule: "nonZero",
+                    coordinates: getSimpleCoords()
+//                coordinates: genStarCoords([72.5, 57.5], 200, 1)
+                },
+                properties: {
+                    hintContent: "бла бла бла",
+                    balloonContent: "бла бла бла"
+                }
+            }, {
+                draggable: true,
+                strokeColor: '#1a3dc1',
+                fillColor: '#1a3dc188',
+                strokeWidth: 3,
+                editorHideGuideLinesOnVertexHover: false,
+                editorMaxPoints: 18,
+                editorDrawOver: true,
+                editorDrawingCursor: "crosshair",
+                // Опции, включающие хинт для вершины.
+                editorVertexHasHint: true,
+                // end: Опции, включающие хинт для вершины.
+                // geodesic: true,
+                editorMenuManager: function (menuItems, vertexModel) {
+                    var pathModel = vertexModel.getParent(),
+                            pathIndex = pathModel.getIndex();
+                    if (pathIndex) {
+                        menuItems.push({
+                            title: "Сделать полигон на основе контура",
+                            onClick: function () {
+                                geoMap.geoObjects.add(
+                                        new ymaps.Polygon([polygon.geometry.getCoordinates()[pathIndex].slice()
+                                        ])
+                                );
+                            }
+                        });
+                    }
+                    return menuItems;
+                },
+                editorDrawingCorrector: function (coords, pathIndex, vertexIndex) {
+                    var coord = coords[pathIndex][vertexIndex].slice();
+                    coord[0] += 10;
+                    coord[1] += 10;
+                    var deferred = ymaps.vow.defer();
+                    setTimeout(function () {
+                        deferred.resolve(coord);
+                    }, 100);
+                    return deferred.promise();
+                },
+                editorDrawingCorrectorTimeout: 1000,
+                editorDraggingCorrector: function (coords, pathIndex, vertexIndex) {
+                    var coord = coords[pathIndex][vertexIndex].slice();
+                    coord[0] += 10;
+                    coord[1] += 10;
+                    var deferred = ymaps.vow.defer();
+                    setTimeout(function () {
+                        deferred.resolve(coord);
+                    }, 100);
+                    return deferred.promise();
+                },
+                editorDraggingCorrectorTimeout: 1000
+            });
+
+            geoMap.geoObjects.add(polygon);
+
+            polygon.editor.state.set('drawingFrom', 'end');
+
+            polygon.editor.startEditing();
+            polygon.editor.startDrawing();
+
+            polygon.events.add("geometrychange", function (event) {
+                console.log(polygon.geometry.getCoordinates());
+            });
+
+            polygon.editor.events.add("beforevertexdrag", function (event) {
+                var originalPosition = event.get("position");
+                //вырублена https://st.yandex-team.ru/MAPSAPI-10276
+                //event.callMethod("setPosition", [originalPosition[0], Math.min(Math.max(originalPosition[1], 200), 300)]);
+            });
+
+            polygon.editor.events.add("beforeedgedrag", function (event) {
+                var originalPosition = event.get("position");
+                //вырублена https://st.yandex-team.ru/MAPSAPI-10276
+                //event.callMethod("setPosition", [originalPosition[0], Math.min(Math.max(originalPosition[1], 200), 300)]);
+            });
+            var placemark = new ymaps.GeoObject({
+                geometry: { type: "Point", coordinates: [60, 30.5] }, properties: {
+                    balloonContent: 'text', hintContent: 'text'
+                }}, {preset: 'islands#greenIcon', draggable: true, openBalloonOnClick: false});
+
+            myMap.geoObjects.add(placemark);
+            placemark.options.set({
+
+                editorDrawingCorrector: function (coords, index) {
+                    var coord = coords.slice();
+                    coord[0] += 10;
+                    coord[1] += 10;
+                    return ymaps.vow.resolve(coord);
+                },
+                editorDrawingCorrectorTimeout: 100,
+
+                editorDraggingCorrector: function (coords, index) {
+                    var coord = coords.slice();
+                    coord[0] += 10;
+                    coord[1] += 10;
+                    return ymaps.vow.resolve(coord);
+                }
+                //  editorDraggingCorrectorTimeout: 1500
+            });
+
+            setTimeout(function(){
+                placemark.editor.startDrawing();
+            }, 3000);
+        }
+
+        function destroyPolygon() {
+            polygon.editor.stopEditing();
+            geoMap.geoObjects.remove(polygon);
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

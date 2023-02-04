@@ -1,0 +1,176 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Кластер: опция размера кластеров
+
+Description:
+Проверка работы опции размера кластеров
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+clusterer
+
+Estimated time:
+120000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась корректно.
+  После загрузки на спане в районе СПб несколько синих кластерных меток.
+  Сверху кнопки "icons", "numbers", "renderM...".
+
+Step:
+  Action:
+  Выполнить клик в "icons", затем клик в "renderM...", выполнить максимальный отзум, призум спана.
+
+  Expectation:
+  По клику в "icons" происходит смена иконок меток на изображения шаров, при значении кластеризации равном 10 и меньше - зеленый шар, больше 10 - желтый, больше 100 - красный. 
+  По клику в "renderM..." под контейнером строка "renderMode: dom".
+  При зуме/отзуме цвет кластерных меток должен корректно меняться в зависимости от значения кластеризации.
+  
+Step:
+  Action:
+  Выполнить клик в "numbers", клик в "icons", выполнить максимальный отзум, призум спана.
+
+  Expectation:
+  По клику в "numbers" под контейнером строка "clusterNumbers: 1,5".
+  По клику в "icons" метки кластеров без изменений. 
+  При зуме/отзуме происходит смена иконок меток, при значении кластеризации равном 5 и меньше - желтый шар, больше 5 - красный. 
+
+Step:
+  Action:
+  Выполнить клик в "numbers", клик в "icons", выполнить максимальный отзум, призум спана.
+
+  Expectation:
+  По клику в "numbers" под контейнером строка "clusterNumbers: 50,100".
+  По клику в "icons" метки кластеров без изменений. 
+  При зуме/отзуме происходит смена иконок меток, при значении кластеризации равном 50 и меньше - зеленый шар, больше 50 - желтый, больше 100 - красный. 
+-->
+<html>
+<head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script src="https://yandex.st/jquery/1.6.4/jquery.min.js" type="text/javascript"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            var map = myMap = new ymaps.Map('map', {
+                center: [59.96343157514998, 30.317977733422868],
+                zoom: 7,
+                // Добавим к стандартным поведениям карты зум колесом мыши.
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl', 'zoomControl']
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+
+            var placemarksNumber = 200;
+            var bounds = myMap.getBounds();
+            var newPlacemarks = createGeoObjects(placemarksNumber, bounds);
+            var clusterIcons = [
+                {
+                    href: 'https://png-2.findicons.com/files/icons/232/christmas_xp/48/christmas_ball_1.png',
+                    size: [48, 48],
+                    offset: [-24, -24]
+                },
+                {
+                    href: 'https://png-1.findicons.com/files/icons/232/christmas_xp/64/christmas_ball_4.png',
+                    size: [48, 48],
+                    offset: [-24, -24]
+                },
+                {
+                    href: 'https://png-3.findicons.com/files/icons/232/christmas_xp/128/christmas_ball_3.png',
+                    size: [48, 48],
+                    offset: [-24, -24]
+                }
+            ];
+
+            var MyIconContentLayout = ymaps.templateLayoutFactory.createClass(
+                    '<div style="color: #000000; font-weight: bold;">$[properties.geoObjects.length]</div>');
+
+            var clusterer = new ymaps.Clusterer({
+                disableClickZoom: true,
+                clusterIconContentLayout: MyIconContentLayout,
+                clusterHideIconOnBalloonOpen: false
+            });
+
+            clusterer.add(newPlacemarks);
+            map.geoObjects.add(clusterer);
+
+            var cursorButton = new ymaps.control.Button({data: {content: 'numbers'}, options: {selectOnClick: true}});
+            var iconButton = new ymaps.control.Button({data: {content: 'icons'}, options: {selectOnClick: false}});
+
+            cursorButton.events
+                    .add('select', function () {
+                        clusterer.options.set('clusterNumbers', [1, 5]);
+                        log.info('clusterNumbers: ' + clusterer.options.get('clusterNumbers'))
+                    })
+                    .add('deselect', function () {
+                        clusterer.options.set('clusterNumbers', [50, 100]);
+                        log.info('clusterNumbers: ' + clusterer.options.get('clusterNumbers'))
+                    });
+
+            iconButton.events.add('click', function () {
+                log.info('Colors: small - green,<br/> medium - yellow,<br/> large - red');
+                clusterer.options.set('clusterIcons', clusterIcons);
+                log.info('clusterIcons: ' + clusterer.options.get('clusterIcons'));
+            });
+
+            var renderButton = new ymaps.control.Button('renderMode');
+            renderButton.events
+                    .add('click', function () {
+                        log.info('renderMode: ' + clusterer.options.get('clusterIconRenderMode'))
+                    });
+            map.controls.add(renderButton);
+
+            map.controls
+                    .add(cursorButton)
+                    .add(iconButton);
+
+            // change map zoom
+            setTimeout(function () {
+                map.setZoom(4)
+            }, 1000);
+
+            function createGeoObjects(number, bounds) {
+                var placemarks = [];
+                // Создаем нужное количество меток
+                for (var i = 0; i < number; i++) {
+                    // Генерируем координаты метки случайным образом.
+                    coordinates = getRandomCoordinates(bounds);
+                    // Создаем метку со случайными координатами.
+                    if (Math.random() > 0.5) {
+                        myPlacemark = new ymaps.Placemark(coordinates, {
+                            balloonContent: i, hintContent: i, clusterCaption: i}, {});
+                    } else {
+                        myPlacemark = new ymaps.Placemark(coordinates, {
+                            balloonContent: i, hintContent: i, iconContent: 'point', clusterCaption: 'point ' + i}, {preset: 'islands#greenStretchyIcon'});
+                    }
+                    placemarks.push(myPlacemark);
+                }
+                return placemarks;
+            }
+
+            function getRandomCoordinates(bounds) {
+                var size = [bounds[1][0] - bounds[0][0], bounds[1][1] - bounds[0][1]];
+                return [Math.random() * size[0] + bounds[0][0], Math.random() * size[1] + bounds[0][1]];
+            }
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

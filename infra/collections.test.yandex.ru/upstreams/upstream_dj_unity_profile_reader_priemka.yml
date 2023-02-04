@@ -1,0 +1,92 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - volodskikh
+      groups: []
+labels:
+  order: '00000335'
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      uri: '/api/dj_unity_profile_reader(/.*)?'
+  modules:
+    - report:
+        uuid: dj_unity_profile_reader
+        ranges: default
+    - balancer2:
+        attempts: 3
+        by_name_policy:
+          name: !f get_geo("dj_unity_profile_reader_staging_", "random")
+          unique_policy: {}
+        rr: {weights_file: ./controls/traffic_control.weights}
+        backends:
+        - weight: 1
+          name: dj_unity_profile_reader_staging_sas
+          modules:
+            - report: {ranges: default, uuid: requests_dj_unity_profile_reader_staging_to_sas}
+            - balancer2:
+                attempts: 1
+                active: {
+                    steady: false,
+                    request: 'GET /remote_admin?action=health HTTP/1.1\r\nHost: pdb.yandex.ru\r\n\r\n',
+                    delay: 2s
+                }
+                generated_proxy_backends:
+                  proxy_options:
+                    backend_timeout: 500ms
+                    connect_timeout: 30ms
+                    keepalive_count: 2
+                  include_backends:
+                    type: BY_ID
+                    ids: [dj_unity_profile_reader_staging_sas]
+        - weight: 1
+          name: dj_unity_profile_reader_staging_man
+          modules:
+            - report: {ranges: default, uuid: requests_dj_unity_profile_reader_staging_to_man}
+            - balancer2:
+                attempts: 1
+                active: {
+                    steady: false,
+                    request: 'GET /remote_admin?action=health HTTP/1.1\r\nHost: pdb.yandex.ru\r\n\r\n',
+                    delay: 2s
+                }
+                generated_proxy_backends:
+                  proxy_options:
+                    backend_timeout: 500ms
+                    connect_timeout: 30ms
+                    keepalive_count: 2
+                  include_backends:
+                    type: BY_ID
+                    ids: [dj_unity_profile_reader_staging_man]
+        - weight: 1
+          name: dj_unity_profile_reader_staging_vla
+          modules:
+            - report: {ranges: default, uuid: requests_dj_unity_profile_reader_staging_to_vla}
+            - balancer2:
+                attempts: 1
+                active: {
+                    steady: false,
+                    request: 'GET /remote_admin?action=health HTTP/1.1\r\nHost: pdb.yandex.ru\r\n\r\n',
+                    delay: 2s
+                }
+                generated_proxy_backends:
+                  proxy_options:
+                    backend_timeout: 500ms
+                    connect_timeout: 30ms
+                    keepalive_count: 2
+                  include_backends:
+                    type: BY_ID
+                    ids: [dj_unity_profile_reader_staging_vla]
+        - weight: -1
+          name: dj_unity_profile_reader_staging_devnull
+          modules:
+            - report:
+                uuid: requests_dj_unity_profile_reader_staging_to_devnull
+                ranges: 1ms
+            - errordocument:
+                status: 204
+        on_error:
+          modules:
+          - errordocument: {content: Gateway Timeout, status: 504}

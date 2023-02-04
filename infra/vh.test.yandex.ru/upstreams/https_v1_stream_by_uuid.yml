@@ -1,0 +1,102 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - woodie
+      groups: []
+labels:
+  order: '00010000'
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      uri: '/v1/stream_by_uuid(.*)'
+  modules:
+    - report: {uuid: stream_by_uuid, ranges: default}
+    - rewrite:
+        actions:
+          - regexp: '/v1/stream_by_uuid(.*)'
+            rewrite: '/vh/playlist_by_uuid%1?srcrwr=PLAYLIST_SERVICE_UGC:kubrick.man.yp-c.yandex.net:8001:100'
+    - exp_getter_macro:
+        _version: 3
+        service_name: vh
+        testing_mode: {}
+    - balancer2:
+        attempts: 2
+        rr: {weights_file: ./controls/traffic_control.weights}
+        backends:
+          - weight: 1
+            name: bygeo_sas
+            modules:
+              - report: {uuid: http-adapter-sas, ranges: default}
+              - headers:
+                  create:
+                    X-Yandex-Internal-Request: "1"
+              - balancer2:
+                  attempts: 3
+                  attempts_rate_limiter:
+                    limit: 0.2
+                  rr: {}
+                  timeout_policy:
+                    timeout: 5s
+                    unique_policy: {}
+                  generated_proxy_backends:
+                    proxy_options:
+                      backend_timeout: 2500ms
+                      connect_timeout: 50ms
+                      status_code_blacklist: ["408"]
+                      keepalive_count: 1
+                    include_backends:
+                      type: BY_ID
+                      ids:
+                        - man_vh_http_adapter_testing
+          - weight: 1
+            name: bygeo_vla
+            modules:
+              - report: {uuid: http-adapter-vla, ranges: default}
+              - headers:
+                  create:
+                    X-Yandex-Internal-Request: "1"
+              - balancer2:
+                  attempts: 3
+                  attempts_rate_limiter:
+                    limit: 0.2
+                  rr: {}
+                  timeout_policy:
+                    timeout: 5s
+                    unique_policy: {}
+                  generated_proxy_backends:
+                    proxy_options:
+                      backend_timeout: 2500ms
+                      connect_timeout: 50ms
+                      status_code_blacklist: ["408"]
+                      keepalive_count: 1
+                    include_backends:
+                      type: BY_ID
+                      ids:
+                        - man_vh_http_adapter_testing
+          - weight: 1
+            name: bygeo_man
+            modules:
+              - report: {uuid: http-adapter-man, ranges: default}
+              - headers:
+                  create:
+                    X-Yandex-Internal-Request: "1"
+              - balancer2:
+                  attempts: 3
+                  attempts_rate_limiter:
+                    limit: 0.2
+                  rr: {}
+                  timeout_policy:
+                    timeout: 5s
+                    unique_policy: {}
+                  generated_proxy_backends:
+                    proxy_options:
+                      backend_timeout: 2500ms
+                      connect_timeout: 50ms
+                      status_code_blacklist: ["408"]
+                      keepalive_count: 1
+                    include_backends:
+                      type: BY_ID
+                      ids:
+                        - man_vh_http_adapter_testing

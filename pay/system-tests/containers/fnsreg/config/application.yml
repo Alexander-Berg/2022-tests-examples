@@ -1,0 +1,302 @@
+ofd-id: ofd8
+tvm2:
+  token: "${TVMTOOL_LOCAL_AUTHTOKEN}"
+  caching:
+    enabled: true
+    max-size: 20
+  services: # service tvm ids which for we send requests
+    self: ${tvm-ids.self}
+    ya-sign: ${tvm-ids.ya-sign}
+  allowed-clients: # service tvm ids which for we handle requests
+    self: ${tvm-ids.self}
+    darkspirit: ${tvm-ids.darkspirit}
+hazelcast-cache:
+  executor-pool-size: 1
+  cluster-name: fnsreg
+  caches:
+    fresh:
+      ttl: 5s
+    fns-maintenance:
+      ttl: 10m
+    reg-state:
+      ttl: 20s
+    certificates:
+      ttl: 1h
+    kkt-models:
+      ttl: 1h
+    fn-models:
+      ttl: 1h
+unistat:
+  sla:
+    ping:
+      metric-name: ^http.server.requests
+      tag-key: uri
+      tag-value: ^/ping$
+      generator:
+        left: 1ms
+        pivot: 2ms
+        right: 3ms
+        timeout: 100ms
+    unistat:
+      metric-name: ^http.server.requests
+      tag-key: uri
+      tag-value: ^/unistat$
+      generator:
+        left: 1ms
+        pivot: 10ms
+        right: 50ms
+        timeout: 200ms
+    controllers:
+      metric-name: ^http.server.requests
+      generator:
+        left: 1ms
+        pivot: 200ms
+        right: 1s
+        timeout: 10s
+    tvm-client:
+      metric-name: ^http.client.requests
+      tag-key: uri
+      tag-value: ^/tvm/
+      generator:
+        left: 1ms
+        pivot: 3ms
+        right: 10ms
+        timeout: 1s
+    ysing-client:
+      metric-name: ^http.client.requests
+      tag-key: uri
+      tag-value: ^/api/(sign|cert)/
+      generator:
+        left: 1ms
+        pivot: 50ms
+        right: 200ms
+        timeout: 5s
+    yasm-client:
+      metric-name: ^http.client.requests
+      tag-key: uri
+      tag-value: ^/srvambry/
+      generator:
+        left: 1ms
+        pivot: 30ms
+        right: 100ms
+        timeout: 3s
+    gc-pause:
+      metric-name: ^jvm.gc.pause
+      generator:
+        left: 1ms
+        pivot: 40ms
+        right: 300ms
+        timeout: 1s
+    executor:
+      metric-name: ^executor
+      generator:
+        left: 1ms
+        pivot: 100ms
+        right: 5s
+        timeout: 10s
+micronaut:
+  router:
+    static-resources:
+      swagger:
+        paths: classpath:META-INF/swagger
+        mapping: /swagger/**
+      redoc:
+        paths: classpath:META-INF/swagger/views/redoc
+        mapping: /redoc/**
+      rapidoc:
+        paths: classpath:META-INF/swagger/views/rapidoc
+        mapping: /rapidoc/**
+      swagger-ui:
+        paths: classpath:META-INF/swagger/views/swagger-ui
+        mapping: /swagger-ui/**
+  security:
+    enabled: false
+    reject-not-found: false
+    intercept-url-map:
+      - pattern: /swagger/**
+        access:
+          - isAnonymous()
+      - pattern: /redoc/**
+        access:
+          - isAnonymous()
+      - pattern: /rapidoc/**
+        access:
+          - isAnonymous()
+      - pattern: /swagger-ui/**
+        access:
+          - isAnonymous()
+  server:
+    port: 8080
+    maxRequestSize: 1MB
+    netty:
+      maxHeaderSize: 500KB
+      use-native-transport: false
+      worker:
+        threads: ${netty.worker.threads}
+      childOptions:
+        autoRead: true
+  netty:
+    event-loops:
+      default: # used by server
+        num-threads: ${netty.event-loops.default.threads}
+      clients:
+        num-threads:  ${netty.event-loops.clients.threads}
+  executors:
+    io:
+      type: fixed
+      number-of-threads: ${executors.io.threads}
+    scheduled:
+      type: scheduled
+      core-pool-size: ${executors.scheduled.threads}
+  metrics:
+    enabled: true
+    binders:
+      jvm:
+        enabled: true
+      web:
+        enabled: true
+      jdbc:
+        enabled: false
+      uptime:
+        enabled: false
+      processor:
+        enabled: false
+      files:
+        enabled: false
+      logback:
+        enabled: false
+      executor:
+        enabled: false
+      #      netty:
+      #        enabled: true
+      #        queues:
+      #          enabled: true
+      #        bytebuf-allocators:
+      #          enabled: true
+      #        channels:
+      #          enabled: true
+      cache:
+        enabled: true
+  http:
+    services:
+      tvm-tool:
+        urls:
+          - ${DEPLOY_TVM_TOOL_URL}
+        pool:
+          enabled: true
+        event-loop-group: clients
+        read-timeout: ${clients.tvmtool.read-timeout}
+        connect-timeout: ${clients.tvmtool.connect-timeout}
+        retry-delay: ${clients.tvmtool.retry-delay}
+        retries-count: ${clients.tvmtool.retries-count}
+
+      fns:
+        urls:
+          - ${clients.fns.url}
+        pool:
+          enabled: true
+        event-loop-group: clients
+        read-timeout: ${clients.fns.read-timeout}
+        connect-timeout: ${clients.fns.connect-timeout}
+        retry-delay: ${clients.fns.retry-delay}
+        retries-count: ${clients.fns.retries-count}
+
+      ya-sign:
+        urls:
+          - ${clients.ya-sign.url}
+        pool:
+          enabled: true
+        event-loop-group: clients
+        read-timeout: ${clients.ya-sign.read-timeout}
+        connect-timeout: ${clients.ya-sign.connect-timeout}
+        retry-delay: ${clients.ya-sign.retry-delay}
+        retries-count: ${clients.ya-sign.retries-count}
+endpoints:
+  beans:
+    enabled: true
+    sensitive: false
+  info:
+    enabled: true
+  health:
+    enabled: true
+    sensitive: false
+    details-visible: ANONYMOUS
+    status:
+      http-mapping:
+        UP: 200
+        UNKNOWN: 520
+        DOWN: 503
+  metrics:
+    enabled: true
+    sensitive: false
+  refresh:
+    enabled: false
+    sensitive: true
+  routes:
+    enabled: false
+    sensitive: true
+  loggers:
+    enabled: true
+    sensitive: false
+yasm:
+  panel:
+    generator:
+      project-name: fnsreg
+      abc: spirit
+      editors: ['imdex', 'prez', 'spirit1984', 'levromanov', 'kirillovap']
+      panels-owners: ['imdex', 'prez', 'spirit1984', 'levromanov', 'kirillovap']
+      environments: ${yasm.environments}
+      panels: ['jvm', 'api', 'brief', 'clients', 'alert']
+      cloud-ydeploy:
+        itype: fnsreg
+        stage: fnsreg
+        box: ${yasm.ydeploy.box}
+        workload: main
+  alert:
+    juggler:
+      namespace: trust_cashregisters
+      flaps:
+        crit: ${juggler.flaps.crit}
+        stable: ${juggler.flaps.stable}
+      tags: ['fnsreg']
+    ranges:
+      yasm-gen:
+        pattern: ^/yasm/.+$
+        endpoint-type: server
+        warn:
+          lower: 1
+          upper: 10
+        crit:
+          lower: 10
+      ping:
+        pattern: ^/ping$
+        endpoint-type: server
+        warn:
+          lower: 1
+          upper: 2
+        crit:
+          lower: 2
+      unistat:
+        pattern: ^/unistat$
+        endpoint-type: server
+        warn:
+          lower: 1
+          upper: 2
+        crit:
+          lower: 2
+      tvm:
+        pattern: ^/tvm/.+$
+        endpoint-type: client
+        warn:
+          lower: 1
+          upper: 2
+        crit:
+          lower: 2
+      pod-agent:
+        pattern: ^/pod_attributes$
+        endpoint-type: client
+        warn:
+          lower: 1
+          upper: 2
+        crit:
+          lower: 2

@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<!--
+Title:
+Util: драг объектов на карте
+
+Description:
+Проверяем работу драга объектов карты.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components:
+regress
+
+Estimated time:
+180000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась корректно, слева на карте четыре квадрата(белый, красный, зеленый, синий).
+  Имеется кнопка "hasClass".
+  
+Step:
+  Action:
+  Открыть инструменты разработчика командами Windows: Ctrl + Shift + I если у вас MacOS: ⌥ + ⌘ + I, вкладку Console.
+  Навести курсор на белый квадрат, зажать ЛКМ и переместить квадрат на спане карты.
+
+  Expectation:
+  В консоли при открытии строка "false".
+  Квадрат перемещается на спане, но медленнее курсора.
+  В консоли при движении квадрата последовательно появляются строки: "start; move; true; stop". 
+
+Step:
+  Action:
+  Навести курсор на красный квадрат, зажать ЛКМ и переместить квадрат на спане карты.
+
+  Expectation:
+  При начале перемещения курсора с зажатой ЛКМ в консоли появляется строка "red start", при отпускании ЛКМ "red stop".
+  Квадрат при этом не перемещается на спане карты остается на месте.
+
+Step:
+  Action:
+  Навести курсор на зеленый квадрат, зажать ЛКМ и переместить квадрат на спане карты.
+
+  Expectation:
+  Квадрат не перемещается на спане карты, остается на месте.
+
+Step:
+  Action:
+  Навести курсор на синий квадрат, зажать ЛКМ и переместить квадрат на спане карты.
+
+  Expectation:
+  Квадрат корректно перемещается на спане, вслед за движением курсора.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "hasClass".
+  Последовательно навести курсор на все квадраты и попробовать переместить их с зажатой ЛКМ.
+  
+  Expectation:
+  По клику в кнопку "hasClass" в консоли появляется строка "false".
+  Реакция красного, синего и зеленого квадрата аналогичны первым действиям, белый квадрат не перемещается на спане карты.
+  При действиях с красный квадратом в консоли аналогичные строки "red start", "red stop".
+-->
+<html>
+<head>
+    <title>API 2.0</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <style>
+        .drag {
+            position: absolute;
+            width: 32px;
+            height: 32px;
+            background-color: #FFFFFF;
+            top: 0;
+            left: 0;
+        }
+        .white {
+            background-color: #FFFFFF;
+            top: 0;
+        }
+        .red {
+            background-color: #FF0000;
+            top: 64px;
+        }
+        .green {
+            background-color: #00FF00;
+            top: 128px;
+        }
+        .blue {
+            background-color: #0000FF;
+            top: 192px;
+        }
+    </style>
+    <script src="../helper.js"></script>
+    <script src="//yandex.st/jquery/1.6.4/jquery.min.js" type="text/javascript"></script>
+    <script type="text/javascript">
+        Api('init');
+        /**
+         * белый квадрат драгается с анимацией (при перетаскивании < чем на 60 пикселей за 3 c - не перетащится),
+         * move бросается один раз и говорит включени ли dragging.
+         * после окончания драга белого квадрата его нельзя будет подрагать, тк будет вызван destroy
+         *
+         * 1. текст false на странице
+         * 2. попробовать перетащить белый меньше чем на 60 пикселей за секунду
+         * 3. попробовать перетащить правой кнопкой
+         * 4. перетащить белый на 60+ пикселей за 4 секунды, проверить start move true stop на странице
+         * 5. убедиться что белые квадрат перестал таскаться
+         * 6. попробовать драгнуть красный квадрат, должны броситься start и stop
+         * 7. переместить правой кнопкой зеленый квадрат
+         */
+        function init(ymaps) {
+                    var myMap = new ymaps.Map('map', {
+                        center: [33.7610, -37.2654],
+                        zoom: 7
+                    }),
+                    elementWhite = document.getElementById('w'),
+                    elementRed = document.getElementById('r'),
+                    elementGreen = document.getElementById('g'),
+                    elementBlue = document.getElementById('b'),
+                    dragger = new ymaps.util.Dragger({
+                        autoStartElement: elementWhite,
+                        tremor: {
+                            offset: 60,
+                            time: 3000
+                        }
+                    }),
+                    draggerRed, draggerGreen, draggerBlue,
+                    
+                    setPosition = function (e) {
+                        console.log(e.get('type'));
+                        var position = e.get('position');
+                        elementWhite.style.left = position[0] + 'px';
+                        elementWhite.style.top = position[1] + 'px';
+                    },
+                    button = new ymaps.control.Button({data: {content: 'hasClass'}}, {selectOnClick: false});
+            
+            console.log(dragger.isDragging());
+            dragger.events.add('start', setPosition).once('move', function (e) {
+                console.log(e.get('type'));
+                console.log(dragger.isDragging());
+                var position = e.get('position');
+                elementWhite.style.left = position[0] + 'px';
+                elementWhite.style.top = position[1] + 'px';
+            }).once('stop', function (e) {
+                dragger.destroy();
+                setPosition(e);
+            });
+            draggerRed = new ymaps.util.Dragger();
+            draggerRed.events.add(['start', 'stop'], function (e) {
+                console.log('red ' + e.get('type'));
+            });
+            ymaps.domEvent.manager.add(elementRed, 'mousedown', function (e) {
+                draggerRed.start(e);
+            });
+            /*draggerRed.stop(new ymaps.DomEvent({
+             clientX: 70,
+             clientY: 70,
+             button: 2,
+             get: function (key) {
+             return this[key];
+             }
+             }));*/
+            draggerGreen = new ymaps.util.Dragger({
+                autoStartElement: elementGreen,
+                byRightButton: true
+            });
+            draggerGreen.events.add(['start', 'move', 'stop'], function (e) {
+                var position = e.get('position');
+                elementGreen.style.left = position[0] + 'px';
+                elementGreen.style.top = position[1] + 'px';
+            });
+            draggerBlue = new ymaps.util.Dragger({
+                autoStartElement: elementBlue
+            });
+            draggerBlue.events.add(['start', 'move', 'stop'], function (e) {
+                var position = e.get('position');
+                elementBlue.style.left = position[0] + 'px';
+                elementBlue.style.top = position[1] + 'px';
+            });
+            button.events.add('click', function () {
+                if ($('#w').hasClass('ymaps-touch-action-none')) {
+                    console.log('true')
+                } else console.log('false');
+            });
+            myMap.controls.add(button, {top: 5, right: 5});
+        }
+    </script>
+</head>
+<body style="padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;">
+</div>
+<div class="drag white" id="w"></div>
+<div class="drag red" id="r"></div>
+<div class="drag green" id="g"></div>
+<div class="drag blue" id="b"></div>
+<p><a href="https://tech.yandex.ru/maps/archive/doc/jsapi/2.0/ref/reference/util.Dragger-docpage/" target="_blank">Docs</a></p>
+</body>
+</html>

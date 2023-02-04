@@ -1,0 +1,2 @@
+ALTER TABLE `tasks`
+ADD COLUMN `prev_resolution` BLOB NULL DEFAULT NULL;

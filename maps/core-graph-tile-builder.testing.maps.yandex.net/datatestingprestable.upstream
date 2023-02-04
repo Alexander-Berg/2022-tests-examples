@@ -1,0 +1,44 @@
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      cgi: '.*experimental_dataprestable=1.*'
+  modules:
+    - report:
+        uuid: 'datatestingprestable'
+        ranges: default
+    - threshold:
+        lo_bytes: 734003
+        hi_bytes: 838860
+        pass_timeout: 10s
+        recv_timeout: 1s
+    - headers:
+        append_func:
+          X-Forwarded-For: realip
+        create_func_weak:
+          X-Real-IP: realip
+          X-Source-Port-Y: realport
+        create:
+          Host: 'core-graph-tile-builder.testing.maps.yandex.net'
+          X-Ya-Backend-Timeout-Ms: '400'
+    - balancer2:
+        attempts: 3
+        active:
+          steady: true
+          delay: '10s'
+          request: 'GET /ping HTTP/1.1\nHost: core-graph-tile-builder.testing.maps.yandex.net\r\n\r\n'
+        attempts_rate_limiter:
+          limit: 0.34
+        generated_proxy_backends:
+          proxy_options:
+            connect_timeout: 70ms
+            backend_timeout: 400ms
+            keepalive_count: 100
+            fail_on_5xx: true
+          include_backends:
+            type: BY_ID
+            ids: [maps_core_graph_tile_builder_datatestingprestable_sas,maps_core_graph_tile_builder_datatestingprestable_vla]
+        on_error:
+          errordocument:
+            status: 504
+            content: "Service unavailable"

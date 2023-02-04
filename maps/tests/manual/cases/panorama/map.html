@@ -1,0 +1,145 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ymaps.panorama.* Test Stand</title>
+    <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <style>
+        html, body {
+            width: 100%;
+            height: 100%;
+            padding: 0;
+            margin: 0;
+        }
+
+        .wrapper {
+            position: relative;
+        }
+
+        .full, #panoPlayer {
+            width: 100%;
+            height: 100%;
+        }
+
+        #size {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+        }
+        #map {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            width: 300px;
+            height: 300px;
+        }
+        #state {
+            position: absolute;
+            top: 25px;
+            left: 10px;
+        }
+
+        .svga {width: 800px; height: 600px;}
+        .vga  {width: 640px; height: 480px;}
+        .qvga {width: 320px; height: 240px;}
+        .cga  {width: 320px; height: 200px;}
+    </style>
+    <script src="../../helper.js"></script>
+    <script>
+        Api('init', 'package.full', '', '', 'release');
+
+        function init(ymaps) {
+            function onCreate(player) {
+                var wrapper = document.querySelector('.wrapper'),
+                        sizeControl = document.querySelector('#size'),
+                        stateGauge = document.querySelector('#state'),
+                        currentSize = sizeControl.value;
+
+                function toFixed2(x) {
+                    return x.toFixed(2);
+                }
+
+                function setState() {
+                    var dir = player.getDirection().map(toFixed2),
+                            spn = player.getSpan().map(toFixed2);
+                    stateGauge.firstChild.data = 'dir: ' + dir + '; spn: ' + spn;
+                }
+
+                player.events
+                        .add(['destroy',"directionchange", "fullscreenenter",
+                            "fullscreenexit", "panoramachange", "spanchange"], function(e){
+                            __log__(e.get('type'));
+                        });
+
+
+                geoMap = new ymaps.Map('map', {
+                    center: [55.035973, 82.911395],
+                    zoom: 16
+                });
+
+                geoMap.layers.add(new ymaps.Layer('https://02.srdr.maps.yandex.net/?l=stv&x=%x&y=%y&z=%z&v=3.10.1&lang=ru_RU&action=render'));
+                geoMap.events.add('click', function (e) {
+                    var coords = e.get('coords');
+                    player.moveTo(coords).then(function(){
+                        player.lookAt(coords);
+                    })
+                    //geoMap.setCenter(coords);
+                });
+                geoMap.events.add('contextmenu', function (e) {
+                    var coords = e.get('coords');
+                        player.lookAt(coords);
+                    //geoMap.setCenter(coords);
+                });
+
+                sizeControl.addEventListener(
+                        'change',
+                        function () {
+                            var newSize = sizeControl.value;
+                            wrapper.className = wrapper.className.replace(currentSize, '');
+                            wrapper.className += newSize;
+                            currentSize = newSize;
+                        }
+                );
+
+                console.log(player);
+            }
+
+            function onError(err) {
+                console.error(err);
+            }
+
+            ymaps.ready(['panorama.createPlayer', 'panorama.isSupported'])
+                    .then(function () {
+                        __log__(ymaps.panorama.isSupported());
+                        var player = ymaps.panorama.createPlayer(
+                                'panoPlayer',
+                                [55.035973, 82.911395],
+                                {
+                                    direction: [0, 0],
+                                    renderer: location.search.slice(1) || 'gl'
+                                }
+                        );
+                        return player;
+                    })
+                    .done(onCreate, onError);
+        }
+    </script>
+</head>
+<body>
+<div class="wrapper full">
+    <div id="panoPlayer"></div>
+    <select id="size" value="full">
+        <option>full</option>
+        <option>svga</option>
+        <option>vga</option>
+        <option>qvga</option>
+        <option>cga</option>
+    </select>
+    <pre id="state">undefined</pre>
+</div>
+
+<div id="map"></div>
+</body>
+</html>

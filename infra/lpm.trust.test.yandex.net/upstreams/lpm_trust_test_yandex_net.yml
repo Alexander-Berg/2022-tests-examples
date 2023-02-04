@@ -1,0 +1,63 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - iandreyev
+      - nanny-robot
+      groups:
+      - svc_strust
+labels:
+  order: '10000000'
+config_mode: easy2
+---
+l7_upstream_macro:
+  version: 0.0.2
+  id: lpm_trust_test_yandex_net
+  matcher:
+    path_re: '(/.*)?'
+  headers:
+    - create:
+        target: X-Real-IP
+        func: realip
+    - create:
+        target: X-Balancer-IP
+        func: localip
+    - create:
+        target: X-Request-Id
+        func: reqid
+        keep_existing: true
+  monitoring:
+    uuid: lpm_trust_test_yandex_net
+  by_dc_scheme:
+    dc_balancer:
+      weights_section_id: bygeo
+      method: BY_DC_WEIGHT
+      attempts: 2
+    balancer:
+      compat:
+        method: ACTIVE  
+      use_https_to_endpoints: {}
+      attempts: 2
+      max_reattempts_share: 0.15
+      fast_attempts: 2
+      do_not_retry_http_responses: true
+      retry_non_idempotent: false
+      connect_timeout: 70ms
+      backend_timeout: 10s
+      health_check:
+          delay: '1s'
+          request: 'GET /ping HTTP/1.1\nHost: trust-lpm-test.paysys.yandex.net:8080\nUser-Agent: l7-balancer-trust-lpm-test\n\n'
+    dcs:
+      - name: sas
+        backend_ids:
+          - trust-lpm-test-stage_trust-lpm_sas
+      - name: vla
+        backend_ids:
+          - trust-lpm-test-stage_trust-lpm_vla
+      - name: myt
+        backend_ids:
+          - trust-lpm-test-stage_trust-lpm_myt
+    on_error:
+      static:
+        status: 504
+        content: 'Service unavailable'

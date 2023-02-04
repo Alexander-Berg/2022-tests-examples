@@ -1,0 +1,166 @@
+# Nirvana reactions config in format of
+# `arcadia/billing/hot/nirvana/maintenance nirvana-reactions`
+
+root_path: /billing/balance-test/log_tariff
+project_path: /billing/balance-test/Project
+quota: bs_log_tariffication_test
+owner: robot-balance-tester
+
+ttl: &ttl 140
+graph_meta_source: &graph_meta_source 279c85a4-c4c5-4f73-884e-8a0d0c6bd0dc
+graph_meta_target: &graph_meta_target aceea5e4-0d54-4e43-93d6-a50308f8b9c1
+graph_proc_source: &graph_proc_source 6ba7f467-baca-4bcc-b84a-596110e9ecad
+graph_proc_target: &graph_proc_target fa58dcad-0d79-4d9b-8906-1c741c2f7b6d
+
+
+artifacts:
+  - path: partner/dsp_income/acting/mnclose_input
+    type: NIRVANA_DATA_FILE_JSON
+    ttl: *ttl
+  - path: partner/dsp_income/acting/mnclose_output
+    type: NIRVANA_DATA_FILE_JSON
+    ttl: *ttl
+  - path: partner/dsp_income/acting/meta_current
+    type: NIRVANA_DATA_FILE_JSON
+    ttl: *ttl
+  - path: partner/dsp_income/acting/meta_acted_arnold
+    type: NIRVANA_DATA_FILE_JSON
+    ttl: *ttl
+  - path: partner/dsp_income/acting/meta_acted_hahn
+    type: NIRVANA_DATA_FILE_JSON
+    ttl: *ttl
+  - path: partner/dsp_income/acting/jobs_binary_revision
+    type: PRIMITIVE_INT
+    ttl: 1500
+
+reactions:
+  - path: partner/dsp_income/acting/meta/meta_generate_mnclose_arnold
+    ttl: *ttl
+    triggers:
+      - name: mnclose_input
+        artifact: partner/dsp_income/acting/mnclose_input
+    source_graph: *graph_meta_source
+    target_graph: *graph_meta_target
+    params:
+      - name: jobs-binary-arcadia-revision
+        artifact: partner/dsp_income/acting/jobs_binary_revision
+      - name: mr-default-cluster
+        value: arnold
+    inputs:
+      - block: yb_log_tariff_dsp_act_generate_new_meta
+        endpoint: last_generated_meta
+        artifact: partner/dsp_income/acting/meta_current
+      - block: yb_log_tariff_dsp_act_generate_new_meta
+        endpoint: last_acted_meta
+        artifact: partner/dsp_income/acting/meta_acted_arnold
+      - block: yb_log_tariff_dsp_act_generate_new_meta
+        endpoint: mnclose_params
+        artifact: partner/dsp_income/acting/mnclose_input
+    outputs:
+      - block: yb_log_tariff_dsp_act_generate_new_meta
+        endpoint: new_meta
+        artifact: partner/dsp_income/acting/meta_current
+
+  - path: partner/dsp_income/acting/meta/meta_generate_mnclose_hahn
+    ttl: *ttl
+    triggers:
+      - name: mnclose_input
+        artifact: partner/dsp_income/acting/mnclose_input
+    source_graph: *graph_meta_source
+    target_graph: *graph_meta_target
+    params:
+      - name: jobs-binary-arcadia-revision
+        artifact: partner/dsp_income/acting/jobs_binary_revision
+      - name: mr-default-cluster
+        value: hahn
+    inputs:
+      - block: yb_log_tariff_dsp_act_generate_new_meta
+        endpoint: last_generated_meta
+        artifact: partner/dsp_income/acting/meta_current
+      - block: yb_log_tariff_dsp_act_generate_new_meta
+        endpoint: last_acted_meta
+        artifact: partner/dsp_income/acting/meta_acted_hahn
+      - block: yb_log_tariff_dsp_act_generate_new_meta
+        endpoint: mnclose_params
+        artifact: partner/dsp_income/acting/mnclose_input
+    outputs:
+      - block: yb_log_tariff_dsp_act_generate_new_meta
+        endpoint: new_meta
+        artifact: partner/dsp_income/acting/meta_current
+
+  - path: partner/dsp_income/acting/acting/acting_mnclose_arnold
+    ttl: *ttl
+    trigger:
+      artifacts:
+        - partner/dsp_income/acting/meta_current
+        - partner/dsp_income/acting/mnclose_input
+      relationship: and
+    source_graph: *graph_proc_source
+    target_graph: *graph_proc_target
+    params:
+      - name: jobs-binary-arcadia-revision
+        artifact: partner/dsp_income/acting/jobs_binary_revision
+      - name: mr-default-cluster
+        value: arnold
+      - name: work-dir
+        value: act_dsp
+    inputs:
+      - block: INPUT
+        endpoint: in
+        artifact: partner/dsp_income/acting/meta_current
+      - block: MNCLOSE
+        endpoint: in
+        artifact: partner/dsp_income/acting/mnclose_input
+    outputs:
+      - block: OUTPUT
+        endpoint: out
+        artifact: partner/dsp_income/acting/meta_acted_arnold
+      - block: MNCLOSE
+        endpoint: out
+        artifact: partner/dsp_income/acting/mnclose_output
+
+  - path: partner/dsp_income/acting/acting/acting_mnclose_hahn
+    ttl: *ttl
+    trigger:
+      artifacts:
+        - partner/dsp_income/acting/meta_current
+        - partner/dsp_income/acting/mnclose_input
+      relationship: and
+    source_graph: *graph_proc_source
+    target_graph: *graph_proc_target
+    params:
+      - name: jobs-binary-arcadia-revision
+        artifact: partner/dsp_income/acting/jobs_binary_revision
+      - name: mr-default-cluster
+        value: hahn
+      - name: work-dir
+        value: act_dsp
+    inputs:
+      - block: INPUT
+        endpoint: in
+        artifact: partner/dsp_income/acting/meta_current
+      - block: MNCLOSE
+        endpoint: in
+        artifact: partner/dsp_income/acting/mnclose_input
+    outputs:
+      - block: OUTPUT
+        endpoint: out
+        artifact: partner/dsp_income/acting/meta_acted_hahn
+      - block: MNCLOSE
+        endpoint: out
+        artifact: partner/dsp_income/acting/mnclose_output
+
+queues:
+  - path: partner/dsp_income/acting/meta/meta_generate_queue
+    size: 1
+    reactions:
+      - partner/dsp_income/acting/meta/meta_generate_mnclose_arnold
+      - partner/dsp_income/acting/meta/meta_generate_mnclose_hahn
+  - path: partner/dsp_income/acting/acting/acting_mnclose_arnold_queue
+    size: 1000
+    reactions:
+      - partner/dsp_income/acting/acting/acting_mnclose_arnold
+  - path: partner/dsp_income/acting/acting/acting_mnclose_hahn_queue
+    size: 1000
+    reactions:
+      - partner/dsp_income/acting/acting/acting_mnclose_hahn

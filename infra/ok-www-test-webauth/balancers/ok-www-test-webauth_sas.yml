@@ -1,0 +1,43 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - elchenkov
+      - nanny-robot
+      groups: []
+config_transport:
+  nanny_static_file:
+    service_id: rtc_balancer_ok-www-test-webauth_sas
+    instance_tags:
+      ctype: prod
+      itype: balancer
+      prj: ok-www-test-webauth
+mode: EASY_MODE
+---
+l7_macro:
+  version: 0.3.5
+  core: {
+    trust_x_forwarded_for_y: true
+  }
+  http:
+    redirect_to_https: {}
+  https:
+    certs:
+      - id: ok-www.test.yandex-team.ru
+  announce_check_reply:
+    url_re: /ping
+  health_check_reply: {}
+  webauth:
+    mode: SIMPLE
+    action: AUTHORIZE
+  headers:
+    - create: {target: X-Forwarded-For, keep_existing: true, func: realip}
+    - create: {target: X-Forwarded-Proto, keep_existing: true, func: scheme}
+    - create: {target: X-Forwarded-Host, keep_existing: true, func: host}
+    - log: {target_re: X-Original-URL}
+    - create: {target: X-Request-Id, keep_existing: true, func: reqid}
+    - create: {target: X-Real-IP, keep_existing: true, func: realip}
+    - create: {target: X-Balancer-DC, value: host}
+    - create: {target: X-Balancer-Host, func: host}
+    - create: {target: X-Original-URL, func: localip}
+    - rewrite: {target: X-Original-URL, pattern: {re: '(.*)'}, replacement: '%{scheme}://%{host}%{url}'}

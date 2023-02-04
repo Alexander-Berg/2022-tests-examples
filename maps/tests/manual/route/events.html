@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<!--
+Title:
+Маршрут: события маршрута
+
+Description:
+Проверка отлова событий маршрута.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+regress
+
+Estimated time: 
+240000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно, со спаном Киева, с построенным маршрутом с точками "1", "2", маршрутной ниткой.
+  Сверху справа кнопка "editor".
+      
+Step:
+  Action:
+  Открыть инструменты разработчика командами Windows: Ctrl + Shift + I если у вас MacOS: ⌥ + ⌘ + I, вкладку Console.
+  Клик в кнопку "editor", затем клик в любое место на спане карты(не в маршрутную нитку).
+
+  Expectation:
+  На спан карты выставляется метка "3", к которой от метки "2" протягивается маршрутная нитка.
+  В консоли появляется строка "waypointadd", две строки с объектами данных, строка "routeupdate" и строка с объектом данных.
+
+Step:
+  Action:
+  Навести курсор на маршрутную линию, зажать ЛКМ на виа-точке маршрутной линии переместить точку в другое место на текущем спане карты.
+
+  Expectation:
+  Точка выставляется на спане карты, маршрут между соседними метками перестаривается с учетом появившейся промежуточной точки.
+  В консоли появляется строка "viapointadd", две строки с объектами данных, строка "routeupdate" и строка с объектом данных.
+
+Step:
+  Action:
+  Навести курсор на метку "1", зажать ЛКМ на метке, переместить метку в другое место на текущем спане карты.
+
+  Expectation:
+  Метка захватывается и переносится на спане карты, маршрут между соседними метками перестаривается с учетом позиции метки.
+  В консоли появляется события "waypointdragstart", "waypointdragend", строки с объектами данных, после каждого события строка "routeupdate" и строка с объектом данных.
+
+Step:
+  Action:
+  Навести курсор на виа-точку, зажать ЛКМ на точке, переместить точку в другое место на текущем спане карты.
+
+  Expectation:
+  Точка захватывается и переносится на спане карты, маршрут между соседними метками перестаривается с учетом позиции виаточки.
+  В консоли появляется события "viapointdragstart", "viapointdragend", строки с объектами данных, после каждого события строка "routeupdate" и строка с объектом данных.
+
+Step:
+  Action:
+  Выполнить даблклик в виаточку.
+
+  Expectation:
+  Виаточка пропадает со спана карты, маршрут между соседними метками перестаривается с учетом удаления виаточки.
+  В консоли появляется события "viapointremove", строки с объектами данных, а также строка "routeupdate" и строка с объектом данных.
+
+Step:
+  Action:
+  Выполнить даблклик в метку "2" маршрута.
+
+  Expectation:
+  Метка "2" пропадает со спана карты, маршрут между соседними метками перестаривается с учетом удаления метки "2", метка "3" становится меткой "2".
+  В консоли появляется события "waypointremove", строки с объектами данных, а также строка "routeupdate" и строка с объектом данных.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "editor".
+
+  Expectation:
+  В консоли появляется событие "stop" и строка с объектом данных.
+-->
+<html>
+<head>
+    <title>API 2.0</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <script src="../helper.js"></script>
+    <script type=text/javascript>
+        Api('init');
+        function init(ymaps) {
+            var myMap = new ymaps.Map('map', {
+                center: [55.00718809437818, 38.094514924687026],
+                zoom: 7
+            }), router;
+            var events = ['routeupdate', 'start', 'stop', 'viapointadd', 'viapointdragend', 'viapointdragstart',
+                'viapointremove', 'waypointadd', 'waypointdragend', 'waypointdragstart', 'waypointremove'];
+            var callback = function (e) {
+                console.log('--------' + e.get('type') + '--------');
+                console.log(e.get('type'));
+                console.log(e.get('target'));
+                if (e.get('type') == 'viapointadd' ||
+                        e.get('type') == 'viapointdragend' ||
+                        e.get('type') == 'viapointdragstart' ||
+                        e.get('type') == 'viapointremove') console.log(e.get('viaPoint'));
+                if (e.get('type') == 'waypointadd' ||
+                        e.get('type') == 'waypointdragend' ||
+                        e.get('type') == 'waypointdragstart' ||
+                        e.get('type') == 'waypointremove') console.log(e.get('wayPoint'));
+            };
+            ymaps.route([
+                { type: 'wayPoint', point: [50.45700650379099, 30.461596061856916] },
+                { type: 'wayPoint', point: [50.22244539552655, 30.227221061856916] }
+            ], {
+                mapStateAutoApply: true
+            }).then(function (route) {
+                router = route;
+                myMap.geoObjects.add(route);
+            });
+            var editorButton = new ymaps.control.Button({data: {content: 'editor'}, options: {selectOnClick: true}});
+            editorButton.events
+                    .add('select', function () {
+                        router.editor.start({
+                            removeWayPoints: true,
+                            addWayPoints: true
+                        });
+                        router.editor.events.add(events, callback);
+                    })
+                    .add('deselect', function () {
+                        router.editor.stop();
+                        router.editor.events.remove(events, callback);
+                    });
+            myMap.controls
+                    .add(editorButton, {top: 5, right: 5});
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+<p><a href="https://tech.yandex.ru/maps/archive/doc/jsapi/2.0/ref/reference/router.Route-docpage/" target="_blank">Docs</a></p>
+</body>
+</html>

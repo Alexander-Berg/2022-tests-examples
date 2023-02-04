@@ -1,0 +1,86 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Геообъект: изменений координат при выключении метки редактора 
+
+Description:
+Проверка изменения координат при выключении метки редактора.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+geoobject
+
+Estimated time:
+180000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан запада Москвы, на спане синяя линия накоторой имеются метки редактора.
+  Через секунду метки верни линии блокируются - становятся серыми.
+  Через еще секунду нижняя метка линии разблокируется, становится белой, после чего каждую секунду метка выключается/включается.
+
+Step:
+  Action:
+  навести курсор на метку линии в момент когда она включена - окрашена белым, зажать ЛКМ и переместить на спане карты. 
+
+  Expectation:
+  При наведении метка увеличивается, при переносе метка меняет цвет на желтый, линия становится пунктирной, перенос метки оканчивается постановкой метки на спане карты, либо по происшествии секунды метка выключается линия становится сплошной.
+  Метка продолжает каждую секунду выключается/включается.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script src="../geoCS.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+        var map;
+        function init(ymaps) {
+            ymaps = ym; // hack
+
+            __log__('Corrector case: change vertex coordinates');
+
+            var map = new ym.Map('map', {
+                        center: [55.72, 37.44],
+                        zoom: 11,
+                        behaviors: ['default', 'scrollZoom'],
+                        controls: ['fullscreenControl']
+                    }, {
+                        buttonMaxWidth: 99999,
+                        avoidFractionalZoom: false
+                    }),
+                    myPolyline = new ymaps.Polyline([
+                        // Указываем координаты вершин ломаной.
+                        [55.80, 37.50],
+                        [55.70, 37.40]
+                    ], {}, {strokeWidth: 4}), vertexs;
+
+            map.geoObjects.add(myPolyline);
+            myPolyline.editor.startEditing();
+
+
+            setInterval(function () {
+                myPolyline.editor.getView().then(function (view) {
+                    vertexs = [view][0].getVertexViews();
+                    vertexs[0].enable();
+                    vertexs[0].disable();
+                    vertexs[vertexs.length - 1][vertexs[vertexs.length - 1].isEnabled() ? 'disable' : 'enable']();
+                })
+            }, 1000);
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

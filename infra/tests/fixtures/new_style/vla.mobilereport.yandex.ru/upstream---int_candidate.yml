@@ -1,0 +1,63 @@
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      uri: '/candidate_keys'
+  modules:
+    - report:
+        uuid: candidate
+        ranges: default
+    - threshold:
+        lo_bytes: 1048576
+        hi_bytes: 1048576
+        pass_timeout: 9s
+        recv_timeout: 1s
+    - balancer2:
+        attempts: 3
+        attempts_file: './controls/candidate.attempts'
+        rr: {weights_file: ./controls/traffic_control_localgeo.weights}
+        backends:
+        - weight: 1
+          name: webatom_vla
+          modules:
+            - report: {ranges: default, uuid: requests_candidate_to_vla}
+            - balancer2:
+                attempts: 2
+                weighted2: {}
+                generated_proxy_backends:
+                  proxy_options:
+                    backend_timeout: 5s
+                  include_backends:
+                    type: BY_ID
+                    ids: [production_meta_rerankd_vla]
+        - weight: 1
+          name: webatom_sas
+          modules:
+            - report: {ranges: default, uuid: requests_candidate_to_sas}
+            - balancer2:
+                attempts: 2
+                weighted2: {}
+                generated_proxy_backends:
+                  proxy_options:
+                    backend_timeout: 5s
+                  include_backends:
+                    type: BY_ID
+                    ids: [production_meta_rerankd_sas]
+        - weight: 1
+          name: webatom_man
+          modules:
+            - report: {ranges: default, uuid: requests_candidate_to_man}
+            - balancer2:
+                attempts: 2
+                weighted2: {}
+                generated_proxy_backends:
+                  proxy_options:
+                    backend_timeout: 5s
+                  include_backends:
+                    type: BY_ID
+                    ids: [production_meta_rerankd_man]
+        - weight: -1
+          name: webatom_devnull
+          modules:
+            - errordocument:
+                status: 204

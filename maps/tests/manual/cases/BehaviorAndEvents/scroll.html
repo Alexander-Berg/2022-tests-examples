@@ -1,0 +1,177 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Поведение: скролл
+
+Description:
+Проверяем поведение скролла и отлов событий.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components:
+behavior
+
+Estimated time:
+180000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась.
+  На карте спан Москвы.
+  На спане сверху слева кнопки "events/p..."('events/prevent') и "scrollZoom".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "scrollZoom".
+ 
+  Expectation:
+  Кнопка становится активной, окрашена желтым.
+  Под контейнером с картой появляется текст "scrollZoom is enabled".
+
+Step:
+  Action:
+  Выполнить максимальный призум карты скроллом мыши.
+  
+  Expectation:
+  Зум работает корректно: нет странных визуальных эффектов на карте и с элементами. 
+  Карта не дрожит и не мигает цветами.
+  Нет заметных тормозов при масштабировании карты.
+  При зуме постепенно меняется отрисовка карты: появляются подписи, рельефность, метки организаций - ПОИ, подписи дорог, иконки остановок, стрелки направления движений на некоторых дорогах.
+
+Step:
+  Action:
+  Выполнить максимальный отзум карты скроллом мыши.
+  
+  Expectation:
+  Отзум работает корректно: нет странных визуальных эффектов на карте и с элементами. 
+  Карта не дрожит и не мигает цветами.
+  Нет заметных тормозов при масштабировании карты.
+  При отзуме постепенно меняется отрисовка карты (пропадает цветовая рельефность, подписи).
+
+Step:
+  Action:
+  Выполнить клик в кнопку "scrollZoom".
+ 
+  Expectation:
+  Кнопка становится неактивной, окрашена белым.
+  Под контейнером с картой появляется текст "scrollZoom is disabled".
+
+Step:
+  Action:
+  Выполнить зум/отзум скролом мыши.
+  
+  Expectation:
+  Карта не реагирует на скрол мыши.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "scrollZoom".
+  Выполнить клик в кнопку "event/p...".
+ 
+  Expectation:
+  Кнопка "scrollZoom" становится активной, окрашена желтым.
+  Кнопка "event/p..." становится активной, окрашена желтым.
+  Под контейнером с картой появляется текст "scrollZoom is enabled".
+
+Step:
+  Action:
+  Переместить курсор на спан карты, переместить курсор за пределы контейнера с картой.
+
+  Expectation:
+  При помещении курсора на спан карты под контейнером с картой появляется текст: "mouseenter".
+  При помещении курсора на спан карты под контейнером с картой появляется текст: "mouseleave".  
+
+Step:
+  Action:
+  Выполнить клик, даблклик, выполнить клик ПКМ в спан карты, выполнить зум/отзум скролом мыши.
+
+  Expectation:
+  При клике под контейнером с картой появляется текст: "mousedown; mouseup; click".
+  При даблике под контейнером с картой появляется текст: "mousedown; mouseup; click; mousedown; mouseup; click; dblclick".  
+  При клике ПКМ под контейнером с картой появляется текст: "contextmenu".
+  При выполнении зума/отзума под контейнером с картой появляется текст: "wheel"(на каждое значение скрола).
+
+Step:
+  Action:
+  Выполнить клик в кнопку "event/p...".
+  Выполнить зум/отзум скролом мыши.
+ 
+  Expectation:
+  Кнопка "event/p..." становится неактивной, окрашена белым.
+  Под контейнером с картой появляется текст в соотвествии с событием клика.
+  При выполнении зума/отзума под контейнером с картой появляется текст: "wheel; default wheel prevented".
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 10,
+                controls: ['fullscreenControl', 'zoomControl'],
+                behaviors: []
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+
+            var events = ['click', 'contextmenu', 'dblclick', 'mousedown', 'mouseenter', 'mouseleave', 'mouseup', 'multitouchend',
+                'multitouchstart', 'wheel'/*, 'mousemove', 'multitouchmove'*/];
+            var callback1 = function (e) {
+                __log__(e.get('type'))
+            };
+            var callback2 = function (e) {
+                __log__(e.get('type'));
+                if (e.get('type') == 'wheel') {
+                    e.preventDefault();
+                    __log__('default ' + e.get('type') + ' prevented');
+                }
+            };
+
+            var button = new ymaps.control.Button('scrollZoom');
+            button.events
+                    .add('select', function (e) {
+                        map.behaviors.enable(['scrollZoom']);
+                        log.info('scrollZoom is enabled')
+                    })
+                    .add('deselect', function (e) {
+                        map.behaviors.disable(['scrollZoom']);
+                        log.info('scrollZoom is disabled')
+                    });
+
+            var preventButton = new ymaps.control.Button('events/prevent');
+            preventButton.events
+                    .add('select', function (e) {
+                        map.events.remove(events, callback2);
+                        map.events.add(events, callback1);
+                    })
+                    .add('deselect', function (e) {
+                        map.events.remove(events, callback1);
+                        map.events.add(events, callback2);
+                    });
+
+            map.controls
+                    .add(button)
+                    .add(preventButton);
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

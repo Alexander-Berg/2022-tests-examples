@@ -1,0 +1,109 @@
+<!doctype html>
+<!--
+Title:
+Гео запрос: вызов функции для каждого объекта из результатов выборки 
+
+Description:
+Проверка вызова функции для каждого объекта из результатов выборки.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+geoQuery
+
+Estimated time:
+120000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+  
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан Московской области, сверху слева кнопка "context". 
+
+Step:
+  Action:
+  Выполнить клик в кнопку "context". 
+  
+  Expectation:
+  На спане карты появляются ряды объектов: узкий прямоугольник, круг, метка прямоугольник, линия(заливка фигур синяя полупрозрачная, кроме линии).
+  Обводка фигур черного цвета, метки черного цвета, фигура линии также черного цвета. 
+  Под контейнером с картой появляется список из 135 значений, у всех значений в списке применены опции "strokeColor: #000000, preset: islands#blackIcon".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "context". 
+  
+  Expectation:
+  Цвет обводки фигур, пресет меток и цвет линий меняется на зеленый.
+  Объекты со спана карты не пропадают, меняется только цвет обводки и пресет.
+  Под контейнером с картой появляется еще один список из 135 значений, у всех значений в списке применены опции "strokeColor: #00FF00, preset: islands#greenIcon".
+-->
+<html>
+<head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../helper.js"></script>
+    <script src="../../js/wgs84MercatorSource.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var myMap = new ymaps.Map('map', {
+                center: [55.5541584321358, 37.93061981201168],
+                zoom: 9,
+                behaviors: ['default', 'scrollZoom'],
+                controls: []
+            });
+
+            wgs84MercatorSource(ymaps, myMap, this);
+            addGrid(myMap);
+            var log = new Log();
+
+            log.info('GeoQueryResult each(): function is called for every object in GeoQueryResult');
+            log.info('Black on select, green on deselect');
+
+            var contextButton = new ymaps.control.Button('context');
+            contextButton.events
+                    .add('select', function () {
+                        var result = ymaps.geoQuery(geoQueryResult).then(function () {
+                            result.addToMap(myMap);
+                            var i = 1;
+                            result.each(function (obj) {
+                                obj.options.set('strokeColor', '#000000');
+                                obj.options.set('preset', 'islands#blackIcon');
+                                this.info(i + ': ' + obj.options.get('id') + ', strokeColor: ' + obj.options.get('strokeColor') + ', preset: ' + obj.options.get('preset'));
+                                i += 1;
+                            }, log);
+                            //result.removeFromMap(myMap);
+
+                        });
+                    })
+                    .add('deselect', function () {
+                        var result = ymaps.geoQuery(geoQueryResult).then(function () {
+                            result.addToMap(myMap);
+                            var i = 1;
+                            result.each(function (obj) {
+                                obj.options.set('strokeColor', '#00FF00');
+                                obj.options.set('preset', 'islands#greenIcon');
+                                log.info(i + ': ' + obj.options.get('id') + ', strokeColor: ' + obj.options.get('strokeColor') + ', preset: ' + obj.options.get('preset'));
+                                i += 1;
+                            });
+                            //result.removeFromMap(myMap);
+                        });
+                    });
+            myMap.controls.add(contextButton)
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

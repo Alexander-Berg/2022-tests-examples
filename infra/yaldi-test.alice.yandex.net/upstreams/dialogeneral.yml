@@ -1,0 +1,58 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - coffeeman
+      - av-kotikov
+      groups: []
+labels:
+  order: '20000000'
+---
+regexp_section:
+    matcher:
+        match_fsm:
+            uri: '/ru-ru/dialogeneral/(.*)'
+    modules:
+        - report:
+            uuid: "dialogeneral"
+            ranges: "300ms,500ms,1s,2s,3s,4s,5s,10s"
+        - rewrite:
+            actions:
+                - {regexp: '/ru-ru/dialogeneral/(.*)', rewrite: /%1, split: url}
+        - balancer2:
+            attempts: 1
+            rr: {weights_file: ./controls/traffic_control.weights}
+            by_name_policy:
+                name: !f get_geo("dialogeneral_", "random")
+                unique_policy: {}
+            backends:
+                -   weight: 1
+                    name: dialogeneral_sas
+                    modules:
+                        - report: {ranges: "300ms,500ms,1s,2s,3s,4s,5s,10s", uuid: requests_dialogeneral_to_sas}
+                        - balancer2:
+                            attempts: 1
+                            fast_attempts: 1
+                            fast_503: true
+                            attempts_rate_limiter:
+                                limit: 0.5
+                            leastconn: {}
+                            unique_policy: {}
+                            generated_proxy_backends:
+                                proxy_options:
+                                    allow_connection_upgrade: true
+                                    connect_timeout: 75ms
+                                    backend_timeout: 2500ms
+                                    backend_read_timeout: 600s
+                                    backend_write_timeout: 600s
+                                    client_read_timeout: 600s
+                                    client_write_timeout: 600s
+                                    fail_on_5xx: true
+                                include_backends:
+                                    type: BY_ID
+                                    ids:
+                                        - asr_dialogeneral_sas
+            on_error:
+                errordocument:
+                    status: 504
+                    content: "Service unavailable"

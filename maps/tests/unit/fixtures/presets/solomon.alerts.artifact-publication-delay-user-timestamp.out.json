@@ -1,0 +1,45 @@
+{
+    "solomon": {
+        "project_id": "maps-analytics",
+        "alerts": [
+            {
+                "id": "tools-duty-failure",
+                "projectId": "maps-analytics",
+                "name": "Reactor Artifact appearance delay for /maps/analytics/tools/duty (user timestamp)",
+                "channels": [
+                    {
+                        "id": "MapsAnalyticsMonitorings",
+                        "config": {
+                            "notifyAboutStatuses": [
+                                "ALARM",
+                                "ERROR",
+                                "NO_DATA",
+                                "OK",
+                                "WARN"
+                            ],
+                            "repeatDelaySecs": 0
+                        }
+                    }
+                ],
+                "type": {
+                    "expression": {
+                        "program": "// every reaction publishes one or more artifacts\n// so we get the one of them (max, for example)\nlet source = series_max({project=\"reactor\", cluster=\"prod\", service=\"prod_push\", mode=\"usertime\", path=\"/test\", attribute=\"delay_first_sec\", sensor=\"artifact*\"});\n\nlet now = time_interval_end(); // in UTC epoch seconds \nlet last_point_timestamp = last(get_timestamps(source)); // last timestamp\n\nlet delay_hours = (now - last_point_timestamp) / 3600;\n\nlet ALERT_HOURS = 1;\nalarm_if(last_point_timestamp != last_point_timestamp); // last_point_timestamp is NaN, happens when no points are in window\nlet is_not_published = delay_hours > ALERT_HOURS;\n\nalarm_if(is_not_published);",
+                        "checkExpression": ""
+                    }
+                },
+                "annotations": {
+                    "solomon_graph_id": "reactor-reactions-failures",
+                    "reactor_path": "/maps/analytics/tools/duty",
+                    "description": "{{#expression.is_not_published}}Artifact /test detained for more than {{expression.ALERT_HOURS}} hours{{/expression.is_not_published}}",
+                    "message": "",
+                    "juggler_host": "maps-analytics",
+                    "juggler_service": "/maps/analytics/tools/duty_delay"
+                },
+                "windowSecs": 604800,
+                "delaySecs": 0,
+                "resolvedEmptyPolicy": "RESOLVED_EMPTY_DEFAULT",
+                "noPointsPolicy": "NO_POINTS_DEFAULT"
+            }
+        ]
+    }
+}

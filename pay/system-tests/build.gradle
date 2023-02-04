@@ -1,0 +1,87 @@
+import org.gradle.nativeplatform.platform.internal.DefaultNativePlatform
+
+plugins {
+    id 'java'
+}
+
+sourceCompatibility = 11
+
+repositories {
+    maven {url 'https://artifactory.yandex.net/public'}
+}
+
+sourceSets {
+    main {
+        java {
+            srcDirs "containers/whitespirit/it_tests/src/main/java", "src/main/java"
+        }
+    }
+    test {
+        resources {
+            srcDirs "containers"
+            srcDirs "containers/whitespirit/it_tests/src/main/resources"
+            exclude "darkspirit/sql-liquibase/lib", "darkspirit/sql-liquibase/liquibase", "darkspirit/sql-liquibase/bin", "darkspirit/venv", "whitespirit/venv"
+        }
+    }
+}
+
+ task buildDockerCompose(type: Exec) {
+     commandLine 'docker-compose', '-f', 'containers/docker-compose-build.yml', 'build'
+ }
+
+ testClasses {
+     dependsOn buildDockerCompose
+ }
+
+ext.useLocalCompose = project.hasProperty('useLocalCompose') ? useLocalCompose : DefaultNativePlatform.getCurrentOperatingSystem().isMacOsX()
+
+dependencies {
+    def junitJupiterVersion = '5.6.2'
+    def jacksonVersion = '2.12.1'
+    def lombokVersion = '1.18.18'
+    def swaggerValidatorVersion='2.10.0'
+    def slf4jVersion='1.7.30'
+
+    compile "org.testcontainers:testcontainers:1.15.2"
+
+    compile "com.fasterxml.jackson.core:jackson-databind:$jacksonVersion"
+    compile "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:$jacksonVersion"
+
+    compile "org.slf4j:slf4j-simple:$slf4jVersion"
+    compile "org.slf4j:slf4j-api:$slf4jVersion"
+
+    compile "one.util:streamex:0.7.2"
+
+    compile "org.freemarker:freemarker:2.3.30"
+
+    compile "com.atlassian.oai:swagger-request-validator-core:$swaggerValidatorVersion"
+    compile "com.atlassian.oai:swagger-request-validator-restassured:$swaggerValidatorVersion"
+
+    implementation "io.rest-assured:rest-assured:4.3.0"
+    implementation 'org.awaitility:awaitility:4.0.3'
+    testImplementation 'org.awaitility:awaitility:4.0.3'
+
+    compile 'com.oracle.database.jdbc:ojdbc10:19.8.0.0'
+
+    compileOnly "org.projectlombok:lombok:$lombokVersion"
+    annotationProcessor "org.projectlombok:lombok:$lombokVersion"
+    testCompileOnly "org.projectlombok:lombok:$lombokVersion"
+    testAnnotationProcessor "org.projectlombok:lombok:$lombokVersion"
+
+    testCompile "org.junit.jupiter:junit-jupiter-api:$junitJupiterVersion"
+    testCompile "org.junit.jupiter:junit-jupiter-params:$junitJupiterVersion"
+    testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:$junitJupiterVersion"
+
+    compile 'com.jcraft:jsch:0.1.55'
+    compile 'org.json:json:20210307'
+    testCompile 'org.json:json:20210307'
+
+    compile "com.github.tomakehurst:wiremock-jre8:2.30.1"
+    testCompile "com.github.tomakehurst:wiremock-jre8:2.30.1"
+
+}
+
+test {
+    systemProperty "random.testing.seed", new Random().nextInt()
+    useJUnitPlatform()
+}

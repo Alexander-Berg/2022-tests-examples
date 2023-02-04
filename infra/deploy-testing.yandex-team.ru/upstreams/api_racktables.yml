@@ -1,0 +1,57 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - iperfilyev
+      groups: []
+labels:
+  order: '10000000'
+---
+regexp_section:
+  matcher:
+    match_and:
+      - match_fsm:
+          path: /api_proxy/racktables/.*
+      - match_or:
+        - match_fsm:
+            host: deploy\\.yandex-team\\.ru
+        - match_fsm:
+            host: yd\\.yandex-team\\.ru
+        - match_fsm:
+            host: .*\\.deploy\\.yandex-team\\.ru
+        - match_fsm:
+            host: .*\\.yd\\.yandex-team\\.ru
+        - match_fsm:
+            host: deploy-testing\\.yandex-team\\.ru
+  modules:
+    - report:
+        ranges: default
+        uuid: racktables
+    - rewrite:
+        actions:
+          - regexp: '/api_proxy/racktables/(.*)'
+            rewrite: '/%1'
+    - headers:
+        create:
+          Host: ro.racktables.yandex-team.ru
+    - headers_forwarder:
+        actions:
+          - request_header: 'Origin'
+            response_header: 'Access-Control-Allow-Origin'
+            erase_from_request: true
+            erase_from_response: true
+            weak: false
+    - balancer2:
+        attempts: 1
+        rr: {}
+        backends:
+          - weight: 1
+            proxy:
+              backend_timeout: 60s
+              connect_timeout: 200ms
+              host: ro.racktables.yandex-team.ru
+              port: 443
+              https_settings:
+                ca_file: !f get_ca_cert_path("Certum_Trusted_Network_CA.pem", "/etc/ssl/certs/")
+                verify_depth: 3
+                sni_host: ro.racktables.yandex-team.ru

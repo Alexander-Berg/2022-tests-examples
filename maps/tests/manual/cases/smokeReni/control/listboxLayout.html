@@ -1,0 +1,210 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Собственный макет выпадающего списка
+
+Description:
+На карте отображается собственный блок с выпадашкой списка
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+smoke
+
+Estimated time: 
+120000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан Москвы.
+  На карте имееются контролы: масштабирования "+/-", контрол местоположения (стрелка-треугольник), контрол поиска(лупа), контрол с иконкой светофора, контрол с иконкой слоев, контрол разворачивания карты со стрелками.
+  За контролом лупы имеется зеленый контрол с надписью "Выбурите пункт".
+
+Step:
+  Action:
+  Клик в контрол "Выберите пункт".
+
+  Expectation:
+  Под контролом появляется выпадающий список со значениями: Москва, Омск.
+
+Step:
+  Action:
+  Выбрать и выполнить клик в списке в "Омск".
+
+  Expectation:
+  При наведении курсора на значение в списке ховер - строка со значением окрашена в синий.
+  Спан карты меняется на спан Омска.
+  Панель списка со значениями не пропадает.
+
+Step:
+  Action:
+  Выполнить максимальный призум карты скроллом мыши.
+
+  Expectation:
+  Зум работает корректно: нет странных визуальных эффектов на карте и с элементами.
+  Карта не дрожит и не мигает цветами.
+  Нет заметных тормозов при масштабировании карты.
+  При зуме постепенно меняется отрисовка карты: появляются подписи, рельефность, метки организаций - ПОИ, подписи дорог, иконки остановок, стрелки направления движений на некоторых дорогах.
+
+Step:
+  Action:
+  Выбрать и выполнить клик в списке в "Москва".
+
+  Expectation:
+  При наведении курсора на значение в списке ховер - строка со значением окрашена в синий.
+  Спан карты меняется на спан Москвы, при этом карта делает отзым на среднее значение зума по шкале слева.
+  Панель списка со значениями не пропадает.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="//yandex.st/jquery/1.8.0/jquery.min.js" type="text/javascript"></script>
+    <link href="//yandex.st/bootstrap/2.2.2/css/bootstrap.min.css" rel="stylesheet">
+    <script src="../../../helper.js"></script>
+    <style>
+        html, body, #map {
+            width: 100%;
+            height: 100%;
+            padding: 0;
+            margin: 0;
+        }
+
+        #my-listbox {
+            top: auto;
+            left: auto;
+        }
+    </style>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            //ymaps = ym;
+
+            var myMap = new ymaps.Map('map', {
+                center: [55.751574, 37.573856],
+                zoom: 9
+            }, {
+                backgroundVisible: false
+            });
+            addGrid(myMap);
+            var log = new Log();
+            log.info("Test case: custom listbox");
+
+            // Создадим собственный макет выпадающего списка.
+            var ListBoxLayout = ymaps.templateLayoutFactory.createClass(
+                                    "<button id='my-listbox-header' class='btn btn-success dropdown-toggle' data-toggle='dropdown'>" +
+                                    "{{data.title}} <span class='caret'></span>" +
+                                    "</button>" +
+                                // Этот элемент будет служить контейнером для элементов списка.
+                                // В зависимости от того, свернут или развернут список, этот контейнер будет
+                                // скрываться или показываться вместе с дочерними элементами.
+                                    "<ul id='my-listbox'" +
+                                    " class='dropdown-menu' role='menu' aria-labelledby='dropdownMenu'" +
+                                    " style='display: {% if state.expanded %}block{% else %}none{% endif %};'></ul>", {
+
+                                build: function () {
+                                    // Вызываем метод build родительского класса перед выполнением
+                                    // дополнительных действий.
+                                    ListBoxLayout.superclass.build.call(this);
+
+                                    this.childContainerElement = $('#my-listbox').get(0);
+                                    // Генерируем специальное событие, оповещающее элемент управления
+                                    // о смене контейнера дочерних элементов.
+                                    this.events.fire('childcontainerchange', {
+                                        newChildContainerElement: this.childContainerElement,
+                                        oldChildContainerElement: null
+                                    });
+                                },
+
+                                // Переопределяем интерфейсный метод, возвращающий ссылку на
+                                // контейнер дочерних элементов.
+                                getChildContainerElement: function () {
+                                    return this.childContainerElement;
+                                },
+
+                                clear: function () {
+                                    // Заставим элемент управления перед очисткой макета
+                                    // откреплять дочерние элементы от родительского.
+                                    // Это защитит нас от неожиданных ошибок,
+                                    // связанных с уничтожением dom-элементов в ранних версиях ie.
+                                    this.events.fire('childcontainerchange', {
+                                        newChildContainerElement: null,
+                                        oldChildContainerElement: this.childContainerElement
+                                    });
+                                    this.childContainerElement = null;
+                                    // Вызываем метод clear родительского класса после выполнения
+                                    // дополнительных действий.
+                                    ListBoxLayout.superclass.clear.call(this);
+                                }
+                            }),
+
+            // Также создадим макет для отдельного элемента списка.
+                    ListBoxItemLayout = ymaps.templateLayoutFactory.createClass(
+                            "<li><a>{{data.content}}</a></li>"
+                    ),
+
+            // Создадим 2 пункта выпадающего списка
+                    listBoxItems = [
+                        new ymaps.control.ListBoxItem({
+                            data: {
+                                content: 'Москва',
+                                center: [55.751574, 37.573856],
+                                zoom: 9
+                            }
+                        }),
+                        new ymaps.control.ListBoxItem({
+                            data: {
+                                content: 'Омск',
+                                center: [54.990215, 73.365535],
+                                zoom: 9
+                            }
+                        })
+                    ],
+
+            // Теперь создадим список, содержащий 2 пунтка.
+                    listBox = new ymaps.control.ListBox({
+                        items: listBoxItems,
+                        data: {
+                            title: 'Выберите пункт'
+                        },
+                        options: {
+                            // С помощью опций можно задать как макет непосредственно для списка,
+                            layout: ListBoxLayout,
+                            // так и макет для дочерних элементов списка. Для задания опций дочерних
+                            // элементов через родительский элемент необходимо добавлять префикс
+                            // 'item' к названиям опций.
+                            itemLayout: ListBoxItemLayout
+                        }
+                    });
+
+            listBox.events.add('click', function (e) {
+                // Получаем ссылку на объект, по которому кликнули.
+                // События элементов списка пропагируются
+                // и их можно слушать на родительском элементе.
+                var item = e.get('target');
+                // Клик на заголовке выпадающего списка обрабатывать не надо.
+                if (item != listBox) {
+                    myMap.setCenter(
+                            item.data.get('center'),
+                            item.data.get('zoom')
+                    );
+                }
+            });
+
+            myMap.controls.add(listBox, {float: 'left'});
+        }
+    </script>
+</head>
+<body>
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

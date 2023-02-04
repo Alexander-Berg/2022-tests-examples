@@ -1,4 +1,0 @@
-OWNER(
-    atsepeleva
-    g:smarttv
-)

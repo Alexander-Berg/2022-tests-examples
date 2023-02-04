@@ -1,0 +1,47 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - robot-tap
+      groups: []
+labels:
+  order: '1001'
+---
+regexp_section:
+    matcher:
+        match_fsm:
+            host: afisha-pr-2766030\\.tap-tst\\.yandex\\.ru
+    modules:
+        - rewrite:
+              actions:
+                  - regexp: '.*'
+                    rewrite: '/afisha/pr-2766030/index.html'
+                  - regexp: '.*'
+                    header_name: 'Host'
+                    rewrite: 'tap-test.s3.mds.yandex.net'
+        - response_headers:
+              create:
+                  Cache-Control: public, max-age=900
+                  X-Frame-Options: DENY
+                  X-Content-Type-Options: nosniff
+                  X-XSS-Protection: 1; mode=block
+                  Yandex-CSP-ReportURI: "https://csp.yandex.net/csp?project=turboapp-afisha&req-id={{reqid}}&yandexuid={{yandexuid}}&from=turboapp-afisha-pr-2766030"
+                  Content-Security-Policy: "script-src 'self' 'unsafe-eval' yastatic.net api-maps.yandex.ru suggest-maps.yandex.ru *.maps.yandex.net yandex.ru tap-test.s3.mds.yandex.net 'sha256-+gf60c2ehTo73KxnO9mjN8Nvh5RvjCOB7Q8EE+m8334='; style-src 'self' yastatic.net blob: tap-test.s3.mds.yandex.net; font-src 'self' yastatic.net tap-test.s3.mds.yandex.net; img-src 'self' data: yastatic.net avatars.mds.yandex.net *.maps.yandex.net api-maps.yandex.ru yandex.ru tap-test.s3.mds.yandex.net static-maps.yandex.ru; media-src 'self' yastatic.net tap-test.s3.mds.yandex.net; child-src api-maps.yandex.ru; frame-src api-maps.yandex.ru; connect-src https://afisha.tap-tst.yandex.ru; default-src tap-test.s3.mds.yandex.net; manifest-src 'self'; object-src 'none'; report-uri https://csp.yandex.net/csp?from=turboapp-afisha-pr-2766030&project=turboapp-afisha"
+        - balancer2:
+              disable_attempts_rate_limiter: true
+              attempts: 5
+              simple_policy: {}
+              rr: {}
+              generated_proxy_backends:
+                  proxy_options:
+                      backend_timeout: 500ms
+                      connect_timeout: 50ms
+                      fail_on_5xx: true
+                  instances:
+                      - weight: 1
+                        host: 'tap-test.s3.mds.yandex.net'
+                        port: 80
+              on_error:
+                  errordocument:
+                      status: 503
+                      content: 'Service unavailable'

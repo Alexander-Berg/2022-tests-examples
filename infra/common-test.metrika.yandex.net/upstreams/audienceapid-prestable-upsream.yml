@@ -1,0 +1,40 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - pkrasnyuk
+      groups: []
+labels:
+  order: '10000000'
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      host: 'audienceapid.prestable.metrika.yandex.net'
+  modules:
+     - balancer2:
+        attempts: 2
+        attempts_rate_limiter:
+          limit: 0.15
+        connection_attempts: !f count_backends()
+        status_code_blacklist : ["5xx"]
+        return_last_5xx: true
+        retry_non_idempotent: false
+        unique_policy: {}
+        dynamic:
+          max_pessimized_share: 1
+          active:
+            weight_normalization_coeff: 1
+            delay: 1s
+            request: 'GET /internal/ping HTTP/1.1\nHost: audienceapid.prestable.metrika.yandex.net\nUser-agent: l7-balancer\n\n'
+        generated_proxy_backends:
+          proxy_options:
+            backend_timeout: 240s
+            connect_timeout: 100ms
+          include_backends:
+            type: BY_ID
+            ids: [audienceapid-prestable-backends]
+        on_error:
+          errordocument:
+            status: 504
+            content: "Service unavailable"

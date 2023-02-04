@@ -1,0 +1,75 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - secondfry
+      - nanny-robot
+      groups:
+      - svc_externalpages_development
+      - svc_externalpages_services_management
+      - svc_externalpages_projects_management
+config_transport:
+  nanny_static_file:
+    service_id: rtc_balancer_brpages-test-internal_yandex_net_sas
+    instance_tags:
+      ctype: prod
+      itype: balancer
+      prj: brpages-test-internal.yandex.net
+mode: EASY_MODE
+---
+l7_macro:
+  version: 0.3.18
+  core:
+    trust_x_forwarded_for_y: true
+  http: {}
+  health_check_reply: {}
+  announce_check_reply:
+    url_re: /ping
+  monitoring:
+    enable_total_signals: true
+    enable_molly_signals: true
+    enable_announce_check_signals: true
+  include_domains: {}
+  headers:
+    # Выставляем X-Yandex-RandomUID максимально рано, можно использовать дальше в цепочке обработки запроса.
+    # Используется, например, для USaaS. Разбивка по yandexuid проверит сначала yandexuid куку, а потом X-Yandex-RandomUID заголовок.
+    # @see https://wiki.yandex-team.ru/jandekspoisk/kachestvopoiska/abt/uaas/#vxodnyeparametrysplitaakainformacijaozaproseilipolzovatele
+    # @see https://a.yandex-team.ru/arc/trunk/arcadia/quality/ab_testing/exp_daemon/iface/http/parser.h?rev=r8869182#L258
+    # @see https://a.yandex-team.ru/arc/trunk/arcadia/quality/ab_testing/exp_daemon/lib/common_headers.h?rev=r8869183#L31
+    # @note местами keep_existing: true, так как мы за L7Heavy (https://st.yandex-team.ru/MINOTAUR-2937).
+    - create: {target: X-Yandex-RandomUID, func: yuid, keep_existing: true}
+    # X-Req-Id это внутренний Яндексовый аналог X-Request-Id. Используем его, если его отправляют, так как
+    # весь смысл его существования – идемпотентность обработки запросов
+    # (т.е. два запроса с одним X-Req-Id/X-Request-Id не должны вызвать два изменения)
+    # @see https://st.yandex-team.ru/MINOTAUR-2937#619e6f598fab33050832d290
+    # @see https://stackoverflow.com/a/54356305/9260759
+    - copy: {target: X-Request-Id, source: X-Req-Id, keep_existing: true}
+    - create: {target: X-Request-Id, func: reqid, keep_existing: true}
+    # На тестинге логгируем все хедеры и две куки.
+    # @see https://wiki.yandex-team.ru/cookies/
+    - log: {target_re: '(.*)', cookie_fields: [yandex_login, yandexuid]}
+    # Эта группа заголовком должна выставляться reverse proxy и мы не должны доверять клиенту в них.
+    # @see https://wiki.yandex-team.ru/awacs/cookbook/
+    # @note местами keep_existing: true, так как мы за L7Heavy (https://st.yandex-team.ru/MINOTAUR-2937).
+    - create: {target: X-Start-Time, func: starttime, keep_existing: true}
+    - copy: {target: X-Real-IP, source: X-Forwarded-For-Y, keep_existing: false}
+    # Почти во всех бэкендах проставлен "trust proxy".
+    # @see https://a.yandex-team.ru/search?search=trust%20proxy,%5Ebrowser%2Ffrontend%2F.*,ji,arcadia,,500&repo=arc_vcs
+    # Однако наш реверс прокси точно также доверял внешним прокси, что неприемлимо (и привело к SSRF).
+    # Поэтому здесь мы не доверяем пришедшим заголовкам и заменяем их.
+    # @see https://expressjs.com/en/guide/behind-proxies.html
+    # @note местами keep_existing: true, так как мы за L7Heavy (https://st.yandex-team.ru/MINOTAUR-2937).
+    - create: {target: X-Forwarded-Host, func: host, keep_existing: false}
+    - create: {target: X-Forwarded-Proto, func: scheme, keep_existing: true}
+    - create: {target: X-Forwarded-For, func: realip, keep_existing: false}
+    # FIXME выпилить
+    # Сейчас использовано в:
+    # https://github.yandex-team.ru/stardust/portal-error-page/blob/ba4a95f86f9f30cde76606be06eaaa35988dc493/server/middlewares/tld-by-x-request-host.js
+    - create: {target: X-Request-Host, func: host, keep_existing: false}
+    # FIXME выпилить?
+    # Сейчас использовано в:
+    # https://github.yandex-team.ru/stardust/com-distrib/blob/59c0b8b43861afe3f65690ae174339a0289a7062/server/controllers/index.js
+    # https://github.yandex-team.ru/stardust/toloka-pages/blob/90e3ee5d717761a1059609795ff50809be052c86/server/controllers/index.js
+    - rewrite: {target: X-Original-URL, pattern: {re: '(.*)'}, replacement: '%{scheme}://%{host}%{url}'}
+  response_headers: 
+    - create: {target: Strict-Transport-Security, value: 'max-age=31536000'}

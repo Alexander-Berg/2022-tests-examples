@@ -1,0 +1,250 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - iandreyev
+      groups: []
+labels:
+  order: '10000000'
+---
+regexp_section:
+  matcher: {}
+  modules:
+    - report:
+       uuid: "default_full_mode"
+       ranges: default
+       just_storage: false
+       events: 
+         stats: "report"      
+       outgoing_codes: ["429", "499"]
+    - headers: 
+        create_func:
+          X-Balancer-IP: localip
+          X-Real-IP: realip
+        create_func_weak:
+          X-Request-Id: reqid
+    - balancer2:
+        attempts: 2
+        rr: {weights_file: ./controls/traffic_control.weights}
+        unique_policy: {}
+        backends:
+          - weight: 1 
+            name: byenv_hw
+            modules:
+              - report:
+                  uuid: "requests_default_full_mode_to_hw"
+                  ranges: default
+                  just_storage: false
+                  events: 
+                    stats: "report"
+              - balancer2:
+                  attempts: 2
+                  unique_policy: {}
+                  rr: {weights_file: ./controls/traffic_control.weights}
+                  backends:
+                    - name: bygeo_sas
+                      weight: 1
+                      modules: 
+                        - report:
+                            uuid: "requests_default_full_mode_to_hw_to_sas"
+                            ranges: default
+                            just_storage: false
+                            events: 
+                              stats: "report"
+                        - balancer2:
+                            attempts: 2
+                            connection_attempts: 2
+                            dynamic:
+                              max_pessimized_share: 0.200
+                              min_pessimization_coeff: 0.100
+                              weight_increase_step: 0.100
+                              history_interval: 10s
+                              backends_name: 'trust_test_sas'
+                              active:
+                                request: 'GET /ping HTTP/1.1\nHost: trust-lpm-test.paysys.yandex.net:8031\nUser-Agent: l7-balancer-trust-lpm-test\n\n'
+                                delay: 1s
+                                weight_normalization_coeff: 0.0001
+                                use_backend_weight: false 
+                            generated_proxy_backends:
+                              proxy_options:
+                                fail_on_5xx: false
+                                backend_timeout: 10s
+                                connect_timeout: 70ms
+                                https_settings:
+                                  ca_file: !f get_ca_cert_path("allCAs.pem", "./")
+                                  verify_depth: 3
+                                  sni_on: true
+                              include_backends:
+                                ids: [trust_test_sas]
+                                type: BY_ID
+                            attempts_rate_limiter:
+                              limit: 0.15
+                              coeff: 0.990
+                    - name: bygeo_vla
+                      weight: 1
+                      modules: 
+                        - report:
+                            uuid: "requests_default_full_mode_to_hw_to_vla"
+                            ranges: default
+                            just_storage: false
+                            events: 
+                              stats: "report"
+                        - balancer2:
+                            attempts: 2
+                            connection_attempts: 2
+                            dynamic:
+                              max_pessimized_share: 0.200
+                              min_pessimization_coeff: 0.100
+                              weight_increase_step: 0.100
+                              history_interval: 10s
+                              backends_name: 'trust_test_vla'
+                              active:
+                                request: 'GET /ping HTTP/1.1\nHost: trust-lpm-test.paysys.yandex.net:8031\nUser-Agent: l7-balancer-trust-lpm-test\n\n'
+                                delay: 1s
+                                weight_normalization_coeff: 0.0001
+                                use_backend_weight: false 
+                            generated_proxy_backends:
+                              proxy_options:
+                                fail_on_5xx: false
+                                backend_timeout: 10s
+                                connect_timeout: 70ms
+                                https_settings:
+                                  ca_file: !f get_ca_cert_path("allCAs.pem", "./")
+                                  verify_depth: 3
+                                  sni_on: true
+                              include_backends:
+                                ids: [trust_test_vla]
+                                type: BY_ID
+                            attempts_rate_limiter:
+                              limit: 0.15
+                              coeff: 0.990
+                    - name: bygeo_devnull
+                      weight: -1
+                      modules: 
+                        - report:
+                            uuid: "requests_default_full_mode_to_hw_to_devnull"
+                            ranges: default
+                            just_storage: false
+                            events: 
+                              stats: "report"
+                        - errordocument: {status: '204'}
+                  on_error: 
+                    errordocument: {status: '504', content: 'Service unavailable from hw'}
+          - weight: 1
+            name: byenv_deploy
+            modules:
+              - report:
+                  uuid: "requests_default_full_mode_to_deploy"
+                  ranges: default
+                  just_storage: false
+                  events: 
+                    stats: "report"
+              - balancer2:
+                  attempts: 2
+                  unique_policy: {}
+                  rr: {weights_file: ./controls/traffic_control.weights}
+                  backends: 
+                    - name: bygeodeploy_myt
+                      weight: 1
+                      modules: 
+                        - report:
+                            uuid: "requests_default_full_mode_to_deploy_to_myt"
+                            ranges: default
+                            just_storage: false
+                            events: 
+                              stats: "report"
+                        - balancer2:
+                            attempts: 2
+                            connection_attempts: 2
+                            active:
+                              request: 'GET /ping HTTP/1.1\nHost: trust-lpm-test.paysys.yandex.net:8031\nUser-Agent: l7-balancer-trust-lpm-test\n\n'
+                              delay: 1s
+                            generated_proxy_backends:
+                              proxy_options:
+                                fail_on_5xx: false
+                                backend_timeout: 10s
+                                connect_timeout: 70ms
+                                https_settings:
+                                  ca_file: !f get_ca_cert_path("allCAs.pem", "./")
+                                  verify_depth: 3
+                                  sni_on: true
+                              include_backends:
+                                ids: [trust-lpm-test-stage_trust-lpm_myt]
+                                type: BY_ID
+                            attempts_rate_limiter:
+                              limit: 0.15
+                              coeff: 0.990
+                    - name: bygeodeploy_sas
+                      weight: 1
+                      modules: 
+                        - report:
+                            uuid: "requests_default_full_mode_to_deploy_to_sas"
+                            ranges: default
+                            just_storage: false
+                            events: 
+                              stats: "report"
+                        - balancer2:
+                            attempts: 2
+                            connection_attempts: 2
+                            active:
+                              request: 'GET /ping HTTP/1.1\nHost: trust-lpm-test.paysys.yandex.net:8031\nUser-Agent: l7-balancer-trust-lpm-test\n\n'
+                              delay: 1s
+                            generated_proxy_backends:
+                              proxy_options:
+                                fail_on_5xx: false
+                                backend_timeout: 10s
+                                connect_timeout: 70ms
+                                https_settings:
+                                  ca_file: !f get_ca_cert_path("allCAs.pem", "./")
+                                  verify_depth: 3
+                                  sni_on: true
+                              include_backends:
+                                ids: [trust-lpm-test-stage_trust-lpm_sas]
+                                type: BY_ID
+                            attempts_rate_limiter:
+                              limit: 0.15
+                              coeff: 0.990
+                    - name: bygeodeploy_vla
+                      weight: 1
+                      modules: 
+                        - report:
+                            uuid: "requests_default_full_mode_to_deploy_to_vla"
+                            ranges: default
+                            just_storage: false
+                            events: 
+                              stats: "report"
+                        - balancer2:
+                            attempts: 2
+                            connection_attempts: 2
+                            active:
+                              request: 'GET /ping HTTP/1.1\nHost: trust-lpm-test.paysys.yandex.net:8031\nUser-Agent: l7-balancer-trust-lpm-test\n\n'
+                              delay: 1s
+                            generated_proxy_backends:
+                              proxy_options:
+                                fail_on_5xx: false
+                                backend_timeout: 10s
+                                connect_timeout: 70ms
+                                https_settings:
+                                  ca_file: !f get_ca_cert_path("allCAs.pem", "./")
+                                  verify_depth: 3
+                                  sni_on: true
+                              include_backends:
+                                ids: [trust-lpm-test-stage_trust-lpm_vla]
+                                type: BY_ID
+                            attempts_rate_limiter:
+                              limit: 0.15
+                              coeff: 0.990
+                    - name: bygeo_devnull
+                      weight: -1
+                      modules: 
+                        - report:
+                            uuid: "requests_default_full_mode_to_deploy_to_devnull"
+                            ranges: default
+                            just_storage: false
+                            events: 
+                              stats: "report"
+                        - errordocument: {status: '204'}
+                  on_error: 
+                    errordocument: {status: '504', content: 'Service unavailable from deploy'}
+        on_error: 
+          errordocument: {status: '504', content: 'Service unavailable'}

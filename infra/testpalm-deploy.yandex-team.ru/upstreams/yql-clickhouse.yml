@@ -1,0 +1,47 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - alexsmirnov97
+      groups: []
+labels:
+  order: '10000000'
+---
+regexp_section:
+  matcher:
+      match_fsm:
+        host: logs.clickhouse.testpalm.yandex-team.ru(:\\d+)?
+  
+  modules:
+    - balancer2:
+        unique_policy: {}
+        attempts: 1
+        connection_attempts: 2
+        rr: {}
+        disable_attempts_rate_limiter: true
+        return_last_5xx: true
+        status_code_blacklist: ['5xx']
+        generated_proxy_backends:
+          proxy_options:
+            https_settings:
+                ca_file: !f get_ca_cert_path("allCAs.pem", "./")
+                sni_on: true
+                verify_depth: 3
+            backend_timeout: 30s
+            connect_timeout: 200ms
+            keepalive_count: 0  # Важно!
+            fail_on_5xx: false
+          instances:
+            - host: man-5ng1o5863c4cttui.db.yandex.net
+              port: 8443
+              weight: 1
+            - host: sas-r0akb3fmb97uecgn.db.yandex.net
+              port: 8443
+              weight: 1
+            - host: vla-izc212c4qjhzdqsd.db.yandex.net
+              port: 8443
+              weight: 1
+        on_error:
+          errordocument:
+            status: 502
+            content: "Clickhouse unavailable"

@@ -1,0 +1,218 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Менеджер объектов: добавление объектов менеджером объектов с рандомными координатами
+
+Description:
+Проверка добавления объектов менеджером объектов с рандомными координатами. 
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+objectManager
+
+Estimated time:
+120000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась корректно со спаном Ленинградской области.
+  Сверху имеются кнопки "polygon", "polilyne", "rectangle", "circle".
+  
+Step:
+  Action:
+  Выполнить клик в кнопку "circle".
+
+  Expectation:
+  Происходит смена спана, на спане синий круг описанный в квадрате.
+  Под контейнером появляется строка: "[object Object]; (координаты из 4 цифр)".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "circle", затем клик в "rectangle".
+
+  Expectation:
+  По клику "circle" со спана карты пропадает фигура.
+  По клику в "rectangle" происходит смена спана, на спане синий прямуогольник.
+  Под контейнером появляется строка: "[object Object]; (координаты из 4 цифр)".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "rectangle", затем клик в "polilyne".
+
+  Expectation:
+  По клику "rectangle" со спана карты пропадает фигура.
+  По клику в "polilyne" происходит смена спана, на спане синяя линия в прямоугольнике.
+  Под контейнером появляется строка: "[object Object]; (координаты из 4 цифр)".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "polilyne", затем клик в "polygon".
+
+  Expectation:
+  По клику "polilyne" со спана карты пропадает фигура.
+  По клику в "polygon" происходит смена спана, на спане треугольник в прямоугольнике.
+  Под контейнером появляется строка: "[object Object]; (координаты из 4 цифр)".
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            //ymaps = ym;
+            var map = myMap = new ymaps.Map('map', {
+                center: [59.96343157514998, 30.317977733422868],
+                zoom: 7,
+                // Добавим к стандартным поведениям карты зум колесом мыши.
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+            var currentId = 0;
+            var objectManager = new ym.ObjectManager({});
+            var bounds;
+            var objectManagerCircle;
+            var objectManagerRectangle;
+            var objectManagerPolyline;
+            var objectManagerPolygon;
+            var button1 = new ymaps.control.Button('circle');
+            button1.events
+                    .add('select', function () {
+                        objectManagerCircle = {
+                            type: 'Feature',
+                            id: currentId++,
+                            geometry: { type: "Circle", coordinates: [Math.random() * 70 * (Math.random() > 0.5 ? -1 : 1), Math.random() * 160 * (Math.random() > 0.5 ? -1 : 1)], radius: Math.random() * 1000 }
+                        };
+                        __log__(objectManagerCircle);
+                        objectManager.objects.add(objectManagerCircle);
+
+                        var coords = objectManager.getBounds();
+                        __log__(coords);
+
+                        bounds = new ymaps.Rectangle(coords, {}, {fillOpacity: 0.5, strokeWidth: 3});
+                        map.geoObjects.add(bounds);
+                        map.setBounds(coords, {presizeZoom: true});
+                    })
+                    .add('deselect', function () {
+                        map.geoObjects.remove(bounds);
+                        objectManager.objects.remove(objectManagerCircle);
+                    });
+            map.controls.add(button1);
+
+            var button2 = new ymaps.control.Button('rectangle');
+            button2.events
+                    .add('select', function () {
+                        var coordsCenter = [Math.random() * 70 * (Math.random() > 0.5 ? -1 : 1), Math.random() * 160 * (Math.random() > 0.5 ? -1 : 1)];
+                        objectManagerRectangle = {
+                            type: 'Feature',
+                            id: currentId++,
+                            geometry: { type: "Rectangle", coordinates: [
+                                [(coordsCenter[0] - Math.random() * 10), (coordsCenter[1] - Math.random() * 10)],
+                                [(coordsCenter[0] + Math.random() * 10), (coordsCenter[1] + Math.random() * 10)]
+                            ] }};
+                        __log__(objectManagerRectangle);
+                        objectManager.objects.add(objectManagerRectangle);
+
+                        var coords = objectManager.getBounds();
+                        __log__(coords);
+
+                        bounds = new ymaps.Rectangle(coords, {}, {fillOpacity: 0.5, strokeWidth: 3});
+                        map.geoObjects.add(bounds);
+                        map.setBounds(coords, {presizeZoom: true});
+                    })
+                    .add('deselect', function () {
+                        map.geoObjects.remove(bounds);
+                        objectManager.objects.remove(objectManagerRectangle);
+                    });
+            map.controls.add(button2);
+
+            var button3 = new ymaps.control.Button('polyline');
+            button3.events
+                    .add('select', function () {
+                        var coordsCenter = [Math.random() * 70 * (Math.random() > 0.5 ? -1 : 1), Math.random() * 160 * (Math.random() > 0.5 ? -1 : 1)];
+                        objectManagerPolyline = {
+                            type: 'Feature',
+                            id: currentId++,
+                            geometry: { type: "LineString", coordinates: [
+                                [(coordsCenter[0] + Math.random() * 10 * (Math.random() > 0.5 ? 1 : -1)), (coordsCenter[0] + Math.random() * 10 * (Math.random() > 0.5 ? 1 : -1))],
+                                [(coordsCenter[0] + Math.random() * 10 * (Math.random() > 0.5 ? 1 : -1)), (coordsCenter[0] + Math.random() * 10 * (Math.random() > 0.5 ? 1 : -1))],
+                                [(coordsCenter[0] + Math.random() * 10 * (Math.random() > 0.5 ? 1 : -1)), (coordsCenter[0] + Math.random() * 10 * (Math.random() > 0.5 ? 1 : -1))]
+                            ] }
+                        };
+                        __log__(objectManagerPolyline);
+                        objectManager.objects.add(objectManagerPolyline);
+
+                        var coords = objectManager.getBounds();
+                        __log__(coords);
+
+                        bounds = new ymaps.Rectangle(coords, {}, {fillOpacity: 0.5, strokeWidth: 3});
+                        map.geoObjects.add(bounds);
+                        map.setBounds(coords, {presizeZoom: true});
+                    })
+                    .add('deselect', function () {
+                        map.geoObjects.remove(bounds);
+                        objectManager.objects.remove(objectManagerPolyline);
+                    });
+            map.controls.add(button3);
+
+            var button4 = new ymaps.control.Button('polygon');
+            button4.events
+                    .add('select', function () {
+                        var coordsCenter = [Math.random() * 70 * (Math.random() > 0.5 ? -1 : 1), Math.random() * 160 * (Math.random() > 0.5 ? -1 : 1)];
+                        var coordsOne = [(coordsCenter[0] + Math.random() * 10 * (Math.random() > 0.5 ? 1 : -1)), (coordsCenter[0] + Math.random() * 10 * (Math.random() > 0.5 ? 1 : -1))];
+                        objectManagerPolygon = {
+                            type: 'Feature',
+                            id: currentId++,
+                            geometry: { type: "Polygon", coordinates: [
+                                [
+                                    coordsOne,
+                                    [(coordsCenter[0] + Math.random() * 10 * (Math.random() > 0.5 ? 1 : -1)), (coordsCenter[0] + Math.random() * 10 * (Math.random() > 0.5 ? 1 : -1))],
+                                    [(coordsCenter[0] + Math.random() * 10 * (Math.random() > 0.5 ? 1 : -1)), (coordsCenter[0] + Math.random() * 10 * (Math.random() > 0.5 ? 1 : -1))],
+                                    coordsOne]
+                            ] },
+                            properties: {
+                                hintContent: 'objectManagerPolygon' + currentId,
+                                balloonContent: 'objectManagerPolygon' + currentId, type: 'школа'
+                            }, options: {}
+                        };
+                        __log__(objectManagerPolygon);
+                        objectManager.objects.add(objectManagerPolygon);
+
+                        var coords = objectManager.getBounds();
+                        __log__(coords);
+
+                        bounds = new ymaps.Rectangle(coords, {}, {fillOpacity: 0.5, strokeWidth: 3});
+                        map.geoObjects.add(bounds);
+                        map.setBounds(coords, {presizeZoom: true});
+                    })
+                    .add('deselect', function () {
+                        map.geoObjects.remove(bounds);
+                        objectManager.objects.remove(objectManagerPolygon);
+                    });
+            map.controls.add(button4);
+            map.geoObjects.add(objectManager);
+
+            addGrid(myMap);
+            var log = new Log();
+            log.info("Test case:");
+
+        }
+    </script>
+</head>
+<body>
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

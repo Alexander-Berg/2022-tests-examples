@@ -1,0 +1,54 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - next0
+      - robot-frontend
+      - robot-twilight
+      - antonpudikov
+      groups: []
+labels:
+  order: '00500000'
+---
+regexp_section:
+  matcher:
+    match_and:
+      - match_or:
+          - match_fsm:
+              host: 'pr-2180154\\.uac\\.test\\.yandex\\.(ru|by|ua|kz|uz|com\\.tr|com)'
+          - match_fsm:
+              header:
+                name: 'x-forwarded-host'
+                value: 'pr-2180154\\.uac\\.test\\.yandex\\.(ru|by|ua|kz|uz|com\\.tr|com)'
+      - match_fsm:
+          uri: '/(web-api|registered)/.*'
+  modules:
+    - rewrite:
+        actions:
+          - regexp: '.*'
+            header_name: Host
+            rewrite: '14131.beta7.direct.yandex.ru'
+    - balancer2:
+        rr: {}
+        attempts: 1
+        attempts_rate_limiter:
+          limit: 0.1
+          coeff: 0.99
+        generated_proxy_backends:
+          proxy_options:
+            https_settings:
+              ca_file: !f get_ca_cert_path("allCAs.pem", "./")
+              sni_on: false
+              verify_depth: 3
+            connect_timeout: 100ms
+            backend_timeout: 60s
+            fail_on_5xx: false
+          instances:
+            - host: 14131.beta7.direct.yandex.ru
+              port: 443
+              weight: 1
+        on_error:
+          modules:
+            - errordocument:
+                status: 504
+                content: 'Service unavailable'

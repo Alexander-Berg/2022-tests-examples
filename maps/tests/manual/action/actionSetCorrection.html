@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<!--
+Title:
+Действия: смена спана при действии 
+
+Description:
+Проверка смены спана карты при действии. 
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+smoke, regress
+
+Estimated time:
+90000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно, на спане водная поверхность.
+  Снизу слева имеется прямоугольная область выделения с синим квадратом внутри.
+
+Step:
+  Action:
+  Выполнить клик в синий квадрат в прямоугольной области слева. 
+
+  Expectation:
+  В контейнере происходит смена спана на спан Москвы, территория внутри КАД выделена полупрозрачной желтой областью.
+  В прямоугольнике слева также уменьшенный спан Москвы.
+
+Step:
+  Action:
+  Выполнить статичный и инертный драг спана карты. 
+
+  Expectation:
+  Драг карты корректный, карта не пропадает, не мигает цветами, выделение области на спане не пропадает.
+-->
+<html>
+<head>
+    <title>API 2.0</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <script src="../helper.js"></script>
+    <script type="text/javascript">
+        Api('init');
+        function init(ymaps){
+            var center = [0.0, 180.0];
+            myMap = new ymaps.Map('map', {
+                center: center,
+                zoom: 10
+            });
+            var mkad = [
+                        [55.785017, 37.841576],
+                        [55.861979, 37.765992],
+                        [55.898533, 37.635961],
+                        [55.888897, 37.48861],
+                        [55.83251, 37.395275],
+                        [55.744789, 37.370248],
+                        [55.660424, 37.434424],
+                        [55.5922, 37.526366],
+                        [55.574019, 37.683167],
+                        [55.62913, 37.802473],
+                        [55.712203, 37.837121]
+                    ],
+                    mkadPolygon = new ymaps.Polygon([mkad], {}, {
+                        fillColor: '#FFFF00',
+                        opacity: .4
+                    });
+            myMap.geoObjects.add(mkadPolygon);
+            myMap.action.setCorrection(function (tick) {
+                var projection = myMap.options.get('projection'),
+                        tickCenter = projection.fromGlobalPixels(tick.globalPixelCenter, tick.zoom);
+                // Если центр карты не входит в нашу область.
+                if (!mkadPolygon.geometry.contains(tickCenter)) {
+                    tick.globalPixelCenter = projection.toGlobalPixels(
+                            mkadPolygon.geometry.getClosest(tickCenter).position,
+                            tick.zoom
+                    );
+                    tick.duration = 0;
+                }
+                return tick;
+            });
+            myMap.controls.add(new ymaps.control.MiniMap());
+            myMap.controls.add(new ymaps.control.SearchControl(), {right: 0});
+            myMap.controls.add(new ymaps.control.TrafficControl(), {left: 0});
+        }
+    </script>
+</head>
+<body>
+<div id="map" style="width:512px; height:512px"></div>
+<p><a href="https://tech.yandex.ru/maps/archive/doc/jsapi/2.0/ref/reference/map.action.Manager-docpage/" target="_blank">Docs</a></p>
+</body>
+</html>

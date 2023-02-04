@@ -1,0 +1,876 @@
+
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head><script src="https://code.jquery.com/jquery-1.11.0.min.js"></script>
+    <title>Кейс</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <script src="../../helper.js"></script>
+    <style>
+        html, body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+
+        .placemark_layout_container {
+            position: relative;
+            font-family: Georgia;
+            font-size: 40px;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        /* Квадратный макет метки */
+        .square_layout {
+            position: absolute;
+            left: -23px;
+            top: -23px;
+            width: 46px;
+            height: 46px;
+            line-height: 46px;
+            border: 2px solid #218703;
+            background-color: #F8FDF7;
+            color: #218703;
+        }
+
+        /* Круглый макет метки */
+        .circle_layout {
+            background-color: white;
+            position: absolute;
+            left: -23px;
+            top: -23px;
+            width: 46px;
+            height: 46px;
+            border: 2px solid #225D9C;
+            color: #225D9C;
+            line-height: 46px;
+            /* Это CSS свойство не будет работать в Internet Explorer 8 */
+            border-radius: 50px;
+        }
+
+        /* Макет метки с "хвостиком" */
+        .polygon_layout {
+            position: relative;
+            background: #ffffff;
+            border: 4px solid #943A43;
+            width: 50px;
+            height: 50px;
+            position: absolute;
+            left: -28px;
+            top: -76px;
+            color: #943A43;
+        }
+
+        .polygon_layout:after, .polygon_layout:before {
+            top: 100%;
+            left: 50%;
+            border: solid transparent;
+            content: " ";
+            height: 0;
+            width: 0;
+            position: absolute;
+        }
+
+        .polygon_layout:after {
+            border-top-color: #943A43;
+            border-width: 10px;
+            margin-left: -10px;
+        }
+
+        .polygon_layout:before {
+            border-top-color: #943A43;
+            border-width: 16px;
+            margin-left: -16px;
+        }
+    </style>
+    <script type="text/javascript">
+        Api("init");
+
+        function init(ym) {
+            ymaps = ym;
+            var map = myMap = new ymaps.Map('map', {
+                center: [81.60719888862127, 126.27880145543395],
+                zoom: 6,
+                behaviors: ['default', 'scrollZoom'],
+                controls: []
+            }, {
+                suppressObsoleteBrowserNotifier: true
+            });
+
+            // Пользовательские модули не дописываются в неймспейс ymaps.
+            // Поэтому доступ к ним мы можем получить асинхронно через метод ymaps.modules.require.
+            ymaps.modules.require(['geoObject.Arrow'], function (Arrow) {
+                var arrow = new Arrow([
+                    [82.73384394228532, 112.98534442418396],
+                    [82.26123727226634, 113.11718036168396]
+                ], null, {
+                    geodesic: true,
+                    strokeWidth: 5,
+                    opacity: 0.5,
+                    strokeStyle: 'shortdash'
+                });
+                myMap.geoObjects.add(arrow);
+            });
+
+
+        /*
+         * Класс, позволяющий создавать стрелку на карте.
+         * Является хелпером к созданию полилинии, у которой задан специальный оверлей.
+         * При использовании модулей в реальном проекте рекомендуем размещать их в отдельных файлах.
+         */
+        ymaps.modules.define("geoObject.Arrow", [
+            'Polyline',
+            'overlay.Arrow',
+            'util.extend'
+        ], function (provide, Polyline, ArrowOverlay, extend) {
+            /**
+             * @param {Number[][] | Object | ILineStringGeometry} geometry Геометрия ломаной.
+             * @param {Object} properties Данные ломаной.
+             * @param {Object} options Опции ломаной.
+             * Поддерживается тот же набор опций, что и в классе ymaps.Polyline.
+             * @param {Number} [options.arrowAngle=20] Угол в градусах между основной линией и линиями стрелки.
+             * @param {Number} [options.arrowMinLength=3] Минимальная длина стрелки. Если длина стрелки меньше минимального значения, стрелка не рисуется.
+             * @param {Number} [options.arrowMaxLength=20] Максимальная длина стрелки.
+             */
+            var Arrow = function (geometry, properties, options) {
+                return new Polyline(geometry, properties, extend({}, options, {
+                    lineStringOverlay: ArrowOverlay
+                }));
+            };
+            provide(Arrow);
+        });
+
+        /*
+         * Класс, реализующий интерфейс IOverlay.
+         * Получает на вход пиксельную геометрию линии и добавляет стрелку на конце линии.
+         */
+        ymaps.modules.define("overlay.Arrow", [
+            'overlay.Polygon',
+            'util.extend',
+            'event.Manager',
+            'option.Manager',
+            'Event',
+            'geometry.pixel.Polygon'
+        ], function (provide, PolygonOverlay, extend, EventManager, OptionManager, Event, PolygonGeometry) {
+            var domEvents = [
+                        'click',
+                        'contextmenu',
+                        'dblclick',
+                        'mousedown',
+                        'mouseenter',
+                        'mouseleave',
+                        'mousemove',
+                        'mouseup',
+                        'multitouchend',
+                        'multitouchmove',
+                        'multitouchstart',
+                        'wheel'
+                    ],
+
+                    /**
+                     * @param {geometry.pixel.Polyline} pixelGeometry Пиксельная геометрия линии.
+                     * @param {Object} data Данные оверлея.
+                     * @param {Object} options Опции оверлея.
+                     */
+                    ArrowOverlay = function (pixelGeometry, data, options) {
+                        // Поля .events и .options обязательные для IOverlay.
+                        this.events = new EventManager();
+                        this.options = new OptionManager(options);
+                        this._map = null;
+                        this._data = data;
+                        this._geometry = pixelGeometry;
+                        this._overlay = null;
+                    };
+
+            ArrowOverlay.prototype = extend(ArrowOverlay.prototype, {
+                // Реализовываем все методы и события, которые требует интерфейс IOverlay.
+                getData: function () {
+                    return this._data;
+                },
+
+                setData: function (data) {
+                    if (this._data != data) {
+                        var oldData = this._data;
+                        this._data = data;
+                        this.events.fire('datachange', {
+                            oldData: oldData,
+                            newData: data
+                        });
+                    }
+                },
+
+                getMap: function () {
+                    return this._map;
+                },
+
+                setMap: function (map) {
+                    if (this._map != map) {
+                        var oldMap = this._map;
+                        if (!map) {
+                            this._onRemoveFromMap();
+                        }
+                        this._map = map;
+                        if (map) {
+                            this._onAddToMap();
+                        }
+                        this.events.fire('mapchange', {
+                            oldMap: oldMap,
+                            newMap: map
+                        });
+                    }
+                },
+
+                setGeometry: function (geometry) {
+                    if (this._geometry != geometry) {
+                        var oldGeometry = geometry;
+                        this._geometry = geometry;
+                        if (this.getMap() && geometry) {
+                            this._rebuild();
+                        }
+                        this.events.fire('geometrychange', {
+                            oldGeometry: oldGeometry,
+                            newGeometry: geometry
+                        });
+                    }
+                },
+
+                getGeometry: function () {
+                    return this._geometry;
+                },
+
+                getShape: function () {
+                    return null;
+                },
+
+                isEmpty: function () {
+                    return false;
+                },
+
+                _rebuild: function () {
+                    this._onRemoveFromMap();
+                    this._onAddToMap();
+                },
+
+                _onAddToMap: function () {
+                    // Военная хитрость - чтобы в прозрачной ломаной хорошо отрисовывались самопересечения,
+                    // мы рисуем вместо линии многоугольник.
+                    // Каждый контур многоугольника будет отвечать за часть линии.
+                    this._overlay = new PolygonOverlay(new PolygonGeometry(this._createArrowContours()));
+                    this._startOverlayListening();
+                    // Эта строчка свяжет два менеджера опций.
+                    // Опции, заданные в родительском менеджере,
+                    // будут распространяться и на дочерний.
+                    this._overlay.options.setParent(this.options);
+                    this._overlay.setMap(this.getMap());
+                },
+
+                _onRemoveFromMap: function () {
+                    this._overlay.setMap(null);
+                    this._overlay.options.setParent(null);
+                    this._stopOverlayListening();
+                },
+
+                _startOverlayListening: function () {
+                    this._overlay.events.add(domEvents, this._onDomEvent, this);
+                },
+
+                _stopOverlayListening: function () {
+                    this._overlay.events.remove(domEvents, this._onDomEvent, this);
+                },
+
+                _onDomEvent: function (e) {
+                    // Мы слушаем события от дочернего служебного оверлея
+                    // и прокидываем их на внешнем классе.
+                    // Это делается для того, чтобы в событии было корректно определено
+                    // поле target.
+                    this.events.fire(e.get('type'), new Event({
+                        target: this
+                        // Свяжем исходное событие с текущим, чтобы все поля данных дочернего события
+                        // были доступны в производном событии.
+                    }, e));
+                },
+
+                _createArrowContours: function () {
+                    var contours = [],
+                            mainLineCoordinates = this.getGeometry().getCoordinates(),
+                            arrowLength = calculateArrowLength(
+                                    mainLineCoordinates,
+                                    this.options.get('arrowMinLength', 3),
+                                    this.options.get('arrowMaxLength', 20)
+                            );
+                    contours.push(getContourFromLineCoordinates(mainLineCoordinates));
+                    // Будем рисовать стрелку только если длина линии не меньше длины стрелки.
+                    if (arrowLength > 0) {
+                        // Создадим еще 2 контура для стрелочек.
+                        var lastTwoCoordinates = [
+                                    mainLineCoordinates[mainLineCoordinates.length - 2],
+                                    mainLineCoordinates[mainLineCoordinates.length - 1]
+                                ],
+                        // Для удобства расчетов повернем стрелку так, чтобы она была направлена вдоль оси y,
+                        // а потом развернем результаты обратно.
+                                rotationAngle = getRotationAngle(lastTwoCoordinates[0], lastTwoCoordinates[1]),
+                                rotatedCoordinates = rotate(lastTwoCoordinates, rotationAngle),
+
+                                arrowAngle = this.options.get('arrowAngle', 20) / 180 * Math.PI,
+                                arrowBeginningCoordinates = getArrowsBeginningCoordinates(
+                                        rotatedCoordinates,
+                                        arrowLength,
+                                        arrowAngle
+                                ),
+                                firstArrowCoordinates = rotate([
+                                    arrowBeginningCoordinates[0],
+                                    rotatedCoordinates[1]
+                                ], -rotationAngle),
+                                secondArrowCoordinates = rotate([
+                                    arrowBeginningCoordinates[1],
+                                    rotatedCoordinates[1]
+                                ], -rotationAngle);
+
+                        contours.push(getContourFromLineCoordinates(firstArrowCoordinates));
+                        contours.push(getContourFromLineCoordinates(secondArrowCoordinates));
+                    }
+                    return contours;
+                }
+            });
+
+            function getArrowsBeginningCoordinates(coordinates, arrowLength, arrowAngle) {
+                var p1 = coordinates[0],
+                        p2 = coordinates[1],
+                        dx = arrowLength * Math.sin(arrowAngle),
+                        y = p2[1] - arrowLength * Math.cos(arrowAngle);
+                return [
+                    [p1[0] - dx, y],
+                    [p1[0] + dx, y]
+                ];
+            }
+
+            function rotate(coordinates, angle) {
+                var rotatedCoordinates = [];
+                for (var i = 0, l = coordinates.length, x, y; i < l; i++) {
+                    x = coordinates[i][0];
+                    y = coordinates[i][1];
+                    rotatedCoordinates.push([
+                        x * Math.cos(angle) - y * Math.sin(angle),
+                        x * Math.sin(angle) + y * Math.cos(angle)
+                    ]);
+                }
+                return rotatedCoordinates;
+            }
+
+            function getRotationAngle(p1, p2) {
+                return Math.PI / 2 - Math.atan2(p2[1] - p1[1], p2[0] - p1[0]);
+            }
+
+            function getContourFromLineCoordinates(coords) {
+                var contour = coords.slice();
+                for (var i = coords.length - 2; i > -1; i--) {
+                    contour.push(coords[i]);
+                }
+                return contour;
+            }
+
+            function calculateArrowLength(coords, minLength, maxLength) {
+                var linePixelLength = 0;
+                for (var i = 1, l = coords.length; i < l; i++) {
+                    linePixelLength += getVectorLength(
+                            coords[i][0] - coords[i - 1][0],
+                            coords[i][1] - coords[i - 1][1]
+                    );
+                    if (linePixelLength / 3 > maxLength) {
+                        return maxLength;
+                    }
+                }
+                var finalArrowLength = linePixelLength / 3;
+                return finalArrowLength < minLength ? 0 : finalArrowLength;
+            }
+
+            function getVectorLength(x, y) {
+                return Math.sqrt(x * x + y * y);
+            }
+
+            provide(ArrowOverlay);
+
+            // Создаем круг.
+            var myCircle = new ymaps.Circle([
+                // Координаты центра круга.
+                [82.55662795988401, 115.40233661168395],
+                // Радиус круга в метрах.
+                30000
+            ], {
+                // Описываем свойства круга.
+                // Содержимое балуна.
+                balloonContent: "Радиус круга - 10 км",
+                // Содержимое хинта.
+                hintContent: "Подвинь меня"
+            }, {
+                // Задаем опции круга.
+                // Включаем возможность перетаскивания круга.
+                draggable: true,
+                // Цвет заливки.
+                // Последний байт (77) определяет прозрачность.
+                // Прозрачность заливки также можно задать используя опцию "fillOpacity".
+                fillColor: "#DB709377",
+                // Цвет обводки.
+                strokeColor: "#990066",
+                // Прозрачность обводки.
+                strokeOpacity: 0.8,
+                // Ширина обводки в пикселях.
+                strokeWidth: 5
+            });
+
+            // Добавляем круг на карту.
+            myMap.geoObjects.add(myCircle);
+
+            var yellowCollection = new ymaps.GeoObjectCollection(null, {
+                        preset: 'islands#yellowIcon'
+                    }),
+                    blueCollection = new ymaps.GeoObjectCollection(null, {
+                        preset: 'islands#blueIcon'
+                    }),
+                    yellowCoords = [
+                        [82.69482889806847, 118.89598895543394],
+                        [82.69482889806847, 120.69774676793395]
+                    ],
+                    blueCoords = [
+                        [82.54482889806847, 118.89598895543394],
+                        [82.54482889806847, 120.69774676793395]
+                    ];
+
+            for (var i = 0, l = yellowCoords.length; i < l; i++) {
+                yellowCollection.add(new ymaps.Placemark(yellowCoords[i]));
+            }
+            for (var i = 0, l = blueCoords.length; i < l; i++) {
+                blueCollection.add(new ymaps.Placemark(blueCoords[i]));
+            }
+
+            myMap.geoObjects.add(yellowCollection).add(blueCollection);
+
+            // Через коллекции можно подписываться на события дочерних элементов.
+            yellowCollection.events.add('click', function () {
+                alert('Кликнули по желтой метке')
+            });
+            blueCollection.events.add('click', function () {
+                alert('Кликнули по синей метке')
+            });
+
+            // Через коллекции можно задавать опции дочерним элементам.
+            blueCollection.options.set('preset', 'islands#blueDotIcon');
+
+            var myPolygon = new ymaps.Polygon([
+                [
+                    [82.76158484841586, 121.77440692418398],
+                    [82.76158484841586, 123.00440692418398],
+                    [82.61158484841586, 123.00440692418398],
+                    [82.61158484841586, 121.77440692418398],
+                    [82.76158484841586, 121.77440692418398]
+                ]
+            ], {}, {
+                // Курсор в режиме добавления новых вершин.
+                editorDrawingCursor: "crosshair",
+                // Максимально допустимое количество вершин.
+                editorMaxPoints: 6,
+                // Цвет заливки.
+                fillColor: '#00FF00',
+                // Цвет обводки.
+                strokeColor: '#0000FF',
+                // Ширина обводки.
+                strokeWidth: 5
+            });
+            // Добавляем многоугольник на карту.
+            myMap.geoObjects.add(myPolygon);
+
+            // Включаем режим редактирования с возможностью добавления новых вершин.
+            myPolygon.editor.startEditing();
+
+            var myPolygon1 = new ymaps.Polygon([
+                [
+                    [82.76158484841586, 125.00440692418398],
+                    [82.76158484841586, 124.00440692418398],
+                    [82.61158484841586, 124.00440692418398],
+                    [82.61158484841586, 125.00440692418398],
+                    [82.76158484841586, 125.00440692418398]
+                ]
+            ], {}, {
+                // Курсор в режиме добавления новых вершин.
+                editorDrawingCursor: "crosshair",
+                // Максимально допустимое количество вершин.
+                editorMaxPoints: 5,
+                // Цвет заливки.
+                fillColor: '#00FF00',
+                // Цвет обводки.
+                strokeColor: '#0000FF',
+                // Ширина обводки.
+                strokeWidth: 5
+            });
+            // Добавляем многоугольник на карту.
+            myMap.geoObjects.add(myPolygon1);
+
+            // Включаем режим редактирования с возможностью добавления новых вершин.
+            myPolygon1.editor.startEditing();
+
+            var myPolyline = new ymaps.Polyline([
+                [82.76158484841586, 126.00440692418398],
+                [82.68158484841586, 126.50440692418398],
+                [82.61158484841586, 126.00440692418398]
+            ], {}, {
+                // Курсор в режиме добавления новых вершин.
+                editorDrawingCursor: "crosshair",
+                // Максимально допустимое количество вершин.
+                editorMaxPoints: 6,
+                // Цвет заливки.
+                fillColor: '#00FF00',
+                // Цвет обводки.
+                strokeColor: '#0000FF',
+                // Ширина обводки.
+                strokeWidth: 5
+            });
+            // Добавляем многоугольник на карту.
+            myMap.geoObjects.add(myPolyline);
+
+            // Включаем режим редактирования с возможностью добавления новых вершин.
+            myPolyline.editor.startEditing();
+
+            var myPolyline1 = new ymaps.Polyline([
+                [82.76158484841586, 127.00440692418398],
+                [82.68158484841586, 127.50440692418398],
+                [82.61158484841586, 127.00440692418398]
+            ], {}, {
+                // Курсор в режиме добавления новых вершин.
+                editorDrawingCursor: "crosshair",
+                // Максимально допустимое количество вершин.
+                editorMaxPoints: 3,
+                // Цвет заливки.
+                fillColor: '#00FF00',
+                // Цвет обводки.
+                strokeColor: '#0000FF',
+                // Ширина обводки.
+                strokeWidth: 5
+            });
+            // Добавляем многоугольник на карту.
+            myMap.geoObjects.add(myPolyline1);
+
+            // Включаем режим редактирования с возможностью добавления новых вершин.
+            myPolyline1.editor.startEditing();
+
+            var myPlacemark = new ymaps.Placemark([82.6387313541816, 128.47606708043392], {
+                hintContent: 'Собственный значок метки'
+            }, {
+                // Опции.
+                // Необходимо указать данный тип макета.
+                iconLayout: 'default#image',
+                // Своё изображение иконки метки.
+                iconImageHref: 'https://api.yandex.ru/maps/jsbox/2.1/examples/maps/ru/icon_customImage/images/myIcon.gif',
+                // Размеры метки.
+                iconImageSize: [30, 42],
+                // Смещение левого верхнего угла иконки относительно
+                // её "ножки" (точки привязки).
+                iconImageOffset: [-3, -42]
+            });
+
+            myMap.geoObjects.add(myPlacemark);
+
+            // Создаем геообъект с типом геометрии "Точка".
+            var myGeoObject = new ymaps.GeoObject({
+                // Описание геометрии.
+                geometry: {
+                    type: "Point",
+                    coordinates: [82.12924114353777, 113.56112567418394]
+                },
+                // Свойства.
+                properties: {
+                    // Контент метки.
+                    iconContent: 'Я тащусь',
+                    hintContent: 'Ну давай уже тащи'
+                }
+            }, {
+                // Опции.
+                // Иконка метки будет растягиваться под размер ее содержимого.
+                preset: 'islands#blackStretchyIcon',
+                // Метку можно перемещать.
+                draggable: true
+            });
+
+            myMap.geoObjects
+                    .add(myGeoObject)
+                    .add(new ymaps.Placemark([82.02924114353777, 113.56112567418394], {
+                        balloonContent: 'цвет <strong>воды пляжа бонди</strong>'
+                    }, {
+                        preset: 'islands#icon',
+                        iconColor: '#0095b6'
+                    }))
+                    .add(new ymaps.Placemark([81.92924114353777, 113.56112567418394], {
+                        balloonContent: '<strong>серобуромалиновый</strong> цвет'
+                    }, {
+                        preset: 'islands#dotIcon',
+                        iconColor: '#735184'
+                    }))
+                    .add(new ymaps.Placemark([81.82924114353777, 113.56112567418394], {
+                        balloonContent: 'цвет <strong>влюбленной жабы</strong>'
+                    }, {
+                        preset: 'islands#circleIcon',
+                        iconColor: '#3caa3c'
+                    }))
+                    .add(new ymaps.Placemark([81.72924114353777, 113.56112567418394], {
+                        balloonContent: 'цвет <strong>детской неожиданности</strong>'
+                    }, {
+                        preset: 'islands#circleDotIcon',
+                        iconColor: 'yellow'
+                    }))
+                    .add(new ymaps.Placemark([81.52924114353777, 113.56112567418394], {
+                        balloonContent: 'цвет <strong>бисмарк-фуриозо</strong>'
+                    }, {
+                        preset: 'islands#icon',
+                        iconColor: '#a5260a'
+                    }))
+                    .add(new ymaps.Placemark([81.42924114353777, 113.56112567418394], {
+                        balloonContent: 'цвет <strong>фэйсбука</strong>'
+                    }, {
+                        preset: 'islands#dotIcon',
+                        iconColor: '#3b5998'
+                    }))
+                    .add(new ymaps.Placemark([81.32924114353777, 113.56112567418394], {
+                        balloonContent: 'цвет <strong>вконтакте</strong>'
+                    }, {
+                        preset: 'islands#circleIcon',
+                        iconColor: '#4d7198'
+                    }))
+                    .add(new ymaps.Placemark([81.22924114353777, 113.56112567418394], {
+                        balloonContent: 'цвет <strong>твиттера</strong>'
+                    }, {
+                        preset: 'islands#circleDotIcon',
+                        iconColor: '#1faee9'
+                    }));
+
+            //placemarkShape
+            // Создание метки с квадратной активной областью.
+            var squareLayout = ymaps.templateLayoutFactory.createClass('<div class="placemark_layout_container"><div class="square_layout">$</div></div>');
+
+            var squarePlacemark = new ymaps.Placemark(
+                    [81.02924114353777, 113.56112567418394], {
+                        hintContent: 'Метка с прямоугольным HTML макетом'
+                    }, {
+                        iconLayout: squareLayout,
+                        // Описываем фигуру активной области "Прямоугольник".
+                        iconShape: {
+                            type: 'Rectangle',
+                            // Прямоугольник описывается в виде двух точек - верхней левой и нижней правой.
+                            coordinates: [
+                                [-25, -25],
+                                [25, 25]
+                            ]
+                        }
+                    }
+            );
+            myMap.geoObjects.add(squarePlacemark);
+
+            // Создание метки с круглой активной областью.
+            var circleLayout = ymaps.templateLayoutFactory.createClass('<div class="placemark_layout_container"><div class="circle_layout">#</div></div>');
+
+            var circlePlacemark = new ymaps.Placemark(
+                    [80.82924114353777, 113.56112567418394], {
+                        hintContent: 'Метка с круглым HTML макетом'
+                    }, {
+                        iconLayout: circleLayout,
+                        // Описываем фигуру активной области "Круг".
+                        iconShape: {
+                            type: 'Circle',
+                            // Круг описывается в виде центра и радиуса
+                            coordinates: [0, 0],
+                            radius: 25
+                        }
+                    }
+            );
+            myMap.geoObjects.add(circlePlacemark);
+
+            // Создание метки со сложной фигурой активной области.
+            var polygonLayout = ymaps.templateLayoutFactory.createClass('<div class="placemark_layout_container"><div class="polygon_layout">!</div></div>');
+
+            var polygonPlacemark = new ymaps.Placemark(
+                    [80.42924114353777, 113.56112567418394], {
+                        hintContent: 'HTML метка сложной формы'
+                    }, {
+                        iconLayout: polygonLayout,
+                        // Описываем фигуру активной области "Полигон".
+                        iconShape: {
+                            type: 'Polygon',
+                            // Полигон описывается в виде трехмерного массива. Массив верхнего уровня содержит контуры полигона.
+                            // Первый элемента массива - это внешний контур, а остальные - внутренние.
+                            coordinates: [
+                                // Описание внешнего контура полигона в виде массива координат.
+                                [
+                                    [-28, -76],
+                                    [28, -76],
+                                    [28, -20],
+                                    [12, -20],
+                                    [0, -4],
+                                    [-12, -20],
+                                    [-28, -20]
+                                ]
+                                // , ... Описание внутренних контуров - пустых областей внутри внешнего.
+                            ]
+                        }
+                    }
+            );
+            myMap.geoObjects.add(polygonPlacemark);
+
+            //полигончики
+            // Создаем многоугольник, используя класс GeoObject.
+            var myGeoObject2 = new ymaps.GeoObject({
+                // Описываем геометрию геообъекта.
+                geometry: {
+                    // Тип геометрии - "Многоугольник".
+                    type: "Polygon",
+                    // Указываем координаты вершин многоугольника.
+                    coordinates: [
+                        // Координаты вершин внешнего контура.
+                        [
+                            [82.7143624008497, 130.12401629918395],
+                            [82.7171486563273, 133.22216083043398],
+                            [82.47649166239395, 133.26610614293395],
+                            [82.47936839282679, 130.45360614293395],
+                            [82.7143624008497, 130.12401629918395]
+                        ],
+                        // Координаты вершин внутреннего контура.
+                        [
+                            [82.6387313541816, 132.38719989293395],
+                            [82.54808269418567, 130.91503192418398],
+                            [82.35175160349229, 134.43065692418392]
+                        ],
+                        // Координаты вершин внутреннего контура.
+                        [
+                            [82.67804443530673, 131.00292254918392],
+                            [82.55947421544175, 132.67284442418395],
+                            [82.42741948237456, 129.64061786168398]
+                        ]
+                    ],
+                    // Задаем правило заливки внутренних контуров по алгоритму "nonZero".
+                    fillRule: "nonZero"
+                },
+                // Описываем свойства геообъекта.
+                properties: {
+                    // Содержимое балуна.
+                    balloonContent: "Многоугольник"
+                }
+            }, {
+                // Описываем опции геообъекта.
+                // Цвет заливки.
+                fillColor: '#00FF00',
+                // Цвет обводки.
+                strokeColor: '#0000FF',
+                // Общая прозрачность (как для заливки, так и для обводки).
+                opacity: 0.5,
+                // Ширина обводки.
+                strokeWidth: 5,
+                // Стиль обводки.
+                strokeStyle: 'shortdash',
+                interactivityModel: 'default#silent'
+            });
+
+            // Добавляем многоугольник на карту.
+            myMap.geoObjects.add(myGeoObject2);
+
+            // Создаем многоугольник, используя вспомогательный класс Polygon.
+            var myPolygon2 = new ymaps.Polygon([
+                // Указываем координаты вершин многоугольника.
+                // Координаты вершин внешнего контура.
+                // Координаты вершин внешнего контура.
+                [
+                    [81.7143624008497, 130.12401629918395],
+                    [81.7171486563273, 133.22216083043398],
+                    [81.47649166239395, 133.26610614293395],
+                    [81.47936839282679, 130.45360614293395],
+                    [81.7143624008497, 130.12401629918395]
+                ],
+                // Координаты вершин внутреннего контура.
+                [
+                    [81.6387313541816, 132.38719989293395],
+                    [81.54808269418567, 130.91503192418398],
+                    [81.35175160349229, 134.43065692418392]
+                ],
+                // Координаты вершин внутреннего контура.
+                [
+                    [81.67804443530673, 131.00292254918392],
+                    [81.55947421544175, 132.67284442418395],
+                    [81.42741948237456, 129.64061786168398]
+                ]
+            ], {
+                // Описываем свойства геообъекта.
+                // Содержимое балуна.
+                hintContent: "Многоугольник"
+            }, {
+                // Задаем опции геообъекта.
+                // Цвет заливки.
+                fillColor: '#00FF0088',
+                // Ширина обводки.
+                strokeWidth: 5
+            });
+
+            // Добавляем многоугольник на карту.
+            myMap.geoObjects.add(myPolygon2);
+
+            //Добавляем новые иконки
+            function newIcons() {
+
+                var colors = ["blue", "red", "darkOrange", "night", "darkBlue", "pink", "gray", "brown", "darkGreen", "violet", "black", "yellow", "green", "orange", "lightBlue", "olive", "grey", "darkorange", "darkgreen", "darkblue", "lightblue"];
+
+                var icons = ["bicycle", "bicycle2", "home", "factory", "massTransit", "dog", "hydro", "money",
+                    "auto", "science", "family", "education", "book", "food", "pocket", "mountain",
+                    "run", "airport", "rapidTransit", "railway", "waterway", "carWash", "fuelStation",
+                    "repairShop", "bar", "court", "post", "government", "zoo", "beach", "cinema",
+                    "circus", "entertainmentCenter", "hotel", "nightClub", "observation", "theater",
+                    "waterPark", "leisure", "medical", "christian", "worship", "underpass", "laundry",
+                    "toilet", "fashion", "souvenirs", "shopping", "pool", "sport", "waste", "garden",
+                    "park", "vegetation", "video"];
+
+                var i = 0,
+                        g = 1,
+                        colourNumber = 0,
+                        collection = new ymaps.GeoObjectCollection();
+
+                for (var icon in icons) {
+                    if (Math.ceil(i / 10) > 1) {
+                        g++;
+                        i = 0
+                    }
+                    var pl = new ymaps.Placemark([82.72924114353777 - (++i * 0.2), 113.56112567418394 + (g * 1.8)], {
+                        balloonContent: 'islands#' + getRandColor() + fixIcon(icons[icon]) + 'CircleIcon'
+                    }, {
+                        preset: 'islands#' + getRandColor() + fixIcon(icons[icon]) + 'CircleIcon'
+                    });
+                    collection.add(pl);
+
+                    var pl = new ymaps.Placemark([82.72924114353777 - (i * 0.2), 113.56112567418394 + (g * 1.8)], {
+                        balloonContent: 'islands#' + getRandColor() + fixIcon(icons[icon]) + 'Icon'
+                    }, {
+                        preset: 'islands#' + getRandColor() + fixIcon(icons[icon]) + 'Icon'
+                    });
+                    collection.add(pl);
+                    colourNumber++;
+                }
+                myMap.geoObjects.add(collection);
+
+
+                function getRandColor() {
+                    if (colourNumber > 20) colourNumber = 0;
+                    return colors[
+                            colourNumber];
+                }
+
+
+                function fixIcon(key) {
+                    return key[0].toUpperCase() + key.substr(1);
+                }
+            }
+            newIcons();
+        });
+        }
+        ;
+    </script>
+</head>
+
+<body>
+<div id="map" style="width: 1280px; height: 800px"></div>
+</body>
+
+</html>

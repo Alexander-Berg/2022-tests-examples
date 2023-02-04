@@ -1,0 +1,286 @@
+---
+regexp_section:
+  matcher:
+    match_or:
+      - match_fsm:
+            host: '(.+\\.)?yandexsport\\..*'
+      - match_fsm:
+            host: 'sportyandex\\..*'
+      - match_and:
+          - match_fsm:
+                host: '(www\\.)?(m\\.)?yandex\\.(az|by|co\\.il|com|com\\.am|com\\.ge|com\\.ua|ee|fr|kg|kz|lt|lv|md|ru|tj|tm|uz|ua)'
+          - match_fsm:
+                path: '/sport.*'
+  modules:
+    - geobase_macro: {}
+    - regexp:
+        sections:
+            turbo:
+                matcher:
+                    match_and:
+                        - match_fsm:
+                            host: '(.+\\.)?yandexsport\\..*'
+                        - match_fsm:
+                            uri: '/turbo'
+                modules:
+                    - balancer2:
+                        attempts: 2
+                        attempts_file: './controls/admin.attempts'
+                        by_name_policy:
+                            name: !f suffix_with_dc('api')
+                            unique_policy: {}
+                        rr: {weights_file: ./controls/traffic_control.weights}
+                        backends:
+                            - weight: 1
+                              name: api_sas
+                              modules:
+                                - report: {ranges: default, uuid: requests_news_sport_api_to_sas}
+                                - balancer2:
+                                    attempts: 2
+                                    connection_attempts: !f count_backends()
+                                    rr: {}
+                                    timeout_policy:
+                                        timeout: 3000ms
+                                        unique_policy: {}
+                                    generated_proxy_backends:
+                                        proxy_options:
+                                            backend_timeout: 500ms
+                                            connect_timeout: 50ms
+                                            keepalive_count: 10
+                                        include_backends:
+                                            type: BY_ID
+                                            ids: [turbo_balancer_sas]
+                            - weight: 1
+                              name: api_man
+                              modules:
+                                - report: {ranges: default, uuid: requests_news_sport_api_to_man}
+                                - balancer2:
+                                    attempts: 2
+                                    connection_attempts: !f count_backends()
+                                    rr: {}
+                                    timeout_policy:
+                                        timeout: 3000ms
+                                        unique_policy: {}
+                                    generated_proxy_backends:
+                                        proxy_options:
+                                            backend_timeout: 500ms
+                                            connect_timeout: 50ms
+                                            keepalive_count: 10
+                                        include_backends:
+                                            type: BY_ID
+                                            ids: [turbo_balancer_man]
+                            - weight: 1
+                              name: api_vla
+                              modules:
+                                - report: {ranges: default, uuid: requests_news_sport_api_to_vla}
+                                - balancer2:
+                                    attempts: 2
+                                    connection_attempts: !f count_backends()
+                                    rr: {}
+                                    timeout_policy:
+                                        timeout: 3000ms
+                                        unique_policy: {}
+                                    generated_proxy_backends:
+                                        proxy_options:
+                                            backend_timeout: 500ms
+                                            connect_timeout: 50ms
+                                            keepalive_count: 10
+                                        include_backends:
+                                            type: BY_ID
+                                            ids: [turbo_balancer_vla]
+                        on_error:
+                            modules:
+                                - errordocument:
+                                    status: 500
+            
+            sport_aab_proxy:
+                matcher:
+                  match_fsm:
+                    header:
+                      name: 'x-aab-proxy'
+                      value: '.*'
+                shared:
+                  uuid: http_adapter_req
+
+            sport_aab_http_check:
+              matcher:
+                match_fsm:
+                  header:
+                    name: 'x-aab-http-check'
+                    value: '.*'
+              shared:
+                uuid: sport_main_cryprox_section
+
+            sport_cookie_bltsr_test:
+              matcher:
+                match_and:
+                    - match_or:
+                        - match_fsm:
+                            uri: '/sport/_nzp.*'
+                        - match_fsm: {cookie: 'bltsr=1', surround: True}
+                        - match_fsm: {cookie: 'qgZTpupNMGJBM=1', surround: True}
+                        - match_fsm: {cookie: 'mcBaGDt=1', surround: True}
+                        - match_fsm: {cookie: 'BgeeyNoBJuyII=1', surround: True}
+                        - match_fsm: {cookie: 'orrXTfJaS=1', surround: True}
+                        - match_fsm: {cookie: 'FgkKdCjPqoMFm=1', surround: True}
+                        - match_fsm: {cookie: 'EIXtkCTlX=1', surround: True}
+                        - match_fsm: {cookie: 'JPIqApiY=1', surround: True}
+                        - match_fsm: {cookie: 'KIykI=1', surround: True}
+                        - match_fsm: {cookie: 'HgGedof=1', surround: True}
+                        - match_fsm: {cookie: 'ancQTZw=1', surround: True}
+                        - match_fsm: {cookie: 'involved=1', surround: True}
+                        - match_fsm: {cookie: 'instruction=1', surround: True}
+                        - match_fsm: {cookie: 'engineering=1', surround: True}
+                        - match_fsm: {cookie: 'telecommunications=1', surround: True}
+                        - match_fsm: {cookie: 'discussion=1', surround: True}
+                        - match_fsm: {cookie: 'computer=1', surround: True}
+                        - match_fsm: {cookie: 'substantial=1', surround: True}
+                        - match_fsm: {cookie: 'specific=1', surround: True}
+                        - match_fsm: {cookie: 'engineer=1', surround: True}
+                        - match_fsm: {cookie: 'adequate=1', surround: True}
+                    - match_fsm:
+                        header:
+                            name: 'X-Yandex-Internal-Request'
+                            value: '1'
+                    - match_fsm:
+                        cookie: 'cryptox-test=1'
+                        surround: True
+              modules:
+                - report:
+                    uuid: aab-sport-test
+                    ranges: default
+                - headers:
+                    create:
+                        x-aab-partnertoken: eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJBQUIiLCJpYXQiOjE1NTM3NzU0MjcsInN1YiI6InlhbmRleF9zcG9ydCIsImV4cCI6MTU4NTMyMjIyN30.gYUqE3qcaJ_0RPOYdlZftQYUFDp-70ADqi8as_Scy71QpiCLTt7fV_pJzJpLxtTTQPtbiWkfZHV9oIbMm9ZqC3QbCkvbTPAMvTL9H8nCtOW4LxIkEKeFC9GOWuMPevVS87gllg843AtJNDc1TT06V22AROQky-jtfmBOvzOdN_KWICcwCIkFVeF7QbxNpcHsTcuFOmK1g_2Ejt-ggcxxssuovjO1eHAItmgisXyylanlAJq_EL01penufSIJvN5v1rrjM7doLHTnTtNkjBtedLyrkF_gCBGqrgcgVNj1BvIsqjdddM9oAKXwa_tP6sE_wpUytiRnlZ8IQ4jYo2l10g
+                        X-Forwarded-Proto: https
+                - balancer2:
+                    attempts: 1
+                    rr: {}
+                    timeout_policy:
+                        timeout: 5000ms
+                        simple_policy: {}
+                    generated_proxy_backends:
+                        proxy_options:
+                            backend_timeout: 5000ms
+                            connect_timeout: 100ms
+                            fail_on_5xx: true
+                            status_code_blacklist: ["4xx"]
+                        instances:
+                            - weight: 1
+                              host: cryprox-test.yandex.net
+                              port: 80
+                    on_error:
+                        shared:
+                          uuid: http_adapter_req
+
+            sport_cookie_bltsr:
+              matcher:
+                match_or:
+                  - match_fsm:
+                      uri: '/sport/_nzp.*'
+                  - match_fsm: {cookie: 'bltsr=1', surround: True}
+                  - match_fsm: {cookie: 'qgZTpupNMGJBM=1', surround: True}
+                  - match_fsm: {cookie: 'mcBaGDt=1', surround: True}
+                  - match_fsm: {cookie: 'BgeeyNoBJuyII=1', surround: True}
+                  - match_fsm: {cookie: 'orrXTfJaS=1', surround: True}
+                  - match_fsm: {cookie: 'FgkKdCjPqoMFm=1', surround: True}
+                  - match_fsm: {cookie: 'EIXtkCTlX=1', surround: True}
+                  - match_fsm: {cookie: 'JPIqApiY=1', surround: True}
+                  - match_fsm: {cookie: 'KIykI=1', surround: True}
+                  - match_fsm: {cookie: 'HgGedof=1', surround: True}
+                  - match_fsm: {cookie: 'ancQTZw=1', surround: True}
+                  - match_fsm: {cookie: 'involved=1', surround: True}
+                  - match_fsm: {cookie: 'instruction=1', surround: True}
+                  - match_fsm: {cookie: 'engineering=1', surround: True}
+                  - match_fsm: {cookie: 'telecommunications=1', surround: True}
+                  - match_fsm: {cookie: 'discussion=1', surround: True}
+                  - match_fsm: {cookie: 'computer=1', surround: True}
+                  - match_fsm: {cookie: 'substantial=1', surround: True}
+                  - match_fsm: {cookie: 'specific=1', surround: True}
+                  - match_fsm: {cookie: 'engineer=1', surround: True}
+                  - match_fsm: {cookie: 'adequate=1', surround: True}
+              modules:
+                - shared:
+                    uuid: sport_main_cryprox_section
+                - regexp:
+                    sections:
+                      default:
+                        matcher: {}
+                        modules:
+                          - balancer2:
+                              attempts: 1
+                              rr: {weights_file: ./controls/traffic_control.weights}
+                              backends:
+                                - weight: 1
+                                  name: aabsport_on
+                                  modules:
+                                    - report:
+                                        uuid: aab-sport
+                                        ranges: default
+                                    - headers:
+                                        create:
+                                          x-aab-partnertoken: eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJBQUIiLCJpYXQiOjE1NTM3NzU0MjcsInN1YiI6InlhbmRleF9zcG9ydCIsImV4cCI6MTU4NTMyMjIyN30.gYUqE3qcaJ_0RPOYdlZftQYUFDp-70ADqi8as_Scy71QpiCLTt7fV_pJzJpLxtTTQPtbiWkfZHV9oIbMm9ZqC3QbCkvbTPAMvTL9H8nCtOW4LxIkEKeFC9GOWuMPevVS87gllg843AtJNDc1TT06V22AROQky-jtfmBOvzOdN_KWICcwCIkFVeF7QbxNpcHsTcuFOmK1g_2Ejt-ggcxxssuovjO1eHAItmgisXyylanlAJq_EL01penufSIJvN5v1rrjM7doLHTnTtNkjBtedLyrkF_gCBGqrgcgVNj1BvIsqjdddM9oAKXwa_tP6sE_wpUytiRnlZ8IQ4jYo2l10g
+                                          X-Forwarded-Proto: https
+                                    - balancer2:
+                                        attempts: 1
+                                        rr: {}
+                                        timeout_policy:
+                                          timeout: 5000ms
+                                          simple_policy: {}
+                                        generated_proxy_backends:
+                                          proxy_options:
+                                            backend_timeout: 5000ms
+                                            connect_timeout: 100ms
+                                            fail_on_5xx: true
+                                            status_code_blacklist: ["4xx"]
+                                          instances:
+                                            - weight: 1
+                                              host: cryprox.yandex.net
+                                              port: 80
+                                        on_error:
+                                          regexp:
+                                              sections:
+                                                  sport_aab_http_check:
+                                                      matcher:
+                                                          match_fsm:
+                                                              header:
+                                                                  name: 'x-aab-http-check'
+                                                                  value: '.*'
+                                                      modules:
+                                                          - errordocument:
+                                                              status: 404
+                                                  default:
+                                                      matcher: {}
+                                                      shared:
+                                                        uuid: http_adapter_req
+                                - weight: -1
+                                  name: aabsport_off
+                                  modules:
+                                    - shared:
+                                        uuid: http_adapter_req
+            
+            yandexsport:
+                matcher:
+                    match_or:
+                        - match_fsm:
+                              host: 'sportyandex\\..*'
+                        - match_fsm:
+                              host: '(.+\\.)?yandexsport\\..*'
+                modules:
+                    - headers:
+                        create:
+                            Location: '1'
+                    - rewrite:
+                        actions:
+                            - regexp: '.*'
+                              header_name: Location
+                              rewrite:  'https://yandex.ru/sport/%{url}'
+                    - errordocument:
+                        status: 302
+                        remain_headers: Location
+            yandextldsport:
+                matcher: {}
+                modules:
+                    - report: {ranges: default, uuid: requests_yandexsport_all}
+                    - shared:
+                        uuid: http_adapter_req

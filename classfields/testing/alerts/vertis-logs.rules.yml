@@ -1,0 +1,103 @@
+groups:
+- name: vertis-logs
+  rules:
+    - alert: LogsCollector_Down
+      expr: 'sum(up{job="nomad-clients"}) by (instance) - count(nomad_client_allocs_memory_rss{task="logs-collector"}) by (instance) != 0'
+      for: 10m
+      labels:
+        juggler_aggr_host: vertis_ops_golp
+        juggler_tag1: logs
+        juggler_tag2: infra_dev_crit
+      annotations:
+        summary: "testing/logs-collector: node {{ $labels.instance }} is down"
+        description: "testing/logs-collector: node {{ $labels.instance }} is down"
+    - alert: LogsCollector_Logbroker_Connectivity
+      expr: increase(lb_conn_retry{job="logs-collector"}[1m]) > 2000
+      for: 10m
+      labels:
+        juggler_aggr_host: vertis_ops_golp
+        juggler_tag1: logs
+        juggler_tag2: infra_dev_crit
+      annotations:
+        summary: "testing/logs-collector: node {{ $labels.instance }} is failing to connect to log-broker"
+        description: "testing/logs-collector: node {{ $labels.instance }} is failing to connect to log-broker. https://grafana.vertis.yandex-team.ru/d/XufJz8hWz/logs-collector?orgId=1&refresh=30s&fullscreen&viewPanel=10&var-promenv=Prometheus-testing"
+    - alert: LogsDriver_WriteError
+      expr: sum(increase(vsinfr_logs_driver_writer_failed[1m])) by (instance,reason) > 0
+      for: 5m
+      labels:
+        juggler_aggr_host: vertis_ops_golp_driver
+        juggler_tag1: logs
+        juggler_tag2: infra_dev_crit
+      annotations:
+        summary: "testing/logs-driver: instance {{ $labels.instance }} write failures"
+        description: "write failures on {{ $labels.instance }}, reason: {{ $labels.reason }} https://grafana.vertis.yandex-team.ru/goto/LcQ_w3yMk"
+    - alert: LogsDriver_ContainerQuotaExceeded
+      expr: sum by (serviceName,reason,version) (increase(msg_dropped{job="golp-driver-exporter",reason=~"message_size_exceeded|size_rate_limit|count_rate_limit"}[60s])) > 600
+      for: 60m
+      labels:
+        juggler_aggr_host: vertis_ops_golp_driver
+        juggler_tag1: logs
+        severity: warning
+      annotations:
+        summary: "testing/logs-driver: service {{ $labels.serviceName }} is out of quota"
+        description: "testing/Service {{ $labels.serviceName }}, is out of quota: {{ $labels.reason }}, driver version: {{ $labels.version }}. https://grafana.vertis.yandex-team.ru/d/XufJz8hWz/logs-collector?orgId=1&refresh=30s&fullscreen&viewPanel=74&var-promenv=Prometheus-testing"
+    - alert: LogsCollector_MessageDrops
+      expr: sum by (_allocation_id) (increase(vsinfr_logs_collector_msg_dropped[1m]) > 0)
+      for: 5m
+      labels:
+        juggler_aggr_host: vertis_ops_golp
+        juggler_tag1: logs
+        juggler_tag2: infra_dev_crit
+      annotations:
+        summary: "testing/logs-collector: instance {{ $labels._allocation_id }} is dropping messages"
+        description: "testing/Dropping messages on {{ $labels._allocation_id }}. https://grafana.vertis.yandex-team.ru/d/0mWC5YEGz/logs-collector?orgId=1&var-promenv=Prometheus-testing&from=now-1h&to=now&viewPanel=28&refresh=30s"
+    - alert: LogsCollector_WriteToDisk
+      expr: sum by (instance) (increase(save_message_to_disc[90s])) > 0
+      for: 10m
+      labels:
+        juggler_aggr_host: vertis_ops_golp
+        juggler_tag1: logs
+        severity: warning
+      annotations:
+        summary: "testing/logs-collector: instance {{ $labels.instance }} is writing to disk"
+        description: "testing/Writing to disk {{ $labels.instance }}. https://grafana.vertis.yandex-team.ru/d/XufJz8hWz/logs-collector?orgId=1&from=now-1h&to=now&refresh=30s&fullscreen&viewPanel=2&var-promenv=Prometheus-testing"
+    - alert: Vtail_Lb_GrpcDeadline
+      expr: 'sum(increase(vtail_lb_errors{type="deadline"}[1m])) > 180'
+      for: 10m
+      labels:
+        juggler_aggr_host: vertis_ops_vtail
+        juggler_tag1: logs
+        severity: warning
+      annotations:
+        summary: "testing/vtail: too much grpc deadline errors"
+        description: "testing/vtail: too much grpc deadline errors. https://grafana.vertis.yandex-team.ru/d/ypFZFgvmz/vtail?orgId=1&viewPanel=36&var-promenv=Prometheus-testing"
+    - alert: Vtail_Lb_RestartRequest
+      expr: 'sum(increase(vtail_lb_errors{type="restart_request"}[20m])) > 0'
+      for: 5h
+      labels:
+        juggler_aggr_host: vertis_ops_vtail
+        juggler_tag1: logs
+        severity: warning
+      annotations:
+        summary: "testing/vtail: too much logBroker restart requests"
+        description: "testing/vtail: too much logBroker requests. https://grafana.vertis.yandex-team.ru/d/ypFZFgvmz/vtail?orgId=1&viewPanel=36&var-promenv=Prometheus-testing"
+    - alert: Vtail_Zk_Errors
+      expr: 'sum(increase(vtail_zk_errors[1m])) > 5'
+      for: 10m
+      labels:
+        juggler_aggr_host: vertis_ops_vtail
+        juggler_tag1: logs
+        severity: warning
+      annotations:
+        summary: "testing/vtail: too much zookeeper errors"
+        description: "testing/vtail: too much zookeeper errors. https://grafana.vertis.yandex-team.ru/d/ypFZFgvmz/vtail?orgId=1&viewPanel=44&var-promenv=Prometheus-testing"
+    - alert: Vtail_Lb_Errors
+      expr: 'sum by (type) (increase(vtail_lb_errors{type=~"unavailable|eof|unknown_topic|too_much_attempts|empty_cluster_list"}[1m])) >= 5'
+      for: 30m
+      labels:
+        juggler_aggr_host: vertis_ops_vtail
+        juggler_tag1: logs
+        severity: warning
+      annotations:
+        summary: "testing/vtail: too much logBroker errors"
+        description: "testing/vtail: too much logBroker errors. https://grafana.vertis.yandex-team.ru/d/ypFZFgvmz/vtail?orgId=1&viewPanel=36&var-promenv=Prometheus-testing"

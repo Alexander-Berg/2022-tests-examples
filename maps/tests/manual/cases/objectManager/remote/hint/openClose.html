@@ -1,0 +1,78 @@
+<!DOCTYPE HTML>
+<!--(skip)(description)
+
+-->
+<!--(version)
+
+-->
+<!--(commands)
+
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var center = [56, 34];
+
+            var map = myMap = new ymaps.Map('map', {
+                center: center,
+                zoom: 4,
+                type: 'yandex#map',
+                controls: ['fullscreenControl']
+            });
+            __log__("Запусти: remoteNonPointObject");
+            // создаем экземпляр класса RemoteObjectManager
+            var remoteObjectManager = new ymaps.RemoteObjectManager('https://alexa.maps.dev.yandex.ru:4781/?bbox=%b', {
+                splitRequests: true,
+                paddingTemplate: 'managerResponse_bbox_%b',
+                clusterHasHint: true,
+                clusterOpenEmptyHint: true
+            });
+            map.geoObjects.add(remoteObjectManager);
+
+            addGrid(myMap);
+            var log = new Log();
+
+            remoteObjectManager.objects.hint.events.add(['open', 'close'], function (e) {
+                __log__(e.get('type') + ", target: " + e.get('target'));
+                console.log(e.get('target'))
+            });
+
+            remoteObjectManager.clusters.hint.events.add(['open', 'close'], function (e) {
+                __log__(e.get('type') + ", target: " + e.get('target'));
+                console.log(e.get('target'))
+            });
+            var clearButton = new ymaps.control.Button({data: {content: 'clear log'}, options: {selectOnClick: false}});
+            var addRemoveButton = new ymaps.control.Button({data: {content: 'addRemove'}, options: {selectOnClick: true, position: {right: 10, bottom: 60}}});
+
+            addRemoveButton.events
+                    .add('select', function () {
+                        __log__('addRemove OM and check hint');
+                        map.geoObjects.remove(remoteObjectManager);
+                    })
+                    .add('deselect', function () {
+                        map.geoObjects.add(remoteObjectManager);
+                    });
+
+            clearButton.events.add('click', function () {
+                log.clear();
+            });
+            map.controls
+                    .add(clearButton, {float: 'none', position: {bottom: 25, right: 10}})
+                    .add(addRemoveButton);
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

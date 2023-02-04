@@ -1,0 +1,134 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Карта: принудительное закрытие хинта
+
+Description:
+Проверка принудительного закрытие хинта.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+map
+
+Estimated time:
+180000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+  
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан Москвы, сверху слева кнопки "promise", "open", "close", "force".
+  При загрузке в центре карты появляется хинт "hint", под контейнером с картой строка: "event: open, isOpen: true".
+
+Step:
+  Action:
+  Открыть инструменты разработчика Windows: Ctrl + Shift + I если у вас MacOS: ⌥ + ⌘ + I, вкладку Console.
+  
+  Expectation:
+  Во вкладке консоли имеется строка с раскрывающимся логом объекта Map.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "force". 
+  
+  Expectation:
+  Хинт пропадает с карты, под контейнером появляется строка: "event: close, isOpen: false".
+  Во вкладке консоли появляется строка с раскрывающимся логом объекта Map.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "open". 
+  
+  Expectation:
+  В центре карты появляется хинт "hint", под контейнером появляется строка открытия хинта, аналогичная первому шагу.
+  Во вкладке консоли появляется строка с раскрывающимся логом объекта Map.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "close". 
+  
+  Expectation:
+  Через секунду после нажатия хинт пропадает с карты, под контейнером появляется строка закрытия хинта аналогичная второму шагу.
+  Во вкладке консоли появляется строка с раскрывающимся логом объекта Map.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "promise". 
+  
+  Expectation:
+  Хинт пропадает с карты, под контейнером появляется строка открытия хинта аналогичная первому шагу и строка промиса: "resolved: true, fulfilled: true, rejected: false".
+  Во вкладке консоли появляется строка с раскрывающимся логом объекта Map.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 10,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            addGrid(map);
+            var log = new Log();
+
+            map.hint.events.add(['open', 'close'], function (e) {
+                log.info('event: ' + e.get('type') + ', isOpen: ' + myMap.hint.isOpen());
+                console.log(e.get('target'))
+            });
+
+            map.hint.open(map.getCenter(), {content: 'hint'});
+
+            var forceCloseButton = new ymaps.control.Button({data: {content: 'force'}, options: {selectOnClick: false}});
+            var closeButton = new ymaps.control.Button({data: {content: 'close'}, options: {selectOnClick: false}});
+            var openButton = new ymaps.control.Button({data: {content: 'open'}, options: {selectOnClick: false}});
+            var promiseButton = new ymaps.control.Button({data: {content: 'promise'}, options: {selectOnClick: false}});
+
+            forceCloseButton.events.add('click', function () {
+                map.hint.close(true);
+            });
+
+            closeButton.events.add('click', function () {
+                map.hint.close(false);
+            });
+
+            openButton.events.add('click', function () {
+                map.hint.open(map.getCenter(), {content: 'hint'});
+            });
+
+            promiseButton.events.add('click', function () {
+                var promise = map.hint.open(map.getCenter(), {content: 'hint'});
+                map.hint.close(true);
+                promise.always(function () {
+                    log.info('resolved: ' + promise.isResolved() + ', fulfilled: ' + promise.isFulfilled() + ', ' +
+                            'rejected: ' + promise.isRejected());
+                });
+            });
+
+            map.controls
+                    .add(forceCloseButton)
+                    .add(closeButton)
+                    .add(openButton)
+                    .add(promiseButton)
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

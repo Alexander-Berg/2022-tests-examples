@@ -1,0 +1,860 @@
+<!doctype html>
+<html style='height:100%;width:100%;'>
+    <head>
+        <title>Graphics test</title>
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+        <meta name="viewport" content="initial-scale=1.0; user-scalable=0"/>
+        
+         <!-- YUI --
+        <script type="text/javascript" src="../../../test/yui3combo/combo.js"></script>
+        <link rel="stylesheet" href="../../../test/yui3combo/combo.css" />
+        <script type="text/javascript" src="../../../test/run-test-case.js"></script>
+        <!-- CODE -->
+        <script type="text/javascript" src="../../../include.js"></script>
+        <script type="text/javascript">
+            var imports = { DEBUG: true };
+            include.def('Util', '../../');
+            
+            
+            include("util.graphics");
+            include("util.scheduler.processing");
+            
+            var listRenders = ['canvas', 'SVG', 'VML'];
+            var listShapes  = ['polygon'];
+            // preload renders
+            for (var i in listRenders) {
+                if (listRenders[i]) {
+                    try{
+                        include('jsgraphics.render.'+listRenders[i]+'.core');
+                        for (var j in listShapes) {
+                            try{
+                                include('jsgraphics.render.'+listRenders[i]+'.'+listShapes[j]);
+                            } catch (e) {
+                                /** nope */
+                            }
+                        }
+                    }catch(e){
+                        /* nope */
+                    }
+                }
+            }
+            
+
+        </script>
+    </head>
+<body onload = 'start()' >
+    
+<style>
+    #canvas {
+        width:1024px;
+        height:600px;
+        border:1px solid #000;
+        margin:10px;
+       /**/ overflow:hidden;/**/
+        position:relative;
+    }
+  
+</style>
+    
+    
+<script>
+    var WIDTH = 1024,
+        HEIGHT = 600,
+        ELEMENT_COUNT = 10,
+        ELEMENT_COMPLEXITY = 4,
+        ELEMENT_SIZE = 10,
+        RADUIS = 30,
+        RADUIS_FACTOR = 1,
+        
+        DELTA_TIMER = 1;
+        
+    var report = {};
+    
+    function returnReport(){
+        var rp = document.getElementById('reportGraphics');
+         rp.innerHTML='';
+        var count={};
+        var complex={};
+        var verts={};
+        var pixels={};
+        
+        var count_r2r={};
+        var complex_r2r={};
+        var verts_r2r={};
+        var pixels_r2r={};
+        
+        var count_cnt={};
+        var complex_cnt={};
+        var verts_cnt={};
+        var pixels_cnt={};
+        
+        var pixels=[];
+        
+        var data = report['test1'];
+        var l = data.length;
+        
+        function bubbleSort(hash){
+            var out = [];
+            while(1){
+                var min=false,
+                    max=min;
+                for(var i in hash){
+                    i=parseInt(i);
+                    if(min===false){
+                        min=i;
+                    }
+                    if(i<min){
+                        min=i;
+                    }
+                }
+                if (min===false){
+                    break;
+                }else{
+                    out.push([min,hash[min]]);
+                    delete hash[min];
+                }
+            }
+            return out;
+        }
+        
+        for (var i=0; l; i++, l--){
+            var el = data[i];
+            if(el.time>2 && el.R2R<400){
+                count[el.count] = (count[el.count] || 0)+el.time;
+                complex[el.complexity] = (complex[el.complexity] || 0)+el.time;
+                verts[el.verts] = (verts[el.verts] || 0)+el.time;
+                pixels[el.pixels] = (pixels[el.pixels] || 0)+el.time;
+                
+                count_r2r[el.count] = (count_r2r[el.count] || 0)+el.R2R;
+                complex_r2r[el.complexity] = (complex_r2r[el.complexity] || 0)+el.R2R;
+                verts_r2r[el.verts] = (verts_r2r[el.verts] || 0)+el.R2R;
+                pixels_r2r[el.pixels] = (pixels_r2r[el.pixels] || 0)+el.R2R;
+                
+                count_cnt[el.count] = (count_cnt[el.count] || 0)+1;
+                complex_cnt[el.complexity] = (complex_cnt[el.complexity] || 0)+1;
+                verts_cnt[el.verts] = (verts_cnt[el.verts] || 0)+1;
+                pixels_cnt[el.pixels] = (pixels_cnt[el.pixels] || 0)+1;
+            }
+        }
+        
+        var lines = {
+            'count':[bubbleSort(count), count_cnt, count_r2r],
+            'complex':[bubbleSort(complex), complex_cnt, complex_r2r],
+            'verts':[bubbleSort(verts), verts_cnt, verts_r2r],
+            'pixels':[bubbleSort(pixels), pixels_cnt, pixels_r2r]
+        };
+        
+        for( var ind in lines) {
+            var inLine = lines[ind];
+            var line = inLine[0];
+            var lcnt = inLine[1]
+            var r2r = inLine[2];
+            var maxValue=0,maxIndex=0,cnt=0;
+            var len = line.length;
+            for (var ii in line){
+                var i = line[ii][0];
+                line[ii][1]/=lcnt[i];
+                r2r[i]/=lcnt[i];
+                maxValue=Math.max(maxValue, line[ii][1]);
+                maxIndex = i;
+                cnt++;
+            }
+            var points = [], r2rpoints = [];
+            var facX = maxIndex<800 ? 1 : 800/maxIndex;
+            var facY = maxValue<400 ? 1 : 400/maxValue;
+            //points.length = cnt;
+            
+            for (var ii in line){
+                var i = line[ii][0];
+                points.push([i*facX,390-line[ii][1]*facY])
+                r2rpoints.push([i*facX,390-r2r[i]*facY])
+            }
+
+            var shape = imports.GraphicRenders.create('line');
+            shape.line(points);
+            shape.setBounds([[0,0],[800,400]]);
+            shape.setAttributes( {
+                strokeColor:'#4F4',
+                strokeWidth:2
+            });
+            var pane = shape.createPane();
+            pane.addShape(shape);
+            
+            var r2rshape = imports.GraphicRenders.create('line');
+            r2rshape.line(r2rpoints);
+            r2rshape.setBounds([[0,0],[800,400]]);
+            r2rshape.setAttributes( {
+                strokeColor:'#77F',
+                strokeWidth:2
+            });
+            pane.addShape(r2rshape);
+            
+            pane.flush();
+          //  pane.holder().style.position='block';
+            var d=imports.Dom.create('div');
+            imports.Dom.style.css(d,{
+                position:'relative',
+                border:'1px solid #000',
+                height:'400px'
+            });
+            d.innerHTML = ind+"::(x: 0-"+maxIndex+"), y: "+maxValue+" | "+facX+" x "+facY;
+            
+            d.appendChild(pane.holder());
+            rp.appendChild(d);
+        }
+        
+    }
+    
+    function nope(){
+            /** nope :) */
+    }
+            
+        
+    var renderOptions = {
+        fillColor:'#994444'/**,
+        strokeColor:'#449944',
+        strokeWidth:2,
+        opacity:1
+        /* */
+    };
+    
+    var activeRender = 'canvas';
+    var appendPlace = 1;
+    var miniObjects = 1;
+    
+    var _deltaAngle = 0;
+    function createPoly(offset, npoints,r){
+        var points = [];
+        var delta = Math.PI*2 / npoints;
+        var pi2 = Math.PI/4;
+        r*=RADUIS_FACTOR;
+        for (var i = 0; i<Math.PI*2; i+=delta){
+            var _r=r+Math.cos((delta+i+_deltaAngle)*10) * (Math.sin(_deltaAngle+delta)*r/5 + r/10);
+            points.push([
+                         offset[0]+_r*Math.cos(i+pi2),
+                         offset[1]+_r*Math.sin(i+pi2)
+                        ]);
+        }
+        var poly = imports.GraphicRenders.create('polygon-filled', activeRender );
+        poly.polygon( points);
+        r+=-(r/5 + r/10);               
+        poly.setBounds([ [offset[0]-r,offset[1]-r], [offset[0]+r,offset[1]+r] ]);
+        poly.setAttributes( renderOptions );
+        _deltaAngle+=0.001;
+        return poly;
+    }
+    
+    function createLine(offset, npoints,r){
+        var points = [];
+        var delta =r*2 / npoints;
+        var pi2 = Math.PI/4;
+        r*=RADUIS_FACTOR;
+        for (var i = -r; i<r; i+=delta){
+            points.push([
+                         offset[0]+Math.sin(i+_deltaAngle)*5, offset[1]+i
+                        ]);
+        }
+        var poly = imports.GraphicRenders.create('line', activeRender );
+        poly.line( points);
+        
+        poly.setBounds([ [offset[0]-1,offset[1]-r], [offset[0]+1,offset[1]+r] ]);
+        poly.setAttributes( { strokeColor: '#FF0000', strokeWidth: 1 } );
+        _deltaAngle+=0.01;
+        return poly;
+    }
+
+    function start(){
+        
+        report['test1']=[];
+        failTests = 0;
+        
+        //var pane = imports.GraphicRenders.createPane(activeRender);
+        
+        document.getElementById('canvas').innerHTML='';
+        //document.getElementById('canvas').appendChild(pane.holder());
+        
+        var lastTestTime = 0;
+        var lastTookTime = 0;
+        var lastR2RTime = 0;
+        var lastPixelCount = 0;
+        var lastVectilesCount = 0;
+        
+        var lastPane = 0;
+        
+        
+        function run_test(f){
+            var timeCreate = +(new Date());
+            var pane = imports.GraphicRenders.createPane(activeRender);
+            lastPane = pane;
+           // pane.setClippingRegion([[0,0],[WIDTH,HEIGHT]]);
+            
+           
+            
+            if(appendPlace==0){
+                document.getElementById('canvas').innerHTML='';
+                document.getElementById('canvas').appendChild(pane.holder());
+            }
+            
+            pixels = f(pane);
+            
+            var timeStart = +(new Date());
+            if (!lastTestTime) {
+                lastTestTime=timeStart;
+            }
+            
+            pane.flush();
+            
+            if(appendPlace==1){
+                 document.getElementById('canvas').innerHTML='';
+                document.getElementById('canvas').appendChild(pane.holder());
+            }
+            
+            var timeEnd = +(new Date());
+            
+            var reportLine = {
+                time: lastTookTime = (timeEnd - timeStart),
+                timeCreate: timeStart - timeCreate,
+                R2R: timeEnd - lastTestTime,
+                complexity: Math.round(ELEMENT_COMPLEXITY),
+                count: Math.round(ELEMENT_COUNT),
+                
+                pixels: Math.round(pixels),
+                verts: Math.round(ELEMENT_COMPLEXITY*ELEMENT_COUNT)
+            };
+            
+            report['test1'].push(reportLine);
+            
+            lastTestTime = timeEnd;
+            lastR2RTime = reportLine.R2R;
+            lastVectilesCount = reportLine.verts;
+            lastPixelCount = reportLine.pixels;
+        }
+        
+        function run_test1(){
+            run_test(function(pane){
+                var pixels = 0;
+                var R=RADUIS;
+                var lineCapapcy = Math.max(1, Math.ceil(WIDTH/R)); 
+                for (var i=0; i<ELEMENT_COUNT; i++) {
+                    var cnt = Math.round(i+1);
+                    var y=Math.ceil(cnt/lineCapapcy)-1;
+                    var x=cnt-(y*lineCapapcy)
+                    var r = R/2;//Math.random()*25+5;
+                    var shape = createPoly(
+                        
+                        [(x-0.5)*R,y*R+R/2],//Math.random()*WIDTH,Math.random()*HEIGHT],
+                        ELEMENT_COMPLEXITY, r);
+                    
+                    pane.addShape(shape);
+                    pixels+=r*r*RADUIS_FACTOR*RADUIS_FACTOR;
+                }
+                return pixels;
+            });
+        }
+        
+        function run_test2(){
+            run_test(function(pane){
+                var pixels = 0;
+                var R=RADUIS;
+                var lineCapapcy = Math.max(1, Math.ceil(WIDTH/R)); 
+                for (var i=0; i<ELEMENT_COUNT; i++) {
+                    var cnt = Math.round(i+1);
+                    var y=Math.ceil(cnt/lineCapapcy)-1;
+                    var x=cnt-(y*lineCapapcy)
+                    var r = R/2;//Math.random()*25+5;
+                    var shape = createPoly(
+                        
+                        [(x-0.5)*R,y*R+R/2],//Math.random()*WIDTH,Math.random()*HEIGHT],
+                        ELEMENT_COMPLEXITY, r);
+                    
+                    pane.addShape(shape);
+                    pixels+=r*r*RADUIS_FACTOR*RADUIS_FACTOR;
+                }
+                return pixels;
+            });
+        }
+        
+        function run_test2(){
+            run_test(function(pane){
+                pane.lockBoundsTo([[0,0],[WIDTH,HEIGHT]]);
+                var pixels = 0;
+                var R=RADUIS;
+                var lineCapapcy = Math.max(1, Math.ceil(WIDTH/R)); 
+                for (var i=0; i<ELEMENT_COUNT; i++) {
+                    var r = R/2;//Math.random()*25+5;
+                    var shape = createPoly(    
+                        [WIDTH/2,HEIGHT/2],//Math.random()*WIDTH,Math.random()*HEIGHT],
+                        ELEMENT_COMPLEXITY, r);
+                    
+                    pane.addShape(shape);
+                    pixels+=r*r*RADUIS_FACTOR*RADUIS_FACTOR;
+                }
+                return pixels;
+            });
+        }
+        
+        function run_test3(){
+            run_test(function(pane){
+                pane.lockBoundsTo([[0,0],[WIDTH,HEIGHT]]);
+                
+                var pixels = 0;
+                var R=RADUIS;
+                var lineCapapcy = Math.max(1, Math.ceil(WIDTH/R)); 
+                for (var i=0; i<ELEMENT_COUNT; i++) {
+                    var cnt = Math.round(i+1);
+                    var y=Math.ceil(cnt/lineCapapcy)-1;
+                    var x=cnt-(y*lineCapapcy)
+                    var r = R/2;//Math.random()*25+5;
+                    var shape = createPoly(
+                        
+                        [WIDTH/2 + Math.sin(r/2)*WIDTH*1.5,i*0.5],//Math.random()*WIDTH,Math.random()*HEIGHT],
+                        ELEMENT_COMPLEXITY, r);
+                    
+                    pane.addShape(shape);
+                    pixels+=r*r*RADUIS_FACTOR*RADUIS_FACTOR;
+                }
+                return pixels;
+            });
+        }
+        
+        function run_test4(off){
+            run_test(function(pane){
+                pane.lockBoundsTo([[0,0],[WIDTH,HEIGHT]]);
+                if(off)off=WIDTH-50;
+                var pixels = 0;
+                var R=RADUIS;
+                var lineCapapcy = Math.max(1, Math.ceil(WIDTH/R)); 
+                for (var i=0; i<ELEMENT_COUNT; i++) {
+                    var shape = createLine(
+                        [off+10+i*5,HEIGHT/2],
+                        ELEMENT_COMPLEXITY, RADUIS);
+                    
+                    pane.addShape(shape);
+                    pixels+=RADUIS;
+                }
+                return pixels;
+            });
+        }
+
+        
+        var testCnt = 0;
+        function test1Default(){
+            
+            var next = function(){
+               ELEMENT_COMPLEXITY=ELEMENT_COMPLEXITY*1.1+15;
+               ELEMENT_COUNT=10; 
+            }
+            
+            if(testCnt++ && testCnt%200==0) next();
+            else ELEMENT_COUNT++;
+            
+            document.getElementById('log').innerHTML=
+               testCnt+" cnt: "+ELEMENT_COUNT
+               +", complexity:"+ELEMENT_COMPLEXITY
+               +', time:'+lastTookTime
+               +', R2R:'+lastR2RTime
+               +', verticles:'+lastVectilesCount
+               +', pixels:'+lastPixelCount;
+               
+            if(lastR2RTime>300){
+                if(failTests++>3) return returnReport()
+                else nope();
+            } else {
+                failTests=0;
+            }
+            
+            if(testCnt%200==0){
+                returnReport();
+            }
+            
+            if(testCnt>4000){
+                return returnReport();
+            }
+            
+            run_test1();
+            
+            setTimeout(test1Default,DELTA_TIMER);
+        }
+        
+        function test1Linear(){
+            
+            if(testCnt && testCnt%5==0){
+                if(ELEMENT_COUNT<300) ELEMENT_COUNT+=5;
+                else                  ELEMENT_COUNT*=1.10;
+            }
+            
+            
+            document.getElementById('log').innerHTML=
+               testCnt+" cnt: "+ELEMENT_COUNT
+               +", complexity:"+ELEMENT_COMPLEXITY
+               +', time:'+lastTookTime
+               +', R2R:'+lastR2RTime
+               +', verticles:'+lastVectilesCount
+               +', pixels:'+lastPixelCount;
+            
+            if(lastR2RTime>300){
+                if(failTests++>3) return returnReport()
+                else nope();
+            } else {
+                failTests=0;
+            }
+            
+            if(testCnt>4000){
+                return returnReport();
+            }
+            
+            testCnt++;
+            
+            if(testCnt%200==0){
+                returnReport();
+            }
+            
+            
+            run_test1();
+            
+            setTimeout(test1Linear,DELTA_TIMER);
+        }
+        
+        function test1Complex(){
+            
+            if(testCnt && testCnt%10==0){
+               ELEMENT_COMPLEXITY*=1.07;
+            }
+            
+            
+            document.getElementById('log').innerHTML=
+               testCnt+" cnt: "+ELEMENT_COUNT
+               +", complexity:"+ELEMENT_COMPLEXITY
+               +', time:'+lastTookTime
+               +', R2R:'+lastR2RTime
+               +', verticles:'+lastVectilesCount
+               +', pixels:'+lastPixelCount;
+            
+            if(lastR2RTime>300){
+                if(failTests++>3) return returnReport()
+                else nope();
+            } else {
+                failTests=0;
+            }
+            
+            if(testCnt>4000){
+                return returnReport();
+            }
+            testCnt++;
+            
+            run_test1();
+            
+            setTimeout(test1Complex,DELTA_TIMER);
+        }
+        
+        function test1Size(){
+            ELEMENT_COUNT=100;
+            if(testCnt && testCnt%40==0){
+                RADUIS+=2;
+                //RADUIS_FACTOR*=1.2;
+                ELEMENT_COUNT=10;
+               // ELEMENT_COMPLEXITY+=5;
+            }//else ELEMENT_COUNT+=3;
+            RADUIS_FACTOR+=0.01;
+            //ELEMENT_COUNT=1;
+            
+            document.getElementById('log').innerHTML=
+               testCnt+" cnt: "+ELEMENT_COUNT
+               +", complexity:"+ELEMENT_COMPLEXITY
+               +', time:'+lastTookTime
+               +', R2R:'+lastR2RTime
+               +', verticles:'+lastVectilesCount
+               +', pixels:'+lastPixelCount;
+            
+            if(lastR2RTime>300){
+                if(failTests++>3) return returnReport()
+                else nope();
+            } else {
+                failTests=0;
+            }
+            
+            if(testCnt>500){
+                return returnReport();
+            }
+            testCnt++;
+            
+            run_test2();
+            
+            setTimeout(test1Size,DELTA_TIMER);
+        }
+        
+        
+        var xtickcnt = 0;
+        
+        function test1SizeClipp(){
+            if(testCnt==0){
+                ELEMENT_COUNT = 10;
+                ELEMENT_COMPLEXITY = 10;
+            }
+            //if(testCnt && testCnt%10==0){
+                RADUIS*=1.01;
+            //}
+            if(testCnt%60==0){
+                RADUIS=200;
+                ELEMENT_COUNT+=30;
+                
+            }
+            ELEMENT_COMPLEXITY+=1;
+            
+            /*if(testCnt && testCnt%100==0){
+                RADUIS=200;
+                //ELEMENT_COMPLEXITY*=1.5;
+                ELEMENT_COUNT+=10;
+            }*/
+            
+            
+            //ELEMENT_COUNT=1;
+            
+            document.getElementById('log').innerHTML=
+               testCnt+" cnt: "+ELEMENT_COUNT
+               +", complexity:"+ELEMENT_COMPLEXITY
+               +', time:'+lastTookTime
+               +', R2R:'+lastR2RTime
+               +', verticles:'+lastVectilesCount
+               +', pixels:'+lastPixelCount;
+            
+            if(lastR2RTime>400){
+                if(failTests++>3) return returnReport()
+                else nope();
+            } else {
+                failTests=0;
+            }
+            
+            if(testCnt>1000){
+                return returnReport();
+            }
+            testCnt++;
+            
+            if(testCnt%200==0){
+                returnReport();
+            }
+            
+            
+            if(testCnt%20==0){
+                var xticks = 0;
+                imports.processing(200,function(options){
+                   //document.documentElement.clientLeft;
+                   if(xtickcnt%4==0){
+                        lastPane.holder().style.left = Math.round(options.progress*200)+'px';
+                   }else {
+                        lastPane.holder().style.left = -Math.round(options.progress*300)+'px';
+                   }
+                   xticks++;
+                }).complete(function(){
+                    imports.processing(200,function(options){
+                        if(xtickcnt%4==0){
+                        lastPane.holder().style.left = Math.round((1-options.progress)*200)+'px';
+                        }else {
+                             lastPane.holder().style.left = -Math.round((1-options.progress)*300)+'px';
+                        }
+                        xticks++;
+                    }).complete(function(){
+                        
+                        var reportLine = {
+                            time: xticks,
+                            timeCreate: 0,
+                            R2R: ELEMENT_COUNT + (xtickcnt%2==0 ? 10 : 0),
+                            complexity: 0,//Math.round(ELEMENT_COMPLEXITY),
+                            count: 1000+(xtickcnt++)*4,
+                            
+                            pixels: 0,//lastPixelCount,
+                            verts: 0//Math.round(ELEMENT_COMPLEXITY*ELE +MENT_COUNT)
+                        };
+                        
+                        report['test1'].push(reportLine);
+                        
+                        test1SizeClipp();
+                    });
+                });
+            }
+            else{
+                run_test4(Math.ceil(testCnt/60)%2);
+                setTimeout(test1SizeClipp,DELTA_TIMER);
+            }
+        }
+        
+        
+        
+        function test3(){
+            if(!testCnt){
+                xtickcnt=0;
+            }
+            
+            if(testCnt && testCnt%200==0){
+                returnReport();
+            }
+            
+            ELEMENT_COMPLEXITY++;
+            if(testCnt%5==0){
+                ELEMENT_COUNT++;
+            }
+            RADUIS +=0.1;
+            
+            document.getElementById('log').innerHTML=
+               testCnt+" cnt: "+ELEMENT_COUNT
+               +", complexity:"+ELEMENT_COMPLEXITY
+               +', time:'+lastTookTime
+               +', R2R:'+lastR2RTime
+               +', verticles:'+lastVectilesCount
+               +', pixels:'+lastPixelCount;
+            
+            if(lastR2RTime>400){
+                if(failTests++>3) return returnReport()
+                else nope();
+            } else {
+                failTests=0;
+            }
+            
+            if(testCnt>1000){
+                return returnReport();
+            }
+            testCnt++;
+            
+            if(testCnt%10==0){
+                var xticks = 0;
+                imports.processing(200,function(options){
+                   
+                   lastPane.holder().style.top = Math.round(options.progress*100)+'px';
+                   xticks++;
+                }).complete(function(){
+                    imports.processing(200,function(options){
+                        lastPane.holder().style.top = Math.round((1-options.progress)*100)+'px';
+                        xticks++;
+                    }).complete(function(){
+                        
+                        var reportLine = {
+                            time: xticks,
+                            timeCreate: 0,
+                            R2R: ELEMENT_COUNT + (xtickcnt%2==0 ? 10 : 0),
+                            complexity: 0,//Math.round(ELEMENT_COMPLEXITY),
+                            count: 1000+(xtickcnt++)*4,
+                            
+                            pixels: 0,//lastPixelCount,
+                            verts: 0//Math.round(ELEMENT_COMPLEXITY*ELE +MENT_COUNT)
+                        };
+                        
+                        report['test1'].push(reportLine);
+                        
+                        test3();
+                    });
+                })
+            }else{
+
+                run_test3();
+                
+                setTimeout(test3,DELTA_TIMER);
+            }
+        }
+        
+        
+        
+       window['runTest1']=function(render, path){
+        
+            report['test1']=[];
+        
+            activeRender = render;
+            testCnt=0;
+            failTests=0;
+            
+            appendPlace = document.getElementById('appendPlace').selectedIndex;
+            miniObjects = document.getElementById('miniShapes').selectedIndex;
+            
+            RADUIS_FACTOR =1;
+            ELEMENT_COUNT = 10,
+            ELEMENT_COMPLEXITY = 4,
+            ELEMENT_SIZE = 10;
+            RADUIS = miniObjects==0 ? 3 : miniObjects ==1 ? 30 : 90;
+            if(path=='linear'){
+                test1Linear();
+                ELEMENT_COMPLEXITY = 3;
+                RADUIS=miniObjects==0 ? 2 : miniObjects ==1 ? 9 : 30;
+            }
+            else if(path=='complex'){
+                test1Complex();
+                RADUIS = 120;
+                ELEMENT_COUNT=20;
+            }
+            else if(path=='radius'){
+                RADUIS=600;
+                test1Size();
+            }
+            else test1Default();
+       }
+       
+       window['runTest3'] = function (render, scheme) {
+            report['test1']=[];
+        
+            activeRender = render;
+            testCnt=0;
+            failTests=0;
+           
+            if (scheme=='clipp') {
+                RADUIS=200;
+                ELEMENT_COMPLEXITY = 50;
+                ELEMENT_COUNT = 30;
+               
+                test3();
+            }
+            if (scheme=='clippPartial') {
+                RADUIS=200;
+                ELEMENT_COMPLEXITY = 2;
+                ELEMENT_COUNT = 100;
+               
+                test1SizeClipp();
+            }
+       }
+    }
+
+</script>
+    <div id='log'></div>
+    <div id='canvas'></div>
+    appendPlace <select id='appendPlace'>
+        <option value='0'>before</option>
+        <option value='1'>after</option>
+        <option value='2'>never</option>
+    </select><br />
+    miniShapes <select id='miniShapes'>
+        <option value='0'>tini</option>
+        <option value='1'>normal</option>
+        <option value='2'>huge</option>
+    </select><br />
+    <p>test 1 -
+        all
+        <a href='javascript:runTest1("canvas")'>canvas</a>
+        <a href='javascript:runTest1("svg")'>svg</a>
+        <a href='javascript:runTest1("vml")'>vml</a>
+        <br />
+        linear 
+        <a href='javascript:runTest1("canvas","linear")'>canvas</a>
+        <a href='javascript:runTest1("svg","linear")'>svg</a>
+        <a href='javascript:runTest1("vml","linear")'>vml</a>
+        <br />
+        complex 
+        <a href='javascript:runTest1("canvas","complex")'>canvas</a>
+        <a href='javascript:runTest1("svg","complex")'>svg</a>
+        <a href='javascript:runTest1("vml","complex")'>vml</a>
+        <br />
+        radius 
+        <a href='javascript:runTest1("canvas","radius")'>canvas</a>
+        <a href='javascript:runTest1("svg","radius")'>svg</a>
+        <a href='javascript:runTest1("vml","radius")'>vml</a>
+        <br />
+        clipping
+        <a href='javascript:runTest3("canvas","clipp")'>canvas</a>
+        <a href='javascript:runTest3("svg","clipp")'>svg</a>
+        <a href='javascript:runTest3("vml","clipp")'>vml</a>
+        <br />
+        partial clipping
+        <a href='javascript:runTest3("canvas","clippPartial")'>canvas</a>
+        <a href='javascript:runTest3("svg","clippPartial")'>svg</a>
+        <a href='javascript:runTest3("vml","clippPartial")'>vml</a>
+        
+    </p>
+    
+    <div id="reportGraphics" style='position:relative'></div>
+</body>

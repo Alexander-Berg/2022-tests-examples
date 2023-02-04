@@ -1,0 +1,43 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - smosker
+      groups: []
+labels:
+  order: '100000'
+config_mode: easy2
+---
+l7_upstream_macro:
+  version: 0.0.2
+  id: webauth_test_tools_yandex-team_ru__check_oauth_token_roles
+  matcher:
+   and_:
+    - or_:
+      - url_re: '(.*)?idm_role=.*'
+      - header: {name: 'Webauth-Idm-Role', re: '.+'}
+    - path_re: '/check_oauth_token.*'
+  monitoring:
+    uuid: webauth_test_tools_yandex-team_ru
+  by_dc_scheme:
+    dc_balancer:
+      weights_section_id: bygeo
+      method: LOCAL_THEN_BY_DC_WEIGHT
+      attempts: 1
+    balancer:
+      attempts: 2
+      max_reattempts_share: 0.15
+      max_pessimized_endpoints_share: 0.2
+      fast_attempts: 2
+      do_not_retry_http_responses: true
+      retry_non_idempotent: false
+      connect_timeout: 70ms
+      backend_timeout: 10s
+    dcs:
+      - name: iva
+        backend_ids:
+          - tools_webauth_testing_check-oauth-token-roles_iva
+    on_error:
+      static:
+        status: 504
+        content: 'Service unavailable'

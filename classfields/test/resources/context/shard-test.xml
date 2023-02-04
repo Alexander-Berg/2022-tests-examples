@@ -1,0 +1,179 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:util="http://www.springframework.org/schema/util"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+       http://www.springframework.org/schema/beans/spring-beans-3.1.xsd http://www.springframework.org/schema/util http://www.springframework.org/schema/util/spring-util.xsd">
+
+    <bean class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer"
+          lazy-init="false">
+        <property name="locations">
+            <list>
+                <value>classpath:/context/test.properties</value>
+            </list>
+        </property>
+        <property name="ignoreUnresolvablePlaceholders" value="false"/>
+        <property name="order" value="-1"/>
+        <property name="ignoreResourceNotFound" value="true"/>
+    </bean>
+
+    <import resource="classpath:verba.xml"/>
+
+    <bean id="truckDealerModifier"  class="ru.yandex.auto.clone.trucks.modifier.TruckDealerModifier">
+        <property name="dealersProvider" ref="dealersProvider"/>
+    </bean>
+
+    <bean class="ru.yandex.auto.clone.trucks.modifier.DiscountModifier"/>
+
+    <bean class="ru.yandex.auto.clone.moto.modifier.DiscountModifier"/>
+
+    <bean id="motoDealerModifier"  class="ru.yandex.auto.clone.moto.modifier.MotoDealerModifier">
+        <property name="dealersProvider" ref="dealersProvider"/>
+    </bean>
+
+    <bean class="ru.yandex.auto.clone.beneficator.CatalogEquipmentBeneficator">
+        <property name="catalogCardGroupingService" ref="catalogCardGroupingService"/>
+        <property name="catalogOptionsProvider" ref="catalogOptionsProvider"/>
+        <property name="catalogParamSetter" ref="catalogParamSetter"/>
+        <property name="modificationCodesProvider" ref="modificationCodesProvider"/>
+    </bean>
+
+    <bean id="catalogParamSetter" class="ru.yandex.auto.clone.beneficator.CatalogParamSetter"/>
+    <bean id="modificationCodesProvider" class="ru.yandex.auto.core.modifications.ModificationCodesProvider">
+        <constructor-arg name="dataType" ref="carsModificationCodesDataType"/>
+        <constructor-arg name="extDataService" ref="extDataService"/>
+    </bean>
+
+    <bean id="catalogCardGroupingService"
+          class="ru.yandex.auto.core.catalog.grouping.CatalogCardGroupingCachingImpl" lazy-init="true">
+        <property name="yoctoSearchTemplate" ref="catalogCardYoctoSearchTemplate"/>
+    </bean>
+
+
+    <bean id="catalogCardYoctoSearchTemplate"
+          factory-bean="yoctoCatalogCardUpdateListener" factory-method="buildSearcher"/>
+
+    <bean id="initialCatalogCardPhaser"
+          class="java.util.concurrent.Phaser">
+        <constructor-arg value="1"/>
+    </bean>
+
+    <bean id="yoctoDocumentConverter"
+          class="ru.yandex.auto.core.search2.conversion.yocto.CatalogCardYoctoEntityConverter"/>
+
+    <bean id="yoctoCatalogCardUpdateListener"
+          class="ru.yandex.auto.indexer.yocto.handler.catalog.CatalogCardUpdateListener">
+        <constructor-arg name="catalogDataType" ref="catalogDataType"/>
+        <constructor-arg name="converter" ref="yoctoDocumentConverter"/>
+        <constructor-arg name="extDataService" ref="extDataService"/>
+        <constructor-arg name="phaser" ref="initialCatalogCardPhaser"/>
+        <constructor-arg name="catalogCardsRootDirectory" value="${auto.shard.catalog-dir}"/>
+    </bean>
+
+    <bean id="verbaUnifier" class="ru.yandex.auto.clone.unifier.dicunifier.VerbaUnifier">
+        <property name="fieldDictionary" ref="fieldDictionary"/>
+        <property name="fields">
+            <util:list>
+                <util:constant static-field="ru.yandex.auto.clone.model.UnifiedCarAccessor.BODY_TYPE_FULL"/>
+                <util:constant static-field="ru.yandex.auto.clone.model.UnifiedCarAccessor.CURRENCY_TYPE"/>
+                <util:constant
+                        static-field="ru.yandex.auto.clone.model.UnifiedCarAccessor.ENGINE_TYPE_FULL"/>
+                <util:constant static-field="ru.yandex.auto.clone.model.UnifiedCarAccessor.RUN_METRIC"/>
+                <util:constant static-field="ru.yandex.auto.clone.model.UnifiedCarAccessor.GEAR_TYPE"/>
+                <util:constant
+                        static-field="ru.yandex.auto.clone.model.UnifiedCarAccessor.TRANSMISSION_FULL"/>
+                <util:constant static-field="ru.yandex.auto.clone.model.UnifiedCarAccessor.STATE"/>
+                <util:constant static-field="ru.yandex.auto.clone.model.UnifiedCarAccessor.STEERING_WHEEL"/>
+                <util:constant static-field="ru.yandex.auto.clone.model.UnifiedCarAccessor.HAGGLE"/>
+                <util:constant
+                        static-field="ru.yandex.auto.clone.model.UnifiedCarAccessor.CUSTOM_HOUSE_STATE"/>
+                <util:constant static-field="ru.yandex.auto.clone.model.UnifiedCarAccessor.SELLER_CITY"/>
+                <util:constant static-field="ru.yandex.auto.clone.model.UnifiedCarAccessor.COLOR_FULL"/>
+                <util:constant static-field="ru.yandex.auto.clone.model.UnifiedCarAccessor.STOCK"/>
+            </util:list>
+        </property>
+    </bean>
+
+    <bean name="dealersProvider" class="ru.yandex.auto.dealers.DealersProvider">
+        <constructor-arg name="dataType" ref="dealersDataType"/>
+        <constructor-arg name="extDataService" ref="extDataService"/>
+    </bean>
+
+    <bean id="reviewsDataProvider"
+          class="ru.yandex.auto.reviews.ReviewsDataProvider">
+        <property name="extDataService" ref="extDataService"/>
+        <property name="carsReviewsDataType" ref="carsReviewsDataType"/>
+        <property name="motoReviewsDataType" ref="motoReviewsDataType"/>
+        <property name="trucksReviewsDataType" ref="trucksReviewsDataType"/>
+    </bean>
+
+    <bean id="catalogOptionsProvider" class="ru.yandex.auto.equipments.CatalogOptionsProvider">
+        <constructor-arg name="catalogDataType" ref="catalogDataType"/>
+        <constructor-arg name="extDataService" ref="extDataService"/>
+    </bean>
+
+    <bean id="relevanceModifier"
+          class="ru.yandex.auto.clone.unifier.modifier.ComplexModifier">
+        <constructor-arg ref="operationalSupport"/>
+        <property name="modifiers">
+            <list>
+                <ref bean="baseRelevanceModifier"/>
+                <ref bean="freshRelevanceModifier"/>
+            </list>
+        </property>
+    </bean>
+
+    <bean id="freshRelevanceModifier" class="ru.yandex.auto.clone.unifier.modifier.relevance.FreshRelevanceModifier">
+        <property name="markHelper" ref="relevanceMarkHelper"/>
+    </bean>
+
+    <bean id="relevanceMarkHelper" class="ru.yandex.auto.core.relevance.FreshRelevanceMarkHelper"/>
+
+    <bean id="baseRelevanceModifier"
+          class="ru.yandex.auto.clone.unifier.modifier.RelevanceModifier"/>
+
+
+    <bean id="dataTypeRegistry"
+          class="ru.yandex.extdata.common.meta.DataTypeRegistry">
+        <constructor-arg>
+            <list>
+                <ref bean="rawVerbaType"/>
+                <ref bean="rawVerbaTrucksType"/>
+                <ref bean="rawVerbaMotoType"/>
+                <ref bean="rawVerbaCarServiceType"/>
+                <ref bean="rawCarsReviewsDataType"/>
+                <ref bean="rawMotoReviewsDataType"/>
+                <ref bean="rawTrucksReviewsDataType"/>
+                <ref bean="regionsDataType"/>
+                <ref bean="currencyDataType"/>
+                <ref bean="verbaDataType"/>
+                <ref bean="trucksVerbaDataType"/>
+                <ref bean="motoVerbaDataType"/>
+                <ref bean="carServiceVerbaDataType"/>
+                <ref bean="catalogDataType"/>
+                <ref bean="trucksCatalogDataType"/>
+                <ref bean="motoCatalogDataType"/>
+                <ref bean="catalogStatProxyDataType"/>
+                <ref bean="showcaseStatDataType"/>
+                <ref bean="newRelatedDataType"/>
+                <ref bean="dealersDataType"/>
+                <ref bean="taxDataType"/>
+                <ref bean="carServiceDataType"/>
+                <ref bean="autoRuOffersStatDataType"/>
+                <ref bean="trucksOffersStatDataType"/>
+                <ref bean="motoOffersStatDataType"/>
+                <ref bean="verbaDictionariesDataType"/>
+                <ref bean="office7ClientsDataType"/>
+                <ref bean="zenDataType"/>
+                <ref bean="carsModificationCodesDataType"/>
+                <ref bean="carsReviewsDataType"/>
+                <ref bean="motoReviewsDataType"/>
+                <ref bean="trucksReviewsDataType"/>
+                <ref bean="callAuctionParticipantsDataType"/>
+                <ref bean="campaignByClientDataType"/>
+                <ref bean="presetGroupsDataType"/>
+            </list>
+        </constructor-arg>
+    </bean>
+
+</beans>

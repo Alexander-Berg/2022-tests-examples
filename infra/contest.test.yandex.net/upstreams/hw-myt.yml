@@ -1,0 +1,48 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - happyfat
+      groups: []
+labels:
+  order: '10000000'
+config_mode: easy2
+---
+l7_upstream_macro:
+  version: 0.0.1
+  id: hw-myt
+  matcher:
+    and_:
+      - host_re: hard-worker-test.contest.yandex.net
+      - path_re: '/rs1/myt(/.*)?'
+  rewrite:
+    - target: PATH
+      pattern:
+        re: '/rs1/myt(/)?(.*)?'
+      replacement: '/%2'
+  monitoring:
+    uuid: contest_backend-hard-worker-test-myt
+  headers:
+    - create: {target: 'X-Upstream', value: 'hw-myt'}    
+  by_dc_scheme:
+    dc_balancer:
+      weights_section_id: bygeo
+      method: LOCAL_THEN_BY_DC_WEIGHT
+      attempts: 1
+    balancer:
+      attempts: 2
+      max_reattempts_share: 0.15
+      max_pessimized_endpoints_share: 0.2
+      fast_attempts: 2
+      do_not_retry_http_responses: true
+      retry_non_idempotent: false
+      connect_timeout: 200ms
+      backend_timeout: 300s
+    dcs:
+      - name: myt
+        backend_ids:
+          - hw-myt
+    on_error:
+      static:
+        status: 502
+        content: 'Service unavailable'

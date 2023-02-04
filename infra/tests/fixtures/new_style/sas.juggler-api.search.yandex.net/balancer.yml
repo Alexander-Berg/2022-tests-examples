@@ -1,0 +1,91 @@
+---
+instance_macro:
+  maxconn: 1000
+  log_dir: /place/db/www/logs/
+  workers: !f get_workers()
+  sections:
+    admin:
+      ips: [127.0.0.1, '::1']
+      ports: [15600]
+      modules:
+        - http: {}
+        - admin: {}
+    stats_storage:
+      ips: [127.0.0.4]
+      ports: [15600]
+      modules:
+        - report:
+            uuid: "service_total"
+            ranges: "default"
+            just_storage: true
+        - http: {}
+        - errordocument:
+            status: 204
+    http_section:
+      ips: ['2a02:6b8:0:3400::1092', '213.180.205.20']
+      ports: [80, 8998]
+      local_ips: [local_v4_addr, local_v6_addr]
+      local_ports: [15600]
+      extended_http_macro:
+        port: 15600
+        report_uuid: 'http'
+        modules:
+          - request_replier:
+              rate: 0.0
+              enable_failed_requests_replication: true
+              sink:
+                balancer2:
+                  rr: {}
+                  attempts: 1
+                  generated_proxy_backends:
+                    proxy_options:
+                      backend_timeout: 80s
+                      connect_timeout: 100ms
+                      fail_on_5xx: false
+                    instances:
+                      - weight: 1
+                        host: juggler-testing-api.search.yandex.net
+                        port: 80
+          - regexp:
+              include_upstreams:
+                filter:
+                  any: true
+                order:
+                  label:
+                    name: order
+    https_section:
+      ips: ['2a02:6b8:0:3400::1092', '213.180.205.20']
+      ports: [443]
+      local_ips: [local_v4_addr, local_v6_addr]
+      local_ports: [15601]
+      extended_http_macro:
+        port: 15601
+        report_uuid: 'https'
+        enable_ssl: true
+        ssl_sni_contexts:
+          juggler-api.search.yandex.net:
+            servername_regexp: default
+        modules:
+          - request_replier:
+              rate: 0.0
+              enable_failed_requests_replication: true
+              sink:
+                balancer2:
+                  rr: {}
+                  attempts: 1
+                  generated_proxy_backends:
+                    proxy_options:
+                      backend_timeout: 80s
+                      connect_timeout: 100ms
+                      fail_on_5xx: false
+                    instances:
+                      - weight: 1
+                        host: juggler-testing-api.search.yandex.net
+                        port: 80
+          - regexp:
+              include_upstreams:
+                filter:
+                  any: true
+                order:
+                  label:
+                    name: order

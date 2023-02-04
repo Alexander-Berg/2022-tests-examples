@@ -1,0 +1,52 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - smalashkevich
+      groups: []
+labels:
+  order: '00010000'
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      uri: '/get_signed_url(.*)'
+  modules:
+    - report: {uuid: playlist, ranges: default}
+    - rewrite:
+        actions:
+          - regexp: '/get_signed_url(.*)'
+            rewrite: '/vh/compose_signed_url%1'
+    - exp_getter_macro:
+        _version: 3
+        service_name: vh
+        testing_mode: {}
+    - balancer2:
+        attempts: 2
+        rr: {weights_file: ./controls/traffic_control.weights}
+        backends:
+          - weight: 1
+            name: bygeo_man
+            modules:
+              - report: {uuid: http-adapter-man, ranges: default}
+              - headers:
+                  create:
+                    X-Yandex-Internal-Request: "1"
+              - balancer2:
+                  attempts: 3
+                  attempts_rate_limiter:
+                    limit: 0.2
+                  rr: {}
+                  timeout_policy:
+                    timeout: 5s
+                    unique_policy: {}
+                  generated_proxy_backends:
+                    proxy_options:
+                      backend_timeout: 2500ms
+                      connect_timeout: 50ms
+                      status_code_blacklist: ["408"]
+                      keepalive_count: 1
+                    include_backends:
+                      type: BY_ID
+                      ids:
+                        - man_vh_http_adapter_testing

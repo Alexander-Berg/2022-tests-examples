@@ -1,0 +1,111 @@
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      url: '/+jstracer'
+      case_insensitive: false
+      surround: false
+  modules:
+    - report:
+        uuid: "jstracer"
+        ranges: default
+    - headers:
+        create:
+          Host: jstracer.yandex.net
+    - headers:
+        create_func:
+          X-Request-Origin-IP: realip
+          X-Request-Origin-Port: realport
+          X-Yabs-Balancer-Ja3: ja3
+          X-Forwarded-Proto-Version: proto
+          X-Real-Port: realport
+        create_func_weak:
+          X-Real-IP: realip
+          X-Forwarded-Proto: scheme
+    - response_headers:
+        create:
+          Timing-Allow-Origin: "*"
+          X-XSS-Protection: "1; mode=block"
+          Strict-Transport-Security: "max-age=31536000"
+    - request_replier:
+        rate: 0.11
+        rate_file: ./controls/request_repl_jstracer_mirror.ratefile
+        sink:
+          modules:
+            - report:
+                uuid: "jstracer_mirrors"
+                ranges: default
+            - balancer2:
+                attempts: 2
+                connection_attempts: 3
+                attempts_rate_limiter:
+                  limit: 0.2
+                  coeff: 0.99
+                active:
+                  request: 'GET /ping HTTP/1.1\nHost: jstracer.yandex.net\n\n'
+                  delay: 10s
+                  steady: true
+                generated_proxy_backends:
+                  proxy_options:
+                    backend_timeout: 500ms
+                  include_backends:
+                    type: BY_ID
+                    ids: [jstracer10]
+                on_error:
+                  errordocument:
+                    status: 503
+                    content: 'Service Unavailable'
+    - request_replier:
+        rate: 0
+        rate_file: ./controls/request_repl_jstracer_engine.ratefile
+        sink:
+          modules:
+            - report:
+                uuid: "jstracer_engine"
+                ranges: default
+            - shared:
+                uuid: common
+    - balancer2:
+        attempts: 1
+        simple_policy: {}
+        rr:
+          weights_file: ./controls/traffic_control.weights
+        backends:
+          - name: jstracer_main
+            weight: 1
+            modules:
+              - balancer2:
+                  attempts: 2
+                  connection_attempts: 3
+                  attempts_rate_limiter:
+                    limit: 0.2
+                    coeff: 0.99
+                  active:
+                    request: 'GET /ping HTTP/1.1\nHost: jstracer.yandex.net\n\n'
+                    delay: 10s
+                    steady: true
+                  generated_proxy_backends:
+                    proxy_options:
+                      backend_timeout: 500ms
+                    include_backends:
+                      type: BY_ID
+                      ids:
+                        - jstracer0
+                        - jstracer1
+                        - jstracer2
+                  on_error:
+                    errordocument:
+                      status: 503
+                      content: 'Service Unavailable'
+          - name: jstracer_cut
+            weight: -1
+            modules:
+              - response_headers:
+                  create:
+                    Allow: 'POST, OPTIONS'
+                    Access-Control-Allow-Origin: '*'
+                    Access-Control-Allow-Methods: 'POST, OPTIONS'
+                    Access-Control-Allow-Headers: 'User-Agent, Content-Type'
+                    Access-Control-Max-Age: '86400'
+              - errordocument:
+                  status: 204

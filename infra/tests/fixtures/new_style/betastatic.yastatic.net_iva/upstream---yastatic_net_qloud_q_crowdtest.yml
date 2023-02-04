@@ -1,0 +1,46 @@
+---
+regexp_path_section:
+  pattern: '/q/crowdtest(/.*)?'
+  modules:
+    - rewrite:
+        actions:
+          - regexp: '^(/.*)?/v-[^/a-zA-Z]+/(.*)(\\?.*)?$'
+            rewrite: '%1/%2%3'
+    - report:
+        uuid: 'yastatic_net_qloud_q_crowdtest'
+        ranges: 'default'
+    - shared:
+        uuid: yastatic_net_qloud_q_crowdtest
+    - response_headers:
+        create:
+            Cache-Control: 'public, max-age=1213'
+            Access-Control-Allow-Origin: '*'
+            Timing-Allow-Origin: '*'
+        create_func:
+            Expires: 'time:+1201s'
+    - headers:
+        create:
+            'Host': 'yastatic.net'
+            'Y-Traffic-Source': 'msk-yastatic.net'
+    - balancer2:
+        disable_attempts_rate_limiter: true
+        attempts: 5
+        simple_policy: {}
+        rr: {}
+        on_status_code:
+            404:
+                modules:
+                    - errordocument:
+                        status: 200
+                        content: 'Workaround for /q/crowdtest'
+        generated_proxy_backends:
+            proxy_options:
+                backend_timeout: '5s'
+                connect_timeout: '50ms'
+                fail_on_5xx: true
+                keepalive_count: 1
+                keepalive_timeout: '60s'
+            instances:
+                - weight: 1
+                  host: 'cdn-router.stable.qloud-b.yandex.net'
+                  port: 80

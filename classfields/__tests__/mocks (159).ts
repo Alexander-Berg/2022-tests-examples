@@ -1,0 +1,387 @@
+import { IOfferCard } from 'realty-core/types/offerCard';
+
+export const offer = {
+    location: {
+        address: 'Москва, ш. Киевское, пос. Московский',
+        rgid: 12439,
+        settlementRgid: 165705,
+        subjectFederationId: 1,
+        subjectFederationRgid: 741964,
+        structuredAddress: {
+            component: [
+                {
+                    value: 'Россия',
+                    geoId: 225,
+                    regionGraphId: '143',
+                    address: 'Россия',
+                    regionType: 'COUNTRY',
+                    queryParams: {
+                        rgid: '143',
+                        address: 'Россия',
+                    },
+                },
+                {
+                    value: 'Москва',
+                    geoId: 213,
+                    regionGraphId: '587795',
+                    address: 'Москва',
+                    regionType: 'CITY',
+                    queryParams: {
+                        rgid: '587795',
+                        address: 'Россия, Москва',
+                    },
+                },
+                {
+                    value: 'улица Цюрупы',
+                    geoId: 213,
+                    regionGraphId: '587795',
+                    address: 'улица Цюрупы',
+                    regionType: 'STREET',
+                    queryParams: {
+                        rgid: '587795',
+                        address: 'Россия, Москва, улица Цюрупы',
+                    },
+                },
+                {
+                    value: '20к1',
+                    geoId: 213,
+                    regionGraphId: '587795',
+                    address: '20к1',
+                    regionType: 'HOUSE',
+                    queryParams: {
+                        rgid: '587795',
+                        address: 'Россия, Москва, улица Цюрупы, 20к1',
+                    },
+                },
+            ],
+        },
+        metroList: [
+            {
+                metroGeoId: 20436,
+                name: 'Новые Черёмушки',
+                metroTransport: 'ON_FOOT',
+                timeToMetro: 13,
+                latitude: 55.67008,
+                longitude: 37.554493,
+                minTimeToMetro: 8,
+                lineColors: ['ff8103'],
+                rgbColor: 'ff8103',
+            },
+            {
+                metroGeoId: 20435,
+                name: 'Профсоюзная',
+                metroTransport: 'ON_FOOT',
+                timeToMetro: 19,
+                latitude: 55.677933,
+                longitude: 37.562874,
+                minTimeToMetro: 13,
+                lineColors: ['ff8103'],
+                rgbColor: 'ff8103',
+            },
+            {
+                metroGeoId: 20437,
+                name: 'Калужская',
+                metroTransport: 'ON_TRANSPORT',
+                timeToMetro: 18,
+                latitude: 55.656685,
+                longitude: 37.540077,
+                minTimeToMetro: 18,
+                lineColors: ['ff8103'],
+                rgbColor: 'ff8103',
+            },
+            {
+                metroGeoId: 20445,
+                name: 'Нахимовский проспект',
+                metroTransport: 'ON_TRANSPORT',
+                timeToMetro: 19,
+                latitude: 55.66238,
+                longitude: 37.605274,
+                minTimeToMetro: 19,
+                lineColors: ['909090'],
+                rgbColor: '909090',
+            },
+        ],
+    },
+};
+
+export const offerEmptyMetroList = {
+    location: {
+        address: 'Москва, ш. Киевское, пос. Московский',
+        rgid: 12439,
+        settlementRgid: 165705,
+        subjectFederationId: 1,
+        subjectFederationRgid: 741964,
+        structuredAddress: {
+            component: [
+                {
+                    value: 'Россия',
+                    geoId: 225,
+                    regionGraphId: '143',
+                    address: 'Россия',
+                    regionType: 'COUNTRY',
+                    queryParams: {
+                        rgid: '143',
+                        address: 'Россия',
+                    },
+                },
+                {
+                    value: 'Москва',
+                    geoId: 213,
+                    regionGraphId: '587795',
+                    address: 'Москва',
+                    regionType: 'CITY',
+                    queryParams: {
+                        rgid: '587795',
+                        address: 'Россия, Москва',
+                    },
+                },
+                {
+                    value: 'улица Цюрупы',
+                    geoId: 213,
+                    regionGraphId: '587795',
+                    address: 'улица Цюрупы',
+                    regionType: 'STREET',
+                    queryParams: {
+                        rgid: '587795',
+                        address: 'Россия, Москва, улица Цюрупы',
+                    },
+                },
+                {
+                    value: '20к1',
+                    geoId: 213,
+                    regionGraphId: '587795',
+                    address: '20к1',
+                    regionType: 'HOUSE',
+                    queryParams: {
+                        rgid: '587795',
+                        address: 'Россия, Москва, улица Цюрупы, 20к1',
+                    },
+                },
+            ],
+        },
+    },
+};
+
+export const offerWithHome = ({
+    location: {
+        rgid: 12438,
+        geoId: 213,
+        populatedRgid: 587795,
+        subjectFederationId: 1,
+        subjectFederationRgid: 741964,
+        settlementRgid: 587795,
+        settlementGeoId: 213,
+        address: 'Москва, 1-й Колобовский переулок, 17с1',
+        geocoderAddress: 'Москва, 1-й Колобовский переулок, 17с1',
+        structuredAddress: {
+            component: [
+                {
+                    value: 'Россия',
+                    geoId: 225,
+                    regionGraphId: '143',
+                    address: 'Россия',
+                    regionType: 'COUNTRY',
+                    queryParams: {
+                        rgid: '143',
+                        address: 'Россия',
+                    },
+                },
+                {
+                    value: 'Москва',
+                    geoId: 213,
+                    regionGraphId: '587795',
+                    address: 'Москва',
+                    regionType: 'CITY',
+                    queryParams: {
+                        rgid: '587795',
+                        address: 'Россия, Москва',
+                    },
+                },
+                {
+                    value: '1-й Колобовский переулок',
+                    geoId: 213,
+                    regionGraphId: '587795',
+                    address: '1-й Колобовский переулок',
+                    regionType: 'STREET',
+                    queryParams: {
+                        rgid: '587795',
+                        address: 'Россия, Москва, 1-й Колобовский переулок',
+                    },
+                },
+                {
+                    value: '17с1',
+                    geoId: 213,
+                    regionGraphId: '587795',
+                    address: '17с1',
+                    regionType: 'HOUSE',
+                    queryParams: {
+                        rgid: '587795',
+                        address: 'Россия, Москва, 1-й Колобовский переулок, 17с1',
+                    },
+                },
+            ],
+        },
+        point: {
+            latitude: 55.76872,
+            longitude: 37.618343,
+            precision: 'EXACT',
+        },
+        station: {
+            name: 'Москва (Белорусский вокзал)',
+            distanceKm: 2.572,
+        },
+        streetAddress: '1-й Колобовский переулок, 17с1',
+        subjectFederationName: 'Москва и МО',
+        buildingId: '541019053418467818',
+        streetId: 181227,
+    },
+    building: {
+        builtYear: 2024,
+        builtQuarter: 4,
+        buildingState: 'HAND_OVER',
+        buildingType: 'MONOLIT',
+        buildingSeries: 'индивидуальный проект',
+        buildingSeriesId: '1564812',
+        improvements: {
+            PARKING: true,
+            LIFT: true,
+            RUBBISH_CHUTE: true,
+            GUARDED: true,
+            SECURITY: true,
+        },
+        parkingType: 'OPEN',
+        siteId: 401524,
+        siteName: 'Headliner',
+        siteDisplayName: 'Квартал «Headliner»',
+        developerIds: [279866, 401250],
+        houseId: '1946998',
+        houseReadableName: 'Корпус 7',
+        buildingId: '8233638505865359795',
+        heatingType: 'UNKNOWN',
+        priceStatistics: {
+            sellPricePerSquareMeter: {
+                level: 0,
+                maxLevel: 9,
+                rgbColor: '',
+                value: '0',
+                regionValueFrom: '22727',
+                regionValueTo: '2234148',
+            },
+            sellPriceByRooms: {
+                '2': {
+                    level: 2,
+                    maxLevel: 9,
+                    rgbColor: 'ee4613',
+                    value: '27162390',
+                    regionValueFrom: '700000',
+                    regionValueTo: '350577600',
+                },
+            },
+        },
+        hasDeveloperChat: false,
+        apartmentType: 'FLATS',
+        buildingImprovementsMap: {
+            PARKING: true,
+            LIFT: true,
+            RUBBISH_CHUTE: true,
+            GUARDED: true,
+            SECURITY: true,
+        },
+    },
+} as unknown) as IOfferCard;
+
+export const offerWithoutPosibilityToBuildLinks = ({
+    location: {
+        rgid: 193368,
+        geoId: 213,
+        populatedRgid: 587795,
+        subjectFederationId: 1,
+        subjectFederationRgid: 741964,
+        settlementRgid: 587795,
+        settlementGeoId: 213,
+        address: 'Москва, Шелепихинский тупик',
+        geocoderAddress: 'Россия, Москва, Шмитовский проезд, 39',
+        structuredAddress: {
+            component: [
+                {
+                    value: 'Россия',
+                    geoId: 225,
+                    regionGraphId: '143',
+                    address: 'Россия',
+                    regionType: 'COUNTRY',
+                    queryParams: {
+                        rgid: '143',
+                        address: 'Россия',
+                    },
+                },
+                {
+                    value: 'Москва',
+                    geoId: 213,
+                    regionGraphId: '587795',
+                    address: 'Москва',
+                    regionType: 'CITY',
+                    queryParams: {
+                        rgid: '587795',
+                        address: 'Россия, Москва',
+                    },
+                },
+                {
+                    value: 'Шмитовский проезд',
+                    geoId: 213,
+                    regionGraphId: '587795',
+                    address: 'Шмитовский проезд',
+                    regionType: 'STREET',
+                    queryParams: {
+                        rgid: '587795',
+                        address: 'Россия, Москва, Шмитовский проезд',
+                    },
+                },
+                {
+                    value: '39',
+                    geoId: 213,
+                    regionGraphId: '587795',
+                    address: '39',
+                    regionType: 'HOUSE',
+                    queryParams: {
+                        rgid: '587795',
+                        address: 'Россия, Москва, Шмитовский проезд, 39',
+                    },
+                },
+            ],
+        },
+        point: {
+            latitude: 55.754925,
+            longitude: 37.525677,
+            precision: 'EXACT',
+        },
+        station: {
+            name: 'Шелепиха',
+            distanceKm: 0.202,
+        },
+        streetAddress: 'Шмитовский проезд, 39',
+        subjectFederationName: 'Москва и МО',
+        buildingId: '8233638505865359795',
+        streetId: 186150,
+    },
+    building: {
+        improvements: {
+            PARKING: true,
+            LIFT: true,
+            RUBBISH_CHUTE: true,
+            GUARDED: true,
+            SECURITY: true,
+        },
+        parkingType: 'OPEN',
+        heatingType: 'UNKNOWN',
+        buildingImprovementsMap: {
+            PARKING: true,
+            LIFT: true,
+            RUBBISH_CHUTE: true,
+            GUARDED: true,
+            SECURITY: true,
+        },
+        builtYear: 2024,
+        builtQuarter: 4,
+        siteDisplayName: 'Квартал «Headliner»',
+    },
+} as unknown) as IOfferCard;

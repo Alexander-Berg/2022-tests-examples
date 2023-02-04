@@ -1,0 +1,70 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - tyamgin
+      groups: []
+labels:
+  order: '00000001'
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      uri: '/ping'
+  modules:
+    - balancer2:
+        rr: {
+          weights_file: './controls/slb_check.weights'
+        }
+        attempts: 1
+        backends:
+          - weight: 1
+            name: to_upstream
+            modules:
+              - balancer2:
+                  attempts: 1
+                  rr: {}
+                  by_name_policy:
+                    name: !f get_geo("bygeo_", "random")
+                    unique_policy: {}
+                  backends:
+                    - weight: 1
+                      name: bygeo_sas
+                      modules:
+                        - stats_eater: {}
+                        - balancer2:
+                            attempts: 2
+                            connection_attempts: 3
+                            attempts_rate_limiter:
+                              limit: 0.3
+                            weighted2: {}
+                            generated_proxy_backends:
+                              proxy_options:
+                                backend_timeout: 500ms
+                                connect_timeout: 30ms
+                              include_backends:
+                                type: BY_ID
+                                ids:
+                                  - antirobot-testing_sas
+                    - weight: 1
+                      name: bygeo_vla
+                      modules:
+                        - stats_eater: {}
+                        - balancer2:
+                            attempts: 2
+                            connection_attempts: 3
+                            attempts_rate_limiter:
+                              limit: 0.3
+                            weighted2: {}
+                            generated_proxy_backends:
+                              proxy_options:
+                                backend_timeout: 500ms
+                                connect_timeout: 30ms
+                              include_backends:
+                                type: BY_ID
+                                ids:
+                                  - antirobot-testing_vla
+          - weight: -1
+            name: switch_off
+            errordocument:
+              status: 503

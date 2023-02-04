@@ -1,0 +1,41 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - ivangromov
+      groups: []
+labels:
+  order: '10000000'
+config_mode: easy2
+---
+l7_upstream_macro:
+    version: 0.0.1
+    id: paskills-begemot-hamster
+    matcher:
+        uri_re: '/begemot-hamster/.*'
+    rewrite:
+        - target: PATH
+          pattern:
+            re: '/begemot-hamster/(.*)'
+          replacement: '/%1'
+    monitoring:
+        uuid: begemot-hamster
+    flat_scheme:
+        balancer:
+            attempt_all_endpoints: true
+            fast_attempt_all_endpoints: true
+            max_reattempts_share: 0.15
+            max_pessimized_endpoints_share: 0.2
+            retry_http_responses:
+                codes: [5xx, 429]
+                on_last_failed_retry: PROXY_RESPONSE_AS_IS
+            fast_attempts_type: CONNECT_FAILURE_AND_503
+            connect_timeout: 100ms
+            backend_timeout: 10s
+            keepalive_count: 3
+        backend_ids:
+            - paskills-begemot-hamster
+        on_error:
+            static:
+                status: 504
+                content: "Service unavailable"

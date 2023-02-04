@@ -1,0 +1,124 @@
+<!DOCTYPE HTML>
+<!--(skip)(description)
+GeoObject options: pane
+-->
+<!--(version)
+2.1
+-->
+<!--(commands)
+mouseover(34);
+test();
+mouseover(37);
+test();
+mouseover(40);
+test();
+mouseover(44);
+test();
+drag(212, 216);
+test();
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+            var map = myMap = new ym.Map('map', {
+                center: [35.83649397128404, -27.987314062500015],
+                zoom: 5,
+                controls: ['fullscreenControl']
+            }, {
+                hintShowTimeout: 0
+            });
+            addGrid(myMap);
+            var log = new Log();
+
+            var events = ['click', 'contextmenu', 'dblclick', 'mousedown', 'mouseenter', 'mouseleave', 'mouseup', 'multitouchend',
+                'multitouchstart', 'wheel'];
+
+            __log__('Работает только в версии 2.1.24. ');
+            __log__('Чтобы проверять в других версиях, нужно изменить название класса, переданного в getElementsByClassName');
+
+            __log__('');
+            __log__('Первые четыре метки находятся под слоем событий, значит не должны драгаться');
+
+            document.getElementsByClassName('ymaps-2-1-30-events-pane')[0].style.display = 'none';
+
+            map.events.add(events, function (e) {
+                __log__('MAP: ' + e.get('type'))
+            });
+
+            var panes = ['ground', 'areas', 'shadows', 'places', 'overlaps', 'balloon', 'outerBalloon', 'controls', 'copyrights', 'hint', 'outerHint'];
+
+            for (var i = 0; i < panes.length; i++) {
+                var point1 = new ym.Placemark([42, -37 + i * 2]);
+                point1.options.set("iconPane", panes[i]);
+                point1.options.set("draggable", true);
+                point1.events.add(events, function (e) {
+                    __log__(e.get('target').options.get('pane') + ': ' + e.get('type'))
+                });
+                point1.events.add("mouseenter", function (e) {
+                    e.get('target').properties.set(
+                            'hintContent', e.get('target').options.get('iconPane') + ": " + e.get('target').geometry.getCoordinates()
+                    );
+                });
+
+                // pane не должна работать, потому что есть iconPane
+                var point2 = new ym.Placemark([41, -37 + i * 2]);
+                point2.options.set("pane", panes[i]);
+                point2.options.set("draggable", true);
+                point2.events.add(events, function (e) {
+                    __log__(e.get('target').options.get('pane') + ': ' + e.get('type'))
+                });
+                point2.events.add("mouseenter", function (e) {
+                    e.get('target').properties.set(
+                            'hintContent', e.get('target').options.get('pane') + ": " + e.get('target').geometry.getCoordinates()
+                    );
+                });
+
+                var rectangle = new ym.Rectangle([
+                    [40, -38 + i * 2],
+                    [37, -38 + i * 2 + 1]
+                ]);
+                rectangle.events.add("mouseenter", function (e) {
+                    e.get('target').properties.set(
+                            'hintContent', e.get('target').options.get('pane') + ": " + e.get('target').geometry.getCoordinates()
+                    );
+                });
+                rectangle.events.add(events, function (e) {
+                    __log__(e.get('target').options.get('pane') + ': ' + e.get('type'))
+                });
+                rectangle.options.set("pane", panes[i]);
+
+                var line = new ym.Polyline([
+                    [36, -38 + i * 2],
+                    [31, -38 + i * 2 + 1]
+                ]);
+                line.events.add("mouseenter", function (e) {
+                    e.get('target').properties.set(
+                            'hintContent', e.get('target').options.get('pane') + ": " + e.get('target').geometry.getCoordinates()
+                    );
+                });
+                line.events.add(events, function (e) {
+                    __log__(e.get('target').options.get('pane') + ': ' + e.get('type'))
+                });
+                line.options.set("pane", panes[i]);
+
+                myMap.geoObjects.add(point1).add(point2).add(rectangle).add(line);
+
+                // MAPSAPI-8149
+                log.info(('length: ' + ymaps.hotspot.Manager.get(map.panes.get('events')).getContainerList()._list.length))
+            }
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

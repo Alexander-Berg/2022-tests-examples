@@ -1,0 +1,38 @@
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      uri: "/((m)?search/)?atomsearch(/.*)?"
+  modules:
+    - rewrite:
+        actions:
+          - regexp: "/(m)?search/(.*)"
+            rewrite: /%2
+    - stats_eater: {}
+    - request_replier:
+        rate_file: './controls/request_replier_atomsearch.ratefile'
+        sink:
+          balancer2:
+            attempts: 5
+            weighted2: {}
+            generated_proxy_backends:
+              proxy_options:
+                backend_timeout: 10s
+                connect_timeout: 150ms
+              instances:
+                - weight: 1
+                  host: sinkadm.priemka.yandex.ru
+                  port: 80
+    - balancer2:
+        attempts: 2
+        weighted2: {}
+        generated_proxy_backends:
+          proxy_options:
+            backend_timeout: 5s
+            connect_timeout: 150ms
+          nanny_snapshots:
+            - service_id: mobile_heroism
+              snapshot_id: fb80faf52df0e452358e1344e88b8cff99089835
+        on_error:
+          errordocument:
+            status: 504

@@ -1,0 +1,45 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - pkrasnyuk
+      groups: []
+labels:
+  order: '10'
+---
+regexp_section:
+  matcher:
+    match_or:
+      - match_fsm:
+          host: bazinga-test.mtrs.yandex-team.ru  
+      - match_fsm:
+          host: bazinga.test.in.yandex-team.ru
+  modules:
+    - headers:
+        create:
+            Host: bazinga.test.in.yandex-team.ru
+    - rewrite:
+        actions:
+          - regexp: '^/$'
+            rewrite: '/z/bazinga/onetime-tasks'
+    - balancer2:
+        attempts: 2
+        attempts_rate_limiter:
+          limit: 0.75
+        connection_attempts: !f count_backends()
+        unique_policy: {}
+        active:
+            delay: 1s
+            request: 'GET /ping HTTP/1.1\nHost: bazinga.test.in.yandex-team.ru\nUser-agent: l7-balancer\n\n'
+        generated_proxy_backends:
+          proxy_options:
+            backend_timeout: 240s
+            connect_timeout: 2s
+            fail_on_5xx: false
+          include_backends:
+            type: BY_ID
+            ids: [bazingacontrollerd-testing.DeployUnit1_sas, bazingacontrollerd-testing.DeployUnit1_vla]
+        on_error:
+          errordocument:
+            status: 504
+            content: "Service unavailable: l7-balancer"

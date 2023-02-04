@@ -1,0 +1,53 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - iperfilyev
+      groups: []
+labels:
+  order: '10000000'
+---
+regexp_section:
+  matcher:
+    match_and:
+      - match_fsm:
+          path: /api_proxy/yp_sas/.*
+      - match_or:
+        - match_fsm:
+            host: deploy\\.yandex-team\\.ru
+        - match_fsm:
+            host: yd\\.yandex-team\\.ru
+        - match_fsm:
+            host: .*\\.deploy\\.yandex-team\\.ru
+        - match_fsm:
+            host: .*\\.yd\\.yandex-team\\.ru
+        - match_fsm:
+            host: deploy-testing\\.yandex-team\\.ru
+  modules:
+    - report:
+        ranges: default
+        uuid: yp_sas
+    - headers:
+        create:
+          Host: sas.yp.yandex-team.ru
+    - response_headers:
+        create:
+          Access-Control-Allow-Headers: Content-Type, X-YT-Request-Format-Options, X-YT-Request-Id, X-YT-Response-Format-Options
+          Access-Control-Expose-Headers: X-YT-Error, X-YT-Request-Id, X-YT-Response-Code, X-YT-Response-Message, X-YT-Trace-Id
+    - rewrite:
+        actions:
+          - regexp: '/api_proxy/yp_sas/(.*)'
+            rewrite: '/%1'
+    - balancer2:
+        attempts: 1
+        rr: {}
+        backends:
+          - weight: 1
+            proxy:
+              backend_timeout: 30s
+              connect_timeout: 200ms
+              host: sas.yp.yandex-team.ru
+              port: 8443
+              https_settings:
+                ca_file: !f get_ca_cert_path("allCAs.pem", "./")
+                verify_depth: 3

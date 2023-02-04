@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<!--
+Title:
+Контрол: контролы зума
+
+Description:
+Проверка контролов зума.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+smoke, regress
+
+Estimated time:
+180000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась корректно.
+  В контейнере три контрола зума с линейкой и ползунком, кнопка "remove and add", в центре карты пустой хинт.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "remove and add".
+
+  Expectation:
+  Контролы зума пропадают, на спане осталась кнопка, и хинт в центре. 
+
+Step:
+  Action:
+  Выполнить клик в кнопку "remove and add".
+
+  Expectation:
+  Контролы зума появились на тех же местах, кнопка и хинт также на карте. 
+
+Step:
+  Action:
+  Навести курсор на контрол зума(кнопки, линейку или ползунок) снизу слева.
+
+  Expectation:
+  Справа от контрола зума появился хинт со значением "3" на сером фоне.
+
+Step:
+  Action:
+  Выполнить клик в хинт со значением "3" контрола.
+
+  Expectation:
+  Происходит отзум спана карты, ползунки у всех трех контролов немного поднимаются вверх.
+  Хинт в центре карты пропадает.
+
+Step:
+  Action:
+  Навести курсор на контрол зума(кнопки, линейку или ползунок) сверху слева.
+
+  Expectation:
+  Справа от контрола зума появился хинт со значением "6" на сером фоне.
+
+Step:
+  Action:
+  Выполнить клик в хинт со значением "6" контрола.
+
+  Expectation:
+  Происходит призум спана карты, ползунки у всех трех контролов опускаются немного вниз.
+
+Step:
+  Action:
+  Навести курсор на контрол зума(кнопки, линейку или ползунок) сверху справа.
+
+  Expectation:
+  Хинта со значением не появляется.
+
+Step:
+  Action:
+  Выполнить 6 кликов в кнопку "-" контрола сверху справа.
+
+  Expectation:
+  Происходит отзум спана карты, ползунки у всех трех контролов поднимаются вверх, после последнего клика кнопки "-" всех трех контролов неактивны.
+
+Step:
+  Action:
+  Выполнить 18 кликов в кнопку "+" контрола снизу слева.
+
+  Expectation:
+  Происходит призум спана карты, ползунки у всех трех контролов опускаются вниз,после последнего клика кнопки "+" всех трех контролов неактивны.
+-->
+<html>
+<head>
+    <title>API 2.0</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <script src="../helper.js"></script>
+    <script type="text/javascript">
+        Api('init');
+        function init(ymaps) {
+            var myMap = new ymaps.Map('map', {
+                center: [53.4591, 50.9325],
+                zoom: 5});
+            
+            var zoom1 = new ymaps.control.ZoomControl();
+            var zoom2 = new ymaps.control.ZoomControl({
+                customTips: [
+                    {index: 3, value: '3'}
+                ]
+            });
+            var zoom3 = new ymaps.control.ZoomControl();
+            myMap.controls.add(zoom1, {left: 5, top: 2});
+            myMap.controls.add(zoom2, {left: 5, bottom: 35});
+            myMap.controls.add(zoom3, {right: 5, top: 2});
+            zoom1.options.set('customTips', [
+                {index: 6, value: '6'}
+            ]);
+            zoom3.options.set('noTips', true);
+            var button = new ymaps.control.Button('remove and add');
+            button.events.add('select', function (e) {
+                myMap.controls.remove(zoom1);
+                myMap.controls.remove(zoom2);
+                myMap.controls.remove(zoom3);
+            }).add('deselect', function (e) {
+                myMap.controls.add(zoom1, {left: 5, top: 2});
+                myMap.controls.add(zoom2, {left: 5, bottom: 35});
+                myMap.controls.add(zoom3, {right: 5, top: 2});
+            });
+            myMap.controls.add(button, {top: 100, left: 100});
+            // MAPSAPI-5102
+            zoom1.events.add('zoomin', function (e) {
+                myMap.balloon.open(myMap.getCenter(), 'zoomin');
+            }).add('zoomout', function (e) {
+                myMap.balloon.open(myMap.getCenter(), 'zoomout');
+            });
+            // MAPSAPI-5763
+            var zoomControlForEvents = new ymaps.control.ZoomControl(), ehint = "";
+            // myMap.controls.add(zoomControlForEvents);
+            zoomControlForEvents.events.add("zoomchange", function (e) {
+                ehint += " zoomchange ";
+            });
+            myMap.setZoom(4);
+            myMap.setZoom(5);
+            myMap.hint.show(myMap.getCenter(), ehint);
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;">
+</div>
+<p><a href="https://tech.yandex.ru/maps/archive/doc/jsapi/2.0/ref/reference/control.ZoomControl-docpage/" target="_blank">Docs</a></p>
+</body>
+</html>

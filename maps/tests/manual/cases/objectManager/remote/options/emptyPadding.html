@@ -1,0 +1,120 @@
+<!DOCTYPE HTML>
+<!--(skip)(description)
+
+-->
+<!--(version)
+
+-->
+<!--(commands)
+
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var id = 10001;
+
+            var coords = [],
+                    center = [56, 34],
+                    features = [],
+                    sourceObjectsQuery;
+            for (var i = 0; i < 500; i++) {
+                var x = center[0] + 10 * Math.random() * Math.random() * Math.random() * Math.random() * (Math.random() < 0.5 ? -1 : 1),
+                        y = center[1] + 10 * Math.random() * Math.random() * Math.random() * Math.random() * (Math.random() < 0.5 ? -1 : 1);
+                coords[i] = [x, y];
+                features.push({
+                    id: id,
+                    type: 'Feature',
+                    geometry: {
+                        type: 'Point',
+                        coordinates: coords[i]
+                    },
+                    bbox: [
+                        [
+                            [56, 34]
+                        ],
+                        [
+                            [56, 34]
+                        ]
+                    ],
+                    number: 5,
+                    properties: {
+                        iconContent: 2,
+                        balloonContent: id,
+                        hintContent: id,
+                        clusterCaption: id
+                    }
+                });
+                id++;
+            }
+
+            window.managerResponse = function (x, y, z) {
+                var globalPixelBounds = [
+                    [x * 256, y * 256],
+                    [(x + 1) * 256, (y + 1) * 256]
+                ];
+                var bounds = ymaps.util.bounds.fromGlobalPixelBounds(globalPixelBounds, z, map.options.get('projection'));
+                var rectangle = new ymaps.Rectangle(bounds);
+                map.geoObjects.add(rectangle);
+                var it = sourceObjectsQuery.searchInside(rectangle).getIterator();
+                map.geoObjects.remove(rectangle);
+                var answerFeatures = [];
+                var obj;
+                while ((obj = it.getNext()) != it.STOP_ITERATION) {
+                    answerFeatures.push({
+                        id: sourceObjectsQuery.indexOf(obj),
+                        type: sourceObjectsQuery.indexOf(obj) % 2 ? 'Feature' : 'Cluster',
+                        number: obj.number,
+                        geometry: {
+                            type: 'Point',
+                            coordinates: obj.geometry.getCoordinates()
+                        },
+                        properties: obj.properties.getAll()
+                    });
+                }
+                window['managerResponse_x_' + x + '_y_' + y + '_z_' + z]({
+                    data: {
+                        type: 'FeatureCollection',
+                        features: answerFeatures
+                    }
+                })
+            };
+
+            var map = myMap = new ymaps.Map('map', {
+                center: center,
+                zoom: 10,
+                type: 'yandex#map',
+                controls: ['fullscreenControl'],
+                minZoom: 4
+            });
+            var remoteObjectManager = new ymaps.RemoteObjectManager('https://jsapi.sergeiiak.alexa.maps.dev.yandex.ru/api/2.1/objectManager/remote/response.xml?%c', {
+                urlTemplate: 'response.xml?%c',
+                splitRequests: true,
+                clusterDisableClickZoom: false,
+                geoObjectBalloonContentLayout: ymaps.templateLayoutFactory.createClass('{{properties.balloonContent}}')
+            });
+            sourceObjectsQuery = ymaps.geoQuery({
+                type: 'FeatureCollection',
+                features: features
+            }).setOptions('visible', false).addToMap(map);
+            map.geoObjects.add(remoteObjectManager);
+
+            addGrid(myMap);
+            var log = new Log();
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

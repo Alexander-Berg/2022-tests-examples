@@ -1,0 +1,38 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - next0
+      groups: []
+labels:
+  order: '10000000'
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      uri: '/yastat/.*'
+  modules:
+    - rewrite:
+        actions:
+          - regexp: '.*'
+            header_name: Host
+            rewrite: 'test.yastat.net'
+          - regexp: '/yastat/(.*)'
+            rewrite: '/%1'
+    - balancer2:
+        rr: {}
+        attempts: 2
+        attempts_rate_limiter:
+          limit: 0.1
+          coeff: 0.99
+        generated_proxy_backends:
+          proxy_options:
+            connect_timeout: 100ms
+            backend_timeout: 10s
+          instances:
+            - host: test.yastat.net
+              port: 80
+              weight: 1
+        on_error:
+          modules:
+          - errordocument: {content: Gateway Timeout, status: 504}

@@ -1,0 +1,18 @@
+#include <library/cpp/testing/unittest/registar.h>
+
+#include <maps/renderer/denormalization/lib/tasks/tests/data_tests/common.h>
+
+namespace maps::renderer::denormalization {
+
+Y_UNIT_TEST_SUITE(data_tests) {
+
+Y_UNIT_TEST_F(fence_l_gates_tmp_test, DataTestFixture)
+{
+    run("fence_l_gates_tmp_test",
+        TestType::ExpectedData,
+        {"FenceLQueryTmpTask", "FenceLGatesQueryTmpTask", "FenceLGatesTmpTask"});
+}
+
+} // Y_UNIT_TEST_SUITE(data_tests)
+
+} // namespace maps::renderer::denormalization

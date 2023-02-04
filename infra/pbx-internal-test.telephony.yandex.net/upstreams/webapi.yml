@@ -1,0 +1,50 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - say
+      groups: []
+labels:
+  order: '10000000'
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      path: /webapi
+  modules:
+    - headers:
+        create_func_weak:
+          X-Forwarded-For-Y: realip
+    - rewrite:
+        actions:
+          - regexp: '/webapi'
+            rewrite: '/graphql'
+    - report: 
+        ranges: default
+        uuid: webapi
+        labels:
+          env: test
+        outgoing_codes: ["200", "204", "301", "302", "307", "400", "401", "402", "403", "404", "405", "429", "500", "501", "502", "503", "504", "505", "506"]
+    - balancer2:
+        attempts: 3
+        attempts_rate_limiter:
+          limit: 0.5
+        dynamic:
+          max_pessimized_share: 0.5
+        timeout_policy:
+          timeout: 10s
+          unique_policy: {}
+        generated_proxy_backends:
+          proxy_options:
+            backend_timeout: 10s
+            connect_timeout: 70ms
+            keepalive_count: 1
+          include_backends:
+            type: BY_ID
+            ids:
+              - webapi
+        on_error:
+          modules:
+            - errordocument:
+                status: 503
+                content: 'Service unavailable'

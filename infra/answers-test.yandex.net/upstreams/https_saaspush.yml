@@ -1,0 +1,50 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - nexidan
+      groups: []
+labels:
+  order: '00010000'
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      url: '/saas(.*)?'
+  modules:
+    - rewrite:
+        actions:
+          - regexp: '/saas/(.*)'
+            rewrite: '/%1'
+    - threshold:
+        lo_bytes: 262144
+        hi_bytes: 419430
+        pass_timeout: 10s
+        recv_timeout: 2s
+    - regexp:
+        sections:
+            saaspush:
+              matcher: {}
+              modules:
+              - balancer2:
+                  attempts: 2
+                  connection_attempts: !f count_backends()
+                  rr: {weights_file: ./controls/traffic_control.weights}
+                  backends:
+                  - weight: 1
+                    name: answers_sas
+                    modules:
+                      - report: {ranges: default, uuid: requests_saaspush_to_sas}
+                      - balancer2:
+                          attempts: 1
+                          weighted2: {}
+                          generated_proxy_backends:
+                            proxy_options:
+                              backend_timeout: 2s
+                              connect_timeout: 100ms
+                            include_backends:
+                              type: BY_ID
+                              ids: [answers_saas_push_sas]
+                  on_error:
+                    modules:
+                    - errordocument: {content: "Gateway Timeout", status: 504}

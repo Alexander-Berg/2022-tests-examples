@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<!--
+Title:
+Маршрут: порядок задания географических координат 
+
+Description:
+Проверка порядка задания географических координат.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+regress
+
+Estimated time:
+90000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  При инициализации карта сначала оторажает спан Москвы, затем сразу меняется на спан Ирана(Бехбехан) с маршрутной ниткой и метками "1", "2".
+  Сверху в контейнере имеется кнопка "searchCoordOrder".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "searchCoordOrder".
+
+  Expectation:
+  Происходит смена спана на спан  Киева с построенным маршрутом из точек "1", "2".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "searchCoordOrder".
+
+  Expectation:
+  Происходит смена спана на спан с построенным маршрутом из точек "1"-СПб, "2"-Торжок, "3"-Рязань.
+  На спане три метки(1,2,3), маршрутная нитка зеленого цвета, перед Рязанью имеется транзитная точка - белая круглая метка.
+-->
+<html>
+<head>
+    <title>API 2.0</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <script src="../helper.js"></script>
+    <script type=text/javascript>
+        Api('init');
+        function init(ymaps) {
+            var myMap = new ymaps.Map('map', {
+                center: [55.00718809437818, 38.094514924687026],
+                zoom: 7
+            });
+            ymaps.route([
+                { type: 'wayPoint', point: [50.45700650379099, 30.461596061856916] },
+                { type: 'wayPoint', point: [50.22244539552655, 30.227221061856916] }
+            ], {
+                mapStateAutoApply: true, searchCoordOrder: 'longlat'
+            }).then(function (route) {
+                myMap.geoObjects.add(route);
+                route.editor.start();
+            });
+
+            button1 = new ymaps.control.Button({data: {content: 'searchCoordOrder'}}, {selectOnClick: true});
+
+            button1.events
+                    .add("select", function (e) {
+                        route = new ymaps.route([
+                            { type: 'wayPoint', point: [50.45700650379099, 30.461596061856916] },
+                            { type: 'wayPoint', point: [50.22244539552655, 30.227221061856916] }
+                        ], {
+                            mapStateAutoApply: true, searchCoordOrder: 'latlong'
+                        }).then(function (route) {
+                            myMap.geoObjects.add(route);
+                            route.editor.start();
+                        });
+                    })
+                    .add('deselect', function () {
+                        route = new ymaps.route([
+                            [60, 30],
+                            [57, 35],
+                            { type: 'viaPoint', point: [55.00718809437818, 38.094514924687026] },
+                            { type: 'wayPoint', point: [54.59766481046268, 39.615647888182124] }
+                        ], {
+                            mapStateAutoApply: true,
+                            searchCoordOrder: 'latlong'
+                        }).then(function (route) {
+                            route.getPaths().options.set({
+                            strokeColor: '00FF00',
+                            opacity: 0.9
+                        });
+                            myMap.geoObjects.add(route);
+                            route.editor.start();
+                        });
+                    });
+            myMap.controls.add(button1);
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+<p><a href="https://tech.yandex.ru/maps/archive/doc/jsapi/2.0/ref/reference/router.Route-docpage/" target="_blank">Docs</a></p>
+</body>
+</html>

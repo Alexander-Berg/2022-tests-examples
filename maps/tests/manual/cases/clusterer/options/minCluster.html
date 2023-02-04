@@ -1,0 +1,140 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Кластер: минимальное количество объектов, образующих кластер
+
+Description:
+Проверка опции минимального количества объектов, образующих кластер.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+clusterer
+
+Estimated time:
+90000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан Санкт-Петербурга преимущественно с кластерными метками и метками коллекций(синие метки и зеленые метки с надписью "Point").
+  Сверху имеется кнопка "clusterSize".
+
+Step:
+  Action:
+  Выполнить призум скролом мыши на одно значение.
+
+  Expectation:
+  Происходит корректный призум на одно значение. 
+  Кластерные метки распадаются на метки коллекций, на спане преимущественно метки коллекций. Кластерных меток становится меньше.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "clusterSize".
+
+  Expectation:
+  Метки коллекций меняются на кластерные метки со значением кластеризации "1".
+  Под контейнером с картой значение: "minClusterSize: 1".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "clusterSize".
+
+  Expectation:
+  Метки кластеров меняются на метки коллекций, на спане карты только метки коллекций, либо есть метки кластеров со значением кластеризации "5".
+  Под контейнером с картой значение: "minClusterSize: 5".
+
+Step:
+  Action:
+  Выполнить отзум скролом мыши на одно значение.
+
+  Expectation:
+  Происходит корректный отзум на одно значение. 
+  На спане карты преимущественно метки коллекций, при этом в некоторых местах метки коллекций кластеризуются в кластеры со значением "5"(и больше, поскольку значение кластеризации 5).
+-->
+<html>
+<head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script src="https://yandex.st/jquery/1.6.4/jquery.min.js" type="text/javascript"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            var myMap = new ymaps.Map('map', {
+                center: [59.96343157514998, 30.317977733422868],
+                zoom: 7,
+                // Добавим к стандартным поведениям карты зум колесом мыши.
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+
+            log.info('Default value - 2.');
+            log.info('Click the button to change clusterSize option.');
+
+            var clusterer = new ymaps.Clusterer({preset: 'islands#redClusterIcons', disableClickZoom: true});
+            var i = 0;
+            var placemarksNumber = 200;
+            var bounds = myMap.getBounds();
+            var newPlacemarks = createGeoObjects(placemarksNumber, bounds);
+
+            myMap.geoObjects.add(clusterer);
+            clusterer.add(newPlacemarks);
+
+            var clusterSizeButton = new ymaps.control.Button({data: {content: 'clusterSize'}, options: {selectOnClick: true}});
+
+            clusterSizeButton.events
+                    .add('select', function () {
+                        clusterer.options.set('minClusterSize', 1);
+                        log.info('minClusterSize: ' + clusterer.options.get('minClusterSize'))
+                    })
+                    .add('deselect', function () {
+                        clusterer.options.set('minClusterSize', 5);
+                        log.info('minClusterSize: ' + clusterer.options.get('minClusterSize'))
+                    });
+
+            myMap.controls
+                    .add(clusterSizeButton, {top: 5, left: 5});
+
+            function createGeoObjects(number, bounds) {
+                var placemarks = [];
+                // Создаем нужное количество меток
+                for (var i = 0; i < number; i++) {
+                    // Генерируем координаты метки случайным образом.
+                    coordinates = getRandomCoordinates(bounds);
+                    // Создаем метку со случайными координатами.
+                    if (Math.random() > 0.5) {
+                        myPlacemark = new ymaps.Placemark(coordinates, {
+                            balloonContent: i, hintContent: i, clusterCaption: i}, {});
+                    } else {
+                        myPlacemark = new ymaps.Placemark(coordinates, {
+                            balloonContent: i, hintContent: i, iconContent: 'point', clusterCaption: 'point ' + i}, {preset: 'islands#greenStretchyIcon'});
+                    }
+                    placemarks.push(myPlacemark);
+                }
+                return placemarks;
+            }
+
+            function getRandomCoordinates(bounds) {
+                var size = [bounds[1][0] - bounds[0][0], bounds[1][1] - bounds[0][1]];
+                return [Math.random() * size[0] + bounds[0][0], Math.random() * size[1] + bounds[0][1]];
+            }
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

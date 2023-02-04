@@ -1,0 +1,44 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - say
+      groups: []
+labels:
+  order: '10000000'
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      path: /adminapi_csv_.*
+  modules:
+    - headers:
+        create_func_weak:
+          X-Forwarded-For-Y: realip
+    - rewrite:
+        actions:
+          - regexp: '/adminapi_csv_(.*)'
+            rewrite: '/csv_%1'
+    - balancer2:
+        attempts: 3
+        attempts_rate_limiter:
+          limit: 0.5
+        dynamic:
+          max_pessimized_share: 0.5
+        timeout_policy:
+          timeout: 10s
+          unique_policy: {}
+        generated_proxy_backends:
+          proxy_options:
+            backend_timeout: 10s
+            connect_timeout: 70ms
+            keepalive_count: 1
+          include_backends:
+            type: BY_ID
+            ids:
+              - adminapi
+        on_error:
+          modules:
+            - errordocument:
+                status: 503
+                content: 'Service unavailable'              

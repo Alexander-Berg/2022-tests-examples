@@ -1,0 +1,132 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Геообъект: отлов события при взаимодействии с балуном геообъекта
+
+Description:
+Проверка отлова события при взаимодействии с балуном геообъекта.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+geoobject
+
+Estimated time:
+240000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан Московской области.
+  На спане карты два ряда объектов: метка, линия, многоугольник, прямоугольник, круг. Верхний ряд синего цвета, нижний - зеленого.
+ 
+Step:
+  Action:
+  Навести курсор на синюю метку коллекции в верхнем ряду и выполнить клик в нее.
+   
+  Expectation:
+  При наведении на метку курсор меняется на палец.
+  По клику на метку, метка пропадает, на месте метки открывается балун: "balloon content".
+  Под контейнером с картой появляется блок отлова события вида: object event: balloonopen, target: [object Object]; balloon event: open, target: [object Object].
+  object event - событие объекта; target - на чем произошло событие([object Object]); balloon event - cобытие балуна.
+
+Step:
+  Action:
+  Выполнить клик в кнопку закрытия балуна.
+   
+  Expectation:
+  Балун закрывается, на спане карты появляется метка.
+  Под контейнером с картой появляется блок отлова событий аналогичный первому шагу с событиями: beforeuserclose, userclose, balloonclose, close.
+
+Step:
+  Action:
+  Навести курсор на зеленый круг в нижнем ряду и выполнить клик в него.
+   
+  Expectation:
+  При наведении на круг курсор меняется на палец.
+  По клику на круге, происходит смещение спана и в месте клика открывается балун: "balloon content".
+  Под контейнером с картой появляется блок отлова событий аналогичный первому шагу с событиями: balloonopen, open, autopanbegin, autopanend.
+
+Step:
+  Action:
+  Навести курсор на синию линию в верхнем ряду и выполнить клик в нее.
+   
+  Expectation:
+  При наведении на линию курсор меняется на палец.
+  По клику на линии в месте клика открывается балун: "balloon content", предыдущий балун на зеленом круге закрывается
+  Под контейнером с картой появляется блок отлова событий аналогичный первому шагу с событиями:  balloonclose, close, balloonopen, open.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script src="../geoCS.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym; // hack
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.73259667357658, 37.70153663432529],
+                zoom: 9,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            geoCSSource(ym, myMap, this);
+            addGrid(myMap);
+            var log = new Log();
+
+            var collection = new ymaps.GeoObjectCollection();
+            collection
+                    .add(geoObjectPlacemark)
+                    .add(geoObjectPolyline)
+                    .add(geoObjectPolygon)
+                    .add(geoObjectRectangle)
+                    .add(geoObjectCircle)
+                    .add(placemark)
+                    .add(polyline)
+                    .add(polygon)
+                    .add(rectangle)
+                    .add(circle);
+
+            var events = ['balloonopen', 'balloonclose'];
+            var events1 = ['open', 'close', 'beforeuserclose', 'userclose', 'autopanbegin', 'autopanend'];
+            var callback = function (e) {
+                log.info('object event: ' + e.get('type') + ', target: ' + e.get('target'));
+                console.log('object event: ' + e.get('type') + ', target: ' + e.get('target'));
+            };
+            var callback1 = function (e) {
+                log.info('balloon event: ' + e.get('type') + ', target: ' + e.get('target')); // поле balloon выпилили
+                console.log(e.get('target'));
+            };
+
+            collection.each(function (obj) {
+                obj.properties.set('balloonContent', 'balloon content');
+                obj.events.add(events, callback);
+                obj.balloon.events.add(events1, callback1);
+            });
+
+            map.geoObjects.add(collection);
+
+            var clearButton = new ymaps.control.Button('clear');
+            clearButton.events.add('click', function () {
+                log.clear();
+            });
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

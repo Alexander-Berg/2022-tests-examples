@@ -1,0 +1,47 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - iperfilyev
+      groups: []
+labels:
+  order: '20000001'
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      path: /api/passport/.*
+  modules:
+    - report:
+        ranges: default
+        uuid: api_passport
+    - headers:
+        create:
+          Host: api.passport.yandex-team.ru
+    - rewrite:
+        actions:
+          - regexp: '/api/passport/(.*)'
+            rewrite: '/%1'
+    - headers_forwarder:
+        actions:
+          - request_header: 'Origin'
+            response_header: 'Access-Control-Allow-Origin'
+            erase_from_request: false
+            erase_from_response: true
+            weak: false
+    - response_headers:
+        create:
+          Access-Control-Allow-Credentials: 'true'
+    - balancer2:
+        attempts: 1
+        rr: {}
+        backends:
+          - weight: 1
+            proxy:
+              backend_timeout: 30s
+              connect_timeout: 200ms
+              host: api.passport.yandex-team.ru
+              port: 443
+              https_settings:
+                ca_file: !f get_ca_cert_path("Certum_Trusted_Network_CA.pem", "/etc/ssl/certs/")
+                verify_depth: 3

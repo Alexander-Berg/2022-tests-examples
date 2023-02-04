@@ -1,0 +1,92 @@
+labels:
+  deploy_engine: env_controller
+  deploy_it_test_owner: auth_controller
+  deploy_it_test_ttl: 7200
+meta:
+  account_id: abc:service:32905
+  acl:
+    - action: allow
+      permissions:
+        - read
+        - write
+        - create
+        - ssh_access
+        - root_ssh_access
+        - read_secrets
+      subjects:
+        - robot-drug-deploy
+        - robot-deploy-test
+spec:
+  account_id: abc:service:32905
+  deploy_units:
+    DeployUnit1:
+      endpoint_sets:
+        - port: 80
+      network_defaults:
+        network_id: _DEPLOY_AUTH_NETS_
+      replica_set:
+        per_cluster_settings:
+          sas-test:
+            deployment_strategy:
+              max_unavailable: 1
+            pod_count: 1
+        replica_set_template:
+          constraints:
+            antiaffinity_constraints:
+              - key: rack
+                max_pods: 1
+          pod_template_spec:
+            spec:
+              disk_volume_requests:
+                - id: staroverovad-test-stage-0-disk-0
+                  labels:
+                    used_by_infra: true
+                  quota_policy:
+                    capacity: 1073741824          # 1 Gb
+                    bandwidth_guarantee: 524288   # 512 Kb/s
+                    bandwidth_limit: 1048576      # 1 Mb/s
+                  storage_class: hdd
+              host_infra:
+                monitoring: {}
+              ip6_address_requests:
+                - enable_dns: true
+                  network_id: _DEPLOY_AUTH_NETS_
+                  vlan_id: backbone
+                - enable_dns: true
+                  network_id: _DEPLOY_AUTH_NETS_
+                  vlan_id: fastbone
+              pod_agent_payload:
+                spec:
+                  boxes:
+                    - id: Box1
+                      rootfs:
+                        layer_refs:
+                          - base-layer-0
+                          - simple_http_server
+                  mutable_workloads:
+                    - workload_ref: Box1-Workload1
+                  resources:
+                    layers:
+                      - checksum: 'EMPTY:'
+                        id: base-layer-0
+                        url: rbtorrent:4b8ccda19a8b6927f4dcc5d5eb019efca6c753c7
+                      - checksum: 'EMPTY:'
+                        id: simple_http_server
+                        url: rbtorrent:d57bb5d384702469a420e497ac67d8c14986277f
+                  workloads:
+                    - box_ref: Box1
+                      id: Box1-Workload1
+                      readiness_check:
+                        tcp_check:
+                          port: 80
+                      start:
+                        command_line: /simple_http_server 80 'Hello my dear'
+                      transmit_logs: true
+              resource_requests:
+                memory_guarantee: 268435456 # 256 Mb
+                memory_limit: 268435456     # 256 Mb
+                network_bandwidth_guarantee: 10485760
+                vcpu_guarantee: 100
+                vcpu_limit: 100
+  revision: 1
+  revision_info: {}

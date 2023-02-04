@@ -1,0 +1,187 @@
+<!DOCTYPE HTML>
+<!--(skip)(description)
+-->
+<!--(version)
+-->
+<!--(commands)
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../helper.js"></script>
+    <script type=text/javascript>
+        Api("", "package.full,yandex.layer.poi", "tr_Tr");
+
+        function init(ymaps) {
+            //ymaps = ym;
+            var map = myMap = new ymaps.Map('map', {
+                center: [41.015917, 28.962240],
+                zoom: 14,
+                controls: ['typeSelector', 'fullscreenControl']
+            }, {
+                yandexMapDisablePoiInteractivity: false,
+                layerPoiOpenBalloonOnClick: true,
+                layerPoiOpenEmptyHint: true,
+                layerPoiInteractivityModel: 'default#transparent'
+            });
+            addGrid(myMap);
+            var log = new Log();
+            __log__("Test case: check events.");
+            var poiManager = ymaps.yandex.layer.poi.get(map);
+
+            var events = ['addtomap', 'balloonclose', 'balloonopen', 'hintclose', 'hintopen', 'mapchange', 'optionschange', 'removefrommap'];
+
+            var domevents = ['click', 'contextmenu', 'dblclick', 'mousedown', 'mouseenter', 'mouseleave', 'mouseup', 'multitouchend',
+                'multitouchstart', 'wheel'];
+
+            var moveevents = ['mousemove', 'multitouchmove'];
+
+            var counter = 0;
+            var HintContentLayout = ymaps.templateLayoutFactory.createClass(
+                            '<div style="margin: 10px;">' +
+                            '<b>Название: $[name]</b><br />' +
+                            '<b>Рубрика: $[rubrics]</b><br />' +
+                            '</div>' +
+                            '<img src="http://www.puppycuteness.com/wp-content/uploads/2012/02/74-cute-shihtzu-2-150x150.jpg">');
+
+            var callback1 = function (e) {
+                log.info('layer: ' + e.get('type'));
+                if (e.get('type') == 'mapchange') {
+                    try {
+                        log.info('oldMap: ' + e.get('oldMap').getCenter());
+                    } catch (err) {
+                        log.info('oldMap is null')
+                    }
+                    try {
+                        log.info('newMap: ' + e.get('newMap').getCenter());
+                    } catch (err) {
+                        log.info('newMap is null')
+                    }
+                }
+                if (e.get('type') == 'parentchange') {
+                    try {
+                        log.info('oldParent: ' + e.get('oldParent').getMap().getCenter());
+                    } catch (err) {
+                        log.info('oldParent is undefined')
+                    }
+                    try {
+                        log.info('newParent: ' + e.get('newParent').getMap().getCenter());
+                    } catch (err) {
+                        log.info('newParent is undefined')
+                    }
+                }
+
+                if (e.get('type') == 'balloonopen' ||
+                        e.get('type') == 'balloonclose' ||
+                        e.get('type') == 'hintopen' ||
+                        e.get('type') == 'hintclose') {
+                    console.log(e.get('target'))
+                }
+            };
+
+            var callback2 = function (e) {
+                log.info('layer: ' + e.get('type'));
+                try {
+                    log.info('activeObject: ' + e.get('activeObject') + ', coords: ' +
+                            '' + e.get('coords') + ', globalPixels: ' + e.get('globalPixels') + ', pagePixels: ' +
+                            '' + e.get('pagePixels') + ', clientPixels: ' + e.get('clientPixels') + ', domEvent: ' +
+                            '' + e.get('domEvent') + ', name: ' +
+                            '' + e.get('activeObject').getProperties().name + ', rubrics: ' +
+                            '' + e.get('activeObject').getProperties().rubrics);
+                } catch (err) {
+                    log.info('undefined')
+                }
+                console.log(e.get('type'));
+                console.log(e.get('activeObject'));
+                console.log(e.get('coords'));
+                console.log(e.get('globalPixels'));
+                console.log(e.get('pagePixels'));
+                console.log(e.get('clientPixels'));
+                console.log(e.get('domEvent'));
+            };
+
+            var deleteButton = new ymaps.control.Button({data: {content: 'remove'}, options: {selectOnClick: true}});
+            var listenerButton = new ymaps.control.Button({data: {content: 'listen'}, options: {selectOnClick: true}});
+            var optionButton = new ymaps.control.Button({data: {content: 'option'}, options: {selectOnClick: true}});
+            var freezeButton = new ymaps.control.Button({data: {content: 'freeze'}, options: {selectOnClick: true}});
+            var moveButton = new ymaps.control.Button({data: {content: 'move'}, options: {selectOnClick: true}});
+            var domButton = new ymaps.control.Button({data: {content: 'DOM'}, options: {selectOnClick: true}});
+
+            deleteButton.events
+                    .add('select', function () {
+                        map.options.set('yandexMapDisablePoiInteractivity', true);
+                        deleteButton.data.set('content', 'add');
+                    })
+                    .add('deselect', function () {
+                        map.options.set('yandexMapDisablePoiInteractivity', false);
+                        deleteButton.data.set('content', 'remove');
+                    });
+
+            listenerButton.events
+                    .add('select', function () {
+                        log.info('Waiting for events...');
+                        poiManager.events.add(events, callback1);
+                        poiManager.getHostpotLayerSync().options.set("hintContentLayout", HintContentLayout);
+
+                    })
+                    .add('deselect', function () {
+                        log.info('Events will be ignored.');
+                        poiManager.events.remove(events, callback1);
+                    });
+
+            optionButton.events
+                    .add('select', function () {
+                        poiManager.getHostpotLayerSync().options.set('cursor', 'move');
+                    })
+                    .add('deselect', function () {
+                        poiManager.getHostpotLayerSync().options.unset('cursor');
+                    });
+
+            freezeButton.events
+                    .add('select', function () {
+                        poiManager.getHostpotLayerSync().options.freeze();
+                    })
+                    .add('deselect', function () {
+                        poiManager.getHostpotLayerSync().options.unfreeze();
+                    });
+
+            moveButton.events
+                    .add('select', function () {
+                        log.info('Waiting for move events...');
+                        poiManager.events.add(moveevents, callback2);
+                    })
+                    .add('deselect', function () {
+                        log.info('Move events will be ignored.');
+                        poiManager.events.remove(moveevents, callback2);
+                    });
+
+            domButton.events
+                    .add('select', function () {
+                        log.info('Waiting for DOM events...');
+                        poiManager.events.add(domevents, callback2);
+
+                        // чтобы проверить clickdefaultevent нужно сначала нажать кнопку options
+                    })
+                    .add('deselect', function () {
+                        log.info('DOM events will be ignored.');
+                        poiManager.events.remove(domevents, callback2);
+                    });
+
+            myMap.controls
+                    .add(listenerButton, {float: 'left'})
+                    .add(deleteButton, {float: 'left'})
+                    .add(optionButton, {float: 'left'})
+                    .add(freezeButton, {float: 'left'})
+                    .add(new ymaps.control.TrafficControl(), {float: 'none', position: {bottom: 55, right: 10}})
+                    .add(moveButton, {float: 'left'})
+                    .add(domButton, {float: 'left'});
+
+        }
+    </script>
+</head>
+<body>
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

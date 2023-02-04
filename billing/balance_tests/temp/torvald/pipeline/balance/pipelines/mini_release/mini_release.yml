@@ -1,0 +1,120 @@
+INITIAL:
+  owner: test
+  edges:
+    # HAVE_CHANGES:
+    #   conditions:
+    #     - is_changed()
+    #   actions:
+    #     - get_ticket_list() # Список тикетов, попадающих в выкладку релиза\хот-фиксов
+    #     - get_max_versions() # Список максимальных версий пакетов, требуемых для выкладки
+    #     # (допущение: всё что работает с более старой версией будет работать и с более новой)
+    #     - comment(HAVE_CHANGES) # Комментарий со списком пакетов и их максимальными версиями
+
+    # CLOSED:
+    #   conditions:
+    #     - not(is_changed())
+    #   actions:
+    #     - change_status('closed', 'incorrect')
+
+    DEPLOYED:
+      actions:
+        - comment('Управление тикетом перехвачено')
+
+# HAVE_CHANGES:
+#   owner: dev
+#   edges:
+#     BUILD_IN_PROGRESS:
+#       actions:
+#         - build() # Billing_Tools_Hotfix
+
+# BUILD_IN_PROGRESS:
+#   owner: dev
+#   edges:
+#     BUILT:
+#       conditions:
+#         - is_task_success()
+#       actions:
+#         - testing_tickets = create_conductor_tickets('ts')
+#         - prestable_tickets = create_conductor_tickets('pt')
+#         - changes = get_changes()
+#         - warning = check_versions()
+#         - update_ticket(description=DESCRIPTION)
+#
+#BUILT:
+#  owner: dev
+#  edges:
+#    DEPLOY_IN_PROGRESS:
+#      actions:
+#        - deploy() # Billing_Tools_Deploy_Hotfix
+#
+#DEPLOY_IN_PROGRESS:
+#  owner: dev
+#  edges:
+#    DEPLOYED:
+#      conditions:
+#        - get_conductor_branch()
+#        - is_version_deployed() # Billing_Tools_Deploy_HotfixConductorTicketDeployedOnTs
+#      actions:
+#        - comment('')
+
+DEPLOYED:
+  owner: test
+  edges:
+    TEST_IN_PROGRESS:
+      actions:
+        - start_teamcity(TEAMCITY_TEST_PACK)
+        - start_aqua(AQUA_TEST_PACK)
+        - comment(TESTS_LAUNCHED)
+
+TEST_IN_PROGRESS:
+  owner: test
+  edges:
+    TEST_COMPLETE:
+      conditions:
+        - comment_values(TESTS_LAUNCHED)
+        - is_tasks_finished('teamcity', TEAMCITY_TEST_PACK)
+        - is_tasks_finished('aqua', AQUA_TEST_PACK)
+      actions:
+        - get_tasks_results('teamcity', TEAMCITY_TEST_PACK)
+        - get_tasks_results('aqua', AQUA_TEST_PACK)
+        - comment(TESTS_RESULTS)
+
+TEST_COMPLETE:
+  owner: test
+  edges:
+    TEST_SUCCESS:
+      conditions:
+        - get_comment_values(TESTS_LAUNCHED)
+        - is_tasks_passed('teamcity', TEAMCITY_TEST_PACK) # raise AlarmException if not
+#        - is_tasks_passed('aqua', ['FullJava'])
+      actions:
+        - comment('Результаты тестов проанализированы, изменения можно выкладывать. Подтвердите, пожалуйста')
+        - change_status('tested')
+
+TEST_SUCCESS:
+  owner: mng
+  edges:
+    CONFIRMED:
+      conditions:
+        - has_status('confirmed')
+      actions:
+        - comment('Выложите, пожалуйста')
+
+CONFIRMED:
+  owner: admin
+  edges:
+    PROD_DEPLOYED:
+      conditions:
+        - get_comment_values(CONDUCTOR_TICKETS_TO_DEPLOY)
+        - is_deployed()
+      actions:
+        - change_status('deployed')
+        - comment ('Продублируйте, пожалуйста, выкладку на PT')
+
+PROD_DEPLOYED:
+  owner: admin
+  edges:
+    PT_DEPLOYED:
+      conditions:
+        - get_comment_values(CONDUCTOR_TICKETS_TO_DEPLOY)
+        - is_deployed()

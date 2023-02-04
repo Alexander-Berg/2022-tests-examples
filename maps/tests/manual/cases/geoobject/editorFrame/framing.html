@@ -1,0 +1,384 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+<title>geoObject.addon.editor</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+<script src="../../../helper.js"></script>
+<script type="text/javascript">
+
+Api("init");
+//TODO: Разделить этот огромный кейс, попробовать выделить кусочки поменьше
+function init(ymaps) {
+    ymaps = ym;
+    var map = myMap = new ymaps.Map("map", {
+        center: [55.73259667357658, 37.70153663432529],
+        zoom: 9,
+        type: "yandex#map",
+        controls: ['fullscreenControl']
+    }, {
+        geoObjectCircleOverlay: "default#сircle",
+        geoObjectLineStringOverlay: "default#polyline",
+        geoObjectPointOverlay: "default#placemark",
+        geoObjectPolygonOverlay: "default#polygon",
+        geoObjectRectangleOverlay: "default#rectangle",
+        geoObjectDraggable: true,
+        editorHideGuideLinesOnVertexHover: false
+    });
+    map.options.set("editorHideGuideLinesOnVertexHover", true);
+    addGrid(map);
+    var log = new Log();
+    __log__("При удалении контура полигона рисование переходит следующему");
+    __log__('Опции метки:');
+    __log__("preset: 'islands#greenIcon',<br/>" +
+            "openBalloonOnClick: false,<br/>" +
+            "openHintOnHover: false,<br/>" +
+            "editorDrawOver: true,<br/>" +
+            "editorDblClickHandler: function () {console.log('ping')}");
+    __log__('');
+    __log__('Опции линии:');
+    __log__("strokeColor: '#FF0000',<br/>" +
+            "opacity: 0.5,<br/>" +
+            "strokeWidth: 5,<br/>" +
+            "editorDrawOver: true,<br/>" +
+            "editorMaxPoints: 8,<br/>" +
+            "geodesic: true,<br/>" +
+            "editorEdgeBalloonPanelMaxMapArea: Infinity,<br/>" +
+            "editorVertexBalloonMinWidth: 200,<br/>" +
+            "editorEdgeHintContentLayout: hintContentLayout,<br/>" +
+            "editorVertexHintHoldByMouse: false");
+    __log__('');
+    __log__('Опции полигона:');
+    __log__("strokeColor: '#1a3dc1',<br/>" +
+            "fillColor: '#1a3dc188',<br/>" +
+            "strokeWidth: 3,<br/>" +
+            "editorMaxPoints: 18,<br/>" +
+            "editorDrawOver: true,<br/>" +
+            "editorDrawingCursor: 'crosshair',<br/>" +
+            "editorVertexHasHint: false,<br/>" +
+            "editorVertexHasBalloon: false,<br/>" +
+            "editorVertexBalloonPanelMaxMapArea: Infinity,<br/>" +
+            "editorVertexBalloonContentLayout: balloonContentLayout,<br/>" +
+            "editorVertexHintContentLayout: hintContentLayout,<br/>" +
+            "editorEdgeBalloonMinHeight: 200,<br/>" +
+            "editorEdgeHintHoldByMouse: false,<br/>" +
+            "geodesic: true,<br/>" +
+            "editorMenuManager: function (menuItems, vertexModel) {...}");
+    __log__('');
+    __log__('Кнопка polyline: включает режим рисования линии, добавляет balloonContent и hintContent всем промежуточным точкам, а также всем узлам (включая новые)');
+    __log__('Кнопка polygon: включает режим рисования полигона, добавляет balloonContent и hintContent узлу [0][0] и промежуточной точке [0][1]');
+    __log__('');
+
+    var balloonContentLayout = ymaps.templateLayoutFactory.createClass(
+                    '<div style="margin: 10px;">' +
+                    '<b>$[properties.balloonContent]</b><br />' +
+                    '<i id="count"></i> ' +
+                    '<button id="counter-button"> Submit </button>' +
+                    '</div>');
+    var hintContentLayout = ymaps.templateLayoutFactory.createClass(
+                    '<div style="margin: 2px;">' +
+                    '<i>$[properties.hintContent]</i>' +
+                    '</div>');
+
+    var polygon;
+    var placemark = new ymaps.Placemark([55.71574031323344, 37.29753265380539], {}, {
+        preset: 'islands#greenIcon',
+        openBalloonOnClick: false,
+        openHintOnHover: false,
+        editorDrawOver: true,
+        editorDblClickHandler: function () {
+            console.log("ping");
+        }
+    });
+
+    map.geoObjects.add(placemark);
+
+    var polyline = new ymaps.GeoObject({
+        geometry: {
+            type: "LineString",
+            coordinates: [
+                [55.790716316844474, 37.50037536621043],
+                [55.680690559796844, 37.442572021483656],
+                [55.788698241203036, 37.38720397949171]
+            ]
+        }
+    }, {
+        strokeColor: '#FF0000',
+        opacity: 0.5,
+        strokeWidth: 5,
+        editorDrawOver: true,
+        editorMaxPoints: 8,
+        geodesic: true,
+        editorEdgeBalloonPanelMaxMapArea: Infinity,
+        editorVertexBalloonMinWidth: 200,
+        editorEdgeHintContentLayout: hintContentLayout,
+        editorVertexHintHoldByMouse: false,
+        editorHideGuideLinesOnVertexHover: false
+    });
+    //polyline.options.set("editorHideGuideLinesOnVertexHover", false);
+    map.geoObjects.add(polyline);
+
+    var createButton = new ymaps.control.Button('create');
+    var destroyButton = new ymaps.control.Button('destroy');
+    var hasHintButton = new ymaps.control.Button('hasHint');
+    var hasBalloonButton = new ymaps.control.Button('hasBalloon');
+    var editorButton = new ymaps.control.Button({data: {content: 'editor'}, options: {selectOnClick: true}});
+    var framingButton = new ymaps.control.Button({data: {content: 'framing'}, options: {selectOnClick: true}});
+    var placemarkButton = new ymaps.control.Button({data: {content: 'placemark'}, options: {selectOnClick: true}});
+    var polylineButton = new ymaps.control.Button({data: {content: 'polyline'}, options: {selectOnClick: true}});
+    var polygonButton = new ymaps.control.Button({data: {content: 'polygon'}, options: {selectOnClick: true}});
+    var changeButton = new ymaps.control.Button({data: {content: 'change'}, options: {selectOnClick: true}});
+    var hideGuideLinesButton = new ymaps.control.Button({data: {content: 'hideLines'}, options: {selectOnClick: true}});
+    hideGuideLinesButton.events
+            .add('select', function () {
+                __log__('Направляющая линия не скрывается при наведении на вершины');
+                polyline.options.set("editorHideGuideLinesOnVertexHover", false);
+                polygon.options.set("editorHideGuideLinesOnVertexHover", false);
+            })
+            .add('deselect', function () {
+                __log__('Направляющая линия скрывается при наведении на вершины');
+                polyline.options.set("editorHideGuideLinesOnVertexHover", true);
+                polygon.options.set("editorHideGuideLinesOnVertexHover", true);
+            });
+    editorButton.events
+            .add('select', function () {
+                __log__('Режим редактирования включен');
+                placemark.editor.startEditing();
+                polyline.editor.startEditing();
+                polygon.editor.startEditing();
+            })
+            .add('deselect', function () {
+                __log__('Режим редактирования выключен');
+                placemark.editor.stopEditing();
+                polyline.editor.stopEditing();
+                polygon.editor.stopEditing();
+            });
+    framingButton.events
+            .add('select', function () {
+                __log__('Режим редактирования включен');
+                //placemark.editor.startFraming();
+                polyline.editor.startFraming();
+                polygon.editor.startFraming();
+            })
+            .add('deselect', function () {
+                __log__('Режим редактирования выключен');
+                placemark.editor.stopFraming();
+                polyline.editor.stopFraming();
+                polygon.editor.stopFraming();
+            });
+
+    placemarkButton.events
+            .add('select', function () {
+                __log__('Режим рисования точки включен');
+                placemark.editor.startDrawing();
+            })
+            .add('deselect', function () {
+                __log__('Режим рисования точки выключен');
+                placemark.editor.stopDrawing();
+            });
+
+    polylineButton.events
+            .add('select', function () {
+                polyline.editor.startDrawing().then(function () {
+                    polyline.editor.state.set('drawingFrom', 'end');
+                    polyline.editor.getView().then(function (view) {
+                        var vertexCollection = view.getVertexPlacemarks();
+                        var edgeCollection = view.getEdgePlacemarks();
+                        vertexCollection.events.add('add', function (e) {
+                            var el = vertexCollection.get(e.get('index'));
+                            el.properties.set("hintContent", "vertex hint");
+                            el.properties.set("balloonContent", "vertex balloon");
+                        });
+                        vertexCollection.each(function (obj) {
+                            obj.properties.set("hintContent", "vertex hint");
+                            obj.properties.set("balloonContent", "vertex balloon");
+                        });
+                        edgeCollection.each(function (obj) {
+                            obj.properties.set("hintContent", "edge hint");
+                            obj.properties.set("balloonContent", "edge balloon");
+                        });
+                    });
+                });
+            })
+            .add('deselect', function () {
+                polyline.editor.stopDrawing();
+            });
+
+    polygonButton.events
+            .add('select', function () {
+                polygon.editor.startDrawing().then(function () {
+                    polygon.editor.state.set('drawingFrom', 'end');
+                    polygon.editor.getView().then(function (view) {
+                        var vertexCollection = view.getVertexPlacemarks();
+                        var edgeCollection = view.getEdgePlacemarks();
+                        vertexCollection.get(0).get(0).properties.set('balloonContent', 'vertex balloon');
+                        vertexCollection.get(0).get(0).properties.set('hintContent', 'vertex hint');
+                        edgeCollection.get(0).get(1).properties.set('balloonContent', 'edge balloon');
+                        edgeCollection.get(0).get(1).properties.set('hintContent', 'edge hint')
+                    });
+                });
+            })
+            .add('deselect', function () {
+                polygon.editor.stopDrawing();
+            });
+
+    createButton.events.add('click', function () {
+        __log__('Добавляем полигон на карту');
+        createPolygon()
+    });
+
+    destroyButton.events.add('click', function () {
+        __log__('Удаляем полигон с карты');
+        destroyPolygon()
+    });
+
+    hasHintButton.events
+            .add('select', function () {
+                __log__('Добавляем хинты всем промежуточным точками и узлам');
+                polygon.options.set("editorVertexHasHint", true);
+                polygon.options.set("editorEdgeHasHint", true);
+                polyline.options.set("editorVertexHasHint", true);
+                polyline.options.set("editorEdgeHasHint", true)
+            })
+            .add('deselect', function () {
+                __log__('Удаляем хинты всех промежуточных точек и узлов');
+                polygon.options.set("editorVertexHasHint", false);
+                polygon.options.set("editorEdgeHasHint", false);
+                polyline.options.set("editorVertexHasHint", false);
+                polyline.options.set("editorEdgeHasHint", false)
+            });
+    hasBalloonButton.events
+            .add('select', function () {
+                __log__('Добавляем балуны всем промежуточным точками и узлам');
+                polygon.options.set("editorVertexHasBalloon", true);
+                polygon.options.set("editorEdgeHasBalloon", true);
+                polyline.options.set("editorVertexHasBalloon", true);
+                polyline.options.set("editorEdgeHasBalloon", true)
+            })
+            .add('deselect', function () {
+                __log__('Удаляем балуны всех промежуточных точек и узлов');
+                polygon.options.set("editorVertexHasBalloon", false);
+                polygon.options.set("editorEdgeHasBalloon", false);
+                polyline.options.set("editorVertexHasBalloon", false);
+                polyline.options.set("editorEdgeHasBalloon", false)
+            });
+
+    changeButton.events
+            .add('select', function () {
+                __log__('Меняем опции:');
+                __log__('editorVertexVisible - false');
+                __log__('editorEdgeBalloonPanelMaxMapArea - 0');
+                __log__('editorVertexCursor - help');
+                __log__('editorEdgeVisible - false');
+                polygon.options.set("editorVertexVisible", false);
+                //polygon.options.set("editorEdgeVisible", false);
+                polygon.options.set("editorEdgeBalloonPanelMaxMapArea", 0);
+                polyline.options.set("editorVertexCursor", 'help');
+                polyline.options.set("editorEdgeVisible", false);
+                //polyline.options.set("editorVertexVisible", false);
+            })
+            .add('deselect', function () {
+                __log__('Меняем опции:');
+                __log__('editorVertexVisible - true');
+                __log__('editorEdgeBalloonPanelMaxMapArea - Infinity');
+                __log__('editorVertexCursor - crosshair');
+                __log__('editorEdgeVisible - true');
+                polygon.options.set("editorVertexVisible", true);
+                //polygon.options.set("editorEdgeVisible", true);
+                polygon.options.set("editorEdgeBalloonPanelMaxMapArea", Infinity);
+                polyline.options.set("editorVertexCursor", 'crosshair');
+                polyline.options.set("editorEdgeVisible", true);
+                //polyline.options.set("editorVertexVisible", true);
+            });
+
+
+    map.controls
+            .add(createButton, {position: {left: 5, bottom: 95}})
+            .add(destroyButton, {position: {left: 5, bottom: 65}})
+            .add(changeButton, {position: {left: 5, bottom: 35}})
+            .add(hasHintButton, {position: {right: 5, bottom: 65}})
+            .add(hasBalloonButton, {position: {right: 5, bottom: 35}})
+            .add(editorButton)
+            .add(framingButton)
+            .add(placemarkButton)
+            .add(polygonButton)
+            .add(polylineButton)
+            .add(hideGuideLinesButton, {position: {right: 5, bottom: 95}});
+
+    createPolygon();
+
+    function createPolygon() {
+        polygon = new ymaps.GeoObject({
+            geometry: {
+                type: "Polygon",
+                coordinates: [
+                    [
+                        [55.787092634473694, 37.667663574218096],
+                        [55.68797724922255, 37.666976928710035],
+                        [55.68754896639797, 37.57658996581947],
+                        [55.78474860376539, 37.57684020996037],
+                        [55.787092634473694, 37.667663574218096]
+                    ],
+                    [
+                        [55.78709263446105, 37.71984863281182],
+                        [55.68797724922255, 37.666976928710035],
+                        [55.68599735621169, 37.78258361816322],
+                        [55.78709263446105, 37.71984863281182]
+                    ]
+                ]
+            },
+            properties: {
+                hintContent: "polygon hint",
+                balloonContent: "polygon balloon"
+            }
+        }, {
+            strokeColor: '#1a3dc1',
+            fillColor: '#1a3dc188',
+            strokeWidth: 3,
+            editorMaxPoints: 18,
+            editorDrawOver: true,
+            editorDrawingCursor: "crosshair",
+            editorVertexHasHint: false,
+            editorVertexHasBalloon: false,
+            editorVertexBalloonPanelMaxMapArea: Infinity,
+            editorVertexBalloonContentLayout: balloonContentLayout,
+            editorVertexHintContentLayout: hintContentLayout,
+            editorEdgeBalloonMinHeight: 200,
+            editorEdgeHintHoldByMouse: false,
+            geodesic: true,
+            editorHideGuideLinesOnVertexHover: false,
+            editorMenuManager: function (menuItems, vertexModel) {
+                var pathModel = vertexModel.getParent(),
+                        pathIndex = pathModel.getIndex();
+                if (pathIndex) {
+                    menuItems.push({
+                        title: "Сделать полигон на основе контура",
+                        onClick: function () {
+                            map.geoObjects.add(
+                                    new ymaps.Polygon([polygon.geometry.getCoordinates()[pathIndex].slice()
+                                    ])
+                            );
+                        }
+                    });
+                }
+                return menuItems;
+            }
+        });
+        polygon.options.set("editorHideGuideLinesOnVertexHover", true);
+        map.geoObjects.add(polygon);
+    }
+
+    function destroyPolygon() {
+        polygon.editor.stopEditing();
+        map.geoObjects.remove(polygon);
+    }
+}
+
+
+</script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>
+

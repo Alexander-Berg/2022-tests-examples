@@ -1,0 +1,74 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - agaibura
+      - w495
+      groups: []
+labels:
+  order: '10000000'
+config_mode: easy2
+---
+l7_upstream_macro:
+  version: 0.3.0
+  id: marker-checker_dev
+  matcher:
+    host_re: dev.marker-checker.education.yandex.net
+  headers:
+  - create:
+      target: X-Start-Time
+      func: starttime
+  - create:
+      target: X-Forwarded-For-Y
+      func: realip
+      keep_existing: true
+  - create:
+      target: X-Yandex-TCP-Info
+      func: tcp_info
+  - log:
+      target_re: .*
+  response_headers:
+  - create:
+      target: X-Start-Time
+      func: starttime
+  - create:
+      target: X-Forwarded-For-Y
+      func: realip
+      keep_existing: true
+  - create:
+      target: X-Req-Id
+      func: reqid
+  - create:
+      target: X-Market-Req-Id
+      func: market_reqid
+  - create:
+      target: X-Local-Ip
+      func: localip
+  - create:
+      target: X-Yandex-TCP-Info
+      func: tcp_info
+  - log:
+      target_re: .*
+  flat_scheme:
+    balancer:
+      backend_timeout: 10s
+      connect_timeout: 100ms
+      attempts: 3
+      fast_attempts: 2
+      retry_http_responses:
+        codes:
+        - 5xx
+        - 429
+        on_last_failed_retry: PROXY_RESPONSE_AS_IS
+      max_reattempts_share: 0.2
+      max_pessimized_endpoints_share: 0.2
+      health_check:
+        delay: 10s
+        request: 'GET /monitoring/ping/ HTTP/1.1\nHost: dev.marker-checker.education.yandex.net\n\n'
+    backend_ids:
+    - education-marker-checker-dev
+    on_error:
+      rst: false
+      static:
+        status: 504
+        content: Service is temporarily unavailable

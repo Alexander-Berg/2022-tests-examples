@@ -1,0 +1,62 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - dancingqueue
+      - bulatman
+      - mikari
+      - lazuka23
+      - nanny-robot
+      groups: []
+config_transport:
+  nanny_static_file:
+    service_id: rtc_balancer_bigb-eagle-balancer-testing_vla
+    instance_tags:
+      ctype: prod
+      itype: balancer
+      prj: bigb-eagle-balancer-testing
+---
+instance_macro:
+  workers: 12
+  sd: {}
+  unistat:
+    hide_legacy_signals: true
+  sections:
+    admin:
+      ips: [127.0.0.1, '::1']
+      ports: [81]
+      modules:
+        - http: {}
+        - admin: {}
+    datagram_section:
+      ips: ['*']
+      ports: [85]
+      extended_http_macro:
+        port: 85
+        maxlen: 65536
+        maxreq: 65536
+        modules:
+          - regexp:
+              include_upstreams:
+                type: BY_ID
+                ids: [datagram]
+    web_section:
+      ips: ['*']
+      ports: [80, 83, 84]
+      extended_http_macro:
+        port: 80
+        maxlen: 65536
+        maxreq: 65536
+        modules:
+          - prefix_path_router:
+              sections:
+                datagram:
+                  route: "/write_user_storage"
+                  shared:
+                      uuid: datagram_on_datagram_port
+                default:
+                  modules:
+                    - regexp:
+                        include_upstreams:
+                          type: BY_ID
+                          ids: [web]

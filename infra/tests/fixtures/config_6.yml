@@ -1,0 +1,121 @@
+---
+instance_macro:
+  buffer: 65536
+  maxconn: 1000
+  workers: 1
+  log_dir: /place/db/www/logs/
+  enable_reuse_port: true
+  sections:
+    admin:
+      ips: [127.0.0.1, '::1']
+      ports: [16060]
+      http:
+        maxlen: 65536
+        maxreq: 65536
+        admin: {}
+    stats_storage:
+      ips: [127.0.0.4]
+      ports: [16060]
+      modules:
+        - report:
+            uuid: "service_total"
+            ranges: "default"
+            just_storage: true
+        - http:
+            maxlen: 65536
+            maxreq: 65536
+        - errordocument:
+            status: 200
+    local_ips_16060:
+      ips: [local_v4_addr, local_v6_addr]
+      ports: [16060]
+      stats_attr: "http"
+      extended_http_macro:
+        port: 16060
+        maxlen: 65536
+        maxreq: 65536
+        keepalive: true
+        modules:
+          - headers:
+              create_func:
+                X-Real-IP: realip
+              create_func_weak:
+                X-Forwarded-For: realip
+                X-Req-Id: reqid
+                X-Scheme: scheme
+                X-Source-Port: realport
+          - regexp:
+              include_upstreams:
+                type: ALL
+    local_ips_16061:
+      ips: [local_v4_addr, local_v6_addr]
+      ports: [16061]
+      stats_attr: "https"
+      modules:
+        - errorlog:
+            log: /place/db/www/logs/current-error_log-balancer-16061
+            log_level: ERROR
+        - ssl_sni:
+            force_ssl: true
+            contexts:
+              default:
+                cert: /dev/shm/balancer/allCAs-exp.yandex-team.ru.pem
+                priv: /dev/shm/balancer/priv/exp.yandex-team.ru.pem
+                ocsp: ./ocsp/allCAs-exp.yandex-team.ru.der
+                log: /place/db/www/logs/current-ssl_sni-balancer-16061
+                ticket_keys:
+                  - {keyfile: /dev/shm/balancer/priv/1st.exp.yandex-team.ru.key}
+                  - {keyfile: /dev/shm/balancer/priv/2nd.exp.yandex-team.ru.key}
+                  - {keyfile: /dev/shm/balancer/priv/3rd.exp.yandex-team.ru.key}
+        - http:
+            maxlen: 65536
+            maxreq: 65536
+            keepalive: true
+            no_keepalive_file: ./controls/keepalive_disabled
+        - accesslog:
+            log: /place/db/www/logs/current-access_log-balancer-16061
+        - report:
+            uuid: https
+            refers: service_total
+            ranges: default
+            just_storage: false
+        - headers:
+            create_func:
+              X-Real-IP: realip
+            create_func_weak:
+              X-Forwarded-For: realip
+              X-Req-Id: reqid
+              X-Scheme: scheme
+              X-Source-Port: realport
+        - hasher:
+            mode: subnet
+            take_ip_from: 'X-Real-IP'
+        - h100: {}
+        - cutter: {}
+        - antirobot:
+            checker:
+              modules:
+                - report:
+                    uuid: antirobot
+                    ranges: default
+                    just_storage: false
+                - stats_eater: {}
+                - balancer2:
+                    attempts: 2
+                    hashing: {}
+                    generated_proxy_backends:
+                      proxy_options:
+                        backend_timeout: 100ms
+                        buffering: false
+                        connect_timeout: 30ms
+                        fail_on_5xx: true
+                        keepalive_count: 1
+                        keepalive_timeout: 10s
+                        status_code_blacklist: [4xx, 5xx]
+                        status_code_blacklist_exceptions: [403]
+                      gencfg_groups:
+                        - name: MSK_ANTIROBOT_ANTIROBOT
+                          version: 'tags/stable-92-r105'
+        - regexp:
+            include_upstreams:
+              type: ALL

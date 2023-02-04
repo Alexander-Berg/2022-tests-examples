@@ -1,0 +1,47 @@
+---
+
+- name: Role for test focal
+  hosts: docker-167-sas.prod.vertis.yandex.net
+  serial: 1
+  become: true
+  vars_files:
+    - vars/golp_driver.yml
+  vars:
+    locale_lang: en_US.UTF-8
+    dp_environment: testing
+    autoenv: 'test'
+    docker_bridge_subnet_v6: 'fd00:bc:1::/64'
+    group: 'vertis_test_docker'
+    deb_consul_ver: 1.9.5-2-vertis1
+    deb_nomad_ver: 1.1.2-vertis2+1628521794
+    deb_sub_zero_ver: 0.0.10-1616776451
+
+  roles:
+    - common-packages
+#    - { role: common-role }
+    - { role: consul-dns, tags: "consul-dns" }
+    - { role: filebeat7 }
+    - { role: deploy-primary-secret }
+    - { role: vertis-datasources-secrets, tags: "vertis-datasources-secrets" }
+    - { role: docker }
+# do not configure docker and nomad 
+#    - { role: docker-gc }
+#    - { role: golp-driver, driver_versions_list: "{{ golp_logging_driver.testing }}" }
+#    - { role: nomad-clients }
+#    - { role: hw-watcher-walle-config, when: tags.walle is defined }
+    - { role: sub-zero, tags: "sub-zero" }
+
+  tasks:
+    - name: 'Installing packages'
+      apt:
+        name: "{{ packages }}"
+        state: present
+      vars:
+        packages:
+        - libgeobase6=6.0-28
+        - libgeobase6-abi=6.0-28
+        - libgeobase6-nodejs=6.0-28
+        - p2p-distribution=1.0-33
+        - yandex-vertis-tzdata=1.0.0+1645427053
+        - yandex-vertis-geodata6=1.0.0+1639477789
+      tags: [ 'pkg' ]

@@ -1,0 +1,84 @@
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      uri: '/api/recommender/boards(/.*)?'
+  modules:
+    - report:
+        uuid: recommender_boards
+        ranges: default
+    - balancer2:
+        attempts: 1
+        by_name_policy:
+          name: !f get_geo("recommenderboards_", "random")
+          unique_policy: {}
+        rr: {weights_file: ./controls/traffic_control.weights}
+        backends:
+        - weight: 1
+          name: recommenderboards_sas
+          modules:
+            - report: {ranges: default, uuid: requests_recommender_boards_to_sas}
+            - balancer2:
+                attempts: 1
+                active: {
+                    steady: false,
+                    request: 'GET /health HTTP/1.1\r\nHost: pdb.yandex.ru\r\n\r\n',
+                    delay: 500ms
+                }
+                generated_proxy_backends:
+                  proxy_options:
+                    backend_timeout: 100ms
+                    connect_timeout: 35ms
+                    keepalive_count: 1
+                  include_backends:
+                    type: BY_ID
+                    ids: [pdb_recommender_boards_prod_sas]
+        - weight: 1
+          name: recommenderboards_man
+          modules:
+            - report: {ranges: default, uuid: requests_recommender_boards_to_man}
+            - balancer2:
+                attempts: 1
+                active: {
+                    steady: false,
+                    request: 'GET /health HTTP/1.1\r\nHost: pdb.yandex.ru\r\n\r\n',
+                    delay: 500ms
+                }
+                generated_proxy_backends:
+                  proxy_options:
+                    backend_timeout: 100ms
+                    connect_timeout: 35ms
+                    keepalive_count: 1
+                  include_backends:
+                    type: BY_ID
+                    ids: [pdb_recommender_boards_prod_man]
+        - weight: 1
+          name: recommenderboards_vla
+          modules:
+            - report: {ranges: default, uuid: requests_recommender_boards_to_vla}
+            - balancer2:
+                attempts: 1
+                active: {
+                    steady: false,
+                    request: 'GET /health HTTP/1.1\r\nHost: pdb.yandex.ru\r\n\r\n',
+                    delay: 500ms
+                }
+                generated_proxy_backends:
+                  proxy_options:
+                    backend_timeout: 100ms
+                    connect_timeout: 35ms
+                    keepalive_count: 1
+                  include_backends:
+                    type: BY_ID
+                    ids: [pdb_recommender_boards_prod_vla]
+        - weight: -1
+          name: recommenderboards_devnull
+          modules:
+            - report:
+                uuid: requests_recommender_boards_to_devnull
+                ranges: 1ms
+            - errordocument:
+                status: 204
+        on_error:
+          modules:
+          - errordocument: {status: 500}

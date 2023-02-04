@@ -1,0 +1,143 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - robot-edu-infra
+      groups: []
+labels:
+  order: '10000000'
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      host: 'ke-2586909\\.stands\\.schoolbook\\.yandex\\.ru'
+  modules:
+    - meta: {id: awacs-logs, fields: {upstream: ke-2586909-kelvin-stand}}
+    - regexp:
+        sections:
+          cm:
+            matcher:
+              match_fsm:
+                uri: '/cm/(.*)?'
+            modules:
+              - rewrite:
+                  actions:
+                    - regexp: '/cm/(.*)'
+                      rewrite: '/%1'
+              - balancer2:
+                  attempts: 2
+                  attempts_rate_limiter:
+                    limit: 0.2
+                  rr: { }
+                  generated_proxy_backends:
+                    proxy_options:
+                      backend_timeout: 60s
+                    include_backends:
+                      type: BY_ID
+                      ids: [ ke-2586909-kelvin-stand.cm ]
+                  on_error:
+                    errordocument:
+                      status: 504
+                      content: 'Service unavailable [awacs]'
+          admin:
+            matcher:
+              match_fsm:
+                uri: '/admin(.*)?'
+            modules:
+              - balancer2:
+                  attempts: 2
+                  attempts_rate_limiter:
+                    limit: 0.2
+                  rr: { }
+                  generated_proxy_backends:
+                    proxy_options:
+                      backend_timeout: 60s
+                    include_backends:
+                      type: BY_ID
+                      ids: [ ke-2586909-kelvin-stand.admin ]
+                  on_error:
+                    errordocument:
+                      status: 504
+                      content: 'Service unavailable [awacs]'
+          admin-static:
+            matcher:
+              match_fsm:
+                uri: '/static/admin(.*)?'
+            modules:
+              - balancer2:
+                  attempts: 2
+                  attempts_rate_limiter:
+                    limit: 0.2
+                  rr: { }
+                  generated_proxy_backends:
+                    proxy_options:
+                      backend_timeout: 60s
+                    include_backends:
+                      type: BY_ID
+                      ids: [ ke-2586909-kelvin-stand.admin ]
+                  on_error:
+                    errordocument:
+                      status: 504
+                      content: 'Service unavailable [awacs]'
+          api-v3:
+            matcher:
+              match_fsm:
+                uri: '/api/v3(.*)?'
+            modules:
+              - balancer2:
+                  attempts: 2
+                  attempts_rate_limiter:
+                    limit: 0.2
+                  rr: { }
+                  generated_proxy_backends:
+                    proxy_options:
+                      backend_timeout: 60s
+                    include_backends:
+                      type: BY_ID
+                      ids: [ ke-2586909-kelvin-stand.api-v3 ]
+                  on_error:
+                    errordocument:
+                      status: 504
+                      content: 'Service unavailable [awacs]'
+          time:
+            matcher:
+              match_fsm:
+                uri: '/time/(.*)?'
+            modules:
+              - rewrite:
+                  actions:
+                    - regexp: '/time/(.*)'
+                      rewrite: '/%1'
+              - balancer2:
+                  attempts: 2
+                  attempts_rate_limiter:
+                    limit: 0.2
+                  rr: { }
+                  generated_proxy_backends:
+                    proxy_options:
+                      backend_timeout: 60s
+                    include_backends:
+                      type: BY_ID
+                      ids: [ schoolbook-kelvin-api-dev.kelvin-time-getter ]
+                  on_error:
+                    errordocument:
+                      status: 504
+                      content: 'Service unavailable [awacs]'
+          api:
+            matcher: { }
+            modules:
+              - balancer2:
+                  attempts: 2
+                  attempts_rate_limiter:
+                    limit: 0.2
+                  rr: { }
+                  generated_proxy_backends:
+                    proxy_options:
+                      backend_timeout: 60s
+                    include_backends:
+                      type: BY_ID
+                      ids: [ ke-2586909-kelvin-stand.api ]
+                  on_error:
+                    errordocument:
+                      status: 504
+                      content: 'Service unavailable [awacs]'

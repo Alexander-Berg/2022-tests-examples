@@ -1,0 +1,128 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Кластер: смена пресета меток кластера
+
+Description:
+Проверка двойной смены пресета меток кластера.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+clusterer
+
+Estimated time:
+120000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Дождаться загрузки карты и осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан Москвы с метками коллекций и кластерными метками(метки коллекций синие, кластерные метки - зеленые).
+  При загрузке через 3 секунды происходит смена пресета кластерных меток, они становятся синими, метки коллекций и метки кластеров не пропадают со спана карты. 
+  
+Step:
+  Action:
+  Навести курсор на все метки коллекций и кластерные метки на спане карты. 
+
+  Expectation:
+  При наведении на метку коллекций курсор - палец, метка меняет цвет на фиолетовый, при перемещении курсора с метки метка становится розовой.
+  При наведении на метку кластера курсор - палец, метка меняет пресет, становясь зеленой, при перемещении курсора с метки снова меняет пресет, становясь розовой.
+  Метки после смены цвета/пресета не пропадают со спана карты.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 10,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            addGrid(myMap);
+            __log__('Test case: После быстрой смены пресета и смены пресета при наведении не должны пропадать метки');
+
+            var clusterer = new ymaps.Clusterer({disableClickZoom: true, preset: 'islands#invertedGreenClusterIcons'});
+            var placemarksNumber = 200;
+            var bounds = map.getBounds();
+            var newPlacemarks = createGeoObjects(placemarksNumber, bounds);
+            clusterer.add(newPlacemarks);
+            map.geoObjects.add(clusterer);
+
+            clusterer.events.add('mouseenter', function (e) {
+                var target = e.get('target'),
+                        type = e.get('type');
+                if (typeof target.getGeoObjects != 'undefined') {
+                    target.options.set('preset', 'islands#invertedPinkClusterIcons');
+                    target.options.set('preset', 'islands#invertedGreenClusterIcons');
+                } else {
+                    target.options.set('preset', 'islands#pinkIcon');
+                    target.options.set('preset', 'islands#violetIcon');
+                }
+            });
+            clusterer.events.add('mouseleave', function (e) {
+                var target = e.get('target'),
+                        type = e.get('type');
+                if (typeof target.getGeoObjects != 'undefined') {
+                    target.options.set('preset', 'islands#invertedGreenClusterIcons');
+                    target.options.set('preset', 'islands#invertedPinkClusterIcons');
+                } else {
+                    target.options.set('preset', 'islands#violetIcon');
+                    target.options.set('preset', 'islands#pinkIcon');
+                }
+            });
+            //MAPSAPI-9630
+            var i = 0;
+            setTimeout(function () {
+                (function recursion() {
+                    setTimeout(function () {
+                        clusterer.options.set('preset', 'islands#yellowClusterIcons');
+
+                        setTimeout(function () {
+                            clusterer.options.set('preset', 'islands#blueClusterIcons');
+                            i += 1;
+                            if (i < 15) recursion();
+                        });
+                    });
+                }())
+            }, 3000)
+            function createGeoObjects(number, bounds) {
+                var placemarks = [];
+                // Создаем нужное количество меток
+                for (var i = 0; i < number; i++) {
+                    // Генерируем координаты метки случайным образом.
+                    var coordinates = getRandomCoordinates(bounds);
+                    // Создаем метку со случайными координатами.
+                    var myPlacemark = new ymaps.Placemark(coordinates, {
+                        balloonContent: i, hintContent: i, clusterCaption: i}, {});
+                    placemarks.push(myPlacemark);
+                }
+                return placemarks;
+            }
+
+            function getRandomCoordinates(bounds) {
+                var size = [bounds[1][0] - bounds[0][0], bounds[1][1] - bounds[0][1]];
+                return [Math.random() * size[0] + bounds[0][0], Math.random() * size[1] + bounds[0][1]];
+            }
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

@@ -1,0 +1,157 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Даблклик: опции анимации и центрирования карты 
+
+Description:
+Проверяем поведение опций анимации и центрирования карты при даблклике.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components:
+behavior
+
+Estimated time:
+240000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась.
+  На карте спан Москвы.
+  Сверху имеются кнопки "duration", "centering". 
+  
+Step:
+  Action:
+  Выполнить клик в кнопку "duration".
+  Выполнить даблклик в спан карты.
+
+  Expectation:
+  Кнопка становится активной - окрашена в желтый.
+  При даблклике происходит зум карты, при этом отсутсвует анимация, переход при зуме не плавный а скачком.
+  Под контейнером с картой появляется текущее значение zoom: 11.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "duration".
+  Выполнить даблклик в спан карты.
+
+  Expectation:
+  Кнопка становится неактивной - окрашена в белый.
+  При даблклике происходит зум карты, при этом присутсвует замедленная анимация, переход при зуме плавный.
+  Под контейнером с картой появляется текущее значение zoom: 12.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "centering".
+  Выполнить даблклик в верхний правый угол спана карты.
+
+  Expectation:
+  Кнопка становится активной - окрашена в желтый.
+  При даблклике происходит призум, при этом спан карты смещается в сторону области где произошел даблклик. 
+  При призуме и перемещении спана анимация замедленная, плавная.
+  Под контейнером с картой появляется текущее значение zoom: 13.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "duration".
+  Выполнить клик в кнопку "centering".
+  Выполнить даблклик в нижний левый угол спана карты.
+
+  Expectation:
+  Кнопка "duration" становится активной - окрашена в желтый.
+  Кнопка "centering" становится неактивной - окрашена в белый.
+  При даблклике происходит призум, при этом центром спана карты становится точка, где произошел даблклик.
+  Призум и перемещение спана происходит скачком, анимация отсуствует.
+  Под контейнером с картой появляется текущее значение zoom: 14.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "duration".
+  Выполнить даблклик в верхний левый угол спана карты.
+
+  Expectation:
+  Кнопка "duration" становится неактивной - окрашена в белый.
+  При даблклике происходит призум, при этом центром спана карты становится точка, где произошел даблклик.
+  Призум и перемещение спана происходит плавно и замедленно, анимация имеется.
+  Под контейнером с картой появляется текущее значение zoom: 15.
+
+Step:
+  Action:
+  Выполнить 15 кликов в контрол масштабирования "-".
+
+  Expectation:
+  Происходит корректный отзум карты: карта не мигает, не пропадает.
+  Контрол масштабирования "-" становится неактивным.
+  Под контейнером с картой в столбик появляются текущее значение zoom(после 15 клика 0).
+
+Step:
+  Action:
+  Выполнить дабл клик в спан карты.
+
+  Expectation:
+  При даблклике происходит призум.
+  Призум и перемещение спана происходит плавно и замедленно, анимация имеется.
+  Под контейнером с картой появляется текущее значение zoom: 1.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 10,
+                behaviors: ['dblClickZoom'],
+                controls: ['zoomControl']
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+            __log__("Проверить опции centering и duration для dblclick zoom");
+
+            var centeringButton = new ymaps.control.Button('centering');
+            centeringButton.events
+                    .add('select', function() {
+                        map.behaviors.get('dblClickZoom').options.set('centering', false);
+                    })
+                    .add('deselect', function() {
+                        map.behaviors.get('dblClickZoom').options.set('centering', true);
+                    });
+
+            var durationButton = new ymaps.control.Button('duration');
+            durationButton.events
+                    .add('select', function() {
+                        map.behaviors.get('dblClickZoom').options.set('duration', '0');
+                    })
+                    .add('deselect', function() {
+                        map.behaviors.get('dblClickZoom').options.set('duration', '1000');
+                    });
+
+            map.controls
+                    .add(centeringButton)
+                    .add(durationButton);
+
+            map.events.add('boundschange', function(){
+                log.info(map.getZoom());
+            })
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

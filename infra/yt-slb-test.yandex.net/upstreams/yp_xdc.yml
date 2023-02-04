@@ -1,0 +1,84 @@
+auth:
+  staff:
+    owners:
+      logins: []
+      groups:
+      - svc_yt_administration
+labels:
+  order: '20032'
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      host: (idm\\.)?yp-xdc\\.yt\\.yandex(\\.net|-team\\.ru)(:\\d+)?
+  modules:
+  - report:
+      uuid: yp-xdc
+      ranges: default
+      events:
+        stats: report
+  - headers:
+      create:
+        X-YT-Omit-Trailers: 'true'
+      create_func_weak:
+        X-Forwarded-For-Y: realip
+        X-Scheme: scheme
+        X-Source-Port-Y: realport
+  - regexp:
+      sections:
+        post_method:
+          matcher:
+            match_fsm:
+              match: (POST|PUT).*
+          modules:
+          - balancer2:
+              attempts: 1
+              connection_attempts: !f 'count_backends()'
+              active:
+                request: 'GET /ping/ HTTP/1.1\nHost: yp-xdc.yt.yandex.net\n\n'
+                delay: 1s
+                steady: false
+              unique_policy: {}
+              generated_proxy_backends:
+                proxy_options:
+                  connect_timeout: 5s
+                  backend_timeout: 600s
+                  fail_on_5xx: false
+                include_backends:
+                  type: BY_ID
+                  ids:
+                  - yp_xdc_control_proxy
+              on_error:
+                errordocument:
+                  status: 503
+                  file: ./503.json
+                  remain_headers: X-Req-Id
+        default:
+          matcher: {}
+          modules:
+          - balancer2:
+              attempts: 3
+              active:
+                request: 'GET /ping/ HTTP/1.1\nHost: yp-xdc.yt.yandex.net\n\n'
+                delay: 5s
+                steady: false
+              retry_policy:
+                unique_policy: {}
+              generated_proxy_backends:
+                proxy_options:
+                  connect_timeout: 5s
+                  backend_timeout: 600s
+                  keepalive_count: 16
+                  fail_on_5xx: false
+                  status_code_blacklist:
+                  - '503'
+                include_backends:
+                  type: BY_ID
+                  ids:
+                  - yp_xdc_control_proxy
+              on_error:
+                errordocument:
+                  status: 503
+                  file: ./503.json
+                  remain_headers: X-Req-Id
+              disable_attempts_rate_limiter: true

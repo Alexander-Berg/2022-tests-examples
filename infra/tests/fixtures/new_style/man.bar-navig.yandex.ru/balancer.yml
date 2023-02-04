@@ -1,0 +1,72 @@
+---
+instance_macro:
+  workers: !f get_workers()
+  maxconn: 8000
+  tcp_congestion_control: bbr
+  sections:
+    admin:
+      ips: [127.0.0.1, '::1']
+      ports: [9200]
+      modules:
+        - http: {}
+        - admin: {}
+    stats_storage:
+      ips: [127.0.0.4]
+      ports: [9200]
+      modules:
+        - report:
+            uuid: 'service_total'
+            ranges: 'default'
+            just_storage: true
+        - http: {}
+        - errordocument:
+            status: 204
+    https_section:
+      ips: [
+        '93.158.134.75',
+        '213.180.193.75',
+        '2a02:6b8::75',
+        '77.88.21.75',
+        '87.250.251.75',
+        '87.250.250.75',
+        '213.180.204.75'
+      ]
+      ports: [443]
+      local_ips: [local_v4_addr, local_v6_addr]
+      local_ports: [9201]
+      extended_http_macro:
+        port: 9201
+        report_uuid: 'https'
+        enable_ssl: true
+        ssl_sni_contexts:
+          bar-navig.yandex.ru:
+            servername_regexp: default
+        modules:
+          - shared:
+              uuid: 'upstreams'
+    http_section:
+      ips: [
+        '93.158.134.75',
+        '213.180.193.75',
+        '2a02:6b8::75',
+        '77.88.21.75',
+        '87.250.251.75',
+        '87.250.250.75',
+        '213.180.204.75'
+      ]
+      ports: [80]
+      local_ips: [local_v4_addr, local_v6_addr]
+      local_ports: [9200]
+      extended_http_macro:
+        port: 9200
+        report_uuid: 'http'
+        modules:
+          - shared:
+              uuid: 'upstreams'
+          - regexp:
+              include_upstreams:
+                filter:
+                  any: true
+                order:
+                  label:
+                    name: order

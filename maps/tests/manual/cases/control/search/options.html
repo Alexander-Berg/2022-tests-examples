@@ -1,0 +1,160 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Контрол: получения и установка опций поискового контрола
+
+Description:
+Проверка получения и установки опций контрола поиска.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+control
+
+Estimated time:
+120000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан Московской обласи, на спане сверху слева кнопки "unset", "unsetAll", поисковый инпут с желтой кнопкой "Найти". 
+  Под кнопкой "unset" контрол фулскрин.
+  Под контейнером с картой имеется блок логов, под каждой строкой должен быть текст "Ок" и отсутсвовать логи с ошибками.
+
+Step:
+  Action:
+  Ввести в поисковый инпут "мавзолей", выполнить клик в "Найти".
+
+  Expectation:
+  При вводе значений, или после ввода под инпутом выпадает саджест с поисковыми подсказками.
+  После клика в "Найти" происходит смена спана карты, в центре нового спана открывается балун с карточкой: "кладбище-мавзолей Советских воинов; Польша, городская гмина Варшава, район Мокотув".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "unset".
+
+  Expectation:
+  Cпан карты без изменений, балун с карточкой открыт.
+  В контейнере сверху слева появляется кнопка "test", сверху справа кнопки (слева-направо):"unset", "unsetAll", контрол "Найти"(внешний вид контрола изменился, контрол стал кнопкой), контрол фулскрин.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "unsetAll".
+
+  Expectation:
+  Cпан карты без изменений, балун с карточкой открыт.
+  В контейнере меняется расположение кнопок сверху(слева-направо): поисковый контрол "Найти"(контрол переместился влево); С правой стороны: кнопки "unset", "unsetAll", контрол фулскрин.
+
+Step:
+  Action:
+  Выполнить клик в контрол "Найти".
+
+  Expectation:
+  Сверху по всей ширине контейнера выпадает плашка с поисковым инпутом с кнопкой "Найти" и кнопкой сворачивания плашки. 
+  В инпуте значение "мавзолей".
+-->
+<html>
+<head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            var myMap = new ym.Map('map', {
+                        center: [55.73259667357658, 37.70153663432529],
+                        zoom: 9,
+                        behaviors: ['default', 'scrollZoom'],
+                        controls: ['fullscreenControl']
+                    }),
+                    log = new Log();
+
+            addGrid(myMap);
+
+            var search1 = new ymaps.control.SearchControl({
+                options: {
+                    float: 'right',
+                    size: 'small'
+                }
+            });
+
+            myMap.controls.add(search1);
+
+            setTimeout(function () {
+                __log__("search1.options.get('float')");
+                validateValue(search1.options.get('float'), 'right');
+                __log__("search1.options.getName()");
+                validateValue(search1.options.getName(), 'searchControl');
+                __log__("search1.options.getNative('size')");
+                validateValue(search1.options.getNative('size'), 'small');
+                __log__("search1.options.getParent()");
+                validateClass(search1.options.getParent(), Object);
+                __log__("search1.options.getAll()");
+                validateClass(search1.options.getAll(), Object);
+            }, 100);
+
+            var button = new ymaps.control.Button('test');
+
+            __log__('get size: ' + search1.options.get('size'));
+            validateValue(search1.options.get('size'), 'small');
+            __log__('getName: ' + search1.options.getName());
+            validateValue(search1.options.getName(), 'searchControl');
+            __log__('getParent: ' + search1.options.getParent());
+            validateValue(search1.options.getParent(), '[object Object]');
+            __log__('');
+
+            setTimeout(function () {
+
+                __log__('');
+                __log__('Changing new size to large...');
+                search1.options.set('size', 'large');
+                __log__('size: ' + search1.options.get('size'));
+                validateValue(search1.options.get('size'), 'large');
+
+                __log__('setParent:');
+                search1.options.setParent(button.options.getParent());
+                __log__(search1.options.getParent());
+                validateValue(search1.options.getParent(), '[object Object]');
+
+                __log__('setName:');
+                search1.options.setName(search1.options.getName());
+                __log__(search1.options.getName());
+                validateValue(search1.options.getName(), 'searchControl');
+            }, 500);
+
+            var unsetButton = new ymaps.control.Button({data: {content: 'unset'}, options: {selectOnClick: false}});
+            unsetButton.events.add('click', function () {
+                search1.options.unset('size');
+                __log__('size');
+                __log__(search1.options.get('size'));
+                validateValue(search1.options.get('size'), undefined);
+            });
+
+            var unsetAllButton = new ymaps.control.Button({data: {content: 'unsetAll'}, options: {selectOnClick: false}});
+            unsetAllButton.events.add('click', function () {
+                search1.options.unsetAll();
+                __log__('float');
+                __log__(search1.options.get('float'));
+                validateValue(search1.options.get('float'), 'left');
+            });
+
+            myMap.controls
+                    .add(button)
+                    .add(unsetButton, { float: 'right'})
+                    .add(unsetAllButton, { float: 'right'});
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

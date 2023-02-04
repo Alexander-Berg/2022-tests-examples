@@ -1,0 +1,59 @@
+source tasks_search
+{
+    type = mysql
+    sql_host = 127.0.0.1
+    sql_user = auto
+    sql_pass = KiX1euph
+    sql_db =
+    sql_port = 1401
+
+    sql_query_pre = SET NAMES utf8
+
+    sql_query_range = SELECT MIN(id), MAX(id) FROM helpdesk5.tasks
+    sql_range_step = 5000
+
+    sql_query = SELECT t.id, t.id_hash, t.from_email, t.from_phone, t.question, tl.message, u.email \
+                FROM helpdesk5.tasks t \
+                LEFT JOIN helpdesk5.talk tl ON tl.task_id = t.id \
+                LEFT JOIN users.user u ON u.id = t.from_user_id \
+                WHERE t.id >= $start AND t.id <= $end
+
+    sql_query_info = SELECT * FROM helpdesk5.tasks WHERE id = $id
+}
+
+index tasks_search
+{
+    type          = plain
+    source = tasks_search
+
+    path = /opt/sphinx_helpdesk/
+
+    docinfo         = extern
+    charset_type    = utf-8
+    html_strip      = 1
+
+    enable_star = 1
+    min_infix_len = 2
+}
+
+indexer
+{
+    mem_limit       = 1024MB
+}
+
+searchd
+{
+    listen          = 21334
+    max_batch_queries = 0
+
+    log             = /var/log/sphinx/searchd_helpdesk.log
+#    query_log       = /var/log/sphinx/query_helpdesk.log
+    pid_file        = /var/run/sphinx/searchd_helpdesk.pid
+    binlog_path     = /var/log/sphinx/helpdesk
+    read_timeout    = 5
+    max_children    = 0
+    max_matches     = 1000
+    unlink_old      = 1
+}
+
+

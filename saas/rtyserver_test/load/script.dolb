@@ -1,0 +1,136 @@
+#!/bin/bash
+usage()
+{
+cat << EOF
+usage: $0 options
+This script run dolbilo on this machine.
+OPTIONS:
+-h Show this message
+-a Ammo file
+-c Circular
+-k Use KeepAlive for d-executor
+-d Shooting duration in seconds (300 by default)
+-t Threads for fuckup regime (32 by default)
+-l Plan may be <fuckup|finger|rate as number> (fuckup by default)
+-s Host name (saas-searchproxy.yandex.net by default)
+-p Port (17000 by default)
+-b Dolbilka Binary path (./../ by default)
+-n Neher usage
+-u augmenturl
+EOF
+}
+
+HOST="saas-searchproxy.yandex.net"
+PORT=17000
+RATE=500
+RATE_PLAN=fuckup
+TIME=300
+THREADS=32
+AMMO_FILE=
+DOLB_PATH=
+KEEP_ALIVE=
+CIRCULAR=
+EXECUTOR=d-executor
+AUGMENT_URL=
+while getopts "hd:t:l:s:p:a:b:kncu:" OPTION;
+do
+    case $OPTION in
+        h|\?)
+            usage
+            exit 1
+            ;;
+        u)
+            AUGMENT_URL=$OPTARG
+            ;;
+        d)
+            TIME=$OPTARG
+            ;;
+        t)
+            THREADS=$OPTARG
+            ;;
+        l)
+            if [ $OPTARG == "fuckup" ]
+            then
+                echo "fuckup shooting"
+            elif [ $OPTARG == "finger" ]
+            then
+                RATE_PLAN=$OPTARG
+                echo "finger shooting"
+            else
+                RATE=$OPTARG
+                RATE_PLAN="plan"
+                echo "planned shot with rate = $RATE"
+            fi
+            ;;
+        n)
+            EXECUTOR=d-neher
+            ;;
+        k)
+            KEEP_ALIVE="-k"
+            ;;
+        s)
+            HOST=$OPTARG
+            ;;
+        c)
+            CIRCULAR="-c"
+            ;;
+        p)
+            PORT=$OPTARG
+            ;;
+        a)
+            AMMO_FILE=$OPTARG
+            ;;
+        b)
+            DOLB_PATH=$OPTARG
+            ;;
+    esac
+done
+
+if [ $AMMO_FILE == "" ]
+then
+    echo "Incorrect ammo file name"
+    exit 1
+fi
+
+TIME_OPT="-T $TIME"
+
+if [ $EXECUTOR == "d-neher" ]
+then
+    KEEP_ALIVE="-N http"
+fi
+
+mkdir data_$AMMO_FILE
+cd data_$AMMO_FILE
+
+echo "shooting time = $TIME"
+echo "aim = $HOST:$PORT"
+if [ $RATE_PLAN == "plan" ]
+then
+    echo "plan = $RATE_PLAN/$RATE"
+else
+    echo "plan = $RATE_PLAN/$THREADS"
+fi
+
+DETECTOR=$AMMO_FILE"_"$HOST"_"$PORT"_"$RATE"_"$RATE_PLAN"_"$THREADS"_"$AUGMENT_URL
+
+echo "detector = $DETECTOR"
+
+PLAN=plan_$DETECTOR
+OUT=out_$DETECTOR
+
+if [ ! -f $PLAN ];
+then
+    echo "planner..."
+    ${DOLB_PATH}d-planner -l ../$AMMO_FILE -t plain -o $PLAN -q $RATE -h $HOST -p $PORT
+    echo "planner...OK"
+else
+    echo "plan exists"
+fi
+echo "clean..."
+rm -rf $OUT
+echo "executor..."
+${DOLB_PATH}${EXECUTOR} -p $PLAN -o $OUT -s $THREADS -m $RATE_PLAN $TIME_OPT $KEEP_ALIVE $CIRCULAR --augmenturl=$AUGMENT_URL
+echo "executor...OK"
+echo "dumper..."
+${DOLB_PATH}d-dumper -f $OUT -a -m 0,10000,50000,100000,200000,2000000
+echo "dumper...OK"

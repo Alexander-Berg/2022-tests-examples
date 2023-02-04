@@ -1,0 +1,41 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - stewie
+      groups: []
+labels:
+  order: '10000001'
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      uri: '(/.*)?'
+  modules:
+    - headers:
+        create:
+            Host: browser-resources.s3.yandex.net
+    - response_headers:
+        create_weak:
+          Access-Control-Allow-Origin: '*'
+    - rewrite:
+        actions:
+          - regexp: '^/(.*)'
+            rewrite: '/old/%1'
+    - balancer2:
+        rr: {}
+        attempts: 1
+        generated_proxy_backends:
+            proxy_options:
+                fail_on_5xx: false
+                backend_timeout: 10s
+                connect_timeout: 70ms
+            instances:
+              - weight: 1
+                host: browser-resources.s3.yandex.net
+                port: 80
+        on_error:
+          modules:
+            - errordocument:
+                status: 504
+                content: 'Service unavailable'

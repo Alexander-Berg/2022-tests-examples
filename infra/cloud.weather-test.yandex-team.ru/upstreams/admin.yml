@@ -1,0 +1,36 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - dimastark
+      groups: []
+labels:
+  order: '10000000'
+config_mode: easy2
+---
+l7_upstream_macro:
+  version: 0.0.1
+  id: admin
+  matcher:
+    host_re: 'admin\.weather-test\.yandex-team\.ru'
+  rewrite:
+    - target: PATH
+      pattern:
+        re: '/?(admin/)?(.*)?'
+      replacement: '/admin/%2'
+  flat_scheme:
+    balancer:
+      attempts: 3
+      max_pessimized_endpoints_share: 0.5
+      max_reattempts_share: 0.3
+      retry_http_responses:
+        codes: [5xx]
+      connect_timeout: 1000ms
+      backend_timeout: 50s
+    backend_ids:
+      - weather_sas
+      - weather_iva
+    on_error:
+      static:
+        status: 504
+        content: 'Service unavailable'

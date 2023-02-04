@@ -1,0 +1,131 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Кластер: установка опций геобъектам 
+
+Description:
+Проверка отключения опций у геообъектов.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+clusterer
+
+Estimated time:
+90000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан Москвы с метками кластеров и метками коллекций.
+
+Step:
+  Action:
+  Поочередно навести курсор на 5 кластерных метки на спане карты.
+
+  Expectation:
+  При наведении на метку кластера ховер - курсор палец.
+  Появляется хинт "Мало меток"(на спане карты преимущественно кластера со значением меньше 10).
+
+Step:
+  Action:
+  Навести курсор на метку коллекций на спане карты.
+  Выполнить клик в метку коллекций.
+
+  Expectation:
+  При наведении на метку коллекции ховер - курсор палец, хинт не появляется.
+  При клике балун метки не появляется.
+
+Step:
+  Action:
+  Выполнить клик в метку кластера на спане карты.
+
+  Expectation:
+  Вместо кластерной метки открывается балун кластера.Просиходит смещение спана карты для открытия балуна.
+  Балун имеет две колонки: в левой список меток, в правой содержимое метки(заголовок - номер метки, тело - номер метки).
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 10,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+
+            log.info('If the object is out of cluster, it will not have balloon and hint.');
+            log.info('Options: geoObjectHasHint and geoObjectHasBalloon - false.');
+
+            var clusterer = new ymaps.Clusterer({
+                preset: 'islands#redClusterIcons',
+                disableClickZoom: true,
+                geoObjectHasHint: false,
+                geoObjectHasBalloon: false
+            });
+            var placemarksNumber = 200;
+            var bounds = map.getBounds();
+            var newPlacemarks = createGeoObjects(placemarksNumber, bounds);
+
+            clusterer.createCluster = function (center, geoObjects) {
+                var clusterPlacemark = ymaps.Clusterer.prototype.createCluster.call(this, center, geoObjects),
+                        geoObjectsLength = clusterPlacemark.getGeoObjects().length,
+                        hintContent;
+                if (geoObjectsLength < 10) {
+                    hintContent = 'Мало меток';
+                } else if (geoObjectsLength < 100) {
+                    hintContent = 'Нормально так меток';
+                } else {
+                    hintContent = 'Меток навалом';
+                }
+                clusterPlacemark.properties.set('hintContent', hintContent);
+                return clusterPlacemark;
+            };
+
+            // add 200 placemarks
+            clusterer.add(newPlacemarks);
+            map.geoObjects.add(clusterer);
+
+            function createGeoObjects(number, bounds) {
+                var placemarks = [];
+                // Создаем нужное количество меток
+                for (var i = 0; i < number; i++) {
+                    // Генерируем координаты метки случайным образом.
+                    var coordinates = getRandomCoordinates(bounds);
+                    // Создаем метку со случайными координатами.
+                    var myPlacemark = new ymaps.Placemark(coordinates, {
+                        balloonContent: i, hintContent: i, clusterCaption: i}, {});
+                    placemarks.push(myPlacemark);
+                }
+                return placemarks;
+            }
+
+            function getRandomCoordinates(bounds) {
+                var size = [bounds[1][0] - bounds[0][0], bounds[1][1] - bounds[0][1]];
+                return [Math.random() * size[0] + bounds[0][0], Math.random() * size[1] + bounds[0][1]];
+            }
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

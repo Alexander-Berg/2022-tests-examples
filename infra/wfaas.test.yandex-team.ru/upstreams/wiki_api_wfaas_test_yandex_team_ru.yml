@@ -1,0 +1,37 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - max-tyulin
+      groups: []
+labels:
+  order: '10000000'
+config_mode: easy2
+---
+l7_upstream_macro:
+  version: 0.0.1
+  id: wiki_api_wfaas_test_yandex_team_ru
+  matcher:
+    host_re: 'wiki-api-wfaas\.test\.yandex-team\.ru'
+  flat_scheme:
+    balancer:
+      attempts: 2
+      fast_attempts: 2
+      max_reattempts_share: 0.15
+      max_pessimized_endpoints_share: 0.2
+      health_check:
+        delay: 5s
+        request: 'GET /ping HTTP/1.1\nHost: wiki-api-wfaas.test.yandex-team.ru\n\n'
+      connect_timeout: 100ms
+      backend_timeout: 60s
+      keepalive_count: 10
+      retry_http_responses:
+        on_last_failed_retry: PROXY_RESPONSE_AS_IS
+        codes: [5xx]
+    backend_ids:
+      - wiki_api_wfaas_pods_sas
+      - wiki_api_wfaas_pods_vla
+    on_error:
+      static:
+        status: 504
+        content: 'Service is not available'

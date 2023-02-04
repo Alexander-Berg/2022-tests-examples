@@ -1,0 +1,133 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Util: собственный класс кнопки на основе наследования от базового класса кнопки
+
+Description:
+Проверка реализации собственного класса кнопки на основе наследования от базового класса кнопки.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components:
+util
+
+Estimated time:
+60000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть страницу и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно со спаном Москвы, тип карты - спутниковый снимок, сверху кнопка "Изменить тип карты".
+  Под контейнером с картой при загрузке блок данных, и 2 строки "OK: object is an instance of class", сообщения об ошибках отсутствуют.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "Изменить тип карты". 
+
+  Expectation:
+  Происходит смена типа карты на схему.
+  Карта отобразилась корректно, при смене отображения не было странных визуальных эффектов.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 10,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+
+            log.info('util.defineClass test: CustomControl class');
+            log.info('Instance of CustomControl class switches map type from map to satellite and vice versa.');
+
+            // Реализуем собственный класс кнопки на основе наследования от базового класса кнопки.
+            // Кнопка по нажатию переключает тип тайлов карты.
+            var CustomControl = ymaps.util.defineClass(function () {
+                // Задаем жесткий набор опций без возможности установки извне.
+                var data = {
+                    data: { content: 'Изменить тип карты' },
+                    options: {
+                        selectOnClick: false,
+                        maxWidth: 150
+                    }
+                };
+                CustomControl.superclass.constructor.call(this, data);
+            }, ymaps.control.Button, {
+                // Указываем список методов класса.
+
+                // Переопределяем методы кнопки enable и disable.
+                enable: function () {
+                    // Нужно обязательно вызывать методы базового класса,
+                    // чтобы не нарушить логику работы кнопки.
+                    CustomControl.superclass.enable.call(this);
+                    // Включаем и выключаем поведение кнопки.
+                    this.events.add('click', this.switchType, this);
+                },
+
+                disable: function () {
+                    this.events.remove('click', this.switchType, this);
+                    CustomControl.superclass.disable.call(this);
+                },
+
+                // Реализуем собственные методы.
+                switchType: function () {
+                    var map = this.getMap();
+                    if (map) {
+                        if (map.getType() == 'yandex#map') {
+                            this.setSatelliteMapType();
+                        } else {
+                            this.setSchemeMapType();
+                        }
+                    }
+                },
+
+                setSchemeMapType: function () {
+                    var map = this.getMap();
+                    if (map) {
+                        map.setType('yandex#map');
+                    }
+                },
+
+                setSatelliteMapType: function () {
+                    var map = this.getMap();
+                    if (map) {
+                        map.setType('yandex#satellite');
+                    }
+                }
+            });
+
+            // Создаем экземпляр нового класса и добавляем его на карту.
+            var typeSwitcherButton = new CustomControl();
+            // Код создания карты в данном примере был опущен.
+            map.controls.add(typeSwitcherButton);
+            // Вызываем метод экземпляра класса.
+            typeSwitcherButton.setSatelliteMapType();
+
+            validateClass(typeSwitcherButton, CustomControl);
+            validateClass(typeSwitcherButton, ymaps.control.Button);
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

@@ -1,0 +1,509 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - ftdebugger
+      - next0
+      - lifus
+      - anoh
+      - nanny-robot
+      groups: []
+config_transport:
+  nanny_static_file:
+    service_id: rtc_balancer_collections_test_yandex_ru_yp_man
+    instance_tags:
+      ctype: test
+      itype: balancer
+      prj: collections.test.yandex.ru
+---
+instance_macro:
+  version: 0.0.2
+  thread_mode: true
+  sd: {}
+  unistat: {}
+  workers: !f get_workers()
+  state_directory: /dev/shm/balancer-state
+  sections:
+    admin:
+      ips: [127.0.0.1, '::1']
+      ports:
+        - !f get_port_var('port')
+      modules:
+        - http: {}
+        - admin: {}
+    stats_storage:
+      ips: [127.0.0.4]
+      ports:
+        - !f get_port_var('port')
+      modules:
+        - report:
+            uuid: 'service_total'
+            ranges: 'default'
+            just_storage: true
+        - http: {}
+        - errordocument:
+            status: 204
+    https_section:
+      ips: ['*']
+      ports:
+        - 443
+      extended_http_macro:
+        report_uuid: 'https'
+        enable_ssl: true
+        force_ssl: true
+        ssl_sni_contexts:
+          collections.test.yandex.ru:
+            cert: !c collections.test.yandex.ru
+            servername_regexp: default
+            disable_ocsp: true
+        modules:
+          - threshold:
+              lo_bytes: 1048576
+              hi_bytes: 10485760
+              pass_timeout: 10s
+              recv_timeout: 1s
+          - headers:
+              create_func:
+                X-Forwarded-For-Y: realip
+                X-Collections-Req-Id: reqid
+              create_func_weak:
+                X-Req-Id: reqid
+                X-Forwarded-Host: host
+          - headers_forwarder:
+              actions:
+                - request_header: 'X-Req-Id'
+                  response_header: 'X-Req-Id'
+                  weak: true
+          - log_headers:
+              name_re: 'User-Agent|X-Req-Id|X-Forwarded-For-Y'
+              cookie_fields: ['yandexuid']
+          - response_headers:
+              delete: 'uWSGI-encoding|uwsgi-encoding'
+          - geobase_macro:
+              version: 0.0.3
+          - exp_getter_macro:
+              service_name: collections
+              testing_mode: {}
+              _version: 3
+          - regexp:
+              sections:
+                sshub:
+                  matcher:
+                    match_fsm:
+                      uri: (/sshub)?/api/subscription.*
+                  modules:
+                    - regexp:
+                        include_upstreams:
+                          type: BY_ID
+                          ids: [subscription_hub_api]
+                notifications:
+                  matcher:
+                    match_fsm:
+                      uri: /(global-notifications|bell/api)/.*
+                  modules:
+                    - regexp:
+                        include_upstreams:
+                          type: BY_ID
+                          ids: [notifications_pdb]
+                avatars:
+                  matcher:
+                    match_fsm:
+                      uri: /avatars/get-pdb.*
+                  modules:
+                    - regexp:
+                        include_upstreams:
+                          type: BY_ID
+                          ids: [avatars_pdb]
+                yastat:
+                  matcher:
+                    match_fsm:
+                      uri: /yastat/.*
+                  modules:
+                    - regexp:
+                        include_upstreams:
+                          type: BY_ID
+                          ids: [yastat_pdb]
+                download:
+                  matcher:
+                    match_fsm:
+                      uri: /collections/download/.*
+                  modules:
+                    - regexp:
+                        include_upstreams:
+                          type: BY_ID
+                          ids: [download_pdb]
+                comments_api:
+                  matcher:
+                    match_fsm:
+                      uri: /comments/api.*
+                  modules:
+                    - regexp:
+                        include_upstreams:
+                          type: BY_ID
+                          ids: [comments_api_pdb]
+                slbping:
+                  matcher:
+                    match_fsm:
+                      uri: /slb_ping
+                  modules:
+                    - slb_ping_macro:
+                        errordoc: true
+                awacs-balancer-health-check:
+                  matcher:
+                    match_fsm:
+                      uri: /awacs-balancer-health-check
+                  modules:
+                    - errordocument:
+                        status: 200
+                priemka:
+                  matcher:
+                    match_fsm:
+                      host: "priemka.collections.test.yandex.ru"
+                      # 11
+                      # host: "(collections-pull-[0-9]+.crowdtest.yandex.(ru|by|com|ua|kz|uz)|priemka.collections.test.yandex.ru)"
+                  modules:
+                    - response_headers:
+                        create:
+                          X-Section: 'https:priemka'
+                    - regexp:
+                        include_upstreams:
+                          filter:
+                            id_prefix: 'priemka_'
+                          order:
+                            label:
+                              name: order
+                priemka_pull:
+                  matcher:
+                    match_fsm:
+                      host: "collections-pull-[0-9]+.crowdtest.yandex.(ru|by|com|ua|kz|uz)"
+                  modules:
+                    - response_headers:
+                        create:
+                          X-Section: 'https:priemka-pull'
+                    - regexp:
+                        include_upstreams:
+                          filter:
+                            id_prefix_in:
+                              - 'pull_'
+                              - 'common_upstream'
+                          order:
+                            label:
+                              name: order
+                pull:
+                  matcher:
+                    match_fsm:
+                      host: "(fiji-)?pull-[0-9]+.collections.test.yandex.(ru|by|com|ua|kz|uz)"
+                  modules:
+                    - response_headers:
+                        create:
+                          X-Section: 'https:pull'
+                    - regexp:
+                        include_upstreams:
+                          filter:
+                            id_prefix_in:
+                              - 'pull_'
+                              - 'common_upstream'
+                              - 'common_internal_api'
+                          order:
+                            label:
+                              name: order
+                exp_testing:
+                  matcher:
+                    match_fsm:
+                      cgi: "(exp-testing=da|exp_confs=testing)"
+                      surround: true
+                  modules:
+                    - response_headers:
+                        create:
+                          X-Section: 'https:exp_testing'
+                    - shared:
+                        uuid: upstreams
+                    - regexp:
+                        include_upstreams:
+                          filter:
+                            id_prefix_in:
+                              - 'common_'
+                              - 'default_upstream_thefeed'
+                              - 'default_upstream_nodejs'
+                          order:
+                            label:
+                              name: order
+                default:
+                  matcher: {}
+                  modules:
+                    - response_headers:
+                        create:
+                          X-Section: 'https:default'
+                    - shared:
+                        uuid: upstreams
+    http_section:
+      ips: ['*']
+      ports:
+        - 80
+      extended_http_macro:
+        report_uuid: 'http'
+        modules:
+          - threshold:
+              lo_bytes: 1048576
+              hi_bytes: 10485760
+              pass_timeout: 10s
+              recv_timeout: 1s
+          - headers:
+              create_func:
+                X-Forwarded-For-Y: realip
+                X-Collections-Req-Id: reqid
+              create_func_weak:
+                X-Req-Id: reqid
+                X-Forwarded-Host: host
+              create:
+                X-PDB-Request-Through-Heavy: '1'
+          - headers_forwarder:
+              actions:
+                - request_header: 'X-Req-Id'
+                  response_header: 'X-Req-Id'
+                  weak: true
+          - log_headers:
+              name_re: 'User-Agent|X-Req-Id|X-Forwarded-For-Y'
+              cookie_fields: ['yandexuid']
+          - geobase_macro:
+              version: 0.0.3
+          - exp_getter_macro:
+              service_name: collections
+              testing_mode: {}
+              _version: 3
+          - response_headers:
+              delete: 'uWSGI-encoding|uwsgi-encoding'
+              create:
+                X-Section: 'http:default'
+          - regexp:
+              sections:
+                sshub:
+                  matcher:
+                    match_fsm:
+                      uri: (/sshub)?/api/subscription.*
+                  modules:
+                    - regexp:
+                        include_upstreams:
+                          type: BY_ID
+                          ids: [subscription_hub_api]
+                notifications:
+                  matcher:
+                    match_fsm:
+                      uri: /(global-notifications|bell/api)/.*
+                  modules:
+                    - regexp:
+                        include_upstreams:
+                          type: BY_ID
+                          ids: [notifications_pdb]
+                avatars:
+                  matcher:
+                    match_fsm:
+                      uri: /avatars/get-pdb.*
+                  modules:
+                    - regexp:
+                        include_upstreams:
+                          type: BY_ID
+                          ids: [avatars_pdb]
+                yastat:
+                  matcher:
+                    match_fsm:
+                      uri: /yastat/.*
+                  modules:
+                    - regexp:
+                        include_upstreams:
+                          type: BY_ID
+                          ids: [yastat_pdb]
+                download:
+                  matcher:
+                    match_fsm:
+                      uri: /collections/download/.*
+                  modules:
+                    - regexp:
+                        include_upstreams:
+                          type: BY_ID
+                          ids: [download_pdb]
+                comments_api:
+                  matcher:
+                    match_fsm:
+                      uri: /comments/api.*
+                  modules:
+                    - regexp:
+                        include_upstreams:
+                          type: BY_ID
+                          ids: [comments_api_pdb]
+                slbping:
+                  matcher:
+                    match_fsm:
+                      uri: /slb_ping
+                  modules:
+                    - slb_ping_macro:
+                        errordoc: true
+                awacs-balancer-health-check:
+                  matcher:
+                    match_fsm:
+                      uri: /awacs-balancer-health-check
+                  modules:
+                    - errordocument:
+                        status: 200
+                priemka:
+                  matcher:
+                    match_fsm:
+                      host: "priemka.collections.test.yandex.ru"
+                  modules:
+                    - response_headers:
+                        create:
+                          X-Section: 'http:priemka'
+                    - regexp:
+                        include_upstreams:
+                          filter:
+                            id_prefix: 'priemka_'
+                          order:
+                            label:
+                              name: order
+                priemka_pull:
+                  matcher:
+                    match_fsm:
+                      host: "collections-pull-[0-9]+.crowdtest.yandex.(ru|by|com|ua|kz|uz)"
+                  modules:
+                    - response_headers:
+                        create:
+                          X-Section: 'http:priemka-pull'
+                    - regexp:
+                        include_upstreams:
+                          filter:
+                            id_prefix_in:
+                              - 'pull_'
+                              - 'common_upstream'
+                          order:
+                            label:
+                              name: order
+                priemka-quality:
+                  matcher:
+                    match_fsm:
+                      host: "priemka-quality(-[0-9]+)?.collections.test.yandex.ru.*"
+                  modules:
+                    - headers:
+                        create_func:
+                          X-Forwarded-For-Y: realip
+                          X-Collections-Req-Id: reqid
+                        create_func_weak:
+                          X-Req-Id: reqid
+                          X-Forwarded-Host: host
+                    - regexp:
+                        include_upstreams:
+                          filter:
+                            id_suffix_in:
+                              - '_dj_unity_profile_reader_priemka'
+                          order:
+                            label:
+                              name: order
+                exp_testing:
+                  matcher:
+                    match_fsm:
+                      cgi: "(exp-testing=da|exp_confs=testing)"
+                      surround: true
+                  modules:
+                    - shared:
+                        uuid: upstreams
+                searchmetanets:
+                  matcher:
+                    match_source_ip:
+                      source_mask: '5.45.192.0/18,5.255.192.0/18,37.9.64.0/18,37.140.128.0/18,77.88.0.0/18,84.201.128.0/18,87.250.224.0/19,93.158.128.0/18,95.108.128.0/17,100.43.64.0/19,130.193.32.0/19,141.8.128.0/18,178.154.128.0/17,199.21.96.0/22,199.36.240.0/22,213.180.192.0/19,2620:10f:d000::/44,2a02:6b8::/32'
+                  modules:
+                    - headers:
+                        create_func:
+                          X-Forwarded-For-Y: realip
+                          X-Collections-Req-Id: reqid
+                        create_func_weak:
+                          X-Req-Id: reqid
+                          X-Forwarded-Host: host
+                    - regexp:
+                        include_upstreams:
+                          filter:
+                            or:
+                              - id_prefix_in:
+                                  - 'common_'
+                                  - 'default_upstream_nodejs'
+                              - id_suffix_in:
+                                  - '_api_informers'
+                                  - '_pdb_top_reader'
+                                  - '_pdb_recommender_boards'
+                                  - '_dj_unity_profile_reader'
+                          order:
+                            label:
+                              name: order
+                default:
+                  matcher: {}
+                  modules:
+                    - report: {ranges: default, uuid: default}
+                    - flags_getter:
+                        service_name: collections
+                        flags:
+                          balancer2:
+                            attempts: 1
+                            rr: {weights_file: ./controls/traffic_control.weights}
+                            backends:
+                              - weight: 1
+                                name: sharedapphost_sas
+                                modules:
+                                  - report: {ranges: default, uuid: requests_sharedapphost_to_sas}
+                                  - balancer2:
+                                      attempts: 3
+                                      attempts_rate_limiter:
+                                        limit: 0.15
+                                        coeff: 0.99
+                                      weighted2: {}
+                                      generated_proxy_backends:
+                                        proxy_options:
+                                          backend_timeout: 1s
+                                          connect_timeout: 50ms
+                                          keepalive_count: 1
+                                        include_backends:
+                                          type: BY_ID
+                                          ids: [production_http_adapter_sas_shared]
+                              - weight: 1
+                                name: sharedapphost_man
+                                modules:
+                                  - report: {ranges: default, uuid: requests_sharedapphost_to_man}
+                                  - balancer2:
+                                      attempts: 3
+                                      attempts_rate_limiter:
+                                        limit: 0.15
+                                        coeff: 0.99
+                                      weighted2: {}
+                                      generated_proxy_backends:
+                                        proxy_options:
+                                          backend_timeout: 1s
+                                          connect_timeout: 50ms
+                                          keepalive_count: 1
+                                        include_backends:
+                                          type: BY_ID
+                                          ids: [production_http_adapter_man_shared]
+                              - weight: 1
+                                name: sharedapphost_vla
+                                modules:
+                                  - report: {ranges: default, uuid: requests_sharedapphost_to_vla}
+                                  - balancer2:
+                                      attempts: 3
+                                      attempts_rate_limiter:
+                                        limit: 0.15
+                                        coeff: 0.99
+                                      weighted2: {}
+                                      generated_proxy_backends:
+                                        proxy_options:
+                                          backend_timeout: 1s
+                                          connect_timeout: 50ms
+                                          keepalive_count: 1
+                                        include_backends:
+                                          type: BY_ID
+                                          ids: [production_http_adapter_vla_shared]
+                              - weight: -1
+                                name: sharedapphost_devnull
+                                modules:
+                                  - report: {ranges: default, uuid: requests_sharedapphost_to_devnull}
+                                  - errordocument:
+                                      status: 204
+                    - shared:
+                        uuid: upstreams
+
+

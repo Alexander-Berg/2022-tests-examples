@@ -1,0 +1,69 @@
+test-topic: /payplatform-test/logbroker-test${random.long}
+test-sync-consumer: /payplatform-test/logbroker-test-sync-consumer${random.long}
+test-async-consumer: /payplatform-test/logbroker-test-async-consumer${random.long}
+test-manual-consumer: /payplatform-test/logbroker-test-manual-consumer${random.long}
+user-login: robot-payplatform-ci
+
+consumer-template: &consumer-template-anchor
+  cluster: main
+  executor: io
+  dc: vla
+  credentials: oauth
+  retries_delay: 10s
+  retries:
+    restart-on-error: true
+  max-uncommitted-reads: 1
+  max-inflight-reads: 10
+  max-unconsumed-reads: 1
+  read-only-local: false
+  client-side-locks-allowed: false
+  force-balance-partitions: true
+  commits-disabled: false
+  groups: [
+    1
+  ]
+  idle-timeout: 1m
+  max-read-messages-count: 1
+  max-read-size: 5mb
+  max-read-partitions-count: 0
+
+grpc:
+  channels:
+    manager:
+      plaintext: true
+      max-retry-attempts: 3
+      address: ${logbroker.installation.logbroker.management-host}:${logbroker.installation.logbroker.management-port}
+
+logbroker:
+  cluster:
+    main:
+      enabled: true
+      installation: logbroker
+      balancer-terminate-timeout: 10s
+  producer:
+    main:
+      enabled: true
+      cluster: main
+      topic: ${test-topic}
+      source-id: 0
+      codec: raw
+      group: 1
+      dc: vla
+      credentials: oauth
+      extra-metadata:
+        custom-key: 42
+  consumer:
+    sync:
+      <<: *consumer-template-anchor
+      enabled: true
+      client-id: ${test-sync-consumer}
+    async:
+      <<: *consumer-template-anchor
+      enabled: true
+      client-id: ${test-async-consumer}
+    manual:
+      <<: *consumer-template-anchor
+      enabled: true
+      client-id: ${test-manual-consumer}
+  manager:
+    operation-timeout: 20s

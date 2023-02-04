@@ -1,0 +1,127 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Балун: вызов методов балуна с методом destroy 
+
+Description:
+Проверка вызовов методов балуна с методом destroy.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components:
+balloon
+
+Estimated time:
+90000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно, со спаном Москвы, в центре спана открыт балун "balloon".
+  Имеются кнопки "сlose + destroy", "open + destroy".
+  Под контейнером с картой строка: "event: open, overlay: [object Object], isOpen: true".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "сlose + destroy". 
+
+  Expectation:
+  Балун на карте закрывается, под контейнером появляется текст: "balloon.close() fulfilled: true; balloon.close() rejected: false".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "open + destroy". 
+
+  Expectation:
+  Под контейнером появляются две строки: "OK".
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 10,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+
+            log.info('Any balloon method called along with destroy must be rejected.');
+
+            var balloon1, balloon2,
+                    pos = myMap.getCenter(),
+                    contentLayout = ymaps.templateLayoutFactory.createClass('$[balloonContent]balloon</span>'),
+                    options = { contentLayout: contentLayout};
+
+            // balloon #1
+            window.balloon1 = balloon1 = new ymaps.Balloon(myMap);
+            balloon1.options.set(options).setParent(myMap.options);
+            balloon1.events.add(['open', 'close', 'userclose'], function (e) {
+                log.info('event: ' + e.get('type') + ', overlay: ' + balloon1.getOverlaySync().getMap() + ', isOpen: ' + balloon1.isOpen());
+            });
+            balloon1.events.add(['beforedestroy', 'destroy'], function () {
+                log.info(e.get('type'))
+            });
+
+            // balloon #2
+            window.balloon2 = balloon2 = new ymaps.Balloon(myMap);
+            balloon2.options.set(options).setParent(myMap.options);
+            balloon2.events.add(['open', 'close', 'userclose'], function (e) {
+                log.info('event: ' + e.get('type') + ', overlay: ' + balloon2.getOverlaySync().getMap() + ', isOpen: ' + balloon2.isOpen());
+            });
+            balloon2.events.add(['beforedestroy', 'destroy'], function () {
+                log.info(e.get('type'))
+            });
+
+            balloon1.open(pos);
+
+            // close + destroy
+            var button1 = new ymaps.control.Button({data: {content: 'close + destroy'}, options: {selectOnClick: false, maxWidth: 160}});
+            button1.events.add('click', function () {
+                var isOpenBalloon = balloon1.isOpen();
+                var promise1 = balloon1.close();
+                balloon1.destroy();
+
+                promise1.always(function () {
+                    log.info('balloon.close() fulfilled: ' + promise1.isFulfilled());
+                    log.info('balloon.close() rejected: ' + promise1.isRejected());
+                });
+            });
+
+            // open + destroy
+            var button2 = new ymaps.control.Button({data: {content: 'open + destroy'}, options: {selectOnClick: false, maxWidth: 160}});
+            button2.events.add('click', function () {
+                var promise2 = balloon2.open(pos);
+                balloon2.destroy();
+                promise2.always(function () {
+                    validateValue(false, promise2.isFulfilled());
+                    validateValue(true, promise2.isRejected());
+                })
+            });
+
+            myMap.controls.add(button2);
+            myMap.controls.add(button1);
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

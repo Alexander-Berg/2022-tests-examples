@@ -1,0 +1,139 @@
+source users_search
+{
+    type = mysql
+    sql_host = 127.0.0.1
+    sql_user = auto
+    sql_pass = KiX1euph
+    sql_db =
+    sql_port = 1401
+
+    sql_query_pre = SET NAMES utf8
+    sql_query_pre = SET wait_timeout=30
+    sql_query_pre = SET interactive_timeout=30
+    sql_query_range = SELECT MIN(id), MAX(id) FROM users.user
+
+    sql_range_step = 10000
+
+    sql_query = SELECT u.id, u.email, a.aliasconf,a.lname, a.mname,a.fname, p.phone,b.phone as blackphone  \
+                FROM users.user u \
+                LEFT JOIN users.anketa a ON u.id=a.user_id \
+                LEFT JOIN users.blacklist b ON u.id=b.user_id \
+                LEFT JOIN users.phone_numbers p ON u.id=p.user_id \
+                WHERE u.id >= $start AND u.id <= $end
+
+    sql_query_info = SELECT * FROM users.user u WHERE u.id = $id
+}
+
+index users_search
+{
+    type          = plain
+    source = users_search
+
+    path = /opt/sphinx_users/
+
+    docinfo         = extern
+    charset_type    = utf-8
+    html_strip      = 1
+
+    enable_star = 1
+    min_infix_len = 1
+    charset_table = 0..9, A..Z->a..z, _, a..z, U+410..U+42F->U+430..U+44F, U+430..U+44F, .
+
+}
+
+source users_conf_search
+{
+    type = mysql
+    sql_host = 127.0.0.1
+    sql_user = auto
+    sql_pass = KiX1euph
+    sql_db =
+    sql_port = 1401
+
+sql_query_pre = SET NAMES utf8
+sql_query_pre = SET wait_timeout=30
+sql_query_pre = SET interactive_timeout=30
+sql_query_range = SELECT MIN(id), MAX(id) FROM users.user
+
+sql_range_step = 10000
+
+sql_query = SELECT u.id, a.status, a.likeconf  \
+FROM users.user u \
+LEFT JOIN users.anketa a ON u.id=a.user_id \
+WHERE u.id >= $start AND u.id <= $end
+
+sql_query_info = SELECT * FROM users.user u WHERE u.id = $id
+}
+
+index users_conf_search
+{
+type          = plain
+source = users_conf_search
+
+path = /opt/sphinx_users/conf/
+
+docinfo         = extern
+charset_type    = utf-8
+html_strip      = 1
+
+enable_star = 1
+min_infix_len = 1
+charset_table = 0..9, A..Z->a..z, _, a..z, U+410..U+42F->U+430..U+44F, U+430..U+44F, .
+
+}
+
+
+source users_search_log
+{
+    type = mysql
+    sql_host = 127.0.0.1
+    sql_user = auto
+    sql_pass = KiX1euph
+    sql_db =
+    sql_port = 1406
+
+    sql_query_pre = SET NAMES utf8
+
+    sql_query_range = SELECT 1, MAX(user_id) FROM logs.auth_log
+    sql_range_step = 10000
+
+    sql_query = SELECT u.user_id AS id, GROUP_CONCAT(INET_NTOA(ip) SEPARATOR ' ') as log_ip  \
+                FROM logs.auth_log u WHERE u.user_id >= $start AND u.user_id <= $end group by u.user_id
+
+    #sql_query_info = SELECT * FROM users.user u WHERE u.id = $id
+}
+
+index users_search_log
+{
+    type          = plain
+    source = users_search_log
+
+    path = /opt/sphinx_users/log/
+
+    docinfo         = extern
+    charset_type    = utf-8
+    html_strip      = 1
+
+    charset_table = 0..9, A..Z->a..z, _, a..z, U+410..U+42F->U+430..U+44F, U+430..U+44F, .
+}
+
+indexer
+{
+    mem_limit       = 1024M
+
+}
+
+searchd
+{
+    listen          = 21335
+    max_batch_queries = 0
+
+    log             = /var/log/sphinx/searchd_users.log
+#    query_log       = /var/log/sphinx/query_users.log
+    pid_file        = /var/run/sphinx/searchd_users.pid
+    binlog_path     = /var/log/sphinx/users
+    read_timeout    = 5
+    max_children    = 0
+    max_matches     = 1000
+    unlink_old      = 1
+}

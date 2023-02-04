@@ -1,0 +1,116 @@
+<DaemonConfig>
+    LogLevel: 7
+    LoggerType: ${LOG_PATH or "."}/${SERVER_NAME or "s"}.searchproxy.log
+    StdOut: ${LOG_PATH or "."}/${SERVER_NAME or "s"}.searchproxy.stdout.log
+    StdErr: ${LOG_PATH or "."}/${SERVER_NAME or "s"}.searchproxy.stderr.log
+    <Controller>
+        Port : ${(BasePort and (BasePort +3)) or 16003}
+        Threads : 2
+        MaxQueue : 0
+        MaxConnections : 0
+        ClientTimeout : 0
+        StartServer : 0
+    </Controller>
+</DaemonConfig>
+<SearchProxy>
+    Port: ${SEARCH_PROXY_PORT or BasePort or 16000}
+    Threads: 8
+    MaxQueueSize: 1000
+    # ������������ ���������� �������� ����������
+    MaxConnections: 1000
+    SearchMap: ${CONF_PATH}/searchmap.json
+    AuthKeyWord : cookie
+    ExpConfig: ${CONF_PATH}/exp.xml
+    <Logger>
+        InfoLog: ${LOG_PATH or "."}/${SERVER_NAME or "s"}.searchproxy-access.log
+        ErrorLog: ${LOG_PATH or "."}/${SERVER_NAME or "s"}.searchproxy-error.log
+        FetchLog: ${LOG_PATH or "."}/${SERVER_NAME or "s"}.searchproxy-fetch.log
+        IncomingLog: ${LOG_PATH or "."}/${SERVER_NAME or "s"}.searchproxy-incoming.log
+        ReqAnsLog: ${LOG_PATH or "."}/${SERVER_NAME or "s"}.searchproxy-reqans.log
+    </Logger>
+    <SearchConfig>
+        SmartQueue: true
+        LoadLog: ${LOG_PATH or "."}/${SERVER_NAME or "s"}.searchproxy.load.log
+        # ����� � ��, ������� ��� ACK �� ������� ����� ������������� �� ���������
+        ConnectTimeout: 60000
+        # ����� � ��, ��������� �� ������ ��������� ������ ���������� �������
+        GlobalTimeout: 60000
+        Threads: 8
+        EventLog : ${LOG_PATH or "."}/${SERVER_NAME or "s"}.searchproxy.event.log
+        <SearchPageTemplate>
+            Method: builtin
+            Module: searchproxy
+        </SearchPageTemplate>
+        <HttpStatuses>
+            IncompleteStatus: 502
+            EmptySetStatus: 200
+            SyntaxErrorStatus: 400
+        </HttpStatuses>
+    </SearchConfig>
+    <Service>
+        Name: tests
+        <MetaSearch>
+            InsensitiveClientNumFetch: false
+            SwitchToNextSourceFetchStage: false
+            #include query_language
+            RequestThreads 30
+            RequestQueueSize 15
+            ReAskThreads 1
+            ReAskQueueSize 50
+            MaxSnippetsPerRequest 2
+            IndexDir ${IndexDir and IndexDir or '/hol/webmeta/pure'}
+            ${ CompressionString and CompressionString or 'Compression true' }
+            <QueryCache>
+        #       Dir ${ QueryCacheDir and QueryCacheDir or '/hol/webmeta/search.temp.1' }
+                MemoryLimit ${ HybridCacheMemoryLimit or 1500000000 }
+                LifeTime 0
+                MinCost 5000
+                CompressionLevel lzf
+                Arenas 10
+                ${ FileCacherString and FileCacherString or '' }
+            </QueryCache>
+            <Squid>
+                LifeTime 0
+                CompressionLevel lzf
+                MemoryLimit ${ SquidMemoryLimit and SquidMemoryLimit or 2000000000 }
+                CacheLifeTime ${ SquidCacheLifeTime and SquidCacheLifeTime or 120000000 }
+                Arenas 10
+                BlockSize 1024
+            </Squid>
+            Limits "d" 50, "" 1000
+            ${ RelevSuppString and RelevSuppString or ''}
+            ${ CacheUpdatePolicy and CacheUpdatePolicy or ''}
+            MetaSearchOptions DontSearchOnMain TwoStepQuery DontWaitForAllSources SingleFileCache CheckSnippetFail DontSkipSameDocids SeparateGta
+            ListingOptions ${ ListingOptions or 'FetchMultiplier = 1, FetchAddition = 3'}
+            ReAskOptions ${ ReAskOptions or 'ReAskIncompleteSources = yes, Timeout = 0s'}
+            NoTableTimeoutOptions ${ NoTableTimeoutOptions or 'LowThreshold=0, FastTimeout=50ms, FastThreshold=35ms'}
+            UseTimeoutTable ${ UseTimeoutTable or 'yes'}
+            ConnectTimeout ${ ConnectTimeout and ConnectTimeout or 30 }
+            SearchReplyTimeoutLimited 50000
+            NGroupsForSourceMultiplier 1.2
+            DynamicWeightSmoothThreshold 20
+            SmartReAskOptions ReAskHosts=yes, ReAskSources=yes
+            ${ MemSentryString and MemSentryString or '' }
+            ReArrangeOptions ${ ReArrangeOptions or 'Fusion(FreshAge=259200,"d:fresh"/Age=259200,"d:fresh_exp"/Age=259200,"d:instant"/Age=259200,"d:mango"/Skip=1,EraseSamohod=da,Regionality=da) FilterBanned(Bans/AntispamCategBanSrc/pess_owner_ban_exp=1) Mango(AntispamFileName=lordofthe.spam,VersionsFileName=docversions.dat,FastTierSnippets=1,ExternalSnippetsSources=QUICK:REALTIME:FUSION,DisableBlending=0,RelevanceScore=0.01,TopsyScoreLowLimit=1.1,UpdateIntentWeight=0,MaxQCDocumentAge=1209600,IntentWeightHistoBanPenalty=0.01) AntiDup Mobile DupCateg(AdditionalGroupings=["d:fresh","d:fresh_exp"]) DupCategFix(AdditionalGroupings=["d:fresh","d:fresh_exp"]) Trash(Experiment=1,PassingDocPessimisation=10,CleanTrashAdvLevel=7.3,PassingGreenTrafficThreshold=28,PassingLogCoreThreshold=4.64,TicThreshold=2,"d:fresh"/Extra=1,"d:fresh_exp"/Extra=1) Lua(QuickSpam/time=1,QuickSpam/Trhld=0.6,QuickSpam/CustomFormula="_AbsoluteRelev_@fml-mn-45149",QuickSpam/factors="_AbsoluteRelev_@fml-mn-45149")' }
+            RearrangeDataDir ${ RearrangeDataDir and RearrangeDataDir or '/db/rearrange' }
+            SpawnOptions ${SpawnOptions or 'DelayAddition=5ms,OnlyFetch=true,CheckQuantile=0.5,MaxFreq=0.3'}
+            EnableCheckConfig ${ EnableCheckConfig or 'no' }
+            <ScatterOptions>
+                Name reask
+                TimeoutTable ${ReAskTimeoutTable or '5s'}
+            </ScatterOptions>
+            <TimeBoundSoftOptions>
+                Name refresh-3
+                Tbs 40ms
+                VersionTbs 2
+                MulTbs 0.4
+            </TimeBoundSoftOptions>
+            <ScatterOptions>
+                Name fetch
+                RemoteTimeoutOptions ${FetchRemoteTimeoutOptions or 'LowThreshold=0, FastTimeout=50ms, FastThreshold=30ms'}
+                TimeoutTable ${ FetchTimeoutTable and FetchTimeoutTable or '60ms'}
+            </ScatterOptions>
+            CommonSourceOptions ${CommonSourceOptions or 'EnableIpV6=yes'}
+        </MetaSearch>        
+    </Service>
+</SearchProxy>

@@ -1,0 +1,36 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - anttsov
+      groups: []
+labels:
+  order: '10000000'
+---
+regexp_section:
+    matcher:
+        match_fsm:
+            uri: '/up4(/.*)?'
+    rewrite:
+        actions:
+            - {regexp: '/up4/(.+)', rewrite: '/%1'}
+        balancer2:
+            connection_attempts: !f count_backends()
+            attempts: 1
+            unique_policy: {}
+            rr: {}
+            generated_proxy_backends:
+                proxy_options:
+                    backend_timeout: 5s
+                    connect_timeout: 70ms
+                    keepalive_count: 1
+                    keepalive_timeout: 60s
+                    fail_on_5xx: true
+                include_backends:
+                    type: BY_ID
+                    ids: [anttsov-test-balancer-backend]
+            on_error:
+                modules:
+                    - errordocument:
+                        status: 504
+                        content: "Service unavailable"

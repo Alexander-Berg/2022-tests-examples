@@ -1,0 +1,81 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Util: вычисление геокоординат прямоугольной области.
+
+Description:
+Проверка корректного вычисления геокоординат прямоугольной области.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components:
+util
+
+Estimated time:
+90000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть страницу и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно.
+
+Step:
+  Action:
+  Выполнить даблклик в спан карты. 
+
+  Expectation:
+  Происходит корректный призум спана, под контейнером появляются строки "boundsPixel", "boundsGeo" с координатами.
+  Под строками 4 строки "OK", сообщения об ошибках отсуствуют.
+
+Step:
+  Action:
+  Выполнить даблклик ПКМ в спан карты. 
+
+  Expectation:
+  Происходит корректный отзум спана, под контейнером появляются строки "boundsPixel", "boundsGeo" с координатами.
+  Под строками 4 строки "OK", сообщения об ошибках отсуствуют.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var map = myMap = new ymaps.Map('map', {
+                center: [56, 34],
+                zoom: 10,
+                type: 'yandex#map',
+                controls: ['fullscreenControl']
+            });
+            __log__('Проверить что возвращаются адекватные значения и нет несовпадений');
+            // вычисляем географические координаты прямоугольной области
+            map.events.add('boundschange', function () {
+                var boundsPixel = ymaps.util.bounds.toGlobalPixelBounds(map.getBounds(), 10, map.options.get('projection'));
+                __log__('boundsPixel - ' + JSON.stringify(boundsPixel));
+                var boundsGeo = ymaps.util.bounds.fromGlobalPixelBounds(boundsPixel, 10, map.options.get('projection'));
+                __log__('boundsGeo - ' + JSON.stringify(boundsGeo));
+                validateValue(boundsGeo[0][0].toFixed(8), map.getBounds()[0][0].toFixed(8));
+                validateValue(boundsGeo[0][1].toFixed(8), map.getBounds()[0][1].toFixed(8));
+                validateValue(boundsGeo[1][0].toFixed(8), map.getBounds()[1][0].toFixed(8));
+                validateValue(boundsGeo[1][1].toFixed(8), map.getBounds()[1][1].toFixed(8));
+                __log__('------------------------------------------');
+                map.setBounds(boundsGeo);
+            });
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

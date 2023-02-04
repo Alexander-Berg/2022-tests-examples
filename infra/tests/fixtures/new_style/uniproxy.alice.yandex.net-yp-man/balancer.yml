@@ -1,0 +1,100 @@
+---
+instance_macro:
+  workers: !f get_workers()
+  maxconn: 45000
+  unistat: {}
+  sd: {}
+  pinger_required: true
+  state_directory: '/dev/shm/balancer-state'
+  sections:
+    admin:
+      ips: [127.0.0.1, '::1']
+      ports:
+        - !f get_port_var('port')
+      modules:
+        - http: {}
+        - admin: {}
+    internal_http:
+      ips: ['2a02:6b8:0:3400:0:71d:0:11f']
+      ports:
+        - 80
+      local_ips: [local_v6_addr]
+      local_ports: [80]
+      extended_http_macro:
+        modules:
+          - headers:
+              create_func_weak:
+                X-Real-Ip: realip
+                X-Real-Port: realport
+          - regexp:
+              include_upstreams:
+                filter: {not: {id_suffix: '-external'}}
+                order: {label: {name: order}}
+    internal_https:
+      ips: ['2a02:6b8:0:3400:0:71d:0:11f']
+      ports:
+        - 443
+      extended_http_macro:
+        enable_ssl: true
+        ssl_sni_ja3_enabled: true
+        ssl_sni_contexts:
+          uniproxy-internal.alice.yandex.net:
+            #secrets_log: 'secrets_log'
+            cert: !c uniproxy-internal.alice.yandex.net
+            servername_regexp: default
+          uniproxy.alice.yandex-team.ru:
+            #secrets_log: 'secrets_log'
+            cert: !c uniproxy.alice.yandex-team.ru
+            servername_regexp: 'uniproxy\\.alice\\.yandex-team\\.ru'
+        modules:
+          - headers:
+              create_func:
+                X-Yandex-Ja3: ja3
+                X-Yandex-Ja4: ja4
+              create_func_weak:
+                X-Real-Ip: realip
+                X-Real-Port: realport
+          - regexp:
+              include_upstreams:
+                filter: {not: {id_suffix: '-external'}}
+                order: {label: {name: order}}
+    external_requests:
+      ips:
+        - '213.180.204.80'
+        - '213.180.193.76'
+        - '213.180.193.78'
+        - '2a02:6b8::3c'
+        - '5.45.202.150'
+        - '5.45.202.151'
+        - '5.45.202.152'
+        - '5.45.202.153'
+      ports:
+        - 443
+      extended_http_macro:
+        enable_ssl: true
+        ssl_sni_ja3_enabled: true
+        ssl_sni_contexts:
+          uniproxy.alice.yandex.net:
+            #secrets_log: 'uniproxy.alice.yandex.net-secrets_log'
+            cert: !c uniproxy.alice.yandex.net
+            servername_regexp: default
+          voicestation.yandex.net:
+            #secrets_log: 'secrets_log'
+            cert: !c voicestation.yandex.net
+            servername_regexp: 'voicestation\\.yandex\\.net'
+          voiceservices.yandex.net:
+            #secrets_log: 'secrets_log'
+            cert: !c voiceservices.yandex.net
+            servername_regexp: 'voiceservices\\.yandex\\.net'
+        modules:
+          - headers:
+              create_func:
+                X-Yandex-Ja3: ja3
+                X-Yandex-Ja4: ja4
+              create_func_weak:
+                X-Real-Ip: realip
+                X-Real-Port: realport
+          - regexp:
+              include_upstreams:
+                filter: {or: [{id_suffix: '-external'}, {id: slbping}]}
+                order: {label: {name: order}}

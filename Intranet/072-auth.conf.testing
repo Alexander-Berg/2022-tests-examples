@@ -1,0 +1,81 @@
+import blackbox
+from django_yauth.settings import *
+from kelvin.switcher import get_feature_bool_option
+
+
+YAUTH_PASSPORT_FIELDS = (
+    blackbox.FIELD_LOGIN,
+    blackbox.FIELD_EMAIL,
+    ('userinfo.firstname.uid', 'first_name'),
+    ('userinfo.lastname.uid', 'last_name'),
+    ('userinfo.sex.uid', 'sex'),
+)
+
+# Тип аутентификации: desktop, intranet или mobile
+YAUTH_TYPE = os.environ.get('YAUTH_TYPE', 'intranet')
+# Адрес сайта берем из request, а не из настроек Sites
+YAUTH_USE_SITES = False
+# Я-пользователи как пользователи Django
+YAUTH_USE_NATIVE_USER = True
+# заводим пользователя, если его нет
+YAUTH_CREATE_USER_ON_ACCESS = False
+YAUTH_CREATE_PROFILE_ON_ACCESS = False
+# редиректим нового пользователя для создания в нашей системе
+YAUTH_CREATION_REDIRECT = False
+
+# Дополнительные поля, которые будут проставлены
+# джанго пользователю при создании
+YAUTH_USER_EXTRA_FIELDS = (
+    # `username` проставляется из blackbox.FIELD_LOGIN
+    # ('login', 'username'),
+    # `email` проставляется из blackbox.FIELD_EMAIL,
+    # ('email', 'email'),
+    ('sex', 'gender'),
+    ('last_name', 'last_name'),
+    ('first_name', 'first_name'),
+    ('uid', 'yauid'),
+)
+
+# Неправильный урл для обновления кук в django_yauth
+YAUTH_PASSPORT_URLS['intranet'].update({
+    'refresh': 'https://passport.yandex-team.ru/auth/update/?retpath=',
+})
+
+# Internal blackbox
+BLACKBOX_NAME = os.environ.get('BLACKBOX_NAME', 'ProdYateam')
+YAUTH_BLACKBOX_URL = os.environ.get('YAUTH_BLACKBOX_URL', 'https://blackbox.yandex-team.ru/blackbox')
+
+# Если используем тестовый паспорт, то нужно поправить URL-ы.
+# По-дефолту YAUTH_PASSPORT_URLS['desktop'] URL-ы смотрят на боевой паспорт.
+if BLACKBOX_NAME == 'Test':
+    YAUTH_PASSPORT_URLS['desktop'].update({
+        'refresh': 'https://passport-test.yandex.ru/auth/update/?retpath=',
+        'passport_domain': 'passport-test.yandex.ru',
+    })
+
+# Staff api url
+STAFF_API_URL = 'https://staff-api.yandex-team.ru/'
+
+# Add staff affiliation value to User model (yandex, yamoney, external)
+YAUTH_ADD_STAFF_AFFILIATION_USER_FIELD = (
+    os.environ.get(
+        'YAUTH_ADD_STAFF_AFFILIATION_USER_FIELD',
+        'true',
+    ).lower() == 'true'
+)
+
+YAUTH_OAUTH_AUTHORIZATION_SCOPES = ['login:info', 'login:email']
+
+# if os.environ.get('B2B_MODE_ENABLED', False):
+#    # настройки, позволяющие "обмануть" и упростить аутентификацию в режиме б2б-тестирования
+#    AUTHENTICATION_BACKENDS = [
+#        'django_yauth.authentication_mechanisms.dev.UserFromHttpHeaderAuthBackend',
+#        'django_yauth.authentication_mechanisms.dev.UserFromCookieAuthBackend',
+#        'django_yauth.authentication_mechanisms.dev.UserFromOsEnvAuthBackend',
+#    ]
+#    YAUTH_OAUTH_AUTHORIZATION_SCOPES = []
+#    YAUTH_MECHANISMS = [
+#        'kelvin.common.yauth_cookie_tvm',
+#    ]
+#    YAUTH_TYPE = os.environ.get('YAUTH_TYPE', 'intranet-testing')
+#    YAUTH_CREATE_USER_ON_ACCESS = get_feature_bool_option('YAUTH_CREATE_USER_ON_ACCESS', False)

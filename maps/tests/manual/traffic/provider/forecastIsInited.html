@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<!--
+Title:
+Пробки: готовность провайдера прогноза пробок предоставлять данные
+
+Description:
+Проверка признака готовности провайдера прогноза пробок предоставлять данные.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+regress
+
+Estimated time:
+90000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть страницу и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно со спаном Москвы, с включенным слоем исторических пробок.
+  На карте разноцветные линии пробок, имеются кнопки "delete provider", "localtime".
+
+Step:
+  Action:
+  Открыть инструменты разработчика командами Windows: Ctrl + Shift + I если у вас MacOS: ⌥ + ⌘ + I, вкладку Console.
+
+  Expectation:
+  В консоли блоки с признаками провайдера пробок, ошибки отсуствуют.
+  В последнем блоке имеются данные "localtime"(текущее время), "isInited -> true".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "localtime".
+
+  Expectation:
+  В консоли появляется строка "Local time: (текущее время)".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "delete provider".
+
+  Expectation:
+  Пробочный слой пропадает с карты, в консоли появляется блок данных в котором "isInited -> null".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "localtime".
+
+  Expectation:
+  В консоли появляется строка "Local time: (текущее время)".
+-->
+<html>
+<head>
+    <title>API 2.0</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <script src="../../helper.js"></script>
+    <script type=text/javascript>
+        Api('init');
+        function init(ymaps) {
+            var myMap = new ymaps.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 10,
+                behaviors: ['default', 'scrollZoom']
+            });
+            var forecastProvider = new ymaps.traffic.provider.Forecast();
+            forecastProvider.setMap(myMap);
+            forecastProvider.state.events.add('change', function () {
+                console.log('------------- forecastProvider.state changed: ------------');
+                for (var key in forecastProvider.state.getAll()) {
+                    console.log(key + ' -> ' + forecastProvider.state.get(key));
+                }
+            });
+            var deleteButton = new ymaps.control.Button({data: {content: 'delete provider'}}, {selectOnClick: false})
+            deleteButton.events.add('click', function () {
+                forecastProvider.setMap(null);
+            });
+            myMap.controls.add(deleteButton);
+            var localtimeButton = new ymaps.control.Button({data: {content: 'localtime'}}, {selectOnClick: false})
+            localtimeButton.events.add('click', function () {
+                console.log(' ')
+                console.log('Local time: ' + forecastProvider.state.get('localtime'));
+            });
+            myMap.controls.add(localtimeButton)
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+<p><a href="https://tech.yandex.ru/maps/archive/doc/jsapi/2.0/ref/reference/traffic.provider.Archive-docpage/" target="_blank">Docs</a></p>
+</body>
+</html>

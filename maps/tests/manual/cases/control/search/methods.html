@@ -1,0 +1,137 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Контрол: методы поискового контрола
+
+Description:
+Проверка работы метода получения индекса и методда удаления поискового запроса.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+control
+
+Estimated time:
+120000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась корректно.
+  При загрузке происходит программный поиск по запросу "Москва", на спане открыт балун с карточкой "Москва; Россия".
+  На карте спан Московской области, сверху контейнера имеется поисковый контрол "Найти", кнопки "getIndex", "clearSe...", контрол фулскрин.
+
+Step:
+  Action:
+  Выполнить клик в поисковый контрол "Найти".
+
+  Expectation:
+  Сверху по всей ширине контейнера выпадает плашка с поисковым инпутом с кнопкой "Найти" и кнопкой сворачивания плашки. 
+  В инпуте значение "москва".
+
+Step:
+  Action:
+  Выполнить клик в кнопку сворачивания плашки с поисковым инпутом.
+
+  Expectation:
+  Плашка с инпутом сворачивается, спан карты, кнопки без изменений. 
+
+Step:
+  Action:
+  Выполнить клик в кнопку "getIndex".
+
+  Expectation:
+  Под контейнером с картой появляется текст: "getSelectedIndex: 0".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "clearSe...".
+
+  Expectation:
+  Под контейнером с картой появляется текст: "undefined".
+  Со спана карты пропадает балун с карточкой "Москва; Россия".
+
+Step:
+  Action:
+  Выполнить клик в поисковый контрол "Найти".
+
+  Expectation:
+  Сверху по всей ширине контейнера выпадает плашка с поисковым инпутом с кнопкой "Найти" и кнопкой сворачивания плашки. 
+  В инпуте отсутствует значение поиска.
+-->
+<html>
+<head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            var myMap = new ym.Map('map', {
+                        center: [55.73259667357658, 37.70153663432529],
+                        zoom: 9,
+                        behaviors: ['default', 'scrollZoom'],
+                        controls: ['fullscreenControl']
+                    }),
+                    log = new Log();
+
+            addGrid(myMap);
+
+            __log__('searchControl methods:');
+            __log__('');
+
+            var search1 = new ymaps.control.SearchControl({
+                options: {
+                    float: 'left',
+                    size: 'medium'
+                }
+            });
+
+            var getSelectedIndex = new ym.control.Button({data: {content: 'getIndex'}, options: {selectOnClick: false}});
+            var clearSearch = new ym.control.Button({data: {content: 'clearSearch'}, options: {selectOnClick: false}});
+
+            getSelectedIndex.events.add('click', function (e) {
+                __log__('getSelectedIndex: ' + search1.getSelectedIndex());
+            });
+            clearSearch.events.add('click', function (e) {
+                __log__(search1.clear());
+            });
+
+            myMap.controls
+                    .add(search1)
+                    .add(clearSearch)
+                    .add(getSelectedIndex);
+
+            search1.search('москва').then(function () {
+                search1.showResult(4).then(function () {
+                    __log__('getSelectedIndex: ' + search1.getSelectedIndex());
+                    validateValue(search1.getSelectedIndex(), 4);
+                });
+                __log__('getResponseMetaData: ' + search1.getResponseMetaData());
+                validateValue(search1.getResponseMetaData(), '[object Object]');
+                __log__('getRequestString: ' + search1.getRequestString());
+                validateValue(search1.getRequestString(), 'москва');
+                var results = search1.getResultsArray();
+                __log__('results[4].properties.get("name"): ' + results[4].properties.get('name'));
+                validateValue(results[4].properties.get('name'), 'деревня Москва');
+                __log__('getResultsCount: ' + search1.getResultsCount());
+                validateValue(search1.getResultsCount(), 25);
+                search1.getResult(1).then(function (result) {
+                    __log__('getResult(1): ' + result);
+                    validateValue(result, '[object Object]')
+                });
+            })
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

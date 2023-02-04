@@ -1,0 +1,43 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - rodion-m
+      groups: []
+labels:
+  order: '001335'
+---
+regexp_section:
+  matcher:
+    match_and:
+      - match_fsm:
+            host: 'mobmetd-autobeta.test.metrika.yandex.net'
+      - match_fsm:
+            uri: '/management/v1/application(/[0-9]+)?/crash/(android|ios|proguard|dsym|android_native)/upload'
+  modules:
+    - balancer2:
+        attempts: 2
+        attempts_rate_limiter:
+          limit: 0.15
+        connection_attempts: !f count_backends()
+        status_code_blacklist : ["5xx"]
+        return_last_5xx: true
+        retry_non_idempotent: false
+        unique_policy: {}
+        dynamic:
+          max_pessimized_share: 1
+          active:
+            weight_normalization_coeff: 1
+            delay: 1s
+            request: 'GET /ping HTTP/1.1\nHost: mobmetd-autobeta.test.metrika.yandex.net\nUser-agent: l7-balancer\n\n'
+        generated_proxy_backends:
+          proxy_options:
+            backend_timeout: 3660s
+            connect_timeout: 70ms
+          include_backends:
+            type: BY_ID
+            ids: [mobmetd-autobeta-backend]
+        on_error:
+          errordocument:
+            status: 504
+            content: "Service unavailable"

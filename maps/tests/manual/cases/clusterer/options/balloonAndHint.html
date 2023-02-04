@@ -1,0 +1,152 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Кластер: содержимое хинта в зависимости от значения кластеризации 
+
+Description:
+Проверка контент хинта в зависимости от значения кластеризации метки.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+clusterer
+
+Estimated time:
+120000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан центрального федерального округа с метками кластеров(могут быть и метки коллекций).
+
+Step:
+  Action:
+  Поочередно навести курсор на кластерные метки на спане карты.
+
+  Expectation:
+  При наведении на метку кластера ховер - курсор палец.
+  Появляется хинт в зависимости от значения кластеризации метки: если значение  меньше 10 хинт - пустой маленький прямоугольник, от 10 до 100 хинт - "10 < n <100", от 100 хинт - "n > 100". 
+
+Step:
+  Action:
+  Скролом мыши выполнить призум карты на три значения.
+
+  Expectation:
+  Происходит корректный призум карты. Кластерные метки распадаются на метки с меньшим значением кластеризации и метки коллекций.
+  На спане карты метки преимущественно со значением кластеризации меньше 10.
+
+Step:
+  Action:
+  Поочередно навести курсор на кластерные метки и метки коллекций на спане карты.
+
+  Expectation:
+  При наведении на метку кластера ховер - курсор палец.
+  Появляется хинт в зависимости от значения кластеризации метки: если значение  меньше 10 хинт - пустой маленький прямоугольник, от 10 до 100 хинт - "10 < n <100", от 100 хинт - "n > 100".
+  При наведении на метку коллекции - курсор палец, хинт - номер метки.
+
+Step:
+  Action:
+  Скролом мыши выполнить максимальный отзум карты.
+
+  Expectation:
+  Происходит корректный отзум карты. На спане карта мира с одной кластерной меткой со значением "200".
+
+Step:
+  Action:
+  Навести курсор на кластерную метку.
+
+  Expectation:
+  При наведении на метку кластера ховер - курсор палец.
+  Появляется хинт "n > 100".
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 10,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+
+            log.info('Hint content depends on amount of objects in cluster');
+            log.info('< 10 objects - empty hint');
+            log.info('< 100 objects - hint "< 100"');
+            log.info('> 100 objects - hint "> 100"');
+
+            var clusterer = new ymaps.Clusterer({
+                preset: 'islands#redClusterIcons',
+                clusterDisableClickZoom: true,
+                clusterOpenEmptyHint: true
+            });
+            var placemarksNumber = 200;
+            var bounds = map.getBounds();
+            var newPlacemarks = createGeoObjects(placemarksNumber, bounds);
+
+            clusterer.createCluster = function (center, geoObjects) {
+                var clusterPlacemark = ymaps.Clusterer.prototype.createCluster.call(this, center, geoObjects),
+                        geoObjectsLength = clusterPlacemark.getGeoObjects().length,
+                        hintContent;
+                if (geoObjectsLength < 10) {
+                    hintContent = '';
+                } else if (geoObjectsLength < 100) {
+                    hintContent = '10 < n < 100';
+                } else {
+                    hintContent = 'n > 100';
+                }
+                clusterPlacemark.properties.set('hintContent', hintContent);
+                return clusterPlacemark;
+            };
+
+            // add 200 placemarks
+            clusterer.add(newPlacemarks);
+            map.geoObjects.add(clusterer);
+
+            // change map zoom
+            setTimeout(function () {
+                map.setZoom(7)
+            }, 1000);
+
+            function createGeoObjects(number, bounds) {
+                var placemarks = [];
+                // Создаем нужное количество меток
+                for (var i = 0; i < number; i++) {
+                    // Генерируем координаты метки случайным образом.
+                    var coordinates = getRandomCoordinates(bounds);
+                    // Создаем метку со случайными координатами.
+                    var myPlacemark = new ymaps.Placemark(coordinates, {
+                        balloonContent: i, hintContent: i, clusterCaption: i}, {});
+                    placemarks.push(myPlacemark);
+                }
+                return placemarks;
+            }
+
+            function getRandomCoordinates(bounds) {
+                var size = [bounds[1][0] - bounds[0][0], bounds[1][1] - bounds[0][1]];
+                return [Math.random() * size[0] + bounds[0][0], Math.random() * size[1] + bounds[0][1]];
+            }
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

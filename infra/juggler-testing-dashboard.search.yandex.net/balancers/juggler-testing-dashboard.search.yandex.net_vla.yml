@@ -1,0 +1,73 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - nanny-robot
+      groups: []
+config_transport:
+  nanny_static_file:
+    service_id: rtc_balancer_juggler-testing-dashboard_search_yandex_net_vla
+    instance_tags:
+      ctype: prod
+      itype: balancer
+      prj: juggler-testing-dashboard.search.yandex.net
+---
+instance_macro:
+  version: 0.0.2
+  sd: {}
+  unistat: {}
+  workers: !f get_workers()
+  tcp_listen_queue: 128
+  maxconn: 5000
+  state_directory: /dev/shm/balancer-state
+  sections:
+    admin:
+      ips: [127.0.0.1, '::1']
+      ports:
+        - !f get_port_var('port')
+      modules:
+        - http: {}
+        - admin: {}
+    https_section:
+      ips: ['2a02:6b8:0:3400:0:71d:0:a3']
+      ports: [443]
+      extended_http_macro:
+        report_uuid: 'https'
+        enable_ssl: true
+        ssl_sni_contexts:
+          juggler-testing-dashboard.search.yandex.net:
+            servername_regexp: default
+            cert: !c juggler-testing-dashboard.search.yandex.net
+          juggler-storybook.yandex-team.ru:
+            servername_regexp: 'juggler-storybook.yandex-team.ru'
+            cert: !c juggler-storybook.yandex-team.ru
+        modules:
+          - regexp:
+              include_upstreams:
+                filter:
+                  id_prefix_in:
+                    - 'api'
+                    - 'ui'
+                    - 'push'
+                    - 'vla_slbping'
+                    - 'awacs-balancer-health-check'
+                order:
+                  label:
+                    name: order
+    http_section:
+      ips: ['*']
+      ports:
+        - 80
+        - !f get_port_var('port')
+      extended_http_macro:
+        modules:
+          - regexp:
+              include_upstreams:
+                filter:
+                  id_prefix_in:
+                    - 'http_'
+                    - 'vla_slbping'
+                    - 'awacs-balancer-health-check'
+                order:
+                  label:
+                    name: order

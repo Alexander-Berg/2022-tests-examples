@@ -1,0 +1,197 @@
+---
+instance_macro:
+  state_directory: /dev/shm/balancer-state
+  buffer: 1048576
+  workers: !f get_workers()
+  unistat: {}
+  sd: {}
+  sections:
+    admin:
+      ips: [127.0.0.1, '::1']
+      ports: [15090]
+      modules:
+        - http: {}
+        - admin: {}
+    stats_storage:
+      ips: [127.0.0.4]
+      ports: [15090]
+      modules:
+        - report:
+            uuid: 'service_total'
+            ranges: 'default'
+            just_storage: true
+        - http: {}
+        - errordocument:
+            status: 204
+    https_section:
+      ips: ['213.180.193.12', '213.180.204.12', '87.250.250.12', '87.250.251.12', '2a02:6b8::12']
+      ports: [443]
+      extended_http_macro:
+        port: 15091
+        report_uuid: 'https'
+        enable_ssl: true
+        ssl_sni_contexts:
+          _.yandexsport.ru:
+            servername_regexp: '(m\\.)?yandexsport\\.ru'
+          cryprox-test.news.yandex.ru:
+            servername_regexp: '(m\\.)?cryprox-test\\.news\\.yandex\\.ru'
+          test.news.yandex.ru:
+            servername_regexp: '(m\\.)?test\\.news\\.yandex\\.(az|co\\.il|com\\.am|com\\.ge|ee|fr|kg|lt|lv|md|tj|tm|uz|ru|ua|by|kz|com)'
+          news.yandex.az:
+            servername_regexp: '(m\\.)?news(-clck)?\\.yandex\\.(az|co\\.il|com\\.am|com\\.ge|ee|fr|kg|lt|lv|md|tj|tm|uz)'
+          news.yandex.ru:
+            servername_regexp: default
+        modules:
+          - headers:
+              create:
+                X-Yandex-HTTPS: yes
+          - shared:
+             uuid: upstreams
+    http_section:
+      ips: ['213.180.193.12', '213.180.204.12', '87.250.250.12', '87.250.251.12', '2a02:6b8::12']
+      ports: [80]
+      extended_http_macro:
+        port: 15090
+        report_uuid: 'http'
+        modules:
+          - shared:
+             uuid: upstreams
+          - regexp:
+             sections:
+               aab_proxied:
+                 matcher:
+                   match_fsm:
+                     header:
+                       name: x-aab-partnertoken
+                       value: !f get_str_env_var("AWACS_AAB_TOKEN")
+                 modules:
+                   - rewrite:
+                       actions:
+                         - regexp: '.*'
+                           header_name: 'X-Is-Yandex-Net'
+                           rewrite: '-1'
+                         - regexp: '.*'
+                           header_name: 'X-Yandex-Internal-Request'
+                           rewrite: '0'
+                         - regexp: '.*'
+                           header_name: 'X-Yandex-Is-Staff-Login'
+                           rewrite: '0'
+                   - shared:
+                       uuid: main_chain
+               default:
+                 matcher: {}
+                 modules:
+                   - headers:
+                       delete: '(x-forwarded-for.*|x-source-port.*)'
+                   - rewrite:
+                       actions:
+                         - regexp: '.*'
+                           header_name: 'X-Is-Yandex-Net'
+                           rewrite: '-1'
+                         - regexp: '.*'
+                           header_name: 'X-Yandex-Internal-Request'
+                           rewrite: '0'
+                         - regexp: '.*'
+                           header_name: 'X-Yandex-Is-Staff-Login'
+                           rewrite: '0'
+                   - shared:
+                       uuid: main_chain
+                   - headers:
+                       create_func:
+                         X-Start-Time: starttime
+                         X-Req-Id: reqid
+                         X-Yandex-RandomUID: yuid
+                       create_func_weak:
+                         X-Source-Port-Y: realport
+                         X-Forwarded-For-Y: realip
+                         X-Forwarded-For: realip
+                   - log_headers:
+                       name_re: 'X-Req-Id'
+                   - response_headers:
+                       create_weak:
+                         X-XSS-Protection: '1; mode=block'
+                         X-Content-Type-Options: nosniff
+                   - icookie:
+                       use_default_keys: true
+                       force_equal_to_yandexuid: true
+                       take_randomuid_from: 'X-Yandex-RandomUID'
+                       domains: [".yandex.az", ".yandex.by" , ".yandex.co.il", ".yandex.com", ".yandex.com.am", ".yandex.com.ge", ".yandex.com.ua", ".yandex.ee", ".yandex.fr", ".yandex.kg", ".yandex.kz", ".yandex.lt", ".yandex.lv", ".yandex.md", ".yandex.ru", ".yandex.tj", ".yandex.tm", ".yandex.uz", ".yandex.ua"]
+                   - regexp:
+                       include_upstreams:
+                         filter:
+                           id_prefix_in:
+                             - 'antirobot_extra'
+                             - 'awacs-balancer-health-check'
+                             - 'slb_ping'
+                         order:
+                           label:
+                             name: order
+    fake_section_ext:
+      ips: [127.0.0.45]
+      ports: [15090]
+      modules:
+        - http: {}
+        - shared:
+            uuid: ext_upstreams
+        - regexp:
+            include_upstreams:
+              filter:
+                id_prefix_in:
+                  - 'ext_'
+              order:
+                label:
+                  name: order
+    fake_section:
+      ips: [127.0.0.44]
+      ports: [15090]
+      modules:
+        - http: {}
+        - shared:
+            uuid: int_upstreams
+        - regexp:
+            include_upstreams:
+              filter:
+                id_prefix_in:
+                  - 'int_'
+              order:
+                label:
+                  name: order
+    internal_section:
+      ips: ['2a02:6b8:0:3400::2:38']
+      ports: [80]
+      local_ips: [local_v4_addr, local_v6_addr]
+      local_ports: [15090]
+      extended_http_macro:
+        report_uuid: 'internal-http'
+        port: 15092
+        modules:
+          - headers:
+              create_func:
+                X-Start-Time: starttime
+                X-Req-Id: reqid
+                X-Yandex-RandomUID: yuid
+              create_func_weak:
+                X-Source-Port-Y: realport
+                X-Forwarded-For-Y: realip
+                X-Forwarded-For: realip
+          - log_headers:
+              name_re: 'X-Req-Id'
+          - response_headers:
+              create_weak:
+                X-XSS-Protection: '1; mode=block'
+                X-Content-Type-Options: nosniff
+          - icookie:
+              use_default_keys: true
+              force_equal_to_yandexuid: true
+              take_randomuid_from: 'X-Yandex-RandomUID'
+              domains: [".yandex.az", ".yandex.by" , ".yandex.co.il", ".yandex.com", ".yandex.com.am", ".yandex.com.ge", ".yandex.com.ua", ".yandex.ee", ".yandex.fr", ".yandex.kg", ".yandex.kz", ".yandex.lt", ".yandex.lv", ".yandex.md", ".yandex.ru", ".yandex.tj", ".yandex.tm", ".yandex.uz", ".yandex.ua"]
+          - regexp:
+              include_upstreams:
+                filter:
+                  id_prefix_in:
+                    - 'knoss_exp'
+                    - 'awacs-balancer-health-check'
+                    - 'slb_ping'
+                order:
+                  label:
+                    name: order

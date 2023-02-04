@@ -1,0 +1,772 @@
+<!doctype html>
+<html style='height:100%;width:100%;'>
+<head>
+    <title>Graphics test</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <!--<meta name="viewport" content="initial-scale=1.0; user-scalable=0"/>-->
+
+    <!-- YUI --
+  <script type="text/javascript" src="../../../test/yui3combo/combo.js"></script>
+  <link rel="stylesheet" href="../../../test/yui3combo/combo.css" />
+  <script type="text/javascript" src="../../../test/run-test-case.js"></script>
+  <!-- CODE -->
+    <!--<script type="text/javascript"-->
+            <!--src="http://localhost:8080/2.0/?lang=ru-RU&ns=ymaps&mode=debug&load=util.extend,util.vector,graphics.render.factory,graphics.render.detect.all,graphics.Path,graphics.CSG,graphics.generator.stroke"></script>-->
+
+    <script type="text/javascript"
+            src="http://api01e.tst.maps.yandex.ru/2.0.28/?lang=ru-RU&ns=ymaps&mode=debug&load=util.extend,graphics.render.factory,graphics.render.detect.all,graphics.Path,graphics.CSG,graphics.generator.stroke"></script>
+
+    <script type="text/javascript">
+        var listRenders = ['Canvas', 'SVG'];//, 'VML'];
+        var listShapes = ['Polygon', /* 'PolygonHoled',*/ 'Ellipse', 'Rectangle'];
+    </script>
+    <script src='outerCountor.js'></script>
+</head>
+<body onload='_start()'>
+
+<style>
+    body {
+        font-family: Arial;
+    }
+
+    table td {
+        padding: 5px;
+        font-size: 14px;
+        overflow: hidden;
+        border: 1px solid rgba(0, 0, 0, 0.1);
+    }
+
+    div.testdiv {
+        width: 100px;
+        height: 100px;
+        border: 1px solid rgba(0, 0, 0, 0.1);
+        font-size: 10px;
+        position: relative;
+
+    }
+
+    div.testdiv p {
+        padding: 0;
+        margin: 0;
+        font-weight: bold;
+
+    }
+
+</style>
+
+
+<script>
+function _start () {
+    ymaps.ready(function () {
+        var imports = ymaps;
+
+        var sieveD = 35;
+
+        var renderOptions = {
+                    fillColor: '#994444',
+                    strokeColor: '#449944',
+                    strokeWidth: 2,
+
+                    fillImageHref: 'http://profile.ak.fbcdn.net/hprofile-ak-snc6/275468_100001395469147_89087780_n.jpg',
+                    //'http://maps.yandex.ru/promo/i/traffic_green1.png',
+                    fillMethod: 'tile', //'stretch',
+                    strokeStyle:'dash',
+
+                    opacity: 1,
+                    radius: 10
+                },
+                holeOptions = {
+                    fillColor: '#449944',
+                    strokeColor: '#449944',
+                    strokeWidth: 3,
+                    opacity: 0.5
+                },
+                VBO = imports.graphics.Path;
+
+        var createPoly = function (name, tech) {
+            return imports.graphics.render.factory.create(name, tech);
+        }
+
+        var initStartPoly = function (renderTech) {
+            var poly = createPoly('polygon-holed', renderTech);
+            var polys = imports.graphics.csg.internalShapes(VBO.fromArray([
+                [50, -30],
+                [70, 100],
+                [0, 30],
+                [100, 30],
+                [30, 100],
+                [50, -30]
+            ]));
+            poly.polygonWithHole([VBO.fromArray(polys.exterior)], [
+                [VBO.fromArray(polys.interiors[0])]
+            ]);
+
+            poly.setBounds([
+                [0, -30],
+                [100, 100]
+            ]);
+            poly.setAttributes(renderOptions);
+
+            var polySet = [poly];
+            return polySet;
+        }
+
+        var initPoly = function (renderTech) {
+            var poly = createPoly('polygon-filled', renderTech);
+            var polys = getOuterCountor(ymaps, [
+                [
+                    [0, 0],
+                    [20, 0],
+                    [20, 20],
+                    [0, 20],
+                    [0, 0]
+                ],
+                [
+
+
+                    [30, 5],
+                    [30, 30],
+                    [10, 30],
+                    [10, 5],
+                    [30, 5]
+                ]
+            ]);
+            poly.polygon([VBO.fromArray(polys)]);
+
+            poly.setBounds([
+                [0, -30],
+                [100, 100]
+            ]);
+            poly.setAttributes(renderOptions);
+
+            var polySet = [poly];
+            /*
+             for (var i in polys.interiors) {
+             var poly2 = createPoly('polygon-filled', renderTech);
+             poly2.polygon([VBO.fromArray(polys.interiors[i])]);
+             poly2.setBounds(imports.util.math.bounds.fromPoints(polys.interiors[i]));
+             poly2.setAttributes(holeOptions);
+             polySet.push(poly2);
+             }*/
+
+            return polySet;
+        }
+
+        var initPolyNZ = function (renderTech) {
+            var poly = createPoly('polygon-filled', renderTech);
+            var polys = (VBO.fromArray([
+                [50, -30],
+                [70, 100],
+                [0, 30],
+                [100, 30],
+                [30, 100],
+                [50, -30]
+            ]));
+            poly.polygon([polys]);
+
+            poly.setBounds([
+                [0, -30],
+                [100, 100]
+            ]);
+            var renderOptions = {
+                fillColor: '#994444',
+                strokeColor: '#449944',
+                strokeWidth: 2,
+                fillRule: 'nonZero',
+                opacity: 1
+            };
+            poly.setAttributes(renderOptions);
+
+            return [poly];
+        }
+
+        var initPolyED = function (renderTech) {
+            var poly = createPoly('polygon-filled', renderTech);
+            var polys = (VBO.fromArray([
+                [50, -30],
+                [70, 100],
+                [0, 30],
+                [100, 30],
+                [30, 100],
+                [50, -30]
+            ]));
+            poly.polygon([polys]);
+
+            poly.setBounds([
+                [0, -30],
+                [100, 100]
+            ]);
+            var renderOptions = {
+                fillColor: '#994444',
+                strokeColor: '#449944',
+                strokeWidth: 2,
+                fillRule: 'evenOdd',
+                opacity: 1
+            };
+            poly.setAttributes(renderOptions);
+
+            return [poly];
+        }
+
+        var initSelfHolePoly = function (renderTech) {
+            var poly = createPoly('polygon-holed', renderTech);
+            poly.polygonWithHole([VBO.fromArray([
+                [50, -30],
+                [70, 100],
+                [0, 30],
+                [100, 30],
+                [30, 100],
+                [50, -30]
+            ])], [
+                [VBO.fromArray([
+                    [10, 10],
+                    [70, 40],
+                    [50, 60]
+                ])]
+            ]);
+
+            poly.setBounds([
+                [0, -30],
+                [100, 100]
+            ]);
+            poly.setAttributes(renderOptions);
+
+            return poly;
+        }
+
+        var initPolyHole = function (renderTech) {
+            var poly = createPoly('polygon-holed', renderTech);
+            poly.polygonWithHole([VBO.fromArray([
+                [0, 50],
+                [50, 0],
+                [100, 50],
+                [50, 100],
+                [0, 50]
+            ])], [
+                [VBO.fromArray([
+                    [10, 10],
+                    [70, 40],
+                    [50, 60],
+                    [10, 10]
+                ])],
+                [VBO.fromArray([
+                    [100 - 10, 100 - 10],
+                    [100 - 70, 100 - 40],
+                    [100 - 50, 100 - 60],
+                    [100 - 10, 100 - 10]
+                ])]
+            ]);
+            poly.setBounds([
+                [0, 0],
+                [100, 100]
+            ]);
+            poly.setAttributes(renderOptions);
+
+            return poly;
+        }
+
+        var initLine = function (renderTech) {
+            var poly = createPoly('line', renderTech);
+            poly.polygon([VBO.fromArray([
+                [30, 30],
+                [10, 10],
+                [10, 0],
+                [90, 0],
+                [90, 30],
+                [60, 60],
+                [90, 60]
+            ])]);
+            poly.setBounds([
+                [0, -10],
+                [100, 100]
+            ]);
+            poly.setAttributes(renderOptions);
+
+            return poly;
+        }
+
+        var initLineCountor = function (renderTech) {
+            var poly = createPoly('line', renderTech);
+            var dash = [
+                [30, 30],
+                [10, 10],
+                [10, 0],
+                [90, 0],
+                [90, 30],
+                [60, 60],
+                [90, 60]
+            ];
+            if (0)
+                dash = [
+                    [10, 10],
+                    [50, 50],
+                    [90, 10]
+                ];
+
+            poly.polygon([VBO.fromArray(dash), VBO.fromArray(imports.graphics.generator.stroke.contour(dash, 3))]);
+            poly.setBounds([
+                [0, -20],
+                [100, 100]
+            ]);
+            poly.setAttributes(renderOptions);
+
+            return poly;
+        }
+
+        var initEllipse = function (renderTech) {
+            var poly = createPoly('ellipse', renderTech);
+            poly.ellipse([50, 50], 30, 50);
+            poly.setBounds([
+                [0, 0],
+                [100, 100]
+            ]);
+            poly.setAttributes(renderOptions);
+
+            return poly;
+        }
+
+        var initTileFill = function (renderTech) {
+            var poly = createPoly('ellipse', renderTech);
+            poly.ellipse([50, 50], 30, 50);
+            poly.setBounds([
+                [0, 0],
+                [100, 100]
+            ]);
+
+
+            var renderOptions = {
+                fillColor: '#994444',
+                fillImageHref: 'http://maps.yandex.ru/promo/i/traffic_green1.png',
+                fillMethod: 'tile',
+                strokeColor: '#449944',
+                strokeWidth: 2,
+                opacity: 1,
+                radius: 10
+            };
+
+            poly.setAttributes(renderOptions);
+
+            return poly;
+        }
+
+        var initFullFill = function (renderTech) {
+            var poly = createPoly('ellipse', renderTech);
+            poly.ellipse([50, 50], 30, 50);
+            poly.setBounds([
+                [0, 0],
+                [100, 100]
+            ]);
+
+            var renderOptions = {
+                fillColor: '#994444',
+                fillImageHref: 'http://maps.yandex.ru/promo/i/traffic_green1.png',
+                fillMethod: 'stretch',
+                strokeColor: '#449944',
+                strokeWidth: 2,
+                opacity: 1,
+                radius: 10
+            };
+            poly.setAttributes(renderOptions);
+
+            return poly;
+        }
+
+        var initCircle = function (renderTech) {
+            var poly = createPoly('circle', renderTech);
+            poly.circle([50, 50], 30);
+            poly.setBounds([
+                [0, 0],
+                [100, 100]
+            ]);
+            poly.setAttributes(renderOptions);
+
+            return poly;
+        }
+
+        var initRect = function (renderTech) {
+            var poly = createPoly('rectangle', renderTech);
+            poly.rectangle([20, 20], [80, 80]);
+            poly.setBounds([
+                [0, 0],
+                [100, 100]
+            ]);
+            poly.setAttributes(renderOptions);
+            return poly;
+        }
+
+        var initRoundRect = function (renderTech) {
+            var poly = createPoly('rectangle', renderTech);
+            poly.rectangle([20, 20], [80, 80]);
+            poly.setBounds([
+                [0, 0],
+                [100, 100]
+            ]);
+            poly.setAttributes(imports.util.extend({raduis: 10 }, renderOptions));
+            return poly;
+        }
+
+        var sievePoly = VBO.fromArray([
+            [50, 0],
+            [70, 100],
+            [0, 30],
+            [100, 30],
+            [30, 100],
+            [50, 0]
+        ]);
+
+        var sievePoly2 = [
+            VBO.fromArray([
+                [0, 50],
+                [50, 0],
+                [100, 50],
+                [50, 100],
+                [0, 50]
+            ]),
+            VBO.fromArray([
+                [10, 10],
+                [70, 40],
+                [50, 60],
+                [10, 10]
+            ]),
+            VBO.fromArray([
+                [100 - 10, 100 - 10],
+                [100 - 70, 100 - 40],
+                [100 - 50, 100 - 60],
+                [100 - 10, 100 - 10]
+            ])
+        ];
+
+        var sievePoly3 = (function () {
+            var basePoints = [],
+                    vL = 100,
+                    vLp = vL / (Math.PI * 2)
+            for (var i = 0; i < vL + 1; ++i) {
+                basePoints.push([Math.cos(i / vLp) * 30 + 50, Math.sin(i / vLp) * 30 + 50]);
+            }
+            return [imports.graphics.Path.fromArray(basePoints)];
+        })();
+
+//sievePoly2=sievePoly3;
+        sievePoly2 = [sievePoly];
+
+        var polyFromMBR = function (grid) {
+            var result = [],
+                    start = grid.Bounds[0],
+                    dX = grid.dX,
+                    dY = grid.dY,
+                    lX = start[0] + 1, rX = start[0] + Math.max(1, dX - 1),
+                    lY = start[1] + 1, rY = start[1] + Math.max(1, dY - 1);
+
+
+            for (var y = 0; y < grid.Y; y++) {
+                for (var x = 0; x < grid.X; x++) {
+                    var index = (x + (y * grid.X));
+                    if (index in grid.grid) {
+                        result.push(VBO.fromArray([
+                            [x * dX + lX, y * dY + lY],
+                            [x * dX + rX, y * dY + lY],
+                            [x * dX + rX, y * dY + rY],
+                            [x * dX + lX, y * dY + rY],
+                            [x * dX + lX, y * dY + lY]
+                        ]))
+                    }
+                }
+            }
+            return result;
+        }
+
+        var initSieveEdge = function (renderTech) {
+
+            var poly = createPoly('polygon-filled', renderTech);
+            poly.polygon(polyFromMBR(imports.graphics.csg.sieve.edgeGrid(sievePoly2, sieveD, sieveD)));
+
+            poly.setBounds([
+                [0, 0],
+                [100, 100]
+            ]);
+            poly.setAttributes(ymaps.util.extend({}, renderOptions, {strokeStyle: null}));
+
+            var poly2 = createPoly('polygon-edge', renderTech);
+            poly2.polygon(sievePoly2)
+            poly2.setBounds([
+                [0, 0],
+                [100, 100]
+            ]);
+            poly2.setAttributes({
+                strokeColor: '#F00',
+                strokeWidth: 2
+            });
+
+            return [poly];//,poly2];
+        }
+
+        var initSieveFill = function (renderTech) {
+
+            var poly = createPoly('polygon-filled', renderTech);
+            poly.polygon(polyFromMBR(imports.graphics.csg.sieve.fillGrid(sievePoly2, sieveD, sieveD)));
+
+            poly.setBounds([
+                [0, 0],
+                [100, 100]
+            ]);
+            poly.setAttributes(ymaps.util.extend({}, renderOptions, {strokeStyle: null}));
+
+            var poly2 = createPoly('polygon-edge', renderTech);
+            poly2.polygon(sievePoly2)
+            poly2.setBounds([
+                [0, 0],
+                [100, 100]
+            ]);
+            poly2.setAttributes({
+                strokeColor: '#F00',
+                strokeWidth: 2
+            });
+
+            return [poly];//,poly2];
+        }
+
+        var initSieveFillNZ = function (renderTech) {
+
+            var poly = createPoly('polygon-filled', renderTech);
+            poly.polygon(polyFromMBR(imports.graphics.csg.sieve.fillGrid(sievePoly2, sieveD, sieveD, 1)));
+
+            poly.setBounds([
+                [0, 0],
+                [100, 100]
+            ]);
+            poly.setAttributes(ymaps.util.extend({}, renderOptions, {strokeStyle: null}));
+
+            var poly2 = createPoly('polygon-edge', renderTech);
+            poly2.polygon(sievePoly2)
+            poly2.setBounds([
+                [0, 0],
+                [100, 100]
+            ]);
+            poly2.setAttributes({
+                strokeColor: '#F00',
+                strokeWidth: 2
+            });
+
+            return [poly];//,poly2];
+        }
+
+//M52,2 L72.0,132.0 L2.0,62.0 L102.0,62.0 L32.0,132.0 L52.0,2.0 Z M12,42 L72.0,72.0 L52.0,92.0 Z
+//M56.0,34.0 L70.0,122.0 L62.0,122.0 L32.0,92.0 L32.0,62.0 L92.0,62.0 L92.0,72.0 L42.0,122.0 L33.0,122.0 L46.0,34.0 Z M56.0,34.0 L70.0,122.0 L62.0,122.0 L32.0,92.0 L32.0,62.0 L92.0,62.0 L92.0,72.0 L42.0,122.0 L33.0,122.0 L46.0,34.0 Z
+
+        var shapes = {
+            /**/
+            'poly': initStartPoly,
+            '*polyEvenOdd': initPolyED,
+            'polyNZ': initPolyNZ,
+
+            'tileFill': initTileFill,
+            'stretchill': initFullFill,
+
+            'selfhole': initSelfHolePoly,
+            'holed': initPolyHole,
+            'sieveEdge': initSieveEdge,
+            'sieveFill': initSieveFill,
+            'sieveNonZero': initSieveFillNZ,
+            'line': initLine,
+            'lineCountor': initLineCountor,
+
+            'circle': initCircle,
+            'ellipse': initEllipse,
+            'rect': initRect,
+            'roundRect': initRoundRect
+            /* */
+        };
+
+        function start () {
+            var table = document.getElementById('tbody');
+            var rows = [];
+            rows.push(['*'].concat(listRenders));
+
+            var executionList = [], index = 0;
+            //precache
+            for (var shape in shapes) {
+                var line = [shape];
+
+                for (var render in listRenders) {
+                    line.push('<div id="d' + index + '" class="testdiv"></div>');
+                    executionList.push({
+                        render: listRenders[render],
+                        shape: shapes[shape],
+                        divIndex: index
+                    });
+                    index++;
+                }
+                rows.push(line);
+            }
+
+            for (var i in rows) {
+                var tr = document.createElement('tr');
+                for (var j in rows[i]) {
+                    var td = document.createElement('td');
+                    td.innerHTML = rows[i][j];
+                    tr.appendChild(td);
+                }
+                table.appendChild(tr);
+            }
+
+            ///var paneIndex = [];
+            //flow execution
+            function renderFlow () {
+                table.style.display = 'none';
+                for (var i in executionList) {
+                    var cmd = executionList[i];
+                    var div = document.getElementById('d' + cmd.divIndex);
+                    //div.innerHTML = '';
+
+                    try {
+                        cmd.graphics = cmd.shape(cmd.render ? '!' + cmd.render : '');
+                        if (!cmd.graphics.length) {
+                            cmd.graphics = [cmd.graphics];
+                        }
+                        if (!cmd.pane) {
+                            cmd.pane = cmd.graphics[0].createPane();
+
+                            div.appendChild(cmd.pane.holder());
+                        } else {
+                            cmd.pane.removeAll();
+                        }
+
+                        for (var j in cmd.graphics) {
+                            cmd.pane.addShape(cmd.graphics[j]);
+                        }
+
+                        if (0)
+                            cmd.pane.updateClipping([
+                                [30, 2],
+                                [90, 90]
+                            ], false, 1);
+                        cmd.pane.flush();
+                        /**/
+                    } catch (e) {
+
+                        //div.innerHTML = '<p>ERROR</p>' + e;
+                        window.console && console.error("shapeError", e);
+                    }
+                    /* */
+                }
+                table.style.display = '';
+            }
+
+
+            renderFlow();
+
+
+            var optionsSet = {
+                stroke: {
+                    'color': function (v) {
+                        if (arguments.length)renderOptions.strokeColor = v;
+                        return renderOptions.strokeColor;
+                    },
+                    'width': function (v) {
+                        if (arguments.length)renderOptions.strokeWidth = v;
+                        return renderOptions.strokeWidth;
+                    },
+                    'opacity': function (v) {
+                        if (arguments.length)renderOptions.strokeExtOpacity = parseFloat(v);
+                        return renderOptions.strokeOpacity;
+                    },
+                    'style': function (v) {
+                        if (arguments.length)renderOptions.strokeStyle = v;
+                        /*{
+                         dash: v.split(','),
+                         dashOffset: 0
+                         }*/
+                        return renderOptions.strokeStyle;
+                    },
+                    'radius': function (v) {
+                        if (arguments.length)renderOptions.radius = v;
+                        return renderOptions.radius;
+                    }
+                },
+
+                fill: {
+                    'color': function (v) {
+                        if (arguments.length)renderOptions.fillColor = v;
+                        return renderOptions.fillColor;
+                    },
+                    'opacity': function (v) {
+                        if (arguments.length)renderOptions.fillExtOpacity = v;
+                        return renderOptions.fillOpacity;
+                    },
+                    'fillImageHref': function (v) {
+                        if (arguments.length)renderOptions.fillImageHref = v;
+                        return renderOptions.fillImageHref;
+                    },
+                    'fillMethod': function (v) {
+                        if (arguments.length)renderOptions.fillMethod = v;
+                        return renderOptions.fillMethod;
+                    }
+                },
+                whole: {
+                    'opacity': function (v) {
+                        if (arguments.length)renderOptions.opacity = v;
+                        return renderOptions.opacity;
+                    }
+                }
+            };
+
+            if (0)
+                setInterval(function () {
+                    if (renderOptions.strokeStyle) {
+                        renderOptions.strokeStyle.dashOffset += 1;
+                        renderFlow();
+                    }
+                }, 100);
+
+
+            var optionD = document.getElementById('options');
+            for (var i in optionsSet) {
+                var d = document.createElement('div');
+                var inner = "<p>" + i + "</p><blockquote>";
+                var line = optionsSet[i];
+                for (var j in line) {
+                    inner += j + "<input id='" + i + "_" + j + "' Value='" + (line[j]() || '') + "'><br/>";
+                }
+                inner += "</blockquote>";
+                d.innerHTML = inner;
+                optionD.appendChild(d);
+
+                var inpset = d.getElementsByTagName('input');
+                for (var j in inpset) {
+                    inpset[j].onchange = function () {
+                        var callname = this.id.split('_');
+                        optionsSet[callname[0]][callname[1]](this.value);
+                        setTimeout(function () {
+                            renderFlow();
+                        }, 1);
+                    }
+                }
+            }
+
+        }
+
+        start();
+    });
+}
+
+
+</script>
+
+<table>
+    <tr valign='top'>
+        <td>
+            <table id='grid' border=1>
+                <tbody id='tbody'>
+                </tbody>
+            </table>
+        </td>
+        <td>
+            <div id="options" style='position:fixed;top:0px;'></div>
+        </td>
+    </tr>
+</table>
+
+<div id="outer">
+    <div id="inner"></div>
+</div>
+</body>

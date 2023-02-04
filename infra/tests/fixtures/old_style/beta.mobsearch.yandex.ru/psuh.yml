@@ -1,0 +1,36 @@
+regexp_section:
+  matcher:
+    match_fsm:
+      uri: '/psuh/(login|logout|projects/\\w+/topics|registrations|subscriptions|tags)(/.*)?'
+  modules:
+    - pinger:
+        ping_request_data: 'GET /ping HTTP/1.1\nHost: beta.mobseaerch.yandex.ru\r\n\r\n'
+        admin_request_uri: '/ping'
+        status_codes: [2xx]
+        status_codes_exceptions: [204]
+        admin_error_replier:
+          modules:
+            - errordocument:
+                status: 503
+    - threshold:
+        lo_bytes: 512
+        hi_bytes: 1024
+        pass_timeout: 10s
+        recv_timeout: 1s
+        on_pass_timeout_failure:
+          modules:
+            - errordocument:
+                status: 200
+                base64: "CAI="
+    - stats_eater: {}
+    - balancer2:
+        attempts: !f count_backends()
+        weighted2: {}
+        generated_proxy_backends:
+          proxy_options:
+            backend_timeout: 35s
+            connect_timeout: 100ms
+            fail_on_5xx: false
+          nanny_snapshots:
+            - service_id: sup_beta
+              snapshot_id: e01606c1f71b9765fb7242f38ed65cea7f07e812

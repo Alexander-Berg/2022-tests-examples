@@ -1,0 +1,230 @@
+<!DOCTYPE HTML>
+<!--(skip)(description)
+
+-->
+<!--(version)
+
+-->
+<!--(commands)
+
+-->
+<html>
+<head>
+<title>2.1</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+<script src="../../../helper.js"></script>
+<script type="text/javascript" src="../../../js/testMassJson.js"></script>
+<script type="text/javascript" src="../../../js/testMultiJson.js"></script>
+<script type=text/javascript>
+
+Api("", "package.full,multiRouter.MultiRouteJsonView,multiRouter.MultiRouteJsonModel,multiRouter.service.yMapsJsonToGeoJson");
+
+function init(ymaps) {
+
+    //ymaps = ym;
+
+    var map = myMap = new ymaps.Map('map', {
+        center: [53.72725771214265, 37.640390506634006],
+        zoom: 10,
+        behaviors: ['default', 'scrollZoom'],
+        controls: ['fullscreenControl']
+    });
+    addGrid(myMap);
+
+    var log = new Log();
+
+    var events = ['geometrychange', 'update', 'mapchange', 'optionschange', 'overlaychange', 'parentchange', 'propertieschange'];
+    var domevents = ['click', 'contextmenu', 'dblclick', 'mousedown', 'mouseenter', 'mouseleave', 'mouseup', 'multitouchend',
+        'multitouchstart', 'wheel'];
+
+    var jsonModel1 = new ymaps.multiRouter.MultiRouteJsonModel(
+            ymaps.multiRouter.service.yMapsJsonToGeoJson(multiJson.data)
+    );
+    var jsonModel2 = new ymaps.multiRouter.MultiRouteJsonModel(
+            ymaps.multiRouter.service.yMapsJsonToGeoJson(massJson.data)
+    );
+    var jsonModel = new ymaps.multiRouter.MultiRouteJsonModel(jsonModel2.getJson());
+
+    var multiRoute = new ymaps.multiRouter.MultiRouteJsonView(jsonModel, {
+        boundsAutoApply: true, //работает
+        //wayPointDraggable: true, //редактирование работать не должно
+        preset: "islands#multiRouterBig", //yes
+        //zoomMargin: 200, //yes
+        routeOpenBalloonOnClick: true //yes
+    });
+
+    //Изменение JSON до добавления на карту
+    //jsonModel.setJson(jsonModel1.getJson());
+
+    map.geoObjects.add(multiRoute);
+
+    var getJsonButton = new ymaps.control.Button('getJson');
+    var setJsonButton = new ymaps.control.Button('setJson');
+    var setGeoJsonButton = new ymaps.control.Button('setGeoJson');
+
+    var eventsButton = new ymaps.control.Button('events');
+    var wayButton = new ymaps.control.Button('way');
+    var domEventsButton = new ymaps.control.Button('dom');
+    var wayDomButton = new ymaps.control.Button('wayDom');
+
+    var clearButton = new ymaps.control.Button('clear');
+
+    var getActiveButton = new ymaps.control.Button('activeRoute');
+    var getRoutesButton = new ymaps.control.Button('routes');
+    var getViaButton = new ymaps.control.Button('via');
+    var getWayButton = new ymaps.control.Button('way');
+
+    getJsonButton.events.add('click', function () {
+        __log__(jsonModel1.getJson());
+        __log__(jsonModel2.getJson());
+    });
+
+    setJsonButton.events
+            .add('select', function () {
+                jsonModel.setJson(jsonModel2.getJson());
+            })
+            .add('deselect', function () {
+                jsonModel.setJson(jsonModel1.getJson());
+            });
+
+    setGeoJsonButton.events
+            .add('select', function () {
+                jsonModel.setJson(ymaps.multiRouter.service.yMapsJsonToGeoJson(massJson.data));
+            })
+            .add('deselect', function () {
+                jsonModel.setJson(ymaps.multiRouter.service.yMapsJsonToGeoJson(multiJson.data));
+            });
+
+    eventsButton.events.add('click', function () {
+        // подписываемся на события активного маршрута
+        multiRoute.getActiveRoute().events.add(events, function (e) {
+            __log__('route: ' + e.get('type') + ', target: ' + e.get('target') + ', currentTarget: ' + e.get('currentTarget'));
+            console.log(e.get('currentTarget'))
+        });
+        // получаем пути активного маршрута
+        var paths = multiRoute.getActiveRoute().getPaths();
+        var i = 0;
+        paths.each(function (path) {
+            // подписываемся на события путей активного маршрута
+            path.events.add(events, function (e) {
+                __log__('path: ' + e.get('type') + ', target: ' + e.get('target') + ', currentTarget: ' + e.get('currentTarget'));
+                console.log(e.get('currentTarget'))
+            });
+            // получаем сегменты путей активного маршрута
+            var segments = path.getSegments();
+            segments.each(function (segment) {
+                // подписываемся на события сегментов путей активного маршрута
+                segment.events.add(events, function (e) {
+                    __log__('segment: ' + e.get('type') + ', target: ' + e.get('target') + ', currentTarget: ' + e.get('currentTarget'));
+                    console.log(e.get('currentTarget'))
+                });
+            });
+        });
+    });
+
+    // создаем кнопку подписки на события путевых точек
+    wayButton.events.add('click', function () {
+        // получаем массив путевых точек
+        var ways = multiRoute.getWayPoints();
+        var i = 0;
+        // подписываемся на события всех путевых точек маршрута
+        ways.each(function (point) {
+            point.events.add(events, function (e) {
+                __log__('point: ' + e.get('type') + ', target: ' + e.get('target') + ', currentTarget: ' + e.get('currentTarget'));
+                console.log(e.get('currentTarget'))
+            });
+        });
+    });
+
+    domEventsButton.events.add('click', function () {
+        multiRoute.getActiveRoute().events.add(domevents, function (e) {
+            __log__('route: ' + e.get('type') + ', target: ' + e.get('target') + ', currentTarget: ' + e.get('currentTarget'));
+            console.log(e.get('currentTarget'))
+        });
+        var paths = multiRoute.getActiveRoute().getPaths();
+        var i = 0;
+        paths.each(function (path) {
+            path.events.add(domevents, function (e) {
+                __log__('path: ' + e.get('type') + ', target: ' + e.get('target') + ', currentTarget: ' + e.get('currentTarget'));
+                console.log(e.get('currentTarget'))
+            });
+            var segments = path.getSegments();
+            segments.each(function (segment) {
+                segment.events.add(domevents, function (e) {
+                    __log__('segment: ' + e.get('type') + ', target: ' + e.get('target') + ', currentTarget: ' + e.get('currentTarget'));
+                    console.log(e.get('currentTarget'))
+                });
+            });
+        });
+    });
+
+    wayDomButton.events.add('click', function () {
+        var ways = multiRoute.getWayPoints();
+        var i = 0;
+        ways.each(function (point) {
+            point.events.add(domevents, function (e) {
+                __log__('point: ' + e.get('type') + ', target: ' + e.get('target') + ', currentTarget: ' + e.get('currentTarget'));
+                console.log(e.get('currentTarget'))
+            });
+        });
+    });
+
+    clearButton.events.add('click', function () {
+        log.clear();
+    });
+
+    getActiveButton.events.add('click', function () {
+        __log__(multiRoute.getActiveRoute());
+    });
+
+    getRoutesButton.events.add('click', function () {
+        var routesCollection = multiRoute.getRoutes();
+        __log__(routesCollection);
+        routesCollection.each(function (obj) {
+            log.info('route:' + obj);
+            __log__(obj)
+        })
+
+    });
+
+    getViaButton.events.add('click', function () {
+        var viaCollection = multiRoute.getViaPoints();
+        __log__(viaCollection);
+        viaCollection.each(function (obj) {
+            __log__(obj)
+        })
+    });
+
+    getWayButton.events.add('click', function () {
+        var wayCollection = multiRoute.getWayPoints();
+        log.info('wayPointCollection:' + wayCollection);
+        __log__(wayCollection);
+        wayCollection.each(function (obj) {
+            log.info('wayPoint:' + obj);
+            __log__(obj);
+        })
+    });
+
+    map.controls
+            .add(getJsonButton)
+            .add(setJsonButton)
+            .add(setGeoJsonButton)
+            .add(eventsButton)
+            .add(wayButton)
+            .add(domEventsButton)
+            .add(wayDomButton)
+            .add(clearButton, {float: 'none', position: {bottom: 35, right: 10}})
+            .add(getActiveButton)
+            .add(getRoutesButton)
+            .add(getViaButton)
+            .add(getWayButton);
+
+
+}
+</script>
+</head>
+<body>
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

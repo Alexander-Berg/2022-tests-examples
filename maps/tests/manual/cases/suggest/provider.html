@@ -1,0 +1,95 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Саджест: получение данных кастомного провайдера
+
+Description:
+Проверка применения кастомного провайдера.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components:
+suggest
+
+Estimated time:
+60000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть страницу и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно со спаном СПб, на спане квадрат с синей рамкой.
+  Под контейнером с картой строки: "Moscow (displayName); Moscow (value)", "St.Petersburg (displayName);St.Petersburg (value)".
+-->
+<html>
+<head>
+    <title>ymaps.suggest, provider test</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            var map = myMap = new ym.Map('map', {
+                center: [59.9, 30.3],
+                zoom: 10,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+            var log = new Log();
+            var array = [], i = 0;
+
+            __log__("Custom provider with two objects: Moscow, St.Petersburg");
+
+            var bounds = new ymaps.Rectangle([
+                [59.87940466097862, 30.161912536617624],
+                [60.015118207409074, 30.4351974487264]
+            ], {}, {fillOpacity: 0});
+            map.geoObjects.add(bounds);
+
+            var provider = {
+                suggest: function (request, options) {
+                    return ymaps.vow.resolve([
+                        {
+                            displayName: 'Moscow (displayName)',
+                            value: 'Moscow (value)'
+                        },
+                        {
+                            displayName: 'St.Petersburg (displayName)',
+                            value: 'St.Petersburg (value)'
+                        }
+                    ]);
+                }
+            };
+
+            ymaps.suggest('фонтанка', {
+                boundedBy: [
+                    [59.87940466097862, 30.161912536617624],
+                    [60.015118207409074, 30.4351974487264]
+                ],
+                provider: provider
+            }).then(function (items) {
+
+                __log__('suggest(\'фонтанка\'), {provider}:');
+                __log__('');
+                for (var obj in items) {
+                    array[i] = items[obj];
+                    i++;
+                    __log__(items[obj].displayName);
+                    __log__(items[obj].value);
+                    __log__('');
+                }
+            });
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

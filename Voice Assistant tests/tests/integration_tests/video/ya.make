@@ -1,4 +1,0 @@
-OWNER(
-    akormushkin
-    g:smarttv
-)

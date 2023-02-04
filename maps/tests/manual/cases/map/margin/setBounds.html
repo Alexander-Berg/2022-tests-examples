@@ -1,0 +1,129 @@
+<!DOCTYPE HTML>
+<!--(skip)(description)
+
+-->
+<!--(version)
+
+-->
+<!--(commands)
+
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script type="text/javascript" src="helpers.js"></script>
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            window.ymaps = ymaps;
+            setupFakeMarginManager(document.getElementById('container'));
+
+            var myMap = new ymaps.Map("map", {
+                center: [55.73, 37.75],
+                zoom: 8,
+                controls: []
+            });
+
+            var coords = [], placemarks = [];
+            myMap.events.add('click', function (e) {
+
+                if (coords.length == 2) {
+                    coords.length = 0;
+                }
+
+                var curCoords = e.get('coords');
+                coords.push(curCoords);
+
+                if (coords.length == 1) {
+                    placemarks.forEach(function (pl) {
+                        myMap.geoObjects.remove(pl);
+                    });
+                    placemarks.length = 0;
+                }
+
+                var pl = new ymaps.Placemark(curCoords);
+                myMap.geoObjects.add(pl);
+                placemarks.push(pl);
+            });
+
+            var btn = new ymaps.control.Button('setBounds');
+            btn.events.add('click', function () {
+                if (coords.length != 2) {
+                    alert('Не хватает точек. Кликай по карте');
+                }
+                myMap.setBounds(coords);
+            });
+            btn.options.set('maxWidth', 200);
+            myMap.controls.add(btn);
+
+            var btn = new ymaps.control.Button('setBounds margin');
+            btn.events.add('click', function () {
+                if (coords.length != 2) {
+                    alert('Не хватает точек. Кликай по карте');
+                }
+                myMap.setBounds(coords, {useMapMargin: true});
+            });
+            btn.options.set('maxWidth', 200);
+            myMap.controls.add(btn);
+
+            // добавляем случайные прямоугольники.
+            var j = Math.round(Math.random() * 5) + 1;
+            for (var i = 0; i < j; i++) {
+                var obj = {
+                    width: Math.round(Math.random() * 40) + 20,
+                    height: Math.round(Math.random() * 40) + 20
+                };
+                obj[(Math.random() > 0.5 ? 'right' : 'left')] = Math.round(Math.random() * 70) + 70;
+                obj[(Math.random() > 0.5 ? 'bottom' : 'top')] = Math.round(Math.random() * 70) + 70;
+
+                myMap.margin.addArea(obj);
+            }
+
+            redrawMargins(myMap, document.getElementById('container'));
+            myMap.events.add('marginchange', function (e) {
+                redrawMargins(myMap, document.getElementById('container'));
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+            log.info("Test case:");
+
+        }
+    </script>
+    <style>
+        #container {
+            position: relative;
+        }
+
+        #map, #container {
+            width: 1000px;
+            height: 500px;
+        }
+
+        .panel {
+            position: absolute;
+            background-color: black;
+            opacity: 0.3;
+            pointer-events: none;
+        }
+
+        .rect {
+            position: absolute;
+            background-color: red;
+            opacity: 0.3;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+<div id="container">
+    <div id="map"></div>
+</div>
+
+</body>
+</html>

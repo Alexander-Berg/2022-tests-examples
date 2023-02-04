@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<!--
+Title:
+Геообъект: опция возможности драга объектов
+
+Description:
+Проверка опции драга объектов.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+smoke, regress
+
+Estimated time:
+90000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  В контейнере карта мира и объекты: круг, прямоугольник, линия, метка, два треугольника.
+  Сверху имеется кнопка "prevent drag".
+
+Step:
+  Action:
+  Последовательно зажав ЛКМ на каждом объетке выполнить драг(перемещение объектов на карте). 
+
+  Expectation:
+  Объекты корректно перемещаются на спане карты, при наведнии курсора на объект появляется хинт с геометрией объекта.
+  Два треугольника перемещаются совместно.
+  Объект круга при драге в разные области карты меняет размер.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "prevent drag", затем снова выполняем последовательный драг объектов. 
+  Выполнить клик в каждый объект на карте.
+
+  Expectation:
+  После нажатия кнопки объекты не перемещаются на карте, по клик на объекте появляется балун с геометрией объекта.
+-->
+<html>
+<head>
+    <title>API 2.0</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <script src="../helper.js"></script>
+    <script type="text/javascript">
+        Api('init');
+        function init(ymaps) {
+            var myMap = new ymaps.Map('map', {
+                center: [-40.0473, -73.1927],
+                zoom: 1
+            }, {
+                geoObjectStrokeColor: "#FF000088",
+                geoObjectStrokeWidth: 6,
+                geoObjectDraggable: true
+            });
+            
+            var collection = new ymaps.GeoObjectCollection(), preventDrag = function (e) {
+                e.preventDefault();
+            };
+            var polygon = new ymaps.Polygon([
+                [
+                    [-85.06462555678986, 112.37929999999996],
+                    [-64.82583415847476, -111.21445000000004],
+                    [-85.0646255567886, -112.62070000000003],
+                    [-85.06462555678986, 112.37929999999996]
+                ],
+                [
+                    [-70, 120],
+                    [-80, 120],
+                    [-75, 135]
+                ]
+            ]);
+            collection.add(polygon);
+            var rectangle = new ymaps.Rectangle([
+                [72, -156.2144],
+                [44.44217215953398, 19.566850000000017]
+            ]);
+            collection.add(rectangle);
+            var polyline = new ymaps.Polyline([
+                [33, -156.2144],
+                [33.44217215953398, 19.566850000000017]
+            ]);
+            collection.add(polyline);
+            var circle = new ymaps.Circle([
+                [-73.267574709474, 43.004399999998206],
+                3000000
+            ]);
+            collection.add(circle);
+            var point = new ymaps.Placemark([-83.6092556098231, -40]);
+            collection.add(point);
+            myMap.geoObjects.add(collection);
+            collection.each(function (e) {
+                e.properties.set({
+                    balloonContent: e.geometry.getType(),
+                    hintContent: e.geometry.getType()
+                });
+            });
+            var button = new ymaps.control.Button("prevent drag");
+            button.events.add("click", function (e) {
+                collection.each(function (o) {
+                    !button.isSelected() ?
+                            o.events.add("beforedragstart", preventDrag) :
+                            o.events.remove("beforedragstart", preventDrag);
+                })
+            });
+            myMap.controls.add(button, {right: 3, top: 3});
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;">
+</div>
+<p><a href="https://tech.yandex.ru/maps/archive/doc/jsapi/2.0/ref/reference/GeoObjectCollection-docpage/" target="_blank">Docs</a></p>
+</body>
+</html>

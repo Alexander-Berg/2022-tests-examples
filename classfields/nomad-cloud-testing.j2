@@ -1,0 +1,80 @@
+# client
+name = "{{ ansible_nodename }}"
+bind_addr = "::"
+datacenter = "{{ cloud_dc.stdout }}"
+data_dir = "/var/lib/nomad"
+disable_update_check = "true"
+log_level = "DEBUG"
+
+acl {
+  enabled = true
+}
+
+client {
+  enabled = "true"
+  disable_remote_exec = "true"
+{% if cloud_dc.stdout == "myt" %}
+  # remove if-else after VERTISADMIN-26033
+  node_class = "nomad-consul-test-bridge-preemtible"
+{% elif node_class is defined %}
+  node_class = "{{ node_class }}"
+{% else %}
+  node_class = "nomad-consul-test-bridge"
+{% endif %}
+  network_interface = "eth0"
+  #max graceful timeout time to set for a job with 'KillTimeout'
+  max_kill_timeout = "5m"
+
+  gc_max_allocs = "200"
+  gc_interval = "48h"
+  servers = ["nomad-01-sas.test.vertis.yandex.net", "nomad-01-vla.test.vertis.yandex.net", "nomad-01-myt.test.vertis.yandex.net"]
+  meta {
+    "ipv4" = "false"
+    "external_ipv6_addr" = "{{ ansible_default_ipv6.address }}"
+    "network_mode" = "bridge"
+  }
+  reserved {
+    "memory" = "2048"
+    "cpu"    = "2000"
+  }
+
+  template {
+    "disable_file_sandbox" = "true"
+  }
+}
+
+plugin "docker" {
+    config {
+        auth {
+            config = "/root/.docker/config.json"
+        }
+        volumes {
+            enabled = true
+        }
+        allow_caps = ["audit_write", "chown", "dac_override", "fowner", "fsetid", "kill", "mknod",
+                      "net_bind_service", "setfcap", "setgid", "setpcap", "setuid", "sys_chroot", "net_raw"]
+    }
+}
+
+plugin "raw_exec" {
+  config {
+    enabled = false
+  }
+}
+
+advertise {
+  rpc = "{{ ansible_default_ipv6.address }}"
+  http = "{{ ansible_default_ipv6.address }}"
+}
+
+telemetry {
+  prometheus_metrics = "true"
+  disable_hostname = "false"
+  publish_allocation_metrics = "true"
+  publish_node_metrics = "true"
+}
+
+consul {
+  address = "localhost:8500"
+  token = "{{lookup('yav', 'sec-01dwcdyn73m5ap1yc6tj443ayg', 'nomad_clients_consul_token')}}"
+}

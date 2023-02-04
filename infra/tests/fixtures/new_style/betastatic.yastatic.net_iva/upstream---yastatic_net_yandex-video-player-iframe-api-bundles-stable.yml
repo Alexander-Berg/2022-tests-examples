@@ -1,0 +1,44 @@
+---
+regexp_path_section:
+  pattern: '/yandex-video-player-iframe-api-bundles-stable(/.*)?'
+  modules:
+    - report:
+        uuid: 'yastatic_net_yandex-video-player-iframe-api-bundles-stable'
+        ranges: 'default'
+    - response_headers:
+        delete:
+            'x-consumed-content-encoding'
+        create:
+            Access-Control-Allow-Origin: '*'
+            Strict-Transport-Security: 'max-age=43200000; includeSubDomains;'
+            Cache-Control: 'public, max-age=216013'
+            Timing-Allow-Origin: '*'
+        create_func:
+            Expires: 'time:+216001s'
+    - headers:
+        create:
+            'X-AAB-PartnerToken': !f get_str_env_var("AWACS_AAB_VIDEO_TOKEN")
+            'X-Strm-Antiadblock': !f get_str_env_var("AWACS_STRM_VIDEO_TOKEN")
+            'X-Forwarded-Proto': 'https'
+    - rewrite:
+        actions:
+            - regexp: '^(.+)/(\\?.*)?$'
+              rewrite: '%1/index.html'
+            - regexp: '/yandex-video-player-iframe-api-bundles-stable(.*)'
+              rewrite: '/yandex-video-player-iframe-api-bundles%1'
+    - balancer2:
+        disable_attempts_rate_limiter: true
+        attempts: 5
+        simple_policy: {}
+        rr: {}
+        generated_proxy_backends:
+            proxy_options:
+                backend_timeout: '5s'
+                connect_timeout: '50ms'
+                fail_on_5xx: true
+                keepalive_count: 1
+                keepalive_timeout: '60s'
+            instances:
+                - weight: 1
+                  host: 'cryprox-test.yandex.net'
+                  port: 80

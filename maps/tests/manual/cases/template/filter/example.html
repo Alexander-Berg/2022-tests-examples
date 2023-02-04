@@ -1,0 +1,80 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Шаблонизатор: функция замены подстроки
+
+Description:
+Проверка применения шаблонов в функции замены подстроки.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components:
+template
+
+Estimated time:
+30000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть страницу и элементы на ней. 
+
+  Expectation:
+  На странице блок тестовых кнопок, под которым строка "John -> Mr.: Mr. Smith", строка "Ok".
+  Ошибки на странице отсутствуют.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var log = new Log();
+
+            // Напишем фильтр, который будет находить и заменять подстроки в тексте.
+            // Формат значений для замены в фильтре «subString_newSubString».
+
+            // При вызове фильтра в функцию будут переданы следующие аргументы:
+            // менеджер данных шаблона {@link data.Manager}, текст и значение, заданное фильтру.
+            var replaceFilter = function (data, text, replace) {
+                replace = replace.trim();
+                // Удаляем кавычки.
+                replace = replace.slice(1, replace.length - 1);
+
+                // Будем находить в тексте часть, указанную до «_» и заменять её на то, что указано после.
+                var values = replace.split('_'),
+                        from = new RegExp(values[0], 'g'),
+                        to = values[1];
+
+                return text.replace(from, to);
+            };
+
+            ymaps.template.filtersStorage.add('replace', replaceFilter);
+
+            // Теперь можно использовать в шаблонах конструкции вида
+            // {{"text test replace"|replace: "test_replaced test" }} значение будет "text replaced test replace".
+
+            var data = new ymaps.data.Manager({
+                person: {name: 'John Smith'}
+            });
+
+            var template = new ymaps.Template('{{person.name|replace: "John_Mr."}}');
+            var result = template.build(data);
+
+            __log__('John -> Mr.: ' + result.text);
+            validateValue(result.text, 'Mr. Smith');
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+</body>
+</html>

@@ -1,0 +1,591 @@
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      header:
+        name: X-Yandex-Tkva
+        value: 1
+  modules:
+    - report:
+        uuid: news-tkva-req
+        ranges: default
+    - headers:
+        create:
+          X-Region-Id: 213
+          X-Region-Location: 55.753960, 37.620393, 15000, 1514220473
+          X-Region-Suspected-Location: 55.753960, 37.620393, 15000, 1514220473
+          X-Region-City-Id: 213
+          X-Region-Suspected-City: 213
+          X-Region-Isp-Code-By-Ip: 0
+          X-Region-By-IP: 213
+          X-Region-Is-User-Choice: 0
+          X-Region-Suspected: 213
+          X-Region-Should-Update-Cookie: 0
+          X-Region-Precision: 2
+          X-Region-Suspected-Precision: 2
+          X-LaaS-Answered: 1
+          X-Yandex-Internal-Request: 0
+          X-YNews-Use-Report-Renderer: 0
+    - shared:
+        uuid: tkva-http-adapter-req
+    - balancer2:
+        attempts: 1
+        rr: {}
+        backends:
+          - weight: 1
+            name: default
+            modules:
+              - shared:
+                  uuid: tkva_report_balancer
+              - balancer2:
+                  attempts: 2
+                  attempts_file: ./controls/news.attempts
+                  watermark_policy:
+                    lo: 0.5
+                    hi: 0.6
+                    unique_policy: {}
+                  rr: {weights_file: ./controls/traffic_control.weights}
+                  backends:
+                  - weight: 1
+                    name: news_sas
+                    modules:
+                      - report: {ranges: default, uuid: requests_news_tkva_to_sas}
+                      - balancer2:
+                          attempts: !f count_backends()
+                          attempts_rate_limiter:
+                            limit: 0.2
+                          weighted2: {}
+                          timeout_policy:
+                            timeout: 500ms
+                            unique_policy: {}
+                          generated_proxy_backends:
+                            proxy_options:
+                              backend_timeout: 4000ms
+                              connect_timeout: 50ms
+                              status_code_blacklist: ["402"]
+                            include_backends:
+                              type: BY_ID
+                              ids: [SAS_NEWS_TKVA_REPORT]
+                  - weight: 1
+                    name: news_man
+                    modules:
+                      - report: {ranges: default, uuid: requests_news_tkva_to_man}
+                      - balancer2:
+                          attempts: !f count_backends()
+                          attempts_rate_limiter:
+                            limit: 0.2
+                          weighted2: {}
+                          timeout_policy:
+                            timeout: 500ms
+                            unique_policy: {}
+                          generated_proxy_backends:
+                            proxy_options:
+                              backend_timeout: 4000ms
+                              connect_timeout: 50ms
+                              status_code_blacklist: ["402"]
+                            include_backends:
+                              type: BY_ID
+                              ids: [MAN_NEWS_TKVA_REPORT]
+                  - weight: 1
+                    name: news_vla
+                    modules:
+                      - report: {ranges: default, uuid: requests_news_tkva_to_vla}
+                      - balancer2:
+                          attempts: !f count_backends()
+                          attempts_rate_limiter:
+                            limit: 0.2
+                          weighted2: {}
+                          timeout_policy:
+                            timeout: 500ms
+                            unique_policy: {}
+                          generated_proxy_backends:
+                            proxy_options:
+                              backend_timeout: 4000ms
+                              connect_timeout: 50ms
+                              status_code_blacklist: ["402"]
+                            include_backends:
+                              type: BY_ID
+                              ids: [VLA_NEWS_TKVA_REPORT]
+        on_error:
+          modules:
+            - shared:
+                uuid: normal-report-req
+            - regexp:
+                sections:
+                    report_req:
+                        matcher:
+                          match_fsm:
+                            header:
+                              name: X-YNews-Use-Report
+                              value: '1'
+                        modules:
+                            - report:
+                                uuid: news-report-apache-req
+                                ranges: default
+                            - shared:
+                                uuid: report-backend-req
+                            - balancer2:
+                                attempts: 1
+                                rr: {}
+                                backends:
+                                  - weight: 1
+                                    name: default
+                                    modules:
+                                      - shared:
+                                          uuid: report_balancer
+                                      - balancer2:
+                                          attempts: 3
+                                          connection_attempts: 3
+                                          attempts_rate_limiter:
+                                            limit: 0.2
+                                          attempts_file: ./controls/news.attempts
+                                          watermark_policy:
+                                            lo: 0.5
+                                            hi: 0.6
+                                            unique_policy: {}
+                                          rr: {weights_file: ./controls/traffic_control.weights}
+                                          backends:
+                                          - weight: 1
+                                            name: news_sas
+                                            modules:
+                                              - report: {ranges: default, uuid: requests_news_to_sas}
+                                              - balancer2:
+                                                  attempts: !f count_backends()
+                                                  attempts_rate_limiter:
+                                                    limit: 0.2
+                                                  weighted2: {}
+                                                  timeout_policy:
+                                                    timeout: 6200ms
+                                                    unique_policy: {}
+                                                  generated_proxy_backends:
+                                                    proxy_options:
+                                                      backend_timeout: 6000ms
+                                                      connect_timeout: 50ms
+                                                      status_code_blacklist: ["402"]
+                                                    include_backends:
+                                                      type: BY_ID
+                                                      ids: [production_newsupper_sas]
+                                          - weight: 1
+                                            name: news_man
+                                            modules:
+                                              - report: {ranges: default, uuid: requests_news_to_man}
+                                              - balancer2:
+                                                  attempts: !f count_backends()
+                                                  attempts_rate_limiter:
+                                                    limit: 0.2
+                                                  weighted2: {}
+                                                  timeout_policy:
+                                                    timeout: 6200ms
+                                                    unique_policy: {}
+                                                  generated_proxy_backends:
+                                                    proxy_options:
+                                                      backend_timeout: 6000ms
+                                                      connect_timeout: 50ms
+                                                      status_code_blacklist: ["402"]
+                                                    include_backends:
+                                                      type: BY_ID
+                                                      ids: [production_newsupper_man]
+                                          - weight: 1
+                                            name: news_vla
+                                            modules:
+                                              - report: {ranges: default, uuid: requests_news_to_vla}
+                                              - balancer2:
+                                                  attempts: !f count_backends()
+                                                  attempts_rate_limiter:
+                                                    limit: 0.2
+                                                  weighted2: {}
+                                                  timeout_policy:
+                                                    timeout: 6200ms
+                                                    unique_policy: {}
+                                                  generated_proxy_backends:
+                                                    proxy_options:
+                                                      backend_timeout: 6000ms
+                                                      connect_timeout: 50ms
+                                                      status_code_blacklist: ["402"]
+                                                    include_backends:
+                                                      type: BY_ID
+                                                      ids: [production_newsupper_vla]
+                                          - weight: -1
+                                            name: news_devnull
+                                            modules:
+                                              - report:
+                                                  uuid: requests_news_to_devnull
+                                                  ranges: 1ms
+                                              - errordocument:
+                                                  status: 204
+                                on_error:
+                                  modules:
+                                    - shared:
+                                        uuid: go_to_tkva
+                                    - regexp:
+                                        sections:
+                                          no_tkva:
+                                            matcher:
+                                              match_or:
+                                                - match_fsm:
+                                                    header:
+                                                      name: X-YNews-No-Tkva
+                                                      value: 1
+                                                - match_fsm:
+                                                    header:
+                                                      name: X-Yandex-ExpBoxes
+                                                      value: '(89937|.*;89937),.*'
+                                                - match_fsm:
+                                                    header:
+                                                      name: X-Yandex-ExpBoxes
+                                                      value: '(89938|.*;89938),.*'
+                                                - match_fsm:
+                                                    header:
+                                                      name: X-Yandex-ExpBoxes
+                                                      value: '(89760|.*;89760),.*'
+                                            modules:
+                                              - errordocument:
+                                                  status: 204
+                                          default:
+                                            matcher: {}
+                                            modules:
+                                              - balancer2:
+                                                  attempts: 1
+                                                  rr: {}
+                                                  backends:
+                                                    - weight: 1
+                                                      name: default
+                                                      modules:
+                                                        - report: {ranges: default, uuid: requests_tkva}
+                                                        - shared:
+                                                            uuid: tkva_balancer
+                                                        - balancer2:
+                                                            attempts: 2
+                                                            connection_attempts: 2
+                                                            attempts_rate_limiter:
+                                                              limit: 0.2
+                                                            attempts_file: ./controls/news.attempts
+                                                            watermark_policy:
+                                                              lo: 0.05
+                                                              hi: 0.1
+                                                              unique_policy: {}
+                                                            rr: {weights_file: ./controls/traffic_control.weights}
+                                                            backends:
+                                                            - weight: 1
+                                                              name: news_sas
+                                                              modules:
+                                                                - report: {ranges: default, uuid: requests_tkva_to_sas}
+                                                                - balancer2:
+                                                                    attempts: !f count_backends()
+                                                                    attempts_rate_limiter:
+                                                                      limit: 0.2
+                                                                    weighted2: {}
+                                                                    timeout_policy:
+                                                                      timeout: 500ms
+                                                                      unique_policy: {}
+                                                                    generated_proxy_backends:
+                                                                      proxy_options:
+                                                                        backend_timeout: 200ms
+                                                                        connect_timeout: 50ms
+                                                                      include_backends:
+                                                                        type: BY_ID
+                                                                        ids: [tkva_sas]
+                                                            - weight: 1
+                                                              name: news_man
+                                                              modules:
+                                                                - report: {ranges: default, uuid: requests_tkva_to_man}
+                                                                - balancer2:
+                                                                    attempts: !f count_backends()
+                                                                    attempts_rate_limiter:
+                                                                      limit: 0.2
+                                                                    weighted2: {}
+                                                                    timeout_policy:
+                                                                      timeout: 500ms
+                                                                      unique_policy: {}
+                                                                    generated_proxy_backends:
+                                                                      proxy_options:
+                                                                        backend_timeout: 200ms
+                                                                        connect_timeout: 50ms
+                                                                      include_backends:
+                                                                        type: BY_ID
+                                                                        ids: [tkva_man]
+                                                            - weight: 1
+                                                              name: news_vla
+                                                              modules:
+                                                                - report: {ranges: default, uuid: requests_tkva_to_vla}
+                                                                - balancer2:
+                                                                    attempts: !f count_backends()
+                                                                    attempts_rate_limiter:
+                                                                      limit: 0.2
+                                                                    weighted2: {}
+                                                                    timeout_policy:
+                                                                      timeout: 500ms
+                                                                      unique_policy: {}
+                                                                    generated_proxy_backends:
+                                                                      proxy_options:
+                                                                        backend_timeout: 200ms
+                                                                        connect_timeout: 50ms
+                                                                      include_backends:
+                                                                        type: BY_ID
+                                                                        ids: [tkva_vla]
+                                                  on_error:
+                                                    modules:
+                                                      - errordocument:
+                                                          status: 500
+                    default:
+                        matcher: {}
+                        modules:
+                          - report:
+                              uuid: news-report-renderer-req
+                              ranges: default
+                          - shared:
+                              uuid: report_renderer_req
+                          - regexp:
+                              sections:
+                                  report_request:
+                                      matcher:
+                                          match_or:
+                                              - match_and:
+                                                - match_fsm:
+                                                    url: '/yandsearch\\?.*rpt=.*'
+                                                - match_not:
+                                                    match_fsm:
+                                                      url: '.*cl4url=.*'
+                                              - match_fsm:
+                                                  url: '/podpiska.*'
+                                              - match_fsm:
+                                                  uri: '/smi/.+'
+                                              - match_fsm:
+                                                  url: '/quotes/.*graph_[\\d]+\\.json'
+                                      modules:
+                                          - shared:
+                                              uuid: report-backend-req
+                                  default:
+                                      matcher: {}
+                                      modules:
+                                           - shared:
+                                               uuid: http_adapter_req
+                                           - request_replier:
+                                                rate_file: './controls/request_repliers.ratefile'
+                                                rate: 0.1
+                                                sink:
+                                                  balancer2:
+                                                    attempts: 1
+                                                    rr: {}
+                                                    backends:
+                                                      - weight: 1
+                                                        modules:
+                                                          - report: {ranges: default, uuid: requests_news_tkva_sink}
+                                                          - balancer2:
+                                                              attempts: !f count_backends()
+                                                              attempts_rate_limiter:
+                                                                  limit: 0.2
+                                                              weighted2: {}
+                                                              timeout_policy:
+                                                                  timeout: 1s
+                                                                  unique_policy: {}
+                                                              generated_proxy_backends:
+                                                                  proxy_options:
+                                                                      backend_timeout: 500ms
+                                                                      connect_timeout: 50ms
+                                                                  include_backends:
+                                                                      type: BY_ID
+                                                                      ids: [tkva_sink]
+                                           - threshold:
+                                               lo_bytes: 512
+                                               hi_bytes: 1024
+                                               pass_timeout: 2s
+                                               recv_timeout: 1s
+                                           - headers:
+                                               create:
+                                                  X-YNews-Use-Report-Renderer: 1
+                                           - balancer2:
+                                               attempts: 1
+                                               rr: {}
+                                               backends:
+                                                   - weight: 1
+                                                     name: default
+                                                     modules:
+                                                         - shared:
+                                                             uuid: http_adapter_balancer
+                                                         - balancer2:
+                                                             attempts: 2
+                                                             connection_attempts: 2
+                                                             attempts_rate_limiter:
+                                                                 limit: 0.2
+                                                             attempts_file: ./controls/news.attempts
+                                                             watermark_policy:
+                                                                 lo: 0.5
+                                                                 hi: 0.6
+                                                                 unique_policy: {}
+                                                             rr: {weights_file: ./controls/traffic_control.weights}
+                                                             backends:
+                                                                 - weight: 1
+                                                                   name: news_sas
+                                                                   modules:
+                                                                       - report: {ranges: default, uuid: requests_news_to_sas}
+                                                                       - balancer2:
+                                                                             rr: { weights_file: ./controls/traffic_control.weights }
+                                                                             attempts: 5
+                                                                             backends:
+                                                                                   - name: dynamicbalancing_on
+                                                                                     weight: -1
+                                                                                     modules:
+                                                                                       - report: { ranges: default, uuid: dynamic_requests_news_to_sas }
+                                                                                       - balancer2:
+                                                                                           attempts: !f count_backends()
+                                                                                           attempts_rate_limiter:
+                                                                                               limit: 0.2
+                                                                                           dynamic: {
+                                                                                               max_pessimized_share: 0.1,
+                                                                                               min_pessimization_coeff: 0.1,
+                                                                                               weight_increase_step: 0.1,
+                                                                                               history_interval: "10s",
+                                                                                               backends_name: "http_adapter_dynamic_requests_to_sas"
+                                                                                           }
+                                                                                           timeout_policy:
+                                                                                               timeout: 500ms
+                                                                                               unique_policy: {}
+                                                                                           generated_proxy_backends:
+                                                                                               proxy_options:
+                                                                                                   backend_timeout: 5000ms
+                                                                                                   connect_timeout: 50ms
+                                                                                                   status_code_blacklist: ["204"]
+                                                                                               include_backends:
+                                                                                                   type: BY_ID
+                                                                                                   ids: [SAS_NEWS_AH_HTTP_ADAPTER]
+                                                                                   - name: dynamicbalancing_off
+                                                                                     weight: 1
+                                                                                     modules:
+                                                                                         - report: { ranges: default, uuid: non_dynamic_requests_news_to_sas }
+                                                                                         - balancer2:
+                                                                                             attempts: !f count_backends()
+                                                                                             attempts_rate_limiter:
+                                                                                                 limit: 0.2
+                                                                                             weighted2: {}
+                                                                                             timeout_policy:
+                                                                                                 timeout: 500ms
+                                                                                                 unique_policy: {}
+                                                                                             generated_proxy_backends:
+                                                                                                 proxy_options:
+                                                                                                     backend_timeout: 5000ms
+                                                                                                     connect_timeout: 50ms
+                                                                                                     status_code_blacklist: ["204"]
+                                                                                                 include_backends:
+                                                                                                     type: BY_ID
+                                                                                                     ids: [SAS_NEWS_AH_HTTP_ADAPTER]
+                                                                 - weight: 1
+                                                                   name: news_man
+                                                                   modules:
+                                                                       - report: {ranges: default, uuid: requests_news_to_man}
+                                                                       - balancer2:
+                                                                             attempts: 5
+                                                                             rr: { weights_file: ./controls/traffic_control.weights }
+                                                                             backends:
+                                                                                   - name: dynamicbalancing_on
+                                                                                     weight: -1
+                                                                                     modules:
+                                                                                       - report: { ranges: default, uuid: dynamic_requests_news_to_man }
+                                                                                       - balancer2:
+                                                                                           attempts: !f count_backends()
+                                                                                           attempts_rate_limiter:
+                                                                                               limit: 0.2
+                                                                                           dynamic: {
+                                                                                               max_pessimized_share: 0.1,
+                                                                                               min_pessimization_coeff: 0.1,
+                                                                                               weight_increase_step: 0.1,
+                                                                                               history_interval: "10s",
+                                                                                               backends_name: "http_adapter_dynamic_requests_to_man"
+                                                                                           }
+                                                                                           timeout_policy:
+                                                                                               timeout: 500ms
+                                                                                               unique_policy: {}
+                                                                                           generated_proxy_backends:
+                                                                                               proxy_options:
+                                                                                                   backend_timeout: 5000ms
+                                                                                                   connect_timeout: 100ms
+                                                                                                   status_code_blacklist: ["204"]
+                                                                                               include_backends:
+                                                                                                   type: BY_ID
+                                                                                                   ids: [MAN_NEWS_AH_HTTP_ADAPTER]
+                                                                                   - name: dynamicbalancing_off
+                                                                                     weight: 1
+                                                                                     modules:
+                                                                                         - report: { ranges: default, uuid: non_dynamic_requests_news_to_man }
+                                                                                         - balancer2:
+                                                                                             attempts: !f count_backends()
+                                                                                             attempts_rate_limiter:
+                                                                                                 limit: 0.2
+                                                                                             weighted2: {}
+                                                                                             timeout_policy:
+                                                                                                 timeout: 500ms
+                                                                                                 unique_policy: {}
+                                                                                             generated_proxy_backends:
+                                                                                                 proxy_options:
+                                                                                                     backend_timeout: 5000ms
+                                                                                                     connect_timeout: 100ms
+                                                                                                     status_code_blacklist: ["204"]
+                                                                                                 include_backends:
+                                                                                                     type: BY_ID
+                                                                                                     ids: [MAN_NEWS_AH_HTTP_ADAPTER]
+                                                                 - weight: 1
+                                                                   name: news_vla
+                                                                   modules:
+                                                                       - report: {ranges: default, uuid: requests_news_to_vla}
+                                                                       - balancer2:
+                                                                             attempts: 5
+                                                                             rr: { weights_file: ./controls/traffic_control.weights }
+                                                                             backends:
+                                                                                   - name: dynamicbalancing_on
+                                                                                     weight: -1
+                                                                                     modules:
+                                                                                       - report: { ranges: default, uuid: dynamic_requests_news_to_vla }
+                                                                                       - balancer2:
+                                                                                           attempts: !f count_backends()
+                                                                                           attempts_rate_limiter:
+                                                                                               limit: 0.2
+                                                                                           dynamic: {
+                                                                                               max_pessimized_share: 0.1,
+                                                                                               min_pessimization_coeff: 0.1,
+                                                                                               weight_increase_step: 0.1,
+                                                                                               history_interval: "10s",
+                                                                                               backends_name: "http_adapter_dynamic_requests_to_vla"
+                                                                                           }
+                                                                                           timeout_policy:
+                                                                                               timeout: 500ms
+                                                                                               unique_policy: {}
+                                                                                           generated_proxy_backends:
+                                                                                               proxy_options:
+                                                                                                   backend_timeout: 5000ms
+                                                                                                   connect_timeout: 50ms
+                                                                                                   status_code_blacklist: ["204"]
+                                                                                               include_backends:
+                                                                                                   type: BY_ID
+                                                                                                   ids: [VLA_NEWS_AH_HTTP_ADAPTER]
+                                                                                   - name: dynamicbalancing_off
+                                                                                     weight: 1
+                                                                                     modules:
+                                                                                         - report: { ranges: default, uuid: non_dynamic_requests_news_to_vla }
+                                                                                         - balancer2:
+                                                                                             attempts: !f count_backends()
+                                                                                             attempts_rate_limiter:
+                                                                                                 limit: 0.2
+                                                                                             weighted2: {}
+                                                                                             timeout_policy:
+                                                                                                 timeout: 500ms
+                                                                                                 unique_policy: {}
+                                                                                             generated_proxy_backends:
+                                                                                                 proxy_options:
+                                                                                                     backend_timeout: 5000ms
+                                                                                                     connect_timeout: 50ms
+                                                                                                     status_code_blacklist: ["204"]
+                                                                                                 include_backends:
+                                                                                                     type: BY_ID
+                                                                                                     ids: [VLA_NEWS_AH_HTTP_ADAPTER]
+                                               on_error:
+                                                  modules:
+                                                    - balancer2:
+                                                        attempts: 1
+                                                        rr: {}
+                                                        backends:
+                                                          - weight: 1
+                                                            name: default
+                                                            modules:
+                                                              - shared:
+                                                                  uuid: go_to_tkva
+                        

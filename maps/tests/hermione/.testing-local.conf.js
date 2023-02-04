@@ -1,0 +1,142 @@
+const fs = require('fs'),
+    path = require('path'),
+    chai = require('chai'),
+    JsapiVersion = require('jsapi-version');
+
+const version = JsapiVersion.parse(require('../../.qtools.json').registry.tag).withoutBuild();
+global.testsPath = '';
+global.apiPath = 'api-maps.tst.c.maps.yandex.ru/' + version;
+basePath = './';
+global.should = chai.should();
+global.assert = chai.assert;
+global.PO = require(basePath + 'pageObject.js').PO;
+global.cs = require(basePath + 'pageObject.js').cs;
+var warn = console.warn;
+console.warn = function (message) {
+    if (typeof message === 'string' && message.match(/This command is not part of the W3C WebDriver spec and won't be supported in future versions of the driver./)) {
+        return;
+    }
+    warn.apply(console, arguments);
+};
+
+
+module.exports = {
+    baseUrl: 'http://front-jsapi-dev.maps.yandex.ru:8080',
+    gridUrl: 'ttp://selenium:selenium@sg.yandex-team.ru:4444/wd/hub',
+    waitTimeout: 10000,
+    sessionsPerBrowser: 5,
+    retry: 6,
+    tolerance: 10,
+    testsPerSession: 3,
+    antialiasingTolerance: 15,
+    windowSize: '1280x900',
+    sets: {
+        func: {
+            files: basePath + 'tests/',
+            browsers: ['opera', 'yandex', 'chrome', 'firefox']
+        }
+    },
+    browsers: {
+        edge: {
+            desiredCapabilities: {
+                browserName: 'MicrosoftEdge',
+                enableVNC: true,
+                enableVideo: true
+            },
+            compositeImage: true
+        },
+        chrome: {
+            desiredCapabilities: {
+                browserName: 'chrome',
+                version: '70.0',
+                unexpectedAlertBehaviour: 'accept'
+            }
+        },
+        yandex: {
+            desiredCapabilities: {
+                browserName: "yandex-browser",
+                version: "18.10.0.444",
+                unexpectedAlertBehaviour: 'accept'
+            }
+        },
+        firefox: {
+            desiredCapabilities: {
+                browserName: 'firefox',
+                version: '65.0',
+                enableVNC: true,
+                acceptSslCerts: true,
+                acceptInsecureCerts: true,
+                unexpectedAlertBehaviour: 'accept'
+            }
+        },
+        ie11: {
+            desiredCapabilities: {
+                browserName: 'internet explorer',
+                version: '11'
+            }
+        },
+        ie10: {
+            desiredCapabilities: {
+                browserName: 'internet explorer',
+                version: '10'
+            }
+        },
+        ie8: {
+            desiredCapabilities: {
+                browserName: 'internet explorer',
+                version: '8'
+            }
+        },
+        opera: {
+            desiredCapabilities: {
+                browserName: 'opera',
+                version: '54.0',
+                operaOptions: {
+                    binary: '/usr/bin/opera'
+                },
+                enableVNC: true,
+                enableVideo: true
+            },
+            compositeImage: true
+        }
+    },
+    prepareBrowser: function (browser) {
+        const commandsDir = path.resolve(__dirname, basePath + 'commands');
+        browser.extendOptions({deprecationWarnings: false});
+        fs.readdirSync(commandsDir)
+            .filter(function (name) {
+                return path.extname(name) === '.js' && fs.statSync(path.resolve(commandsDir, name)).isFile();
+            })
+            .forEach(function (filename) {
+                browser.addCommand(path.basename(filename, '.js'), require(path.resolve(commandsDir, filename)));
+            });
+    },
+    screenshotsDir: (test) => {
+        const filePath = path.dirname(test.file).split('/');
+        const fileBasename = path.basename(test.file, '.js');
+        const hermioneIndex = filePath.indexOf('hermione') + 1;
+        return '/' + path.join(...filePath.slice(0, hermioneIndex), 'screenshots', ...filePath.slice(hermioneIndex + 1), fileBasename);
+    },
+    plugins: {
+        'html-reporter/hermione': {
+            path: 'reports/hermione',
+            defaultView: 'failed',
+            scaleImages: true
+        },
+        '@yandex-int/wdio-polyfill': {
+            enabled: true,
+            browsers: {
+                firefox: [
+                    'moveToObject',
+
+                    'buttonUp',
+                    'buttonDown',
+                    'buttonPress',
+
+                    'getValue',
+                    'getAttribute'
+                ]
+            }
+        }
+    }
+};

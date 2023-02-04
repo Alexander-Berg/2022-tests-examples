@@ -1,0 +1,120 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Мультимаршрут: геокодирование данных путевых точек
+
+Description:
+Проверка геокодирования данных путевых точек. 
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+multiRouter
+
+Estimated time:
+120000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  При загрузке первоначально загружается карта со спаном Москвы, затем происходит смена спана на программно строящиеся маршруты(на спане карты два маршрута).
+  В контейнере контрол фулскрин, сверху кнопка "reverseGeocoding".
+  Нижний маршрут: "A" - Псков,"B"-Витебск, "C" - Смоленск, "D"- Калуга, верхний "A", "B", "C" -Нижний Новгород, "D", "E" - Выборг.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "reverseGeocoding".
+
+  Expectation:
+  У путевых меток A", "B", "D" верхнего маршрута появляются подписи топонимов.
+  Подписи остальных меток и маршруты без изменений.
+  
+Step:
+  Action:
+  Выполнить клик в кнопку "reverseGeocoding".
+
+  Expectation:
+  У путевых меток A", "B", "D" верхнего маршрута пропадают подписи топонимов.
+  Подписи остальных меток и маршруты без изменений.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 10,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+
+            var multiRoute1 = new ymaps.multiRouter.MultiRoute({
+                referencePoints: [
+                    [55, 37],
+                    [56, 39],
+                    'новгород',
+                    [58, 38],
+                    [60, 30],
+                    'выборг'
+                ],
+                params: {
+                    viaIndexes: [3],
+                    reverseGeocoding: false
+                }
+            }, {
+                boundsAutoApply: true,
+                wayPointDraggable: true,
+                viaPointDraggable: true
+            });
+
+            var multiRoute2 = new ymaps.multiRouter.MultiRoute({
+                referencePoints: ['псков', 'витебск', 'смоленск', 'калуга'],
+                params: {
+                    reverseGeocoding: false
+                }
+            }, {
+                boundsAutoApply: true,
+                wayPointDraggable: true,
+                viaPointDraggable: true
+            });
+
+            map.geoObjects.add(multiRoute1).add(multiRoute2);
+
+            var reverseButton = new ymaps.control.Button('reverseGeocoding');
+            reverseButton.options.set('maxWidth', 99999);
+            reverseButton.events
+                    .add('select', function () {
+                        multiRoute1.model.setParams({reverseGeocoding: true, viaIndexes: [3]});
+                        multiRoute2.model.setParams({reverseGeocoding: true})
+                    })
+                    .add('deselect', function () {
+                        multiRoute1.model.setParams({reverseGeocoding: false, viaIndexes: [3]});
+                        multiRoute2.model.setParams({reverseGeocoding: false})
+                    });
+
+            map.controls.add(reverseButton)
+
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

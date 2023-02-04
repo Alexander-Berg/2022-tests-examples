@@ -1,0 +1,112 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - lelby
+      groups: []
+labels:
+  order: '99999998'
+---
+regexp_section:
+  matcher:
+    match_or:
+      - match_fsm:
+          url: '/v1/prestable/(.*)'
+      - match_fsm:
+          url: '/prestable/v1/(.*)'
+      - match_fsm:
+          header:
+            name: X-Yabs-Use-Prestable
+            value: (.*)
+  modules:
+    - rewrite:
+        actions:
+          - regexp: '/v1/prestable/(.*)'
+            rewrite: '/v1/%1'
+          - regexp: '/prestable/v1/(.*)'
+            rewrite: '/v1/%1'
+    - balancer2:
+        attempts: 2
+        rr: {weights_file: ./controls/traffic_control.weights}
+        backends:
+        - weight: 1
+          name: bygeo_man
+          modules:
+            - report: {ranges: default, uuid: requests_indoor_test_man_prestable}
+            - balancer2:
+                attempts: 1
+                rr: {weights_file: ./controls/traffic_control.weights}
+                backends:
+                  - weight: 1
+                    name: indoor-test
+                    modules:
+                      - report: {ranges: default, uuid: requests_indoor_to_test_prestable}
+                      - balancer2:
+                          attempts: 1
+                          timeout_policy:
+                            timeout: 3600s
+                            unique_policy: {}
+                          rr: {}
+                          generated_proxy_backends:
+                            proxy_options:
+                              fail_on_5xx: false
+                              connect_timeout: 100ms
+                              backend_timeout: 3600s
+                              keepalive_count: 1
+                            include_backends:
+                              type: BY_ID
+                              ids: [indoor-test-man-prestable]
+        - weight: 1
+          name: bygeo_sas
+          modules:
+            - report: {ranges: default, uuid: requests_indoor_test_sas_prestable}
+            - balancer2:
+                attempts: 1
+                rr: {weights_file: ./controls/traffic_control.weights}
+                backends:
+                  - weight: 1
+                    name: indoor-test
+                    modules:
+                      - report: {ranges: default, uuid: requests_indoor_to_test_prestable}
+                      - balancer2:
+                          attempts: 1
+                          timeout_policy:
+                            timeout: 3600s
+                            unique_policy: {}
+                          rr: {}
+                          generated_proxy_backends:
+                            proxy_options:
+                              fail_on_5xx: false
+                              connect_timeout: 100ms
+                              backend_timeout: 3600s
+                              keepalive_count: 1
+                            include_backends:
+                              type: BY_ID
+                              ids: [indoor-test-sas-prestable]
+        - weight: 1
+          name: bygeo_vla
+          modules:
+            - report: {ranges: default, uuid: requests_indoor_test_vla}
+            - balancer2:
+                attempts: 1
+                rr: {weights_file: ./controls/traffic_control.weights}
+                backends:
+                  - weight: 1
+                    name: indoor-test
+                    modules:
+                      - report: {ranges: default, uuid: requests_indoor_to_test_prestable}
+                      - balancer2:
+                          attempts: 1
+                          timeout_policy:
+                            timeout: 3600s
+                            unique_policy: {}
+                          rr: {}
+                          generated_proxy_backends:
+                            proxy_options:
+                              fail_on_5xx: false
+                              connect_timeout: 100ms
+                              backend_timeout: 3600s
+                              keepalive_count: 1
+                            include_backends:
+                              type: BY_ID
+                              ids: [indoor-test-vla-prestable]

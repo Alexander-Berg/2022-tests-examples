@@ -1,0 +1,49 @@
+---
+l7_upstream_macro:
+  version: 0.0.1
+  id: easy2
+  matcher:
+    host_re: 'hey\.yandex\.ru'
+  monitoring:
+    uuid: 'hey'
+  headers:
+    - uaas:
+        service_name: mobsearch2
+    - laas: {}
+  by_dc_scheme:
+    dc_balancer:
+      weights_section_id: 'hey'
+      method: BY_DC_WEIGHT
+      attempts: 2
+    balancer:
+      attempts: 2
+      backend_timeout: 1s
+      connect_timeout: 100ms
+      retry_http_responses:
+        codes: ['5xx']
+      health_check:
+        delay: '10s'
+        request: 'GET /ping.html HTTP/1.1\nHost: hey.yandex.ru\n\n'
+      max_reattempts_share: 0.15
+      max_pessimized_endpoints_share: 0.15
+    dcs:
+      - name: man
+        monitoring:
+          uuid: 'hey_to_man'
+        backend_ids: [common-antirobot/antirobot_man]
+      - name: sas
+        monitoring:
+          uuid: 'hey_to_sas'
+        backend_ids: [common-antirobot/antirobot_sas]
+      - name: vla
+        monitoring:
+          uuid: 'hey_to_vla'
+        backend_ids: [common-antirobot/antirobot_vla]
+    on_error:
+      static:
+        status: 504
+        content: 'Service unavailable'
+    on_fast_error:
+      static:
+        status: 502
+        content: 'Bad gateway'

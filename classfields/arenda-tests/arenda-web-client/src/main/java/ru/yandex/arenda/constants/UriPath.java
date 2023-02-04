@@ -1,0 +1,55 @@
+package ru.yandex.arenda.constants;
+
+public class UriPath {
+
+    public static final String LK = "/lk/";
+    public static final String OWNER = "/owner/";
+    public static final String LK_SDAT_KVARTIRY = "/lk/sdat-kvartiry/";
+    public static final String LK_SELECTION = "/lk/selection/";
+    public static final String LK_PERSONAL_DATA_EDIT = "/lk/personal-data/edit/";
+    public static final String LK_PERSONAL_DATA = "/lk/personal-data/";
+    public static final String LK_TENANT_QUESTIONNAIRE_EDIT = "/lk/tenant/questionnaire/edit/";
+    public static final String LK_TENANT_QUESTIONNAIRE = "/lk/tenant/questionnaire/";
+    public static final String LK_SDAM = "/lk/sdam/";
+    public static final String LK_FLAT = "/lk/flat/";
+    public static final String LK_SNIMU = "/lk/snimu/";
+    public static final String LK_FLATS_SEARCH = "lk/tenant/flats-search/";
+    public static final String LK_MANAGER = "/lk/manager/";
+    public static final String LK_FEEDBACK_FORM = "/lk/feedback-form/";
+    public static final String LK_FEEDBACK = "/lk/feedback/";
+    public static final String MANAGEMENT = "/management/";
+    public static final String OUTSTAFF = "/outstaff/";
+    public static final String PHOTOGRAPHER = "/photographer/";
+    public static final String COPYWRITER = "/copywriter/";
+    public static final String RETOUCHER = "/retoucher/";
+    public static final String SDAT_KVARTIRY = "/sdat-kvartiry/";
+    public static final String SELECTION = "/selection/";
+    public static final String PERSONAL_DATA = "/personal-data/";
+    public static final String EDIT = "/edit/";
+    public static final String TENANT = "/tenant/";
+    public static final String QUESTIONNAIRE = "/questionnaire/";
+    public static final String SDAM = "/sdam/";
+    public static final String SNIMU = "/snimu/";
+    public static final String MANAGER = "/manager/";
+    public static final String FLATS = "/flats/";
+    public static final String FLAT = "/flat/";
+    public static final String USERS = "/users/";
+    public static final String USER = "/user/";
+    public static final String CONTRACTS = "/contracts/";
+    public static final String CONTRACT = "/contract/";
+    public static final String PAYMENT_DATA = "/payment-data/";
+    public static final String PAYMENT_METHODS = "/payment-methods/";
+    public static final String OUTSTAFF_CALL_CENTER_FORM = "/outstaff/call-center-form/";
+    public static final String FLATS_SEARCH = "/flats-search/";
+    public static final String KALKULATOR_ARENDY = "/kalkulator-arendy/";
+    public static final String ODNOKOMNATNAYA = "/odnokomnatnaya/";
+    public static final String DVUHKOMNATNAYA = "/dvuhkomnatnaya/";
+    public static final String TRYOHKOMNATNAYA = "/tryohkomnatnaya/";
+    public static final String MNOGOKOMNATNAYA = "/mnogokomnatnaya/";
+    public static final String HOUSE_SERVICES = "/house-services/";
+    public static final String SETTINGS = "/settings/";
+    public static final String HOUSE_SERVICE = "/house-service/";
+    public static final String HOUSE_SERVICE_LIST = "/house-service-list/";
+    public static final String OTHER = "/other/";
+    public static final String AUTHORITY = "/authority/";
+}

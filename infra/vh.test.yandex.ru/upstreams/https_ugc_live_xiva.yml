@@ -1,0 +1,49 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - woodie
+      groups: []
+labels:
+  order: '00000100'
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      uri: '/live/xiva_player(.*)'
+  modules:
+    - headers:
+        create:
+            "X-Yandex-Internal-Request": "1"
+    - rewrite:
+        actions:
+          - regexp: '/live/xiva_player/([^?]*)\\??(.*)'
+            rewrite: '/vh/xiva_player?handler=public/player/%1&%2&synchronous_scheme=1&srcrwr=UGC_VIDEO:vh-runtime-ugc-test-1.sas.yp-c.yandex.net:6433&srcrwr=UGC_VIDEO:vh-runtime-ugc-test-1.vla.yp-c.yandex.net:6433&srcrwr=TEMPLATER:vh-runtime-ugc-test-1.vla.yp-c.yandex.net:3400&&srcrwr=TEMPLATER:vh-runtime-ugc-test-1.sas.yp-c.yandex.net:3400'
+    - exp_getter_macro:
+        _version: 3
+        service_name: vh
+        testing_mode: {}
+    - balancer2:
+        attempts: 2
+        rr: {weights_file: ./controls/traffic_control.weights}
+        backends:
+        - weight: 1
+          name: bygeo_sas
+          modules:
+          - balancer2:
+              attempts: 3
+              attempts_rate_limiter:
+                  limit: 0.5
+              rr: {}
+              timeout_policy:
+                  timeout: 5s
+                  unique_policy: {}
+              generated_proxy_backends:
+                proxy_options:
+                  backend_timeout: 2500ms
+                  connect_timeout: 50ms
+                  keepalive_count: 1
+                include_backends:
+                  type: BY_ID
+                  ids:
+                    - production_vh_http_adapter_sas_new

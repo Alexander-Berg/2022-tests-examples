@@ -1,0 +1,40 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - torkve
+      groups: []
+labels:
+  order: '10000000'
+config_mode: easy2
+---
+l7_upstream_macro:
+  compat:
+    disable_monitoring: true
+  version: 0.0.1
+  id: api-auth
+  matcher:
+    and_:
+      - uri_re: '/api/.*'
+      - host_re: 'qloud-(auth|idm)-test.yandex-team.ru'
+  headers:
+    - create: {target: X-Balancer-Host, value: qloud-auth-test.yandex-team.ru}
+    - create: {target: X-Forwarded-Host, value: qloud-auth-test.yandex-team.ru}
+    - create: {target: X-Forwarded-For, func: realip}
+    - create: {target: X-Qloud-SSL-Subject, func: ssl_client_cert_subject}
+    - create: {target: X-Qloud-SSL-Verified, func: ssl_client_cert_verify_result}
+    - log: {target_re: 'X-.*'}
+  flat_scheme:
+    balancer:
+      compat:
+        method: WEIGHTED2
+      attempts: 1
+      do_not_limit_reattempts: true
+      do_not_retry_http_responses: true
+      connect_timeout: 1s
+      backend_timeout: 20s
+      keepalive_count: 1
+    backend_ids:
+      - backend1
+    on_error:
+      rst: true

@@ -1,0 +1,39 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - nanny-robot
+      groups: []
+labels:
+  order: '99999999'
+---
+regexp_section:
+  matcher: {}
+  modules:
+    - headers:
+        append_func_weak:
+          X-Forwarded-For: realip
+        create_func_weak:
+          X-Forwarded-For: realip
+    - shared:
+        uuid: backends
+    - balancer2:
+        attempts: 3
+        unique_policy: {}
+        attempts_rate_limiter:
+          limit: 0.3
+        dynamic:
+          max_pessimized_share: 0.2
+        generated_proxy_backends:
+          proxy_options:
+            backend_timeout: 100s
+            connect_timeout: 200ms
+            keepalive_count: 10
+            fail_on_5xx: true
+          include_backends:
+            type: BY_ID
+            ids: [test.aabadmin.yandex.ru]
+        on_error:
+          errordocument:
+            status: 504
+            content: "Service unavailable"

@@ -1,0 +1,51 @@
+---
+
+- name: Role for restart nomad service on vertis_test_docker group
+  hosts: vertis_test_docker
+  serial: 1
+  user: root
+
+  tasks:
+    - set_fact:
+        nomad_ver: "1.0.2-vertis1"
+
+    # TODO: change for rundeck
+    - name: add downtime for {{ inventory_hostname }}
+      local_action: ansible.builtin.command bash -c ". ~/work/admin-utils/_bash_modules/juggler/juggler_add_downtime.sh ; juggler_add_downtime {{ inventory_hostname }} 20m рестарчу nomad"
+
+    - name: Drain node
+      shell: nomad node drain -self -enable -deadline 45s -detach
+
+    - name: Wait while alloc migrating
+      shell: '[ $(docker ps | wc -l) -eq "1" ]'
+      register: results
+      until: results is success
+      retries: 300
+      delay: 1
+      ignore_errors: yes
+
+    - name: upgrade nomad client
+      shell: apt-get update ; apt-get install yandex-vertis-nomad-client={{ nomad_ver }}
+
+    - name: sleep 3
+      shell: sleep 3
+
+    - name: restart nomad service
+      systemd:
+        name: nomad
+        state: restarted
+        daemon_reload: yes
+
+    - name: Wait for nomad up
+      shell: monrun -r nomad | grep -Eq "I am ineligible for scheduling|I am in drain mode|I am agent"
+      register: nomads_monrun
+      until: nomads_monrun is success
+      retries: 1000
+      delay: 2
+
+    - name: Undrain node
+      shell: nomad node drain -self -disable
+
+    - name: Pause for 5 seconds
+      pause:
+        seconds: 5

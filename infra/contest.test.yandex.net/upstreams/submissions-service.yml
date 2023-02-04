@@ -1,0 +1,47 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - happyfat
+      groups: []
+labels:
+  order: '10000000'
+config_mode: easy2
+---
+l7_upstream_macro:
+  version: 0.0.1
+  id: submissions-service
+  matcher:
+    and_:
+      - host_re: internal-test.contest.yandex.net      
+      - uri_re: '/api/v2/submission(.*)'
+  headers:
+    - create: {target: 'X-Forwarded-Proto', value: 'https'}
+    - create: {target: 'x-real-ip', func: realip}
+  monitoring:
+    uuid: contest_backend_test-master-private
+  by_dc_scheme:
+    dc_balancer:
+      weights_section_id: bygeo
+      method: LOCAL_THEN_BY_DC_WEIGHT
+      attempts: 1
+    balancer:
+      attempts: 2
+      max_reattempts_share: 0.15
+      max_pessimized_endpoints_share: 0.2
+      fast_attempts: 1
+      do_not_retry_http_responses: true
+      retry_non_idempotent: false
+      connect_timeout: 70ms
+      backend_timeout: 600s
+    dcs:
+      - name: sas
+        backend_ids:
+          - submissions-service
+      - name: vla
+        backend_ids:
+          - submissions-service
+    on_error:
+      static:
+        status: 504
+        content: 'Service unavailable'

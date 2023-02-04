@@ -1,0 +1,66 @@
+---
+instance_macro:
+  maxconn: 4000
+  sections:
+    admin:
+      ips: [127.0.0.1, '::1']
+      ports: [15220]
+      modules:
+        - http: {}
+        - admin: {}
+    stats_storage:
+      ips: [127.0.0.4]
+      ports: [15220]
+      modules:
+        - report:
+            uuid: "service_total"
+            ranges: "default"
+            just_storage: true
+            outgoing_codes: [200, 400]
+            matcher_map:
+              ru: {match_fsm: {host: 'beta.mobsearch.yandex.ru' }}
+              ru_ping:
+                match_and:
+                  - match_fsm: {host: 'beta.mobsearch.yandex.ru'}
+                  - match_fsm: {uri: '/ping'}
+                  - match_fsm: {upgrade: '[a-z]', surround: true}
+        - http:
+            keepalive: true
+            keepalive_drop_probability: 0.6666666
+            keepalive_requests: 1000
+            keepalive_timeout: 100s
+        - errordocument:
+            status: 204
+    https_section:
+      ips: ['2a02:6b8::1:62', '2a02:6b8::1:63']
+      ports: [443]
+      local_ips: [local_v4_addr, local_v6_addr]
+      local_ports: [15221]
+      stats_attr: "https"
+      extended_http_macro:
+        port: 15221
+        report_uuid: 'https'
+        enable_ssl: true
+        disable_sslv3: true
+        disable_tlsv1_3: false
+        ssl_sni_max_send_fragment: 1024
+        ssl_sni_validate_cert_date: true
+        ssl_sni_contexts:
+          beta.mobsearch.yandex.ru:
+            servername_regexp: default
+        modules:
+          - response_headers_if:
+              if_has_header: X-Yandex-STS
+              erase_if_has_header: true
+              create_header:
+                Strict-Transport-Security: 'max-age=600'
+          - cookies:
+              delete: '.*cookie1.*'
+              create:
+                cookie2: value2
+              create_weak:
+                cookie3: value3
+          - regexp:
+              include_upstreams:
+                filter: {any: true}
+                order: {label: {name: "order"}}

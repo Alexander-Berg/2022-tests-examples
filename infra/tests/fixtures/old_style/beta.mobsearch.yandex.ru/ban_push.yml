@@ -1,0 +1,32 @@
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      uri: '/push_(get|set)_ban(/.*)?'
+  modules:
+    - tcp_rst_on_error: {}
+    - stats_eater: {}
+    - icookie:
+        use_default_keys: true
+        force_equal_to_yandexuid: false
+        domains: [".yandex.ru", ".yandex.tr"]
+        force_generate_from_searchapp_uuid: false
+        enable_parse_searchapp_uuid: false
+        max_transport_age: 180
+    - balancer2:
+        attempts: 3
+        rr:
+          randomize_initial_state: true
+        generated_proxy_backends:
+          proxy_options:
+            backend_timeout: 300ms
+            connect_timeout: 20ms
+          instances:
+            - weight: 1
+              host: search-history.yandex.net
+              port: 10000
+        on_status_code:
+          400:
+            errordocument: {status: 404}
+          404:
+            errordocument: {status: 404}

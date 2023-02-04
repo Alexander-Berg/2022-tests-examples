@@ -1,0 +1,29 @@
+---
+
+- hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    host: sre_vertis_test_datatransfer
+    host_tags:
+      - vertis_sre
+      - vertis_sre_test
+    transfers:
+      - dttuuffg2ct7g9309mkr
+      - dttupt6g0m1ptbmcqdjr
+      - dttndcta6so55kpdhqrh
+      - dtt9bdnhu78omoiqhrfr
+
+  pre_tasks:
+    - juggler_facts: jserver_api={{ jserver_api }}
+
+  post_tasks:
+    - juggler_cleanup: jcheck_mark={{ host }}
+
+  tasks:
+    - name: 'Add combined alert'
+      juggler_check:
+      args: >
+        {{ mdb_check | 
+        datatransfer_add_children(transfers, 'dta_01_dataplane_is_alive') |
+        combine(crit_disabled, {'service': 'data-transfer-is-alive'}, recursive=True) }}

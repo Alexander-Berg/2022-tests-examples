@@ -1,0 +1,82 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Хинт: проверка метода установки данных хинта
+
+Description:
+Проверка метода установки данных хинта.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+hint
+
+Estimated time:
+60000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+  
+  Expectation:
+  Карта отобразилась корректно. 
+  На карте спан Москвы, сверху справа контрол фулскрин. 
+  При загрузке карты под контейнером появляется блок: "data:OK".
+  Через секунду после загрузки в центре спана появляется хинт "hint", под контейнером появляется блок: "data (html):OK".
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var myMap = new ym.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 10,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+
+            __log__('Check data and html:');
+
+            var hint,
+                    pos = myMap.getCenter(),
+                    contentLayout = ymaps.templateLayoutFactory.createClass('$[hintContent]<span id="tst">$[a]$[x]</span>'),
+                    data = { a: 'hint' },
+                    options = { contentLayout: contentLayout };
+            window.hint = hint = new ymaps.Hint(myMap);
+            hint.options.set(options).setParent(myMap.options);
+
+            hint.events.add(['close'], function (e) {
+                __log__('event: ' + e.get('type'))
+            });
+
+            hint.setData(data).then(function () {
+                __log__('data: ');
+                validateValue(hint.getData().toString(), data.toString());
+            });
+            setTimeout(function () {
+                hint.open(pos).then(function () {
+                    __log__('data (html): ');
+                    validateValue(data.a, document.getElementById('tst').innerHTML);
+                });
+            }, 1000);
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

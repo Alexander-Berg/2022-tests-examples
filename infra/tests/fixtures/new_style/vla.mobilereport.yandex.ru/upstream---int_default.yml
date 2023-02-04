@@ -1,0 +1,65 @@
+---
+regexp_section:
+  matcher: {}
+  modules:
+    - report:
+        uuid: default
+        ranges: default
+    - threshold:
+        lo_bytes: 1048576
+        hi_bytes: 1048576
+        pass_timeout: 9s
+        recv_timeout: 1s
+    - rewrite:
+        actions:
+          - regexp: '/(m)?search/(.*)'
+            rewrite: '/%2'
+    - balancer2:
+        attempts: 3
+        attempts_file: './controls/default.attempts'
+        rr: {weights_file: ./controls/traffic_control.weights}
+        backends:
+        - weight: 1
+          name: jsonsearch_vla
+          modules:
+            - report: {ranges: default, uuid: requests_default_to_vla}
+            - balancer2:
+                attempts: 2
+                weighted2: {}
+                generated_proxy_backends:
+                  proxy_options:
+                    backend_timeout: 5s
+                  include_backends:
+                    type: BY_ID
+                    ids: [production_jsonsearch_vla]
+        - weight: 1
+          name: jsonsearch_sas
+          modules:
+            - report: {ranges: default, uuid: requests_default_to_sas}
+            - balancer2:
+                attempts: 2
+                weighted2: {}
+                generated_proxy_backends:
+                  proxy_options:
+                    backend_timeout: 5s
+                  include_backends:
+                    type: BY_ID
+                    ids: [production_jsonsearch_sas]
+        - weight: 1
+          name: jsonsearch_man
+          modules:
+            - report: {ranges: default, uuid: requests_default_to_man}
+            - balancer2:
+                attempts: 2
+                weighted2: {}
+                generated_proxy_backends:
+                  proxy_options:
+                    backend_timeout: 5s
+                  include_backends:
+                    type: BY_ID
+                    ids: [production_jsonsearch_man]
+        - weight: -1
+          name: jsonsearch_devnull
+          modules:
+            - errordocument:
+                status: 204

@@ -1,0 +1,29 @@
+---
+regexp_path_section:
+  pattern: '/ok.html(.*)'
+  modules:
+  - report: {ranges: default, uuid: requests_to_upstream_ok}
+  - balancer2:
+      attempts: 1
+      rr: {weights_file: ./controls/l7_noc_check}
+      backends:
+          - weight: 1
+            name: return_503
+            modules:
+              - errordocument:
+                 status: 503
+                 content: 'echo NO'
+          - weight: -1
+            name: return_200
+            modules:
+              - errordocument:
+                 status: 200
+                 content: 'echo ok'
+          - weight: -1
+            name: return_200_weighted
+            modules: 
+              - active_check_reply:
+                 default_weight: 1
+                 weight_file: "./controls/l7_noc_check_weight"
+                 use_header: true
+                 use_body: true

@@ -1,0 +1,137 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Геолокация: определение местоположения посредством браузера и ip
+
+Description:
+Проверка автопозиционирования карты при определении геолокации.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+Перед проведением теста необходимо настроить браузер для запроса геоданных. В Google Chrome в настройках "Конфиденциальность и безопастность" в блоке "Геоданные" выставить флаг "Спрашивать разрешение на доступ".
+При этом в списке разрешенных адресов вкладки "Геоданные" в подблоках "Разрешить" и "Блокировать" не должно быть URL адресов ...yandex.ru...Если URL адреса "yandex.ru" имеются удалите их, для корректного прохождения теста и появления запроса на определение местоположения.
+
+Components: 
+geolocation
+
+Estimated time:
+180000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан Европейских городов, сверху слева имеются кнопки "browser", "yandex".
+  
+Step:
+  Action:
+  Выполнить клик в кнопку "browser". 
+
+  Expectation:
+  По клику на странице появляется диалоговое окно о разрешении доступа к данным о вашем местоположении, с кнопками "разрешить", "блокировать". 
+  (конфигурация кнопок и диалогового окна может варьироваться в зависимости от браузера).
+  
+Step:
+  Action:
+  Клик в кнопку "Разрешить" в диалоговом окне браузера.
+
+  Expectation:
+  На спане карты появляется красный круглый ПИН "Я".
+  Под контейнером с картой появляется блок с текстом вида: "position: 59.8540288,30.408704 (координаты метки); promise fulfilled (browser)".
+
+Step:
+  Action:
+  Выполнить клик в красный круглый ПИН "Я".
+
+  Expectation:
+  Метка геолокации пропадает, на ее месте появляется балун с данными топонима, вида: "Санкт-Петербург; Россия".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "yandex". 
+
+  Expectation:
+  По клику на спане карты появляется второй красный круглый ПИН "Я"(геолокация по ip).
+  Под контейнером с картой появляется блок с текстом вида: "position: 59.8540288,30.408704 (координаты метки); promise fulfilled (yandex)".
+  Ранее открытый балун метки геолокации не пропадает.
+   
+Step:
+  Action:
+  Выполнить клик в красный круглый ПИН "Я" появившийся на предыдущем шаге(геолокация по ip).
+
+  Expectation:
+  Ранее открытый балун метки закрывается, на его месте метка геолокации - ПИН "Я". 
+  По клику метка пропадает, на ее месте появляется балун с данными топонима, вида: "Москва; Россия".
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 4,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+            __log__("На карте можно провести браузерную и ip геолокацию. Обе имеют балуны.");
+            var object1;
+            var object2;
+
+            var yandexButton = new ymaps.control.Button('yandex');
+            var browserButton = new ymaps.control.Button('browser');
+
+            yandexButton.events.add('click', function () {
+                var geolocation1 = ymaps.geolocation.get({provider: 'yandex'});
+                geolocation1.then(function (res) {
+                    object1 = res.geoObjects;
+                    log.info('position: ' + object1.position);
+                    map.geoObjects.add(object1);
+                });
+                geolocation1.done(function () {
+                    log.info('promise fulfilled (yandex)')
+                }, function (err) {
+                    log.info('promise rejected (yandex)');
+                    log.info('Error: ' + err.message);
+                });
+            });
+
+            browserButton.events.add('click', function () {
+                var geolocation2 = ymaps.geolocation.get({provider: 'browser'});
+                geolocation2.then(function (res) {
+                    object2 = res.geoObjects;
+                    log.info('position: ' + object2.position);
+                    map.geoObjects.add(object2);
+                });
+                geolocation2.done(function () {
+                    log.info('promise fulfilled (browser)')
+                }, function (err) {
+                    log.info('promise rejected (browser)');
+                    log.info('Error: ' + err.message);
+                });
+            });
+
+            map.controls.add(yandexButton).add(browserButton)
+
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

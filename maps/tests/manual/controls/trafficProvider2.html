@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<!--
+Title:
+Контрол пробок: провайдер пробок
+
+Description:
+Проверка состояния провайдеров пробок.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+regress
+
+Estimated time:
+90000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась корректно, отображаются разноцветные линии пробок. 
+  Сверху расширенный контрол пробок в котором: иконка светофора; бал пробок и время. 
+  Имеется флаг "Сейчас" и "Прогноз", и чекбокс "Дорожные события"(неактивен).
+  Слева вверху кнопки "actual", "archive", "forecast".
+
+Step:
+  Action:
+  Открыть инструменты разработчика командами Windows: Ctrl + Shift + I если у вас MacOS: ⌥ + ⌘ + I, вкладку Console.
+  Просмотреть и сравнить данные во вкладке.
+
+  Expectation:
+  Во вкладке отображаются строки данных контрола: "initial state: providerKey -> traffic#actual; shown -> true; expanded -> true".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "archive".
+
+  Expectation:
+  Пробочные линии на карте отображают исторические пробки, в контроле включается флаг "Прогноз", отображается текущий день недели и время.
+  Во вкладке отображаются строки смены провайдера пробок, имеются строки: "traffic#actual > traffic#archive; providerKey -> traffic#archive; shown -> true; expanded -> true".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "forecast".
+
+  Expectation:
+  Пробочные линии на карте отображают текущие пробки, в контроле включается флаг "Сейчас", отображается время, чек бокс "Дорожные события".
+  Во вкладке отображаются строки смены провайдера пробок, имеются строки: "traffic#archive > traffic#actual; providerKey -> traffic#actual; shown -> true; expanded -> true".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "actual".
+
+  Expectation:
+  Пробочные линии и контрол без изменений.
+  Во вкладке отображаются строки смены провайдера пробок, имеются строки: "providerKey -> traffic#actual; shown -> true; expanded -> true".
+-->
+<html>
+<head>
+    <title>API 2.0</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <script src="../helper.js"></script>
+    <script type=text/javascript>
+        Api('init');
+        function init(ymaps) {
+            var myMap = new ymaps.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 10,
+                behaviors: ['default', 'scrollZoom']
+            });
+            var actualTrafficButton = new ymaps.control.TrafficControl({
+                providerKey: 'traffic#forecast',
+                shown: true
+            });
+            console.log('initial state:');
+            for (var key in actualTrafficButton.state.getAll()) {
+                console.log(key + ' -> ' + actualTrafficButton.state.get(key));
+            }
+            console.log('');
+            actualTrafficButton.state.events.add('change', function () {
+                console.log('---traffic control state changed---');
+                for (var key in actualTrafficButton.state.getAll()) {
+                    console.log(key + ' -> ' + actualTrafficButton.state.get(key));
+                }
+            });
+            actualTrafficButton.events.add('providerkeychange', function (e) {
+                console.log(e.get('type'));
+                if (e.get('type') == 'providerkeychange') {
+                    console.log(e.get('oldProviderKey') + ' > ' + e.get('newProviderKey'));
+                }
+            });
+            var actualButton = new ymaps.control.Button({data: {content: 'actual'}}, {selectOnClick: false});
+            var archiveButton = new ymaps.control.Button({data: {content: 'archive'}}, {selectOnClick: false});
+            var forecastButton = new ymaps.control.Button({data: {content: 'forecast'}}, {selectOnClick: false});
+            actualButton.events
+                    .add('click', function () {
+                        actualTrafficButton.state.set('providerKey', 'traffic#actual')
+                    });
+            archiveButton.events
+                    .add('click', function () {
+                        actualTrafficButton.state.set('providerKey', 'traffic#archive')
+                    });
+            forecastButton.events
+                    .add('click', function () {
+                        actualTrafficButton.state.set('providerKey', 'traffic#forecast')
+                    });
+            myMap.controls
+                    .add(actualButton)
+                    .add(archiveButton)
+                    .add(forecastButton)
+                    .add(actualTrafficButton, {top: 5, right: 5});
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+<p><a href="https://tech.yandex.ru/maps/archive/doc/jsapi/2.0/ref/reference/control.TrafficControl-docpage/" target="_blank">Docs</a></p>
+</body>
+</html>

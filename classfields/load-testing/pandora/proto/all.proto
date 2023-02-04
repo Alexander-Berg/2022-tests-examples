@@ -1,0 +1,146 @@
+syntax = "proto3";
+
+package vertis.vasgen.grpc;
+
+option go_package = ".;pandora_proto";
+
+service Search {
+    rpc Execute (ExecutionRequest) returns (ExecutionResult);
+    rpc FindObject (FindObjectRequest) returns (Any);
+}
+
+message ExecutionRequest {
+    DomainId domain = 1;
+    Query query = 2;
+}
+
+message ExecutionResult {
+    Any payload = 1;
+}
+
+message FindObjectRequest {
+    DomainId domain = 1;
+    RawValue pk = 2;
+}
+
+message IntegerValue {
+    reserved 1 to 17, 19 to 30;
+    oneof primitive {
+        sint64 sint64 = 18;
+    }
+}
+
+message FloatValue {
+    reserved 3 to 30;
+    oneof primitive {
+        double double = 1;
+        float float = 2;
+    }
+}
+
+message GeoPoint {
+    double latitude = 1;
+    double longitude = 2;
+    repeated int64 geo_ids = 3;
+}
+
+message Tuple {
+    repeated RawValue fields = 1;
+}
+
+message RawValue {
+    oneof value_type {
+        IntegerValue integer = 10;
+        FloatValue fp = 11;
+        string string = 12;
+        bytes bytes = 13;
+        Any any = 14;
+        Tuple tuple = 15;
+        GeoPoint point = 16;
+    }
+
+    oneof fulltext_alter_view {
+        string text = 50;
+    }
+}
+
+message DomainId {
+    string id = 1;
+}
+
+message Eq {
+    string field = 1;
+    RawValue value = 2;
+}
+
+message In {
+    string field = 1;
+    repeated RawValue value = 2;
+}
+
+message IsNull {
+    string field = 1;
+}
+
+message LessThan {
+    string field = 1;
+    RawValue value = 2;
+    bool or_equals = 3;
+}
+
+message GreaterThan {
+    string field = 1;
+    RawValue value = 2;
+    bool or_equals = 3;
+}
+
+message Between {
+    string field = 1;
+    RawValue from = 2;
+    bool or_equals_from = 3;
+    RawValue to = 4;
+    bool or_equals_to = 5;
+}
+
+message Filter {
+    repeated Filter and = 1;
+    repeated Filter or = 2;
+    Filter not = 3;
+
+    oneof op {
+        Eq eq = 14;
+        In in = 15;
+        IsNull is_null = 16;
+        LessThan lte = 17;
+        GreaterThan gte = 18;
+        Between between = 19;
+    }
+}
+
+message ExecutionPlan {
+    string plan_id = 99;
+}
+
+message Query {
+    Filter filter = 1;
+    Text text = 2;
+    ExecutionPlan plan = 5;
+    map<string,string> metadata = 10;
+}
+
+message Text {
+    string query = 1;
+}
+
+message Any {
+    string type_url = 1;
+
+    bytes value = 2;
+
+    SRaaSType type_id = 99;
+}
+
+message SRaaSType {
+    string version = 1;
+    string message_name = 2;
+}

@@ -1,0 +1,74 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - nanny-robot
+      - keepclean
+      groups: []
+labels:
+  order: '99999999'
+---
+regexp_section:
+  matcher: {}
+  modules:
+    - rewrite:
+        actions:
+          - regexp: '/deploy-manager/(.*)'
+            rewrite: '/%1'
+    - shared:
+        uuid: backends
+    - balancer2:
+        attempts: 1
+        rr: {}
+        by_name_policy:
+          name: !f get_geo("bygeo_", "random")
+          unique_policy: {}
+        backends:
+          - weight: 1
+            name: bygeo_man
+            modules:
+              - balancer2:
+                  attempts: !f count_backends()
+                  active:
+                    delay: '10s'
+                    request: 'GET /ping HTTP/1.1\nHost: saas-dm-test.yandex.net\n\n'
+                  unique_policy: {}
+                  generated_proxy_backends:
+                    proxy_options:
+                      backend_timeout: 60s
+                      fail_on_5xx: false
+                    include_backends:
+                      type: BY_ID
+                      ids: [man_saas_dm_hamster]
+          - weight: 1
+            name: bygeo_sas
+            modules:
+              - balancer2:
+                  attempts: !f count_backends()
+                  active:
+                    delay: '10s'
+                    request: 'GET /ping HTTP/1.1\nHost: saas-dm-test.yandex.net\n\n'
+                  unique_policy: {}
+                  generated_proxy_backends:
+                    proxy_options:
+                      backend_timeout: 60s
+                      fail_on_5xx: false
+                    include_backends:
+                      type: BY_ID
+                      ids: [sas_saas_dm_hamster]
+          - weight: 1
+            name: bygeo_vla
+            modules:
+              - balancer2:
+                  attempts: !f count_backends()
+                  active:
+                    delay: '10s'
+                    request: 'GET /ping HTTP/1.1\nHost: saas-dm-test.yandex.net\n\n'
+                  unique_policy: {}
+                  generated_proxy_backends:
+                    proxy_options:
+                      backend_timeout: 60s
+                      fail_on_5xx: false
+                    include_backends:
+                      type: BY_ID
+                      ids: [vla_saas_dm_hamster]

@@ -1,0 +1,58 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - comunodi
+      groups: []
+labels:
+  order: '00100000'
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      host: '(.*)\\.zen-ah-testing\\.kaizen\\.yandex\\.(.*)'
+  modules:
+    # - headers:
+    #     copy:
+    #       Content-Encoding: 'X-Content-Encoding'
+    #     delete: 'Content-Encoding'
+    - log_headers:
+        name_re: '.*'
+    - rpcrewrite:
+        host: 'bolver.dz.yandex-team.ru'
+        url: '/proxy'
+        dry_run: false
+        rpc_success_header: 'X-Metabalancer-Answered'
+        # on_rpc_error:
+        #   modules:
+        #     - errordocument:
+        #         status: 500
+        #         content: "rpcrewrite failed"
+        rpc:
+          modules:
+            - headers:
+                create:
+                  X-Yandex-Bolver-Reply-404: '1'
+            - balancer2:
+                connection_attempts: 2
+                attempts: 2
+                attempts_rate_limiter:
+                  limit: 0.2
+                unique_policy: {}
+                rr: {}
+                generated_proxy_backends:
+                  proxy_options:
+                    backend_timeout: 300ms
+                    connect_timeout: 70ms
+                  include_backends:
+                    type: BY_ID
+                    ids: [bolver-zen]
+    # - headers:
+    #     copy:
+    #       X-Content-Encoding: 'Content-Encoding'
+    #     delete: 'X-Content-Encoding'
+    - log_headers:
+        name_re: '.*'
+        response_name_re: '.*'
+    - shared:
+        uuid: testing_http_adapter

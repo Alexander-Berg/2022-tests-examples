@@ -1,0 +1,56 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - robot-tap
+      groups: []
+labels:
+  order: '1001'
+---
+regexp_section:
+    matcher:
+        match_fsm:
+            host: ecom\\.tap-tst\\.yandex\\.net
+    modules:
+        - report:
+              uuid: 'services'
+              ranges: 'default'
+        - report:
+              uuid: 'ecom-testing-total'
+              ranges: 'default'
+        - report:
+              uuid: 'ecom-testing-index'
+              ranges: 'default'
+        - rewrite:
+              actions:
+                  - regexp: '.*'
+                    rewrite: '/ecom/master/4e5249f3ba795b772c9868a972f1dd59af82a31e/index.html'
+                  - regexp: '.*'
+                    header_name: 'Host'
+                    rewrite: 'tap-test.s3.mds.yandex.net'
+        - response_headers:
+              create:
+                  Cache-Control: public, max-age=900
+                  X-Frame-Options: DENY
+                  X-Content-Type-Options: nosniff
+                  X-XSS-Protection: 1; mode=block
+                  Yandex-CSP-ReportURI: "https://csp.yandex.net/csp?project=turboapp-ecom&req-id={{reqid}}&yandexuid={{yandexuid}}&from=turboapp-ecom-testing"
+                  Content-Security-Policy: "script-src 'self' 'unsafe-eval' yastatic.net mc.yandex.ru mc.webvisor.com mc.webvisor.org mc.yandex.com mc.yandex.by mc.yandex.com.tr mc.yandex.kz mc.yandex.ua mc.yandex.az mc.yandex.co.il mc.yandex.com.am mc.yandex.com.ge mc.yandex.ee mc.yandex.fr mc.yandex.kg mc.yandex.lt mc.yandex.lv mc.yandex.md mc.yandex.tj mc.yandex.tm mc.yandex.uz api-maps.yandex.ru suggest-maps.yandex.ru *.maps.yandex.net yandex.ru tap-test.s3.mds.yandex.net 'sha256-PzQvgwwj+YcoW2/Gj5VaPpmf+kN590GJVgNKU12SdUY=' 'sha256-wcovBJc3EMdWZR2ktd/KHa9m9uA4/pX+FR2DB+A5U6E='; style-src 'self' yastatic.net blob: tap-test.s3.mds.yandex.net; font-src 'self' yastatic.net tap-test.s3.mds.yandex.net; img-src 'self' data: yastatic.net avatars.mds.yandex.net mc.webvisor.com mc.webvisor.org mc.yandex.com mc.yandex.by mc.yandex.com.tr mc.yandex.kz mc.yandex.ru mc.yandex.ua mc.yandex.az mc.yandex.co.il mc.yandex.com.am mc.yandex.com.ge mc.yandex.ee mc.yandex.fr mc.yandex.kg mc.yandex.lt mc.yandex.lv mc.yandex.md mc.yandex.tj mc.yandex.tm mc.yandex.uz mc.admetrica.ru *.maps.yandex.net api-maps.yandex.ru yandex.ru tap-test.s3.mds.yandex.net https://api.browser.yandex.ru https://images.ctfassets.net; media-src 'self' yastatic.net tap-test.s3.mds.yandex.net; connect-src yandexmetrica.com:* mc.webvisor.com mc.webvisor.org mc.yandex.com mc.yandex.by mc.yandex.com.tr mc.yandex.kz mc.yandex.ru mc.yandex.ua mc.yandex.az mc.yandex.co.il mc.yandex.com.am mc.yandex.com.ge mc.yandex.ee mc.yandex.fr mc.yandex.kg mc.yandex.lt mc.yandex.lv mc.yandex.md mc.yandex.tj mc.yandex.tm mc.yandex.uz mc.admetrica.ru 127.0.0.1:29009 127.0.0.1:30102 yandexmetrika.com:29010 yandexmetrika.com:30103 https://cdn.contentful.com; child-src blob: mc.yandex.ru api-maps.yandex.ru; frame-src blob: mc.yandex.ru mc.yandex.md api-maps.yandex.ru; frame-ancestors webvisor.com *.webvisor.com http://webvisor.com http://*.webvisor.com; default-src tap-test.s3.mds.yandex.net; manifest-src 'self'; object-src 'none'; report-uri https://csp.yandex.net/csp?from=turboapp-ecom-testing&project=turboapp-ecom"
+        - balancer2:
+              disable_attempts_rate_limiter: true
+              attempts: 5
+              simple_policy: {}
+              rr: {}
+              generated_proxy_backends:
+                  proxy_options:
+                      backend_timeout: 500ms
+                      connect_timeout: 50ms
+                      fail_on_5xx: true
+                  instances:
+                      - weight: 1
+                        host: 'tap-test.s3.mds.yandex.net'
+                        port: 80
+              on_error:
+                  errordocument:
+                      status: 503
+                      content: 'Service unavailable'

@@ -1,0 +1,155 @@
+<!DOCTYPE HTML>
+<!--(skip)(description)
+geoObject.editor: corrector options
+-->
+<!--(version)
+2.1
+-->
+<!--(commands)
+click(2);
+click(4);
+click(7);
+click(10);
+test();
+click(2);
+click(4);
+click(7);
+click(10);
+test();
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script src="../geoCS.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym; // hack
+
+            __log__('Corrector case: change vertex coordinates');
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.73259667357658, 37.70153663432529],
+                zoom: 9,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            }, {
+                buttonMaxWidth: 99999
+            });
+
+            geoCSSource(ym, map, this);
+            addGrid(map);
+            var log = new Log();
+
+            var collection = new ymaps.GeoObjectCollection();
+            collection
+                    .add(geoObjectPlacemark)
+                    .add(geoObjectPolyline)
+                    .add(geoObjectPolygon)
+                    .add(placemark)
+                    .add(polyline)
+                    .add(polygon);
+
+            var editorButton = new ymaps.control.Button({data: {content: 'editor'}, options: {selectOnClick: true}});
+            var placemarkButton = new ymaps.control.Button({data: {content: 'placemark'}, options: {selectOnClick: true}});
+            var polylineButton = new ymaps.control.Button({data: {content: 'polyline + corrector'}, options: {selectOnClick: true}});
+            var polygonButton = new ymaps.control.Button({data: {content: 'polygon + corrector'}, options: {selectOnClick: true}});
+
+            editorButton.events
+                    .add('select', function () {
+                        collection.each(function (obj) {
+                            obj.editor.startEditing();
+                        });
+                    })
+                    .add('deselect', function () {
+                        collection.each(function (obj) {
+                            obj.editor.stopEditing();
+                        });
+                    });
+
+            placemarkButton.events
+                    .add('select', function () {
+                        placemark.editor.startDrawing();
+                    })
+                    .add('deselect', function () {
+                        placemark.editor.stopDrawing();
+                    });
+
+            polylineButton.events
+                    .add('select', function () {
+                        polyline.editor.startDrawing();
+                    })
+                    .add('deselect', function () {
+                        polyline.editor.stopDrawing();
+                    });
+
+            polygonButton.events
+                    .add('select', function () {
+                        polygon.editor.startDrawing();
+                    })
+                    .add('deselect', function () {
+                        polygon.editor.stopDrawing();
+                    });
+
+            collection.each(function (obj) {
+                obj.events.add('editorstatechange', function (e) {
+                    __log__('editorstatechange')
+                });
+            });
+
+            map.geoObjects.add(collection);
+            polyline.options.set({
+                editorDrawingCorrector: function (coords, index) {
+                    var coord = coords[index].slice();
+                    coord[0] += 10;
+                    coord[1] += 10;
+                    var deferred = ymaps.vow.defer();
+                    return deferred.promise();
+                },
+                editorDrawingCorrectorTimeout: 100,
+                editorDraggingCorrector: function (coords, index) {
+                    var coord = coords[index].slice();
+                    coord[0] -= 10;
+                    coord[1] -= 10;
+                    var deferred = ymaps.vow.defer();
+                    return deferred.promise();
+                },
+                editorDraggingCorrectorTimeout: 100
+            });
+
+            polygon.options.set({
+                editorDrawingCorrector: function (coords, pathIndex, vertexIndex) {
+                    var coord = coords[pathIndex][vertexIndex].slice();
+                    coord[0] += 10;
+                    coord[1] += 10;
+                    var deferred = ymaps.vow.defer();
+                    return deferred.promise();
+                },
+                editorDrawingCorrectorTimeout: 100,
+                editorDraggingCorrector: function (coords, pathIndex, vertexIndex) {
+                    var coord = coords[pathIndex][vertexIndex].slice();
+                    coord[0] -= 10;
+                    coord[1] -= 10;
+                    var deferred = ymaps.vow.defer();
+                    return deferred.promise();
+                },
+                editorDraggingCorrectorTimeout: 100
+            });
+
+            map.controls
+                    .add(editorButton)
+                    .add(placemarkButton)
+                    .add(polygonButton)
+                    .add(polylineButton);
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

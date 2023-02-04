@@ -1,0 +1,621 @@
+root_path: /billing/hot/test/namespace/mail_pro
+project_path: /billing/balance-test/Project
+quota: billing30_hot_tarification
+owner: robot-balance-tester
+mnclose_robot: &mnclose_robot robot-test-mnclose
+
+graph_archive_source: &graph_archive_source 3f5f40b5-0d45-4b42-abe3-97a988916f97
+graph_yql_metrics_source: &graph_yql_metrics_source c3b76b24-97f8-440a-9f15-885aeba8e772
+graph_act_genmeta_source: &graph_act_genmeta_source 383c2de6-4808-4aa0-8721-4f3617d5ddcb
+graph_act_process_source: &graph_act_process_source 609fc3d4-c240-47b6-9b8d-5043446cabb4
+
+default_metric_tags: &default_metric_tags
+  namespace: mail_pro
+  dry_run: 'false'
+  environment: testing
+  yt_cluster: all
+  component: unknown
+  stage: none
+
+artifacts:
+  - path: act-o-tron/mnclose_input
+    type: NIRVANA_DATA_FILE_JSON
+    ttl: 140
+    permissions:
+      - user: *mnclose_robot
+        role: writer
+    metric_tags:
+      <<: *default_metric_tags
+      component: act-o-tron
+      stage: artifact
+  - path: act-o-tron/mnclose_output
+    type: NIRVANA_DATA_FILE_JSON
+    ttl: 140
+    permissions:
+      - user: *mnclose_robot
+        role: reader
+    metric_tags:
+      <<: *default_metric_tags
+      component: act-o-tron
+      stage: artifact
+  - path: act-o-tron/meta_current
+    type: NIRVANA_DATA_FILE_JSON
+    ttl: 140
+    metric_tags:
+      <<: *default_metric_tags
+      component: act-o-tron
+      stage: artifact
+  - path: act-o-tron/meta_processed_arnold
+    type: NIRVANA_DATA_FILE_JSON
+    ttl: 140
+    metric_tags:
+      <<: *default_metric_tags
+      yt_cluster: arnold
+      component: act-o-tron
+      stage: artifact
+  - path: act-o-tron/meta_processed_hahn
+    type: NIRVANA_DATA_FILE_JSON
+    ttl: 140
+    metric_tags:
+      <<: *default_metric_tags
+      yt_cluster: hahn
+      component: act-o-tron
+      stage: artifact
+
+  - path: dry-run/act-o-tron/mnclose_input
+    type: NIRVANA_DATA_FILE_JSON
+    ttl: 140
+    metric_tags:
+      <<: *default_metric_tags
+      component: act-o-tron
+      stage: artifact
+  - path: dry-run/act-o-tron/mnclose_output
+    type: NIRVANA_DATA_FILE_JSON
+    ttl: 140
+    metric_tags:
+      <<: *default_metric_tags
+      component: act-o-tron
+      stage: artifact
+  - path: dry-run/act-o-tron/meta_current
+    type: NIRVANA_DATA_FILE_JSON
+    ttl: 140
+    metric_tags:
+      <<: *default_metric_tags
+      dry_run: 'true'
+      component: act-o-tron
+      stage: artifact
+  - path: dry-run/act-o-tron/meta_processed_arnold
+    type: NIRVANA_DATA_FILE_JSON
+    ttl: 140
+    metric_tags:
+      <<: *default_metric_tags
+      dry_run: 'true'
+      yt_cluster: arnold
+      component: act-o-tron
+      stage: artifact
+  - path: dry-run/act-o-tron/meta_processed_hahn
+    type: NIRVANA_DATA_FILE_JSON
+    ttl: 140
+    metric_tags:
+      <<: *default_metric_tags
+      dry_run: 'true'
+      yt_cluster: hahn
+      component: act-o-tron
+      stage: artifact
+
+  - path: config
+    type: NIRVANA_DATA_FILE_JSON
+    ttl: 1500
+    value:
+      location_attrs_config:
+      - client_id
+      - contract_id
+      - currency
+
+
+workflows:
+  - path: instances/archive
+  - path: instances/yql-metrics-collector
+
+  - path: instances/act-o-tron_process_arnold
+  - path: instances/act-o-tron_process_hahn
+  - path: instances/act-o-tron_genmeta
+
+  - path: dry-run/instances/archive
+  - path: dry-run/instances/yql-metrics-collector
+
+  - path: dry-run/instances/act-o-tron_process_arnold
+  - path: dry-run/instances/act-o-tron_process_hahn
+  - path: dry-run/instances/act-o-tron_genmeta
+
+
+default_reaction_configs:
+  default_archive_reaction: &default_archive_reaction
+    ttl: 1
+    triggers:
+      - name: cron
+        cron: 0 14 20 ? * * *
+    source_graph: *graph_archive_source
+    target_graph_path: instances/archive
+    params:
+      - &default_archive_reaction-param-arcadia_revision
+        name: arcadia_revision
+        artifact: ../jobs_binary_revision
+      - &default_archive_reaction-param-mr_cluster
+        name: mr-default-cluster
+      - &default_archive_reaction-param-public_directory
+        name: public_directory
+        value: //home/balance/test/new_billing/public/mail_pro
+      - &default_archive_reaction-param-shadow_directory
+        name: shadow_directory
+        value: //home/balance/test/new_billing/shadow/mail_pro
+    inputs: []
+    outputs: []
+
+  default_metrics_collector_reaction: &default_metrics_collector_reaction
+    ttl: 1
+    triggers:
+      - name: cron
+        cron: 0 0/10 * ? * * *
+    source_graph: *graph_yql_metrics_source
+    target_graph_path: instances/yql-metrics-collector
+    params:
+      - &default_metrics_collector_reaction-param-arcadia_revision
+        name: arcadia_revision
+        artifact: ../jobs_binary_revision
+      - &default_metrics_collector_reaction-param-mr_cluster
+        name: mr-default-cluster
+      - &default_metrics_collector_reaction-param-root
+        name: root
+        value: //home/balance/test/new_billing/public/mail_pro
+      - &default_metrics_collector_reaction-param-solomon-cluster
+        name: solomon-cluster-name
+        value: test
+      - &default_metrics_collector_reaction-param-solomon-common-labels
+        name: solomon-common-labels
+    inputs: []
+    outputs: []
+
+  default_act_genmeta_reaction: &default_act_genmeta_reaction
+    ttl: 140
+    triggers:
+      - name: mnclose_input
+        artifact: act-o-tron/mnclose_input
+    source_graph: *graph_act_genmeta_source
+    target_graph_path: instances/act-o-tron_genmeta
+    params:
+      - &default_act_genmeta_reaction-param-arcadia_revision
+        name: arcadia_revision
+        artifact: ../jobs_binary_revision
+      - &default_act_genmeta_reaction-param-mr_cluster
+        name: mr-default-cluster
+    inputs:
+      - &default_act_genmeta_reaction-input-cur_meta
+        block: generator
+        endpoint: last_generated_meta
+        artifact: act-o-tron/meta_current
+      - &default_act_genmeta_reaction-input-last_meta
+        block: generator
+        endpoint: last_acted_meta
+      - &default_act_genmeta_reaction-input-mnclose_params
+        block: generator
+        endpoint: mnclose_params
+        artifact: act-o-tron/mnclose_input
+    outputs:
+      - &default_act_genmeta_reaction-output-cur_meta
+        block: generator
+        endpoint: new_meta
+        artifact: act-o-tron/meta_current
+
+  default_act_process_reaction: &default_act_process_reaction
+    ttl: 140
+    trigger:
+      artifacts:
+        - act-o-tron/meta_current
+        - act-o-tron/mnclose_input
+      relationship: and
+    source_graph: *graph_act_process_source
+    params:
+      - &default_act_process_reaction-param-arcadia_revision
+        name: arcadia_revision
+        artifact: ../jobs_binary_revision
+      - &default_act_process_reaction-param-mr_cluster
+        name: mr-default-cluster
+      - &default_act_process_reaction-param-_mr_cluster
+        name: _mr-default-cluster
+      - &default_act_process_reaction-param-yt_pool
+        name: yt-pool
+        value: newbilling-tariffication
+      - &default_act_process_reaction-param-namespace
+        name: namespace
+        value: mail_pro
+      - &default_act_process_reaction-param-dry_run
+        name: dry_run
+    inputs:
+      - &default_act_process_reaction-input-cur_meta
+        block: meta-input
+        endpoint: in
+        artifact: act-o-tron/meta_current
+      - &default_act_process_reaction-input-mnclose_params
+        block: mnclose
+        endpoint: in
+        artifact: act-o-tron/mnclose_input
+      - &default_act_process_reaction-input-config
+        block: config-input
+        endpoint: in
+        artifact: config
+    outputs:
+      - &default_act_process_reaction-output-proc_meta
+        block: meta-output
+        endpoint: out
+      - &default_act_process_reaction-output-mnclose_params
+        block: mnclose
+        endpoint: out
+        artifact: act-o-tron/mnclose_output
+
+
+reactions:
+  # archive dry-run=false
+  - <<: *default_archive_reaction
+    path: common/archive_arnold
+    params:
+      - *default_archive_reaction-param-arcadia_revision
+      - <<: *default_archive_reaction-param-mr_cluster
+        value: arnold
+      - *default_archive_reaction-param-public_directory
+      - *default_archive_reaction-param-shadow_directory
+
+  - <<: *default_archive_reaction
+    path: common/archive_hahn
+    params:
+      - *default_archive_reaction-param-arcadia_revision
+      - <<: *default_archive_reaction-param-mr_cluster
+        value: hahn
+      - *default_archive_reaction-param-public_directory
+      - *default_archive_reaction-param-shadow_directory
+
+    # archive dry-run=true
+  - <<: *default_archive_reaction
+    path: dry-run/common/archive_arnold
+    target_graph_path: dry-run/instances/archive
+    params:
+      - *default_archive_reaction-param-arcadia_revision
+      - <<: *default_archive_reaction-param-mr_cluster
+        value: arnold
+      - <<: *default_archive_reaction-param-public_directory
+        value: //home/balance/test/new_billing/dry_run/public/mail_pro
+      - <<: *default_archive_reaction-param-shadow_directory
+        value: //home/balance/test/new_billing/dry_run/shadow/mail_pro
+
+  - <<: *default_archive_reaction
+    path: dry-run/common/archive_hahn
+    target_graph_path: dry-run/instances/archive
+    params:
+      - *default_archive_reaction-param-arcadia_revision
+      - <<: *default_archive_reaction-param-mr_cluster
+        value: hahn
+      - <<: *default_archive_reaction-param-public_directory
+        value: //home/balance/test/new_billing/dry_run/public/mail_pro
+      - <<: *default_archive_reaction-param-shadow_directory
+        value: //home/balance/test/new_billing/dry_run/shadow/mail_pro
+
+  # metrics-collector dry-run=false
+  - <<: *default_metrics_collector_reaction
+    path: common/metrics_collector_arnold
+    params:
+      - *default_metrics_collector_reaction-param-arcadia_revision
+      - <<: *default_metrics_collector_reaction-param-mr_cluster
+        value: arnold
+      - <<: *default_metrics_collector_reaction-param-root
+      - <<: *default_metrics_collector_reaction-param-solomon-cluster
+      - <<: *default_metrics_collector_reaction-param-solomon-common-labels
+        value: '{"namespace": "mail_pro", "dry_run": "false", "environment": "testing", "yt_cluster": "arnold", "stage": "process"}'
+
+  - <<: *default_metrics_collector_reaction
+    path: common/metrics_collector_hahn
+    params:
+      - *default_metrics_collector_reaction-param-arcadia_revision
+      - <<: *default_metrics_collector_reaction-param-mr_cluster
+        value: hahn
+      - <<: *default_metrics_collector_reaction-param-root
+      - <<: *default_metrics_collector_reaction-param-solomon-cluster
+      - <<: *default_metrics_collector_reaction-param-solomon-common-labels
+        value: '{"namespace": "mail_pro", "dry_run": "false", "environment": "testing", "yt_cluster": "hahn", "stage": "process"}'
+
+    # metrics-collector dry-run=true
+  - <<: *default_metrics_collector_reaction
+    path: dry-run/common/metrics_collector_arnold
+    target_graph_path: dry-run/instances/yql-metrics-collector
+    params:
+      - *default_metrics_collector_reaction-param-arcadia_revision
+      - <<: *default_metrics_collector_reaction-param-mr_cluster
+        value: arnold
+      - <<: *default_metrics_collector_reaction-param-root
+        value: //home/balance/test/new_billing/dry_run/public/mail_pro
+      - <<: *default_metrics_collector_reaction-param-solomon-cluster
+        value: test_dry-run
+      - <<: *default_metrics_collector_reaction-param-solomon-common-labels
+        value: '{"namespace": "mail_pro", "dry_run": "true", "environment": "testing", "yt_cluster": "arnold", "stage": "process"}'
+
+  - <<: *default_metrics_collector_reaction
+    path: dry-run/common/metrics_collector_hahn
+    target_graph_path: dry-run/instances/yql-metrics-collector
+    params:
+      - *default_metrics_collector_reaction-param-arcadia_revision
+      - <<: *default_metrics_collector_reaction-param-mr_cluster
+        value: hahn
+      - <<: *default_metrics_collector_reaction-param-root
+        value: //home/balance/test/new_billing/dry_run/public/mail_pro
+      - <<: *default_metrics_collector_reaction-param-solomon-cluster
+        value: test_dry-run
+      - <<: *default_metrics_collector_reaction-param-solomon-common-labels
+        value: '{"namespace": "mail_pro", "dry_run": "true", "environment": "testing", "yt_cluster": "hahn", "stage": "process"}'
+
+  # act-o-tron dry-run=false
+  - <<: *default_act_genmeta_reaction
+    path: act-o-tron/meta_generate_cron_arnold
+    params:
+      - *default_act_genmeta_reaction-param-arcadia_revision
+      - <<: *default_act_genmeta_reaction-param-mr_cluster
+        value: arnold
+    inputs:
+      - *default_act_genmeta_reaction-input-cur_meta
+      - <<: *default_act_genmeta_reaction-input-last_meta
+        artifact: act-o-tron/meta_processed_arnold
+      - *default_act_genmeta_reaction-input-mnclose_params
+    metric_tags:
+      <<: *default_metric_tags
+      yt_cluster: arnold
+      component: act-o-tron
+      stage: genmeta
+
+  - <<: *default_act_genmeta_reaction
+    path: act-o-tron/meta_generate_cron_hahn
+    params:
+      - *default_act_genmeta_reaction-param-arcadia_revision
+      - <<: *default_act_genmeta_reaction-param-mr_cluster
+        value: hahn
+    inputs:
+      - *default_act_genmeta_reaction-input-cur_meta
+      - <<: *default_act_genmeta_reaction-input-last_meta
+        artifact: act-o-tron/meta_processed_hahn
+      - *default_act_genmeta_reaction-input-mnclose_params
+    metric_tags:
+      <<: *default_metric_tags
+      yt_cluster: hahn
+      component: act-o-tron
+      stage: genmeta
+
+  - <<: *default_act_process_reaction
+    path: act-o-tron/process_arnold
+    target_graph_path: instances/act-o-tron_process_arnold
+    params:
+      - *default_act_process_reaction-param-arcadia_revision
+      - <<: *default_act_process_reaction-param-mr_cluster
+        value: arnold
+      - <<: *default_act_process_reaction-param-_mr_cluster
+        value: arnold
+      - *default_act_process_reaction-param-yt_pool
+      - *default_act_process_reaction-param-namespace
+      - <<: *default_act_process_reaction-param-dry_run
+        value: false
+    outputs:
+      - <<: *default_act_process_reaction-output-proc_meta
+        artifact: act-o-tron/meta_processed_arnold
+      - *default_act_process_reaction-output-mnclose_params
+    metric_tags:
+      <<: *default_metric_tags
+      yt_cluster: arnold
+      component: act-o-tron
+      stage: process
+
+  - <<: *default_act_process_reaction
+    path: act-o-tron/process_hahn
+    target_graph_path: instances/act-o-tron_process_hahn
+    params:
+      - *default_act_process_reaction-param-arcadia_revision
+      - <<: *default_act_process_reaction-param-mr_cluster
+        value: hahn
+      - <<: *default_act_process_reaction-param-_mr_cluster
+        value: hahn
+      - *default_act_process_reaction-param-yt_pool
+      - *default_act_process_reaction-param-namespace
+      - <<: *default_act_process_reaction-param-dry_run
+        value: false
+    outputs:
+      - <<: *default_act_process_reaction-output-proc_meta
+        artifact: act-o-tron/meta_processed_hahn
+      - *default_act_process_reaction-output-mnclose_params
+    metric_tags:
+      <<: *default_metric_tags
+      yt_cluster: hahn
+      component: act-o-tron
+      stage: process
+
+  # act-o-tron dry-run=true
+  - <<: *default_act_genmeta_reaction
+    triggers:
+      - name: mnclose_input
+        artifact: dry-run/act-o-tron/mnclose_input
+    path: dry-run/act-o-tron/meta_generate_cron_arnold
+    target_graph_path: dry-run/instances/act-o-tron_genmeta
+    params:
+      - *default_act_genmeta_reaction-param-arcadia_revision
+      - <<: *default_act_genmeta_reaction-param-mr_cluster
+        value: arnold
+    inputs:
+      - <<: *default_act_genmeta_reaction-input-cur_meta
+        artifact: dry-run/act-o-tron/meta_current
+      - <<: *default_act_genmeta_reaction-input-last_meta
+        artifact: dry-run/act-o-tron/meta_processed_arnold
+      - <<: *default_act_genmeta_reaction-input-mnclose_params
+        artifact: dry-run/act-o-tron/mnclose_input
+    outputs:
+      - <<: *default_act_genmeta_reaction-output-cur_meta
+        artifact: dry-run/act-o-tron/meta_current
+    metric_tags:
+      <<: *default_metric_tags
+      dry_run: 'true'
+      yt_cluster: arnold
+      component: act-o-tron
+      stage: genmeta
+
+  - <<: *default_act_genmeta_reaction
+    triggers:
+      - name: mnclose_input
+        artifact: dry-run/act-o-tron/mnclose_input
+    path: dry-run/act-o-tron/meta_generate_cron_hahn
+    target_graph_path: dry-run/instances/act-o-tron_genmeta
+    params:
+      - *default_act_genmeta_reaction-param-arcadia_revision
+      - <<: *default_act_genmeta_reaction-param-mr_cluster
+        value: hahn
+    inputs:
+      - <<: *default_act_genmeta_reaction-input-cur_meta
+        artifact: dry-run/act-o-tron/meta_current
+      - <<: *default_act_genmeta_reaction-input-last_meta
+        artifact: dry-run/act-o-tron/meta_processed_hahn
+      - <<: *default_act_genmeta_reaction-input-mnclose_params
+        artifact: dry-run/act-o-tron/mnclose_input
+    outputs:
+      - <<: *default_act_genmeta_reaction-output-cur_meta
+        artifact: dry-run/act-o-tron/meta_current
+    metric_tags:
+      <<: *default_metric_tags
+      dry_run: 'true'
+      yt_cluster: hahn
+      component: act-o-tron
+      stage: genmeta
+
+  - <<: *default_act_process_reaction
+    trigger:
+      artifacts:
+        - dry-run/act-o-tron/meta_current
+        - dry-run/act-o-tron/mnclose_input
+      relationship: and
+    path: dry-run/act-o-tron/process_arnold
+    target_graph_path: dry-run/instances/act-o-tron_process_arnold
+    params:
+      - *default_act_process_reaction-param-arcadia_revision
+      - <<: *default_act_process_reaction-param-mr_cluster
+        value: arnold
+      - <<: *default_act_process_reaction-param-_mr_cluster
+        value: arnold
+      - *default_act_process_reaction-param-yt_pool
+      - *default_act_process_reaction-param-namespace
+      - <<: *default_act_process_reaction-param-dry_run
+        value: true
+    inputs:
+      - <<: *default_act_process_reaction-input-cur_meta
+        artifact: dry-run/act-o-tron/meta_current
+      - <<: *default_act_process_reaction-input-mnclose_params
+        artifact: dry-run/act-o-tron/mnclose_input
+      - *default_act_process_reaction-input-config
+    outputs:
+      - <<: *default_act_process_reaction-output-proc_meta
+        artifact: dry-run/act-o-tron/meta_processed_arnold
+      - <<: *default_act_process_reaction-output-mnclose_params
+        artifact: dry-run/act-o-tron/mnclose_output
+    metric_tags:
+      <<: *default_metric_tags
+      dry_run: 'true'
+      yt_cluster: arnold
+      component: act-o-tron
+      stage: process
+
+  - <<: *default_act_process_reaction
+    trigger:
+      artifacts:
+        - dry-run/act-o-tron/meta_current
+        - dry-run/act-o-tron/mnclose_input
+      relationship: and
+    path: dry-run/act-o-tron/process_hahn
+    target_graph_path: dry-run/instances/act-o-tron_process_hahn
+    params:
+      - *default_act_process_reaction-param-arcadia_revision
+      - <<: *default_act_process_reaction-param-mr_cluster
+        value: hahn
+      - <<: *default_act_process_reaction-param-_mr_cluster
+        value: hahn
+      - *default_act_process_reaction-param-yt_pool
+      - *default_act_process_reaction-param-namespace
+      - <<: *default_act_process_reaction-param-dry_run
+        value: true
+    inputs:
+      - <<: *default_act_process_reaction-input-cur_meta
+        artifact: dry-run/act-o-tron/meta_current
+      - <<: *default_act_process_reaction-input-mnclose_params
+        artifact: dry-run/act-o-tron/mnclose_input
+      - *default_act_process_reaction-input-config
+    outputs:
+      - <<: *default_act_process_reaction-output-proc_meta
+        artifact: dry-run/act-o-tron/meta_processed_hahn
+      - <<: *default_act_process_reaction-output-mnclose_params
+        artifact: dry-run/act-o-tron/mnclose_output
+    metric_tags:
+      <<: *default_metric_tags
+      dry_run: 'true'
+      yt_cluster: hahn
+      component: act-o-tron
+      stage: process
+
+
+queues:
+  - path: act-o-tron/meta_generate_queue
+    size: 1
+    reactions:
+      - act-o-tron/meta_generate_cron_arnold
+      - act-o-tron/meta_generate_cron_hahn
+    metric_tags:
+      <<: *default_metric_tags
+      component: act-o-tron
+      stage: genmeta
+  - path: act-o-tron/process_arnold_queue
+    size: 1000
+    reactions:
+      - act-o-tron/process_arnold
+    metric_tags:
+      <<: *default_metric_tags
+      yt_cluster: arnold
+      component: act-o-tron
+      stage: process
+  - path: act-o-tron/process_hahn_queue
+    size: 1000
+    reactions:
+      - act-o-tron/process_hahn
+    metric_tags:
+      <<: *default_metric_tags
+      yt_cluster: hahn
+      component: act-o-tron
+      stage: process
+
+  - path: dry-run/act-o-tron/meta_generate_queue
+    size: 1
+    reactions:
+      - dry-run/act-o-tron/meta_generate_cron_arnold
+      - dry-run/act-o-tron/meta_generate_cron_hahn
+    metric_tags:
+      <<: *default_metric_tags
+      dry_run: 'true'
+      component: act-o-tron
+      stage: genmeta
+  - path: dry-run/act-o-tron/process_arnold_queue
+    size: 1000
+    reactions:
+      - dry-run/act-o-tron/process_arnold
+    metric_tags:
+      <<: *default_metric_tags
+      dry_run: 'true'
+      yt_cluster: arnold
+      component: act-o-tron
+      stage: process
+  - path: dry-run/act-o-tron/process_hahn_queue
+    size: 1000
+    reactions:
+      - dry-run/act-o-tron/process_hahn
+    metric_tags:
+      <<: *default_metric_tags
+      dry_run: 'true'
+      yt_cluster: hahn
+      component: act-o-tron
+      stage: process

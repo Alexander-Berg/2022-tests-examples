@@ -1,0 +1,213 @@
+<!DOCTYPE HTML>
+<!--(skip)(description)
+Hotspot: events
+This case should also be tested manually (MAPSAPI-6960)
+-->
+<!--(version)
+2.1
+-->
+<!--(commands)
+click(13);
+mouseover(106);
+click(106);
+click(78);
+test();
+click(239);
+click(10);
+click(10);
+test();
+click(6);
+click(9);
+click(9);
+test();
+click(6);
+test();
+click(2);
+click(106);
+test();
+-->
+<html>
+<head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            var map = myMap = new ymaps.Map('map', {
+                center: [55.709243, 37.500737],
+                zoom: 9,
+                controls: ['fullscreenControl']
+            }, {
+                minZoom: 9,
+                maxZoom: 10
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+
+            var events = ['addtomap', 'balloonclose', 'balloonopen', 'hintclose', 'hintopen', 'mapchange', 'optionschange', 'removefrommap'];
+
+            var domevents = ['click', 'contextmenu', 'dblclick', 'mousedown', 'mouseenter', 'mouseleave', 'mouseup', 'multitouchend',
+                'multitouchstart', 'wheel'];
+
+            var moveevents = ['mousemove', 'multitouchmove'];
+
+            var callback1 = function (e) {
+                log.info('layer: ' + e.get('type'));
+                if (e.get('type') == 'mapchange') {
+                    try {
+                        log.info('oldMap: ' + e.get('oldMap').getCenter());
+                    } catch (err) {
+                        log.info('oldMap is null')
+                    }
+                    try {
+                        log.info('newMap: ' + e.get('newMap').getCenter());
+                    } catch (err) {
+                        log.info('newMap is null')
+                    }
+                }
+                if (e.get('type') == 'parentchange') {
+                    try {
+                        log.info('oldParent: ' + e.get('oldParent').getMap().getCenter());
+                    } catch (err) {
+                        log.info('oldParent is undefined')
+                    }
+                    try {
+                        log.info('newParent: ' + e.get('newParent').getMap().getCenter());
+                    } catch (err) {
+                        log.info('newParent is undefined')
+                    }
+                }
+
+                if (e.get('type') == 'balloonopen' ||
+                        e.get('type') == 'balloonclose' ||
+                        e.get('type') == 'hintopen' ||
+                        e.get('type') == 'hintclose') {
+                    console.log(e.get('target'))
+                }
+            };
+
+            var callback2 = function (e) {
+                log.info('layer: ' + e.get('type'));
+                try {
+                    log.info('activeObject: ' + e.get('activeObject') + ', coords: ' +
+                            '' + e.get('coords') + ', globalPixels: ' + e.get('globalPixels') + ', pagePixels: ' +
+                            '' + e.get('pagePixels') + ', clientPixels: ' + e.get('clientPixels') + ', domEvent: ' +
+                            '' + e.get('domEvent'));
+                } catch (err) {
+                    log.info('undefined')
+                }
+                console.log(e.get('type'));
+                console.log(e.get('activeObject'));
+                console.log(e.get('coords'));
+                console.log(e.get('globalPixels'));
+                console.log(e.get('pagePixels'));
+                console.log(e.get('clientPixels'));
+                console.log(e.get('domEvent'));
+            };
+
+            var tileUrlTemplate = 'http://sandbox.api.maps.yandex.net/examples/ru/2.1/hotspot_layer/hotspot_data/%z/tile_x=%x&y=%y',
+                    keyTemplate = 'testCallback_tile_%c',
+                    imgUrlTemplate = 'http://sandbox.api.maps.yandex.net/examples/ru/2.1/hotspot_layer/images/%z/tile_x=%x&y=%y.png',
+                    objSource = new ymaps.hotspot.ObjectSource(tileUrlTemplate, keyTemplate),
+
+                    imgLayer = new ymaps.Layer(imgUrlTemplate, {tileTransparent: true}),
+                    hotspotLayer = new ymaps.hotspot.Layer(objSource, {cursor: 'help', openEmptyBalloon: true});
+
+            myMap.layers.add(hotspotLayer);
+            myMap.layers.add(imgLayer);
+
+            var deleteButton = new ymaps.control.Button({data: {content: 'remove'}, options: {selectOnClick: true}});
+            var listenerButton = new ymaps.control.Button({data: {content: 'listen'}, options: {selectOnClick: true}});
+            var optionButton = new ymaps.control.Button({data: {content: 'option'}, options: {selectOnClick: true}});
+            var freezeButton = new ymaps.control.Button({data: {content: 'freeze'}, options: {selectOnClick: true}});
+            var moveButton = new ymaps.control.Button({data: {content: 'move'}, options: {selectOnClick: true}});
+            var domButton = new ymaps.control.Button({data: {content: 'DOM'}, options: {selectOnClick: true}});
+            var clearButton = new ymaps.control.Button({data: {content: 'clear log'}, options: {selectOnClick: false}});
+
+            deleteButton.events
+                    .add('select', function () {
+                        myMap.layers.remove(hotspotLayer);
+                        deleteButton.data.set('content', 'add');
+                    })
+                    .add('deselect', function () {
+                        myMap.layers.add(hotspotLayer);
+                        deleteButton.data.set('content', 'remove');
+                    });
+
+            listenerButton.events
+                    .add('select', function () {
+                        log.info('Waiting for events...');
+                        hotspotLayer.events.add(events, callback1);
+                    })
+                    .add('deselect', function () {
+                        log.info('Events will be ignored.');
+                        hotspotLayer.events.remove(events, callback1);
+                    });
+
+            optionButton.events
+                    .add('select', function () {
+                        hotspotLayer.options.set('cursor', 'move');
+                    })
+                    .add('deselect', function () {
+                        hotspotLayer.options.unset('cursor');
+                    });
+
+            freezeButton.events
+                    .add('select', function () {
+                        hotspotLayer.options.freeze();
+                    })
+                    .add('deselect', function () {
+                        hotspotLayer.options.unfreeze();
+                    });
+
+            moveButton.events
+                    .add('select', function () {
+                        log.info('Waiting for move events...');
+                        hotspotLayer.events.add(moveevents, callback2);
+                    })
+                    .add('deselect', function () {
+                        log.info('Move events will be ignored.');
+                        hotspotLayer.events.remove(moveevents, callback2);
+                    });
+
+            domButton.events
+                    .add('select', function () {
+                        log.info('Waiting for DOM events...');
+                        hotspotLayer.events.add(domevents, callback2);
+
+                        // чтобы проверить clickdefaultevent нужно сначала нажать кнопку options
+                    })
+                    .add('deselect', function () {
+                        log.info('DOM events will be ignored.');
+                        hotspotLayer.events.remove(domevents, callback2);
+                    });
+
+            clearButton.events.add('click', function () {
+                log.clear();
+            });
+
+            myMap.controls
+                    .add(listenerButton, {float: 'left'})
+                    .add(deleteButton, {float: 'left'})
+                    .add(optionButton, {float: 'left'})
+                    .add(freezeButton, {float: 'left'})
+                    .add(clearButton, {float: 'none', position: {bottom: 25, right: 10}})
+                    .add(new ymaps.control.TrafficControl(), {float: 'none', position: {bottom: 55, right: 10}})
+                    .add(moveButton, {float: 'left'})
+                    .add(domButton, {float: 'left'});
+
+            // MAPSAPI-6960 - проверяем, что если открыт хотспотный балун, хотспотный хинт у других объектов все равно появляется
+            var myPoint = new ymaps.Placemark([55.709243, 37.500737], {hintContent: 'hint', balloonContent: 'balloon'}, {pointOverlay: 'hotspot#placemark'});
+            myMap.geoObjects.add(myPoint);
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px; padding: 20px;"></div>
+</body>
+</html>

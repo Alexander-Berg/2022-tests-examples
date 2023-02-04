@@ -1,0 +1,92 @@
+#!/bin/sh -eu
+
+mlog() { log "(mkenv) $*"; }
+
+ROOT=${1:-}
+[ -n "$ROOT" ] || die "usage: `basename $0` <dir>"
+! [ -e "$ROOT" ] || die "$ROOT already exists"
+
+MAPSCORE="$ROOT/mapscore.git"
+PACKAGES="$ROOT/packages.git"
+
+mlog "Initialize packages repo"
+git init "$PACKAGES"
+cd "$PACKAGES"
+git_config manual "$ROOT/packages.git" "$ROOT/packages.git" "$ROOT/mapscore.git"
+git remote add origin "$PACKAGES"
+
+mlog "Initialize mapscore repo"
+git init "$MAPSCORE"
+cd "$MAPSCORE"
+git_config manual "$ROOT/packages.git" "$ROOT/packages.git" "$ROOT/mapscore.git"
+git remote add --mirror origin "$MAPSCORE"
+
+mlog "Creating git-pkg-style project"
+mkdir project && cd project
+cat >file <<EOF
+Some text
+EOF
+cat >Makefile <<EOF
+SRCPKG=test-package
+PKG=test-package
+FILES=file
+
+include /usr/share/yandex/maps/build/build.mk
+EOF
+git add . && git commit -a -m "Initial release"
+
+git pkg release test-package=0.0.0-0 <<EOF
+test-package (0.0.0-0) unstable; urgency=low
+
+  * Initial commit
+
+ -- First Second <username@yandex-team.ru>  Thu, 29 Dec 2011 16:35:19 +0400
+EOF
+cd -
+
+
+
+mlog "Creating old-style project"
+mkdir old_project && cd old_project
+cat >file <<EOF
+Some text
+EOF
+cat >Makefile <<EOF
+PKG=old-style-package
+FILES=file
+
+include /usr/share/yandex/maps/build/build.mk
+EOF
+
+mkdir debian
+cat >debian/changelog <<EOF
+old-style-package (0.0.0-0) unstable; urgency=low
+
+  * Initial commit
+
+ -- First Second <username@yandex-team.ru>  Thu, 29 Dec 2011 16:35:19 +0400
+EOF
+cat >debian/control <<EOF
+Source: old-style-package
+Priority: optional
+Maintainer: First Second <username@yandex-team.ru>
+Build-Depends: debhelper (>= 5)
+Standards-Version: 3.7.2
+
+Package: old-style-package
+Section: yandex
+Architecture: any
+Depends: ${shlibs:Depends}
+Description: some description
+EOF
+cat >debian/compat <<EOF
+4
+EOF
+
+echo '#!/usr/bin/make -f
+include  /usr/share/yandex/maps/build/debian-rules' > debian/rules
+chmod 755 debian/rules
+
+git add . && git commit -a -m "Add old-style project"
+
+cd -

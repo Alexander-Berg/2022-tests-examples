@@ -1,0 +1,40 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - proller
+      groups: []
+labels:
+  order: 09000000
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      uri: '/v2/subscribe/websocket(.*)'
+  modules:
+    - balancer2:
+        attempts: 2
+        rr: {weights_file: ./controls/traffic_control.weights}
+        backends:
+          - weight: 1
+            name: bygeo_man
+            modules:
+              - report: {uuid: shared-test, ranges: default}
+              - balancer2:
+                  attempts: 3
+                  attempts_rate_limiter:
+                    limit: 0.5
+                  rr: {}
+                  timeout_policy:
+                    timeout: 5s
+                    unique_policy: {}
+                  generated_proxy_backends:
+                    proxy_options:
+                      backend_timeout: 2500ms
+                      connect_timeout: 50ms
+                      keepalive_count: 1
+                      allow_connection_upgrade: true
+                    include_backends:
+                      type: BY_ID
+                      ids:
+                        - wsnotify

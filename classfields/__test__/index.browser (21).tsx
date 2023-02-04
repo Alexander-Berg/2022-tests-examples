@@ -1,0 +1,56 @@
+import React from 'react';
+import noop from 'lodash/noop';
+import { render as _render } from 'jest-puppeteer-react';
+
+import takeScreenshot from '@realty-front/jest-utils/puppeteer/tests-helpers/take-screenshot';
+
+import { YandexRentFilterSection, IYandexRentFilterSectionProps } from '../';
+
+const mobileViewports = [
+    { width: 345, height: 200 },
+    { width: 360, height: 200 },
+];
+
+const desktopViewports = [
+    { width: 1000, height: 200 },
+    { width: 1200, height: 200 },
+];
+
+// eslint-disable-next-line @typescript-eslint/no-empty-function
+const render = async (component: React.ReactElement, viewports: Array<{ width: number; height: number }>) => {
+    for (const viewport of viewports) {
+        await _render(component, { viewport });
+
+        expect(
+            await takeScreenshot({
+                fullPage: true,
+            })
+        ).toMatchImageSnapshot();
+    }
+};
+
+const baseProps: IYandexRentFilterSectionProps = {
+    onChange: noop,
+    name: 'yandexRent',
+    geo: {
+        hasYandexRent: true,
+    },
+};
+
+describe('YandexRentFilterSection', () => {
+    it('Базовая отрисовка тач', async () => {
+        await render(<YandexRentFilterSection {...baseProps} isMobile />, mobileViewports);
+    });
+
+    it('Базовая отрисовка десктоп', async () => {
+        await render(<YandexRentFilterSection {...baseProps} />, desktopViewports);
+    });
+
+    it('Урезанная версия', async () => {
+        await render(<YandexRentFilterSection {...baseProps} isCollapsed />, desktopViewports);
+    });
+
+    it('Отмеченная', async () => {
+        await render(<YandexRentFilterSection {...baseProps} data="YES" />, desktopViewports);
+    });
+});

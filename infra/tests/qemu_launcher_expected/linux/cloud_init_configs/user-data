@@ -1,0 +1,110 @@
+#cloud-config
+growpart:
+  mode: auto
+  devices:
+    - "/"
+
+    - "/dev/vdc1"
+
+    - "/dev/vdd1"
+
+resize_rootfs: true
+runcmd:
+  - ['sgdisk', '/dev/vda', '--attributes=1:set:2']
+manage_etc_hosts: False
+hostname: "test.local.yandex.net"
+fqdn: "test.local.yandex.net"
+disable_root: False
+disk_setup:
+
+    /dev/vdc:
+        table_type: 'gpt'
+        layout: true
+        overwrite: false
+
+    /dev/vdd:
+        table_type: 'gpt'
+        layout: true
+        overwrite: false
+
+fs_setup:
+
+    - filesystem: ext4
+      label:  'extra'
+      device: /dev/vdc1
+      partition: "auto"
+      overwrite: false
+
+    - filesystem: ext4
+      label:  'extra'
+      device: /dev/vdd1
+      partition: "auto"
+      overwrite: false
+
+mounts:
+
+    - [ /dev/vdc1, /extra_empty, "auto", "defaults,nofail", "0", "2"]
+
+    - [ /dev/vdd1, /extra_resource, "auto", "defaults,nofail", "0", "2"]
+
+apt:
+  preserve_sources_list: True
+apt_preserve_sources_list: true
+power_state:
+  mode: reboot
+  delay: now
+  message: 'Reboot instance'
+  timeout: 60
+  condition: true
+write_files:
+  - path: /etc/sysctl.d/10-qemu-rtc-accept-ra-eth0.conf
+    permissions: '0644'
+    owner: root:root
+    content: |
+      net.ipv6.conf.eth0.accept_ra = 2
+  - path: /etc/hosts
+    permissions: '0644'
+    owner: root:root
+    content: |
+      127.0.0.1 localhost
+      ::1 localhost ip6-localhost ip6-loopback
+      fe00::0 ip6-localnet
+      ff00::0 ip6-mcastprefix
+      ff02::1 ip6-allnodes
+      ff02::2 ip6-allrouters
+      ff02::3 ip6-allhosts
+  - path: /etc/network/interfaces.d/50-qemu-rtc-accept-ra.cfg
+    permissions: '0755'
+    owner: root:root
+    content: |
+      auto eth0
+      iface eth0 inet6 manual
+      post-up sysctl -w net.ipv6.conf.eth0.accept_ra=2 || true
+  - path: /etc/network/interfaces.d/50-fastbone.cfg
+    permissions: '0755'
+    owner: root:root
+    content: |
+      auto eth0
+      iface eth0 inet6 manual
+      post-up ip -6 addr replace 2a02:6b8:c0a:36b6:10d:2fbc:4336:0/128 dev eth0
+      post-up ip -6 addrlabel add prefix 2a02:6b8:f000::/36 dev eth0 label 100 || true
+      post-up ip -6 addrlabel add prefix 2a02:6b8:0:a00::/56 dev eth0 label 100 || true
+      post-up ip -6 addrlabel add prefix 2620:10f:d00f::/48 dev eth0 label 100 || true
+      post-up ip -6 addrlabel add prefix 2a02:6b8:0:1603::/64 dev eth0 label 100 || true
+      post-up ip -6 addrlabel add prefix 2a02:6b8:0:f07::/64 dev eth0 label 100 || true
+      post-up ip -6 addrlabel add prefix 2a02:6b8:0:f01::/64 dev eth0 label 100 || true
+      post-up ip -6 addrlabel add prefix 2a02:6b8:0:c0b::/64 dev eth0 label 100 || true
+      post-up ip -6 addrlabel add prefix 2a02:6b8:0:c03::/64 dev eth0 label 100 || true
+  - path: /etc/network/interfaces.d/50-backbone-jumbo.cfg
+    permissions: '0755'
+    owner: root:root
+    content: |
+      auto eth0
+      iface eth0 inet6 manual
+      post-up ip -6 route replace 2a02:6b8::/32 via fe80::1 dev eth0 mtu 8910 || true
+      post-up ip -6 route replace 2620:10f:d000::/44 via fe80::1 dev eth0 mtu 8910 || true
+
+ssh_authorized_keys:
+    - first_ssh_key
+    - second_ssh_key
+

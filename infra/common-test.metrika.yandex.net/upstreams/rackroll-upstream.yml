@@ -1,0 +1,41 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - robert
+      groups: []
+labels:
+  order: '000760'
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      host: 'rackroll\\.mtrs\\.yandex-team\\.ru'
+
+  modules:
+    - headers:
+        create:
+            Host: rackroll.mtrs.yandex-team.ru
+    - balancer2:
+        attempts: 2
+        connection_attempts: !f count_backends()
+        attempts_rate_limiter:
+          limit: 0.15
+        unique_policy: {}
+        active:
+          delay: 5s
+          request: 'GET /ping HTTP/1.1\nHost: rackroll.mtrs.yandex-team.ru\nUser-agent: l7-balancer\n\n'
+
+        generated_proxy_backends:
+          proxy_options:
+            backend_timeout: 15s
+            connect_timeout: 500ms
+            fail_on_5xx: false
+            keepalive_count: 1
+          include_backends:
+            type: BY_ID
+            ids: [rackroll-backend]
+        on_error:
+          errordocument:
+            status: 504
+            content: 'Service unavailable: l7-balancer'

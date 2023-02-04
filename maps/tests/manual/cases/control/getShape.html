@@ -1,0 +1,294 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Контрол: получение опций фигуры контролов
+
+Description:
+Проверка получение опций фигуры контролов.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+control
+
+Estimated time:
+120000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан водной поверхности.
+  В контейнере контролы: контрол зума(кнопки "+/-") с линейкой и ползунком, контрол местоположения, контрол "Найти", контрол "Пробки"(с иконкой светофора), контрол фулскрин, контрол выпадающего списка "Город", контрол зума (без линейки и ползунка), контрол измерителя расстояний с масшабной линейкой, контрол "button", контрол маршрутов, кнопка "Кастомная кнопка".
+  В центре спана карты кнопка "getShape".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "getShape".
+
+  Expectation:
+  Спан карты без изменений, все контролы на месте.
+  Под контейнером с картой появляется блок логов с опциями контролов, вида: "zoom: [object Object], type: Rectangle, bounds: 0,0,0,0".
+  У кастомной кнопки "custom: null", у контролов zoom, zoomLarge - bounds: 0,0,0,0.
+-->
+<html>
+<head>
+<title>2.1</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+<script src="../../helper.js"></script>
+<style>
+    .my-button-selected {
+        color: #f5f5f5;
+        background-color: #333333;
+        outline: 2px dashed #333;
+        outline: 5px auto -webkit-focus-ring-color;
+        outline-offset: -2px;
+        display: inline-block;
+        padding: 4px 14px;
+        margin-bottom: 0;
+        font-size: 14px;
+        line-height: 20px;
+        text-align: center;
+        vertical-align: middle;
+        cursor: pointer;
+        border: 1px solid #bbbbbb;
+        border-color: #e6e6e6 #e6e6e6 #bfbfbf;
+        font-family: Arial;
+    }
+
+    .my-button {
+        display: inline-block;
+        padding: 4px 14px;
+        margin-bottom: 0;
+        font-size: 14px;
+        line-height: 20px;
+        color: #333333;
+        text-align: center;
+        vertical-align: middle;
+        cursor: pointer;
+        background-color: #f5f5f5;
+        border: 1px solid #bbbbbb;
+        border-color: #e6e6e6 #e6e6e6 #bfbfbf;
+        font-family: Arial;
+    }
+</style>
+<script type=text/javascript>
+
+Api('init');
+
+function init(ymaps) {
+    ymaps = ym;
+
+    var map = myMap = new ym.Map('map', {
+        center: [43.14377234385919, -25.547926780816155],
+        zoom: 10,
+        behaviors: ['default', 'scrollZoom'],
+        controls: []
+    });
+
+    addGrid(myMap);
+    var log = new Log();
+
+    var zoom = new ymaps.control.ZoomControl({options: {size: 'small'}});
+    var route = new ymaps.control.RouteEditor({options: {}});
+    var button = new ymaps.control.Button({data: {content: 'button'}});
+    var list = new ymaps.control.ListBox({
+        data: {
+            content: 'Город',
+            title: 'Город'
+        },
+        items: [
+            new ymaps.control.ListBoxItem({data: {content: 'Москва'}}),
+            new ymaps.control.ListBoxItem({data: {content: 'Новосибирск'}}),
+            new ymaps.control.ListBoxItem({options: {type: 'separator'}}),
+            new ymaps.control.ListBoxItem({data: {content: 'Нью-Йорк'}})
+        ],
+        options: {
+            float: 'none',
+            position: {
+                top: 60,
+                right: 9
+            }
+        }
+    });
+
+    // standard set
+    var search = new ymaps.control.SearchControl();
+    var fullscreen = new ymaps.control.FullscreenControl();
+    var geo = new ymaps.control.GeolocationControl();
+    var type = new ymaps.control.TypeSelector();
+    var traffic = new ymaps.control.TrafficControl();
+    var ruler = new ymaps.control.RulerControl();
+    var zoomLarge = new ymaps.control.ZoomControl();
+
+    var customButton = new ymaps.control.Button({
+        data: {
+            content: 'Кастомная кнопка',
+            title: 'Нажмите на кнопку'
+        },
+        options: {
+            layout: ymaps.templateLayoutFactory.createClass(
+                    // Если кнопка не нажата, к ней применится css-стиль 'myButton'
+                    // Если кнопка нажата, к ней применятся 'myButtonSelected'.
+                            "<div class='[if state.selected]my-button-selected[else]my-button[endif]' title='$[data.title]'>" +
+                            "$[data.content]" +
+                            "</div>"
+            ),
+            // Чтобы другие элементы управления корректно позиционировались по горизонтали,
+            // нужно обязательно задать максимальную ширину для макета.
+            maxWidth: 150
+        }});
+
+    myMap.controls
+            .add(zoom, {float: 'none', position: {bottom: 75, right: 10}})
+            .add(route, {float: 'none', position: {bottom: 75, left: 10}})
+            .add(customButton, {float: 'none', position: {bottom: 110, left: 10}})
+            .add(list)
+            .add(search)
+            .add(fullscreen)
+            .add(geo)
+            .add(traffic)
+            .add(ruler)
+            .add(zoomLarge)
+            .add(button, {float: 'none', position: {bottom: 35, left: 10}});
+
+    var layoutButton = new ymaps.control.Button({data: {content: 'getShape'}, options: {selectOnClick: false}});
+    layoutButton.events
+            .add('click', function () {
+                zoom.getLayout().then(function (layout) {
+                    var shape = layout.getShape();
+                    if (shape) {
+                        log.info('zoom: ' + shape + ', type: ' + shape.getType() + ', bounds: '
+                                + shape.getBounds());
+                        console.log(shape)
+                    } else {
+                        log.info('zoom: null');
+                        console.log(shape)
+                    }
+                });
+                route.getLayout().then(function (layout) {
+                    var shape = layout.getShape();
+                    if (shape) {
+                        log.info('route: ' + shape + ', type: ' + shape.getType() + ', bounds: '
+                                + shape.getBounds());
+                        console.log(shape)
+                    } else {
+                        log.info('route: null');
+                        console.log(shape)
+                    }
+                });
+                zoomLarge.getLayout().then(function (layout) {
+                    var shape = layout.getShape();
+                    if (shape) {
+                        log.info('zoomLarge: ' + shape + ', type: ' + shape.getType() + ', bounds: '
+                                + shape.getBounds());
+                        console.log(shape)
+                    } else {
+                        log.info('zoomLarge: null');
+                        console.log(shape)
+                    }
+                });
+                geo.getLayout().then(function (layout) {
+                    var shape = layout.getShape();
+                    if (shape) {
+                        log.info('geo: ' + shape + ', type: ' + shape.getType() + ', bounds: '
+                                + shape.getBounds());
+                        console.log(shape)
+                    } else {
+                        log.info('geo: null');
+                        console.log(shape)
+                    }
+                });
+                fullscreen.getLayout().then(function (layout) {
+                    var shape = layout.getShape();
+                    if (shape) {
+                        log.info('fullscreen: ' + shape + ', type: ' + shape.getType() + ', bounds: '
+                                + shape.getBounds());
+                        console.log(shape)
+                    } else {
+                        log.info('fullscreen: null');
+                        console.log(shape)
+                    }
+                });
+                ruler.getLayout().then(function (layout) {
+                    var shape = layout.getShape();
+                    if (shape) {
+                        log.info('ruler: ' + shape + ', type: ' + shape.getType() + ', bounds: '
+                                + shape.getBounds());
+                        console.log(shape)
+                    } else {
+                        log.info('ruler: null');
+                        console.log(shape)
+                    }
+
+                });
+                list.getLayout().then(function (layout) {
+                    var shape = layout.getShape();
+                    if (shape) {
+                        log.info('list: ' + shape + ', type: ' + shape.getType() + ', bounds: '
+                                + shape.getBounds());
+                        console.log(shape)
+                    } else {
+                        log.info('list: null');
+                        console.log(shape)
+                    }
+                });
+                search.getLayout().then(function (layout) {
+                    var shape = layout.getShape();
+                    if (shape) {
+                        log.info('search: ' + shape + ', type: ' + shape.getType() + ', bounds: '
+                                + shape.getBounds());
+                        console.log(shape)
+                    } else {
+                        log.info('search: null');
+                        console.log(shape)
+                    }
+                });
+                traffic.getLayout().then(function (layout) {
+                    var shape = layout.getShape();
+                    if (shape) {
+                        log.info('traffic: ' + shape + ', type: ' + shape.getType() + ', bounds: '
+                                + shape.getBounds());
+                        console.log(shape)
+                    } else {
+                        log.info('traffic: null');
+                        console.log(shape)
+                    }
+                });
+                button.getLayout().then(function (layout) {
+                    var shape = layout.getShape();
+                    if (shape) {
+                        log.info('button: ' + shape + ', type: ' + shape.getType() + ', bounds: '
+                                + shape.getBounds());
+                        console.log(shape)
+                    } else {
+                        log.info('button: null');
+                        console.log(shape)
+                    }
+                });
+                customButton.getLayout().then(function (layout) {
+                    var shape = layout.getShape();
+                    if (shape) {
+                        log.info('custom: ' + shape + ', type: ' + shape.getType() + ', bounds: '
+                                + shape.getBounds());
+                        console.log(shape)
+                    } else {
+                        log.info('custom: null');
+                        console.log(shape)
+                    }
+                });
+            });
+
+    map.controls.add(layoutButton, {float: 'none', position: {bottom: 250, left: 230}})
+}
+</script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

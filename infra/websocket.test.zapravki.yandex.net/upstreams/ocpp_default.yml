@@ -1,0 +1,86 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - gromanev
+      groups: []
+labels:
+  order: '10000000'
+---
+regexp_section:
+    matcher:
+        match_fsm:
+            uri: '(/.*)?'
+    modules:
+        - shared:
+            uuid: backends
+        - log_headers:
+            name_re: 'X-Req-Id'
+        - report:
+            uuid: "backends"
+            ranges: default
+        - balancer2:
+            attempts: 2
+            connection_attempts: 2
+            rr: {}
+            backends:
+                - weight: 1
+                  name: bygeo_iva
+                  modules:
+                    - report:
+                        uuid: requests_to_iva
+                        ranges: default
+                        outgoing_codes: ["101", "200", "400", "401", "404", "500", "503"]
+                    - balancer2:
+                        attempts: 2
+                        fast_attempts: 3
+                        fast_503: true
+                        attempts_rate_limiter:
+                            limit: 0.5
+                        rr: {}
+                        generated_proxy_backends:
+                            proxy_options:
+                                allow_connection_upgrade: true
+                                connect_timeout: 1000ms
+                                backend_timeout: 60s
+                                backend_read_timeout: 600s
+                                backend_write_timeout: 600s
+                                client_read_timeout: 600s
+                                client_write_timeout: 600s
+                                fail_on_5xx: true
+                            include_backends:
+                                type: BY_ID
+                                ids:
+                                    - ocpp_deploy_iva
+                - weight: 1
+                  name: bygeo_vla
+                  modules:
+                    - report:
+                        uuid: requests_to_vla
+                        ranges: default
+                        outgoing_codes: ["101", "200", "400", "401", "404", "500", "503"]
+                    - balancer2:
+                        attempts: 2
+                        fast_attempts: 3
+                        fast_503: true
+                        attempts_rate_limiter:
+                            limit: 0.5
+                        rr: {}
+                        generated_proxy_backends:
+                            proxy_options:
+                                allow_connection_upgrade: true
+                                connect_timeout: 1000ms
+                                backend_timeout: 60s
+                                backend_read_timeout: 600s
+                                backend_write_timeout: 600s
+                                client_read_timeout: 600s
+                                client_write_timeout: 600s
+                                fail_on_5xx: true
+                            include_backends:
+                                type: BY_ID
+                                ids:
+                                    - ocpp_deploy_vla
+            on_error:
+                errordocument:
+                    status: 504
+                    content: "Service unavailable"

@@ -1,0 +1,42 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - kenny1847
+      groups:
+      - svc_ugc_development
+labels:
+  order: '00005000'
+---
+regexp_section:
+  matcher:
+    match_and:
+      - match_fsm:
+          uri: '/ugcpub/pk/.*'
+      - match_fsm:
+          header:
+            name: 'X-Yandex-HTTPS'
+            value: 'yes'
+  modules:
+    - report:
+        uuid: ugcpub_pk
+        ranges: default
+    - rewrite:
+        actions:
+        - regexp: '/ugcpub/pk/(.*\\?.*)$'   
+          split: 'url'         
+          rewrite: '/user/%1&redirected_from_ugcpubpk=1'
+        - regexp: '/ugcpub/pk/([^\\?]*)$'   
+          split: 'url'         
+          rewrite: '/user/%1?redirected_from_ugcpubpk=1'
+    - headers:
+        create:
+            Location: location
+    - rewrite:
+        actions:
+        - regexp: ".*"
+          header_name: Location
+          rewrite: "https://%{host}%{url}"
+    - errordocument:
+        status: 302
+        remain_headers: Location

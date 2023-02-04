@@ -1,0 +1,187 @@
+<!doctype html>
+<!--
+Title:
+Кластерная метка с балуном аккордеон
+
+Description:
+Мобильные девайсы: кластерная метка с балуном аккордеон.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components:
+mobile
+
+Estimated time:
+360000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась корректно, со спаном Российских городов.
+  В центре спана кластерная метка  со значением "50".
+  Сверху справа кнопка "clusterBalloonPanelMaxMapArea".
+
+Step:
+  Action:
+  Выполнить тап в метку кластера.
+
+  Expectation:
+  Спан карты может немного сместится для открытия балуна.
+  В открывшемся балуне: список из меток, скрол полоса справа, кнопка закрытия.
+  Напротив меток круглые синие метки.
+
+Step:
+  Action:
+  Выполнить тап в кнопку "clusterBalloonPanelMaxMapArea".
+
+  Expectation:
+  Спан карты смещается, балун закрывается, снизу появляется панель балуна, метка кластера в центре оставшегося спана карты.
+  В открывшейся панели балуна: список из меток, скрол полоса справа, кнопка закрытия.
+  Напротив меток круглые синие метки.
+
+Step:
+  Action:
+  Тапом проскролить балун кластера, выполнить тап в произвольную метку в балуне.
+
+  Expectation:
+  Происходит корректный скрол балуна.
+  По тапу, список меток смещается влево, появляется содержимое балуна метки - стих.
+  Слева имеется кнопка - бургер меню выхода к списку меток.
+
+Step:
+  Action:
+  Выполнить тап в бургер-меню слева в панели балуна.
+
+  Expectation:
+  По тапу, балун метки смещается вправо, появляется список меток.
+
+Step:
+  Action:
+  Выполнить тап в кнопку "clusterBalloonPanelMaxMapArea".
+
+  Expectation:
+  Спан карты смещается, панель балуна пропадает, на месте метки кластера открыт балун со списком меток.
+  В открывшемся балуне: список из меток, скрол полоса справа, кнопка закрытия.
+  Напротив меток в списке круглые синие метки.
+
+Step:
+  Action:
+  Закрыть балун тапом в крестик.
+
+  Expectation:
+  Балун закрылся, на спане карты в месте крепления балуна - метка кластера с цифрой 50.
+  
+Step:
+  Action:
+  Выполнить тап в кнопку "clusterBalloonPanelMaxMapArea".
+  Выполнить тап в метку кластера.
+
+  Expectation:
+  Спан карты смещается, снизу появляется панель балуна, метка кластера в центре оставшегося спана.
+  В открывшемся балуне: список из меток, скрол полоса справа, кнопка закрытия.
+  Напротив меток круглые синие метки.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
+    <script src="../../../helper.js"></script>
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+    <script type="text/javascript">
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var map = myMap = new ymaps.Map('map', {
+                center: [55.755381, 37.619044],
+                zoom: 6,
+                controls: []
+            });
+
+            addGrid(map);
+            var log = new Log();
+
+            var clusterer = new ymaps.Clusterer({
+                clusterBalloonContentLayout: 'cluster#balloonAccordion',
+                clusterBalloonPanelContentLayout: 'cluster#balloonAccordion',
+                clusterDisableClickZoom: true,
+                clusterOpenBalloonOnClick: true,
+                clusterBalloonPanelMaxMapArea: 0
+            });
+            map.geoObjects.add(clusterer);
+
+            var geoObjects = [];
+
+            var customItemContentLayout = ymaps.templateLayoutFactory.createClass('<b>123 {{ properties.balloonContentBody|raw }}</b>');
+
+            var panelSwitcherButton = new ymaps.control.Button('clusterBalloonPanelMaxMapArea');
+
+
+            panelSwitcherButton.options.set('maxWidth', 99999);
+
+            panelSwitcherButton.events.add('click', function () {
+                clusterer.options.set('clusterBalloonPanelMaxMapArea',
+                                clusterer.options.get('clusterBalloonPanelMaxMapArea') == 0 ? Infinity : 0
+                );
+            });
+
+            map.controls.add(panelSwitcherButton, { float: 'right', floatIndex: 100 });
+
+            var content = [
+                '',
+                'Этот город завёрнут, как в саван, в туман, ',
+                'И царит в нём безумье, порок и обман. ',
+                'Город мрачных трущоб, весь изглоданный злом, ',
+                'По ночам его мгла накрывает крылом.. . ',
+                '',
+                'И в глазницы домов смотрит ночь, словно ворон, ',
+                'Этот город безукоризненно чёрен. ',
+                'Только толпы теней, только Темзы свинец — ',
+                'Этот город страшней, чем оживший мертвец. ',
+                '',
+                'И в роскошных дворцах вечный холод и тлен, ',
+                'И часы мертвецам отбивает Биг-Бен. ',
+                'Вы не бывали в Лондоне, сэр? ',
+                'Этот город безукоризненно сер...'
+            ].join('<br/>');
+
+            for (var i = 0, l = 50; i < l; i++) {
+                var placemark = new ymaps.GeoObject({
+                    geometry: {
+                        type: "Point",
+                        coordinates: map.getCenter()
+                    },
+                    properties: {
+                        balloonContentHeader: 'Заголовок метки №' + i,
+                        balloonContentBody: 'Тело метки №' + i + content,
+                        balloonContentFooter: 'Футер метки №' + i
+                    }
+                });
+                geoObjects.push(placemark);
+            }
+
+            clusterer.add(geoObjects);
+
+        }
+
+    </script>
+    <style>
+        html, body, #map {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+    </style>
+</head>
+<body>
+<div id="map"></div>
+</body>
+</html>

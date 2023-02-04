@@ -1,0 +1,165 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Маршрут c учетом пробок
+
+Description:
+Проверяем работу маршрута с учетом пробок.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+smoke
+
+Estimated time: 
+120000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно. Сначала загружается спутниковый снимок, потом спутниковый снимок со спаном Москвы и построенным маршрутом.
+  На спане карты выставлены маршрутные метки "A" - метро Арбатская и "B" - метро Курская, между которыми построен маршрут на общественном транспорте. 
+  Возле метки "А", метка метро Арбатская.
+  Возле метки "B" пешеходная метка с данными "3 мин, 26 м".
+  Сверху слева кнопки "Учитывать пробки", "ПерключитьАвто".
+
+Step:
+  Action:
+  Клик в кнопку "ПерключитьАвто".
+
+  Expectation:
+  Кнопка меняет значение на "ПерключитьОТ".
+  Маршрутные метки "A" и "B" остаются на месте. Пропадают метки общественного траснпорта и пешеходная метка.
+  Основаная линия маршрута - фиолетовая, имеются альтернативные линии - серые.
+
+
+Step:
+  Action:
+  Клик в кнопку "Учитывать пробки".
+
+  Expectation:
+  Кнопка "Учитывать пробки" - активна(окрашена желтым).
+  Маршрут перестраивается, основная линия может перестроится, также имеются альтернативные линии - серые.
+  
+Step:
+  Action:
+  Клик в кнопку "Учитывать пробки".
+  
+  Expectation:
+  Кнопка "Учитывать пробки" - неактивна(окрашена белым).
+  Маршрут перестроился, основная нитка маршрута построилась как на шаге 2, также имеются альтернативные линии маршрута.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            //ymaps = ym;
+            var myMap = new ymaps.Map('map', {
+                        center: [37.54120, 55.729625],
+                        zoom: 11,
+                        type: "yandex#satellite",
+                        controls: []
+                    }, {
+                        backgroundVisible: false
+                    }),
+                    /**
+                     * Создание мультимаршрута.
+                     * @see https://api.yandex.ru/maps/doc/jsapi/2.1/ref/reference/multiRouter.MultiRoute.xml
+                     */
+                    multiRoute = new ymaps.multiRouter.MultiRoute({
+                        referencePoints: [
+                            "метро Арбатская",
+                            "метро Курская"
+                        ],
+                        params: {
+                            // Маршрут на общественном транспорте.
+                            routingMode: "masstransit",
+                            // Порядок координат в запросе: долгота, широта.
+                            searchCoordOrder: "longlat"
+                        }
+                    }, {
+                        boundsAutoApply: true
+                    }),
+
+                    buttonTraffic = new ymaps.control.Button({
+                        data: {
+                            content: "Учитывать пробки"
+                        },
+                        options: {
+                            maxWidth: 300
+                        }
+                    }),
+                    buttonMassTransit = new ymaps.control.Button({
+                        data: {
+                            content: "ПереключитьАвто"
+                        },
+                        options: {
+                            maxWidth: 300,
+                            selectOnClick: false
+                        }
+                    });
+            addGrid(myMap);
+            var log = new Log();
+            log.info("Test case: щелкай-проверяй");
+
+            myMap.controls.add(buttonMassTransit);
+            myMap.controls.add(buttonTraffic);
+            myMap.geoObjects.add(multiRoute);
+
+            var state = 'masstransit';
+            buttonMassTransit.events.add('press', function () {
+                if (state == 'auto') {
+                    buttonMassTransit.data.set('content', 'ПереключитьАвто');
+                    state = 'masstransit';
+                    multiRoute.model.setParams({
+                        routingMode: 'masstransit'
+                        /**
+                         *  true - не изменять значение непереданных параметров.
+                         *  @see https://api.yandex.ru/maps/doc/jsapi/2.1/ref/reference/multiRouter.MultiRouteModel.xml#setParams
+                         */
+                    }, true);
+                } else if (state == 'masstransit') {
+                    buttonMassTransit.data.set('content', 'ПереключитьОТ');
+                    state = 'auto';
+                    multiRoute.model.setParams({
+                        routingMode: 'auto'
+                    }, true);
+                }
+            });
+
+            buttonTraffic.events.add('select', function () {
+                /**
+                 * Устанавливает параметры маршрутизации.
+                 * @see https://api.yandex.ru/maps/doc/jsapi/2.1/ref/reference/multiRouter.MultiRouteModel.xml#setParams
+                 */
+                multiRoute.model.setParams({
+                    // Прокладывать мультимаршрут с учетом
+                    // информации о текущих пробках на дорогах.
+                    avoidTrafficJams: true
+                }, true);
+            });
+
+            buttonTraffic.events.add('deselect', function () {
+                multiRoute.model.setParams({
+                    // Не учитывать пробки.
+                    avoidTrafficJams: false
+                }, true);
+            });
+        }
+    </script>
+</head>
+<body>
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

@@ -1,0 +1,23 @@
+---
+# yandex.tld/local/(s)api/.*
+# Переписываем запрос на local.yandex.tld/.* и проксируем дальше
+regexp_section:
+  matcher:
+    match_and:
+      - match_fsm:
+          host: yandex\\.(ru|by|uz|kz)
+      - match_fsm:
+          path: /local/(s?)api/.*
+  
+  modules:
+    - report: { uuid: local_l7, ranges: default }
+    - rewrite:
+        actions:
+          - header_name: Host
+            regexp: yandex\\.(.*)
+            rewrite: local.yandex.%1
+          - split: url
+            regexp: /local(.*)
+            rewrite: '%1'
+    - shared:
+        uuid: local-proxy

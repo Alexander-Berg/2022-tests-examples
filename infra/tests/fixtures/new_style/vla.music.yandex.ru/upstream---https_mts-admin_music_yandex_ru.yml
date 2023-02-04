@@ -1,0 +1,172 @@
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      host: 'mts-admin.music.yandex.ru'
+  modules:
+    - shared:
+        uuid: mts_admin_req
+    - headers:
+        create:
+          X-Yandex-HTTPS: yes
+          X-Yandex-L7: yes
+          X-Antirobot-Service-Y: music
+        create_func:
+          X-Start-Time: starttime
+          X-Request-Id: reqid
+          X-Forwarded-For: realip
+          X-Forwarded-For-Y: realip
+          X-Source-Port-Y: realport
+          X-Real-IP: realip
+          X-Scheme: scheme
+    - balancer2:
+        rr: { weights_file: ./controls/traffic_control.weights }
+        attempts: 1
+        backends:
+          - weight: 1
+            name: mts_admin_sas
+            modules:
+              - report:
+                  uuid: requests_mts_admin_to_sas
+                  ranges: default
+              - balancer2:
+                  connection_attempts: !f count_backends()
+                  attempts: 1
+                  active:
+                    delay: 3s
+                    steady: true
+                    request: 'GET /ping HTTP/1.0\nHost: mts-admin.music.yandex.ru\n\n'
+                  watermark_policy:
+                    lo: 0.005
+                    hi: 0.02
+                    unique_policy: {}
+                  generated_proxy_backends:
+                    proxy_options:
+                      backend_timeout: 10s
+                      connect_timeout: 100ms
+                      buffering: true
+                      status_code_blacklist: ['409']
+                    include_backends:
+                      type: BY_ID
+                      ids: [music-stable-export-mts-admin-sas]
+          - weight: 1
+            name: mts_admin_man
+            modules:
+              - report:
+                  uuid: requests_mts_admin_to_man
+                  ranges: default
+              - balancer2:
+                  connection_attempts: !f count_backends()
+                  attempts: 1
+                  active:
+                    delay: 3s
+                    steady: true
+                    request: 'GET /ping HTTP/1.0\nHost: mts-admin.music.yandex.ru\n\n'
+                  watermark_policy:
+                    lo: 0.005
+                    hi: 0.02
+                    unique_policy: {}
+                  generated_proxy_backends:
+                    proxy_options:
+                      backend_timeout: 10s
+                      connect_timeout: 100ms
+                      buffering: true
+                      status_code_blacklist: ['409']
+                    include_backends:
+                      type: BY_ID
+                      ids: [music-stable-export-mts-admin-man]
+          - weight: 1
+            name: mts_admin_vla
+            modules:
+              - report:
+                  uuid: requests_mts_admin_to_vla
+                  ranges: default
+              - balancer2:
+                  connection_attempts: !f count_backends()
+                  attempts: 1
+                  active:
+                    delay: 3s
+                    steady: true
+                    request: 'GET /ping HTTP/1.0\nHost: mts-admin.music.yandex.ru\n\n'
+                  watermark_policy:
+                    lo: 0.005
+                    hi: 0.02
+                    unique_policy: {}
+                  generated_proxy_backends:
+                    proxy_options:
+                      backend_timeout: 10s
+                      connect_timeout: 100ms
+                      buffering: true
+                      status_code_blacklist: ['409']
+                    include_backends:
+                      type: BY_ID
+                      ids: [music-stable-export-mts-admin-vla]
+        on_error:
+          modules:
+            - report:
+                uuid: onerror_mts_admin
+                ranges: default
+            - balancer2:
+                rr: { weights_file: ./controls/traffic_control.weights }
+                attempts: 1
+                backends:
+                  - weight: 1
+                    name: mts_admin_sas
+                    modules:
+                      - report:
+                          uuid: requests_mts_admin_to_sas
+                          ranges: default
+                      - balancer2:
+                          connection_attempts: !f count_backends()
+                          rr: {}
+                          attempts: 1
+                          generated_proxy_backends:
+                            proxy_options:
+                              connect_timeout: 100ms
+                              backend_timeout: 10s
+                              buffering: true
+                              status_code_blacklist: []
+                              fail_on_5xx: false
+                            include_backends:
+                              type: BY_ID
+                              ids: [music-stable-export-mts-admin-sas]
+                  - weight: 1
+                    name: mts_admin_man
+                    modules:
+                      - report:
+                          uuid: requests_mts_admin_to_man
+                          ranges: default
+                      - balancer2:
+                          connection_attempts: !f count_backends()
+                          rr: {}
+                          attempts: 1
+                          generated_proxy_backends:
+                            proxy_options:
+                              connect_timeout: 100ms
+                              backend_timeout: 10s
+                              buffering: true
+                              status_code_blacklist: []
+                              fail_on_5xx: false
+                            include_backends:
+                              type: BY_ID
+                              ids: [music-stable-export-mts-admin-man]
+                  - weight: 1
+                    name: mts_admin_vla
+                    modules:
+                      - report:
+                          uuid: requests_mts_admin_to_vla
+                          ranges: default
+                      - balancer2:
+                          connection_attempts: !f count_backends()
+                          rr: {}
+                          attempts: 1
+                          generated_proxy_backends:
+                            proxy_options:
+                              connect_timeout: 100ms
+                              backend_timeout: 10s
+                              buffering: true
+                              status_code_blacklist: []
+                              fail_on_5xx: false
+                            include_backends:
+                              type: BY_ID
+                              ids: [music-stable-export-mts-admin-vla]

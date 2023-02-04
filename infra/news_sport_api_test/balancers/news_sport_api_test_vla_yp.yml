@@ -1,0 +1,95 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - errorf
+      groups: []
+config_transport:
+  nanny_static_file:
+    service_id: rtc_balancer_news_sport_api_test_yp_vla
+    instance_tags:
+      ctype: prod
+      itype: balancer
+      prj: news_sport_api_test_yp
+---
+instance_macro:
+  version: 0.0.2
+  sd: {}
+  buffer: 2097152
+  workers: !f get_workers()
+  state_directory: /dev/shm/balancer-state
+  maxconn: 5000
+  unistat: {}
+  sections:
+    admin:
+      ips: [127.0.0.1, '::1']
+      ports:
+        - !f get_port_var('port')
+      modules:
+        - http: {}
+        - admin: {}
+    stats_storage:
+      ips: [127.0.0.4]
+      ports: [!f get_port_var('port')]
+      modules:
+        - report:
+            uuid: 'service_total'
+            ranges: 'default'
+            just_storage: true
+        - http: {}
+        - errordocument:
+            status: 204
+    https_section:
+      ips: ['*']
+      ports:
+        - 443
+      extended_http_macro:
+        report_uuid: 'https'
+        enable_ssl: true
+        ssl_sni_contexts:
+          test.api.sport.news.yandex.ru:
+            cert: !c news_sport_api_test
+            servername_regexp: default
+        modules:
+          - headers:
+              create:
+                X-Yandex-HTTPS: yes
+          - shared:
+             uuid: upstreams
+    http_section:
+      ips: ['*']
+      ports:
+        - 80
+        - !f get_port_var('port')
+      extended_http_macro:
+        report_uuid: 'http'
+        modules:
+          - shared:
+             uuid: upstreams
+          - headers:
+              delete: '(x-forwarded-for.*|x-source-port.*)'
+          - headers:
+              create_func:
+                X-Start-Time: starttime
+                X-Req-Id: reqid
+                X-Yandex-RandomUID: yuid
+              create_func_weak:
+                X-Source-Port-Y: realport
+                X-Forwarded-For-Y: realip
+                X-Forwarded-For: realip
+          - response_headers:
+              create_weak:
+                X-XSS-Protection: '1; mode=block'
+                X-Content-Type-Options: nosniff
+          - rewrite:
+              actions:
+                - regexp: '.*'
+                  header_name: 'X-Is-Yandex-Net'
+                  rewrite: '-1'
+          - regexp:
+              include_upstreams:
+                filter:
+                  any: true
+                order:
+                  label:
+                    name: order

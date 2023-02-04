@@ -1,0 +1,59 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - robot-nb-sandbox
+      groups: []
+labels:
+  order: '10000000'
+config_mode: easy2
+---
+l7_upstream_macro:
+  version: 0.0.2
+  id: configdepot-dev-faas-dummy-default
+  matcher:
+    path_re: /faas-dummy-default(/.*)?
+  monitoring:
+    uuid: configdepot-dev-faas-dummy-default
+  headers:
+  - create:
+      target: X-Real-IP
+      func: realip
+  - create:
+      target: X-Balancer-IP
+      func: localip
+  - create:
+      target: X-Request-Id
+      keep_existing: true
+      func: reqid
+  by_dc_scheme:
+    dc_balancer:
+      weights_section_id: bygeo
+      method: BY_DC_WEIGHT
+      attempts: 2
+    balancer:
+      compat:
+        method: ACTIVE
+      attempts: 2
+      max_reattempts_share: 0.15000000596046448
+      fast_attempts: 2
+      health_check:
+        delay: 5s
+        request: 'GET /ping HTTP/1.1\nHost: faas.test.billing.yandex.net\n\n'
+      use_https_to_endpoints: {}
+      do_not_retry_http_responses: true
+      retry_non_idempotent: false
+      connect_timeout: 70ms
+      backend_timeout: 10s
+      keepalive_count: 100
+    dcs:
+    - name: vla
+      backend_ids:
+      - configdepot-dev_faas-dummy-default_vla
+    - name: sas
+      backend_ids:
+      - configdepot-dev_faas-dummy-default_sas
+    on_error:
+      static:
+        status: 504
+        content: Service unavailable

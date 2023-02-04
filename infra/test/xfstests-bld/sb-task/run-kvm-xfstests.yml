@@ -1,0 +1,32 @@
+---
+apiVersion: '1'
+kind: Task
+params:
+  type: EXEC_SCRIPT_LXC
+  arch: linux
+  custom_fields:
+    privileged: true
+    script_url: 'arcadia:/arc/trunk/arcadia/infra/kernel/test/xfstests-bld'
+    named_resources:
+      bzImage: '799206684'
+      kvm_xfstests_image: '799247439'
+    command: |
+      set -xe
+      mkdir -p metatest_logs_v2
+      touch metatest_logs_v2/empty.txt
+      docker load -i {kvm_xfstests_image}
+      test -e /dev/kvm || mknod /dev/kvm c 10 232
+      mkdir work
+      cp {bzImage} work
+      ./run-kvm-xfstests.sh work smoke
+      find .
+    xunit_report_dir: work/results
+    out_resource_list:
+      - path: ./work/logs
+        type: TASK_CUSTOM_LOGS
+        desc: kvm-xfstest job logs
+        required: True
+
+  description: Run kvm-xfstest example
+  owner: DMTRMONAKHOV_SANDBOX_GROUP
+  priority: SERVICE:HIGH

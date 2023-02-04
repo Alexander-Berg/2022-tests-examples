@@ -1,0 +1,69 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - greengrape
+      groups: []
+labels:
+  order: '1000'
+---
+regexp_section:
+  matcher:
+    match_or:
+      - match_fsm:
+          url: '/entity/lists\\?.*'
+  modules:
+    - shared:
+        uuid: web-apphost-backends
+    - balancer2:
+        attempts: 1
+        rr: {}
+        by_name_policy:
+          name: !f get_geo("bygeo_", "random")
+          unique_policy: {}
+        backends:
+          - weight: 1
+            name: bygeo_man
+            modules:
+              - balancer2:
+                  weighted2: {}
+                  attempts: 2
+                  connection_attempts: 2
+                  attempts_rate_limiter:
+                    limit: 0.2
+                    coeff: 0.99  
+                  generated_proxy_backends:
+                    proxy_options: {}
+                    include_backends:
+                      type: BY_ID
+                      ids: [web-apphost-man-yp]
+          - weight: 1
+            name: bygeo_sas
+            modules:
+              - balancer2:
+                  weighted2: {}
+                  attempts: 2
+                  connection_attempts: 2
+                  attempts_rate_limiter:
+                    limit: 0.2
+                    coeff: 0.99  
+                  generated_proxy_backends:
+                    proxy_options: {}
+                    include_backends:
+                      type: BY_ID
+                      ids: [web-apphost-sas-yp]
+          - weight: 1
+            name: bygeo_vla
+            modules:
+              - balancer2:
+                  weighted2: {}
+                  attempts: 2
+                  connection_attempts: 2
+                  attempts_rate_limiter:
+                    limit: 0.2
+                    coeff: 0.99  
+                  generated_proxy_backends:
+                    proxy_options: {}
+                    include_backends:
+                      type: BY_ID
+                      ids: [web-apphost-vla-yp]

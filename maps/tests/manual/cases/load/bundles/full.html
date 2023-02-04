@@ -1,0 +1,163 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Бандл: карта с бандлом package.full
+
+Description:
+Проверяем работу карты с бандлом package.full.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components:
+load
+
+Estimated time:
+120000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть открывшуюся страницу.
+
+  Expectation:
+  Карта отобразилась корректно со спаном Москвы, в контейнере дефолтный набор контролов и контрол маршрутов.
+  На спане карты построен маршрут авто, пешеходный маршрут, имеются основные и альтернативные нитки маршрутов.
+  На спане имеется красная метка "уайэмби".
+  
+Step:
+  Action:
+  Навести курсор на метку "уайэмби", затем выполнить клик в метку.
+
+  Expectation:
+  При наведени курсора появляется хинт "omg".
+  По клику метка пропадает со спана карты.
+
+Step:
+  Action:
+  Выполнить 3 клика в контрол зума "-".
+
+  Expectation:
+  Происходит корректный отзум спана карты.
+  Маршрут авто отображен полностью, становится видна метка "B"-деревня Барыбино.
+
+Step:
+  Action:
+  Открыть инструменты разработчика командами Windows: Ctrl + Shift + I если у вас MacOS: ⌥ + ⌘ + I, вкладку Console.
+
+  Expectation:
+  В консоли отсуствуют сообщения об ошибках.
+  В консоли имеются строки: "my modules is created", "map is here: function", а также строка с раскрывающимся Object.
+
+Step:
+  Action:
+  Клик в консоли в строку Object.
+
+  Expectation:
+  В объекте пары свойств и значений: "foo: 'bar'; my:'module'; my rules:'!'".
+-->
+<html>
+<head>
+    <title>2.1 Full bundle test (+ custom module creation)</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type="text/javascript">
+        Api('init', undefined, undefined, undefined, undefined, undefined, undefined);
+
+        function init(ymaps) {
+            ymaps.ready(['Map', 'Placemark', 'geoObject.addon.balloon', 'geoObject.addon.hint'])
+                .then(function (ym) {
+                    var map = window.myMap = new ym.Map('map', {
+                        center: [55.74524234796502,37.586730756347656],
+                        zoom: 12
+                    }, {
+                        searchControlProvider: 'yandex#search',
+                        dragInertiaDuration: 'auto',
+                        searchControlForceCatalogSuggest: true
+                    }),
+                    geoObject = new ym.Placemark(map.getCenter(), {
+                        iconContent: 'уайэмби',
+                        balloonContent: 'FUCK YEAH.',
+                        hintContent: 'omg!'
+                    }, {
+                        draggable: true,
+                        preset: 'islands#redStretchyIcon'
+                    }),
+                    emptyGeoObject = new ym.Placemark(),
+                    multiRoute = new ymaps.multiRouter.MultiRoute({
+                        referencePoints: [
+                            "метро Академическая"
+                        ],
+                        params: {
+                            routingMode: 'auto'
+                        }
+                    }),
+                    multiRoute2 = new ymaps.multiRouter.MultiRoute({
+                        referencePoints: [
+                            "метро Новослободская",
+                            "Барыбино"
+                        ],
+                        params: {
+                            routingMode: 'auto'
+                        }
+                    }, {
+                        preset: 'router#interactivePathdjdd',
+                        routeTransportSegmentOpacity: 1
+                    }),
+                    multiRoute3 = new ymaps.multiRouter.MultiRoute({
+                        referencePoints: [
+                            "метро Сокольники",
+                            "метро Курская"
+                        ],
+                        params: {
+                            routingMode: 'pedestrian'
+                        }
+                    });
+
+                map.controls.add('routeEditor');
+                map.geoObjects
+                    .add(geoObject)
+                    .add(emptyGeoObject)
+                    .add(multiRoute)
+                    .add(multiRoute2)
+                    .add(multiRoute3);
+
+                geoObject.events.add('click', function () {
+                    myMap.geoObjects.remove(geoObject);
+                    // Uncaught TypeError: Cannot read property 'action' of null
+                });
+            }).fail(onError);
+
+            ymaps.modules.require('my.module', function (mod) {
+                console.log(mod);
+            });
+
+            ymaps.modules.define('my.module', ['Map'], function (provide, Map) {
+                console.log('my modules is created');
+                console.log(`map is here: ${typeof Map}`);
+                provide({foo: 'bar', my: 'module', 'my rules': '!'});
+            });
+        }
+
+        function onError (err) {
+            console.error(err);
+        }
+    </script>
+    <style>
+        html, body, #map {
+            padding: 0;
+            margin: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        #map {
+            height: calc(100% - 60px);
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+</body>
+</html>

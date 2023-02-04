@@ -1,0 +1,81 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - sersmirnov
+      groups: []
+labels:
+  order: 00009001
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      url: '(/znatoki)?/web-api/storage(/.*)?'
+  modules:
+    - balancer2:
+        attempts: 1
+        attempts_rate_limiter:
+          limit: 0.1
+          coeff: 0.99
+        connection_attempts: !f count_backends()
+        rr: {weights_file: ./controls/traffic_control.weights}
+        backends:
+        - weight: 1
+          name: frontend_man
+          modules:
+            - report: {ranges: default, uuid: requests_nodejs_webapi_to_man}
+            - balancer2:
+                attempts: 1
+                connection_attempts: !f count_backends()
+                rr: {}
+                generated_proxy_backends:
+                  proxy_options:
+                    backend_timeout: 20s
+                    connect_timeout: 100ms
+                    keepalive_count: 1
+                  include_backends:
+                    type: BY_ID
+                    ids: [answers_nodejs_yp_man]
+        - weight: 1
+          name: frontend_vla
+          modules:
+            - report: {ranges: default, uuid: requests_nodejs_webapi_to_vla}
+            - balancer2:
+                attempts: 1
+                connection_attempts: !f count_backends()
+                rr: {}
+                generated_proxy_backends:
+                  proxy_options:
+                    backend_timeout: 20s
+                    connect_timeout: 100ms
+                    keepalive_count: 1
+                  include_backends:
+                    type: BY_ID
+                    ids: [answers_nodejs_yp_vla]
+        - weight: 1
+          name: frontend_sas
+          modules:
+            - report: {ranges: default, uuid: requests_nodejs_webapi_to_sas}
+            - balancer2:
+                attempts: 1
+                connection_attempts: !f count_backends()
+                rr: {}
+                generated_proxy_backends:
+                  proxy_options:
+                    backend_timeout: 20s
+                    connect_timeout: 100ms
+                    keepalive_count: 1
+                  include_backends:
+                    type: BY_ID
+                    ids: [answers_nodejs_yp_sas]
+        - weight: -1
+          name: frontend_devnull
+          modules:
+            - report: {ranges: default, uuid: requests_nodejs_to_devnull}
+            - errordocument:
+                status: 204
+        on_error:
+          modules:
+          - errordocument:
+              status: 504
+              content: 'Service unavailable!'

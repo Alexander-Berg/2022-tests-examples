@@ -1,0 +1,149 @@
+locals:
+  partner_id_rub:  &x-partner-id-rub  1351874741
+  partner_id_usd:  &x-partner-id-usd  1357680324
+  partner_id_eur:  &x-partner-id-eur  1357680365
+  partner_id_try:  &x-partner-id-try  1358543687
+
+  product_rub:     &x-product-rub     744e8324-9513-49a9-940d-03dde8148ef1
+  product_default: &x-product-default dee7935b-334e-4d22-818a-db8c2a854dcc
+
+  service_id: &x-service-id 658
+  contract_type: &x-contract-type GamesContract
+
+  input:
+    processor:
+      valid_input: &x-valid-input
+        renderer_type: *x-processor-renderer-trust
+        contract_type: *x-contract-type
+        client_id: *x-partner-id-rub
+        service_id: *x-service-id
+        template: *x-event-template-trust-standard
+        person_type: *x-person-type-ur
+        firm_id: *x-yandex-firm-id
+        contract:
+          currency_iso_code: RUB
+        trust_event: &x-valid-input-event
+          currency: RUB
+          payment_method_id: *x-payment-method-card
+          rows:
+            - { amount: 123.12 }
+
+
+system_test_bundle:
+  <<: *x-trust-system-test-bundle
+  accounts: [ cashless ]
+  processor_input:
+    <<: *x-valid-input
+
+
+cases:
+  payment:
+    - description: Workflow for each payment_method_id
+      foreach:
+        paths: [ processor.input.event.payment_method_id ]
+        values:
+         - [ *x-payment-method-card ]
+         - [ *x-payment-method-sbp-qr ]
+         - [ *x-payment-method-yamoney-wallet ]
+      processor:
+        input:
+          <<: *x-valid-input
+          trust_event:
+            payment_method_id: *x-payment-method-card
+            rows:
+              - { amount: 5432.12 }
+              - { amount: 1521.21 }
+            refunds:
+              - amount: 1234.56
+                rows:
+                  - { amount: 1234.56 }
+        expected:
+          response:
+            status: 200
+
+      accounts:
+        input:
+          accounts: [cashless, cashless_refunds]
+        expected:
+          response:
+            status: 200
+            data:
+              balances:
+                - loc: { type: cashless }
+                  credit: '6953.330000'
+                - loc: { type: cashless_refunds }
+                  debit: '1234.560000'
+
+    - description: Workflow for each currency
+      foreach:
+        paths:
+          - processor.input.client_id
+          - processor.input.contract.currency_iso_code
+          - processor.input.event.currency
+          - processor.input.event.rows.[0].currency
+          - accounts.expected.response.data.balances.[0].loc.currency
+        values:
+          - [ *x-partner-id-rub, 'RUB', 'RUB', 'RUB', 'RUB' ]
+#          - [ *x-partner-id-usd, 'USD', 'USD', 'USD', 'USD' ]
+#          - [ *x-partner-id-eur, 'EUR', 'EUR', 'EUR', 'EUR' ]
+#          - [ *x-partner-id-try, 'TRY', 'TRY', 'TRY', 'TRY' ]
+      processor:
+        input:
+          <<: *x-valid-input
+          contract:
+            currency_iso_code: 'RUB'
+          trust_event:
+            currency: 'RUB'
+            payment_method_id: *x-payment-method-card
+            rows:
+              - { amount: 432.12, currency: 'RUB' }
+        expected:
+          response:
+            status: 200
+
+      accounts:
+        input:
+          accounts: [ cashless ]
+        expected:
+          response:
+            status: 200
+            data:
+              balances:
+                - loc: { type: cashless, currency: 'RUB' }
+                  credit: '432.120000'
+
+    - description: Bad client ID - contract NOT_FOUND error
+      processor:
+        input:
+          <<: *x-valid-input
+          client_id: 194085784
+        expected:
+          response:
+            status: 400
+            data:
+              message: NOT_FOUND
+      accounts: ~
+
+    - description: Bad service ID - contract NOT_FOUND error
+      processor:
+        input:
+          <<: *x-valid-input
+          service_id: 1234
+        expected:
+          response:
+            status: 400
+            data:
+              message: NO_ACTIVE_CONTRACTS_ERROR
+      accounts: ~
+
+    - description: Invalid event.payment_method_id - calculator configuration error
+      processor:
+        input:
+          <<: *x-valid-input
+          trust_event:
+            <<: *x-valid-input-event
+            payment_method_id: *x-payment-method-bank
+        expected:
+          response:
+            status: 500
+      accounts: ~

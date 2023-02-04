@@ -1,0 +1,131 @@
+locals:
+  client_id: &x-client-id 89905212
+  service_id: &x-service-id 685
+  new_service_id: &x-new-service-id 714
+  contract_type: &x-contract-type MusicMediaservicesContract
+
+  input:
+    processor:
+      valid_input: &x-valid-input
+        renderer_type: *x-processor-renderer-trust
+        contract_type: *x-contract-type
+        client_id: *x-client-id
+        service_id: *x-service-id
+        template: *x-event-template-trust-standard
+        person_type: *x-person-type-ur
+        firm_id: *x-yandex-firm-id
+        trust_event: &x-valid-input-event
+          rows:
+            - { amount: 123.12 }
+
+
+system_test_bundle:
+  <<: *x-trust-system-test-bundle
+  accounts: [ cashless ]
+  processor_input:
+    <<: *x-valid-input
+
+
+cases:
+  payment:
+    - description: Workflow for each payment_method_id
+      foreach:
+        paths: [ processor.input.event.payment_method_id ]
+        values:
+        - [ *x-payment-method-card ]
+        - [ *x-payment-method-yandex-account-withdraw ]
+        - [ *x-payment-method-samsung-pay ]
+      processor:
+        input:
+          <<: *x-valid-input
+          trust_event:
+            payment_method_id: *x-payment-method-card
+            rows:
+              - { amount: 5432.12 }
+              - { amount: 1521.21 }
+            refunds:
+              - amount: 1234.56
+                rows:
+                  - { amount: 1234.56 }
+        expected:
+          response:
+            status: 200
+
+      accounts:
+        input:
+          accounts: [ cashless, cashless_refunds ]
+        expected:
+          response:
+            status: 200
+            data:
+              balances:
+                - loc: { type: cashless }
+                  credit: '6953.330000'
+                - loc: { type: cashless_refunds }
+                  debit: '1234.560000'
+
+    - description: Bad client ID - contract NOT_FOUND error
+      processor:
+        input:
+          <<: *x-valid-input
+          client_id: 1
+        expected:
+          response:
+            status: 400
+            data:
+              message: NOT_FOUND
+      accounts: ~
+
+    - description: Bad service ID - contract NOT_FOUND error
+      processor:
+        input:
+          <<: *x-valid-input
+          service_id: 1
+        expected:
+          response:
+            status: 400
+            data:
+              message: NO_ACTIVE_CONTRACTS_ERROR
+      accounts: ~
+
+    - description: Invalid event.payment_method_id - calculator configuration error
+      processor:
+        input:
+          <<: *x-valid-input
+          trust_event:
+            <<: *x-valid-input-event
+            payment_method_id: *x-payment-method-bank
+        expected:
+          response:
+            status: 500
+      accounts: ~
+
+    - description: Different product.service_fee
+      foreach:
+        paths:
+        - processor.input.event.products.[0].service_fee
+        values:
+        - [ 12 ]
+        - [ 13 ]
+        - [ -1 ]
+      processor:
+        input:
+          <<: *x-valid-input
+          trust_event:
+            <<: *x-valid-input-event
+            rows:
+              - { amount: 5432.12 }
+              - { amount: 1521.21 }
+        expected:
+          response:
+            status: 200
+      accounts:
+        input:
+          accounts: [ cashless ]
+        expected:
+          response:
+            status: 200
+            data:
+              balances:
+                - loc: { type: cashless }
+                  credit: '6953.330000'

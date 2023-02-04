@@ -1,0 +1,20 @@
+module.exports.elements = {
+    archiveLink: '.yb-person-id__archive-link',
+    unarchiveLink: '.yb-person-id__unarchive-link',
+    categorySelector: '.yb-create-person__category button[type=button]',
+    personsFilter: '.yb-subpersons-persons-filter',
+    personsFilterDisabled: '.yb-subpersons-persons-filter_disabled',
+    archivedCheckbox: '.yb-subpersons-persons-filter input[type=checkbox]',
+    personDetails: '.yb-person-details',
+    personsList: '.yb-subpersons-persons',
+    personExport: '.yb-person-export',
+    personId: '.yb-person-id',
+    personName: '.yb-person-id__name',
+    reexportInitial: '.yb-person-reexport-state_initial',
+    reexportExported: '.yb-person-reexport-state_exported',
+    reexportWaiting: '.yb-person-reexport-state_waiting',
+    exported: '.yb-person-export-state_exported',
+    exportedDate: '.yb-person-export-state__date',
+    reexportBtn: '.yb-person-export button',
+    updated: '.yb-person-detail__updated'
+};

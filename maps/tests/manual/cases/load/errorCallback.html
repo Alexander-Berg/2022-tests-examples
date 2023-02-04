@@ -1,0 +1,83 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Загрузка карты: колбеки с ошибкой
+
+Description:
+Проверка корректной обработки колбеков с ошибками.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+internal
+
+Estimated time:
+30000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть страницу. 
+  
+  Expectation:
+  Страница загрузилась, контейнера с картой нет, карта не загрузилась.
+  На странице появляется блок логов: "Был получен negativeCallback0; Был получен negativeCallback1; Был получен negativeCallback2".
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="https://api-maps.tst.c.maps.yandex.ru/2.1.78/?lang=tr-TR&mode=debug" type="text/javascript"></script>
+    <script src="../../helper.js"></script>
+    <script type=text/javascript>
+
+        addLinks();
+        ymaps.ready(init);
+        function init(ymaps) {
+            var tmpModuleCounter = 0,
+                    getTmpModulesName = function () {
+                        return 'test_modules_customModule_' + (++tmpModuleCounter);
+                    },
+                    getTmpKey = function () {
+                        return 'endrodro_' + (++tmpModuleCounter);
+                    };
+
+            ymaps.modules.require(
+                    [getTmpModulesName()],
+                    function () {
+                        __log__('Был получен successCallback');
+                    },
+                    function (error) {
+                        __log__('Был получен negativeCallback0');
+                        //expect(error.message).to.be(buildUnresolvedModuleError(moduleName));
+                        //done();
+                    }
+            );
+            var moduleName = getTmpModulesName();
+            ymaps.modules.require([moduleName], function () {
+                __log__('Был получен successCallback');
+            }, function () {
+
+                __log__('Был получен negativeCallback1');
+            });
+            var moduleName = getTmpModulesName();
+            ymaps.modules.require(
+                    [moduleName],
+                    function () {
+                        __log__('Был получен successCallback');
+                    },
+                    function (error) {
+                        __log__('Был получен negativeCallback2');
+                    },
+                    {a: '123'}
+            );
+
+        }
+    </script>
+</head>
+<body>
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

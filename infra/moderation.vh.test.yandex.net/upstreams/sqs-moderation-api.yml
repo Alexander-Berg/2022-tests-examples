@@ -1,0 +1,37 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - tolich
+      groups: []
+labels:
+  order: '00000400'
+config_mode: easy2
+---
+l7_upstream_macro:
+  flat_scheme:
+    backend_ids:
+    - sqs-moderation-api--deploy
+    balancer:
+      attempts: 3
+      backend_timeout: 10s
+      connect_timeout: 50ms
+      do_not_retry_http_responses: true
+      fast_attempts: 2
+      max_pessimized_endpoints_share: 0.2
+      max_reattempts_share: 0.2
+    on_error:
+      static:
+        content: Service unavailable
+        status: 504
+  id: sqs-moderation-api
+  matcher:
+    or_:
+    - path_re: /moderate(/.*)?
+    - path_re: /sqs_moderation/message(/.*)?
+  rewrite:
+  - pattern:
+      re: /moderate(/.*)?
+    replacement: /sqs_moderation/message%1
+    target: PATH
+  version: 0.2.0

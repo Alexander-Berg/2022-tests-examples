@@ -1,0 +1,123 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Util: прямоугольная область, охватывающая все переданные(геокоординаты)
+
+Description:
+Проверка вычисления геокоординат прямоугольной области, в которую попадают все переданные.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components:
+util
+
+Estimated time:
+120000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть страницу и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно со спаном материков Евразии и Северная Америка.
+  Сверху кнопка "clear".
+
+Step:
+  Action:
+  Выполнить клик в центр спана с левой стороны контейнера, затем клик в центр спана у правой стороны. 
+
+  Expectation:
+  При клике на спане карты появляется синяя метка коллекции.
+  После второго клика на спане появляется затемненная область прямоугольника с вершинами - метками.
+  Под контейнером появляются строки "source bounds; bounding rect" с массивом координат. 
+
+Step:
+  Action:
+  Выполнить клик в центр спана сверху контейнера, затем клик в центр спана снизу контейнера. 
+
+  Expectation:
+  При клике на сверху спана карты появляется синяя метка коллекции.
+  После второго клика на спане появляется затемненная область прямоугольника с вершинами - метками, а также серая область охватывающая оба прямоугольника.
+  Под контейнером появляются строки "source bounds; bounding rect" с массивом координат. 
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            //ymaps = ym;
+            var myMap = new ymaps.Map("map", {
+                center: [50, -179],
+                zoom: 3,
+                controls: []
+            }, {
+                geoObjectInteractivityModel: 'default#silent'
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+            log.info("Создай на карте разные bounds, проверь что fromBounds() охватывает все bounds");
+
+            var projection = myMap.options.get('projection'),
+                    resultRect,
+                    clearBtn = new ymaps.control.Button('clear'),
+                    coords = [],
+                    testBounds = [];
+            myMap.controls.add(clearBtn);
+
+            clearBtn.events.add('click', clear);
+
+            myMap.events.add('click', function (e) {
+                coords.push(e.get('globalPixels'));
+
+                myMap.geoObjects.add(new ymaps.Placemark(e.get('coords')));
+
+                if (coords.length % 2 == 0) {
+                    var bounds = ymaps.util.pixelBounds.fromPoints(coords.slice(-2), projection);
+                    testBounds.push(bounds);
+                    var rect = new ymaps.Rectangle(ymaps.util.bounds.fromGlobalPixelBounds(bounds, myMap.getZoom(), myMap.options.get('projection')), {}, {
+                        opacity: 0.4
+                    });
+                    myMap.geoObjects.add(rect);
+                }
+
+                if (coords.length % 2 == 0) {
+                    var boundingRect = ymaps.util.pixelBounds.fromBounds(testBounds);
+
+                    if (resultRect) {
+                        myMap.geoObjects.remove(resultRect);
+                    }
+
+                    resultRect = new ymaps.Rectangle(ymaps.util.bounds.fromGlobalPixelBounds(boundingRect, myMap.getZoom(), myMap.options.get('projection')), {}, {
+                        opacity: 0.2,
+                        fillColor: '000000'
+                    });
+                    myMap.geoObjects.add(resultRect);
+
+                    __log__('source bounds: ' + JSON.stringify(testBounds));
+                    __log__('bounding rect: ' + JSON.stringify(boundingRect));
+                    __log__('------------');
+                }
+            });
+
+            function clear() {
+                myMap.geoObjects.removeAll();
+                coords = [];
+                testBounds = [];
+            }
+
+        }
+    </script>
+</head>
+<body>
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

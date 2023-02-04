@@ -1,0 +1,118 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Вектор: потеря контекста webGl
+
+Description:
+Проверка имитации потери контекста на векторной карте.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components:
+vector
+
+Estimated time:
+180000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть страницу и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно c векторным отображением, здания Москва-сити объемные.
+  Имеется кнопка "contextlost".
+
+Step:
+  Action:
+  Выполнить зум/отзум, драг карты.
+  Поводить курсором по меткам ПОИ/зданиям/транспортным метка на карте.
+  
+  Expectation:
+  При наведении курсора на ПОИ/здания/транспортные метки курсор меняется на палец, ховер эффект на иконках - окрашивание иконки в красный цвет, на зданиях - затемнение.
+  При взаимодействии с картой и метками цвета меток и подписей не мигают, метки не чернеют, не пропадают.
+  При драгах/зумах векторная карта отображает 3D модели корректно, здания не ломаются не деформируются. 
+  При зумах есть анимация вырастания зданий.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "contextlost". 
+
+  Expectation:
+  Меняется отображение карты с векторной на растровую, карта при этом не мигала цветами, отображается корректно.
+
+Step:
+  Action:
+  Выполнить зум/отзум, драг карты.
+  Поводить курсором по меткам ПОИ/зданиям/транспортным метка на карте.
+  
+  Expectation:
+  При наведении курсора на ПОИ/транспортные метки курсор меняется на палец, ховер эффект отсуствует, на здания курсор не меняется, ховера нет.
+  При взаимодействии с картой и метками цвета меток и подписей не мигают, метки не чернеют, не пропадают.
+  При драгах/зумах корректно отображается растровая карты, модели отображаются под одним углом. 
+  При зумах отображение детализируется, не мигает цветами, карта не чернеет.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+        <script src="../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init', undefined, undefined, undefined, undefined, 'ymaps', undefined);
+
+            window.onerror = function(err) {
+                __log__(err);
+            };
+
+        function init(ymaps) {
+            var map = new ymaps.Map('map', {
+                center: [55.748609, 37.539852],
+                zoom: 17,
+                controls: [],
+                behaviors: ['default', 'scrollZoom']
+            }, {
+                vector: true
+            });
+
+            var button = new ymaps.control.Button('contextlost');
+            button.events
+                    .add('select', function () {
+                        var canvas = document.getElementsByTagName("canvas")[0]; // подхватываем canvas, можно обратиться через селектор, id или иначе 
+                        var gl = canvas.getContext('webgl'); // присваиваем переменной контекст WebGL, представляющий трехмерный контекст
+
+                        //Подписываемся на событие потери контекста
+                        canvas.addEventListener('webglcontextlost', function(e) {
+                        console.log(e);
+                        }, false);
+
+                        //Моделируем событие потери контекста
+                        gl.getExtension('WEBGL_lose_context').loseContext();
+                    });     
+            map.controls.add(button, {position: {top: 45, left: 50}});
+                
+            addGrid(map);
+            var log = new Log();
+
+            map.layers.events.add('vectorreveal', () => __log__('Вектор показался'));
+            map.layers.events.add('vectorerror', () => __log__('Вектор упал'));
+        }
+    </script>
+    <style>
+        html, body, #map {
+            width: 90%;
+            height: 90%;
+            margin: 0;
+            padding: 0;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="map"></div>
+</body>
+
+</html>

@@ -1,0 +1,176 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Карта: работа опции useMapMargin при вызове setZoom 
+
+Description:
+Проверка обработка методом setZoom опции useMapMargin.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+map
+
+Estimated time:
+120000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+  
+  Expectation:
+  Карта отобразилась корректно. 
+  В контейнере карта со спаном Москвы. На одной или нескольких сторонах карты имеются области затемнения с красными прямоугольниками.
+  На спане имеется синяя метка - центр карты в контейнере, красная метка - центр незатемненной области карты.
+  Сверху имеются кнопки "setZoom margin", "setZoom".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "setZoom". 
+  
+  Expectation:
+  Происходит отзум спана карты на одно значение, метки располагаются аналогично(синяя в центре контейнера, красная в центре видимой области). 
+
+Step:
+  Action:
+  Выполнить клик в кнопку "setZoom margin". 
+  
+  Expectation:
+  Происходит отзум спана карты на одно значение, метки располагаются аналогично(синяя в центре контейнера, красная в центре видимой области). 
+
+Step:
+  Action:
+  Зажав на спане карты ЛКМ драгом переместить спан карты. 
+  
+  Expectation:
+  Драг и смещение спана корректные: карта не пропадает, не мигает цветами.
+  Метки пропадают с предыдущих мест и появляются на новом спане: синяя в центре контейнера, красная в центре видимой области. 
+
+Step:
+  Action:
+  Выполнить клик в кнопку "setZoom". 
+  
+  Expectation:
+  Происходит отзум спана карты на одно значение, метки располагаются аналогично(синяя в центре контейнера, красная в центре видимой области). 
+
+Step:
+  Action:
+  Выполнить клик в кнопку "setZoom margin". 
+  
+  Expectation:
+  Происходит отзум спана карты на одно значение, метки располагаются аналогично(синяя в центре контейнера, красная в центре видимой области). 
+
+Step:
+  Action:
+  Зажав на спане карты ЛКМ драгом переместить спан карты. 
+  
+  Expectation:
+  Драг и смещение спана корректные: карта не пропадает, не мигает цветами.
+  Метки пропадают с предыдущих мест и появляются на новом спане: синяя в центре контейнера, красная в центре видимой области. 
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <script src="../../../helper.js"></script>
+    <script type="text/javascript" src="helpers.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            window.ymaps = ymaps;
+
+            setupFakeMarginManager(document.getElementById('container') );
+
+            var myMap = new ymaps.Map("map", {
+                center: [55.73, 37.75],
+                zoom: 13,
+                controls: ['zoomControl']
+            });
+
+            var btn = new ymaps.control.Button('setZoom');
+            btn.events.add('click', function () {
+                myMap.setZoom(myMap.getZoom() - 1);
+            });
+            btn.options.set('maxWidth', 200);
+            myMap.controls.add(btn);
+
+            var btn = new ymaps.control.Button('setZoom margin');
+            btn.events.add('click', function () {
+                myMap.setZoom(myMap.getZoom() - 1, {useMapMargin: true});
+            });
+            btn.options.set('maxWidth', 200);
+            myMap.controls.add(btn);
+
+            // добавляем случайные прямоугольники.
+            var j = Math.round(Math.random() * 5) + 1;
+            for (var i = 0; i < j; i++) {
+                var obj = {
+                    width: Math.round(Math.random() * 40) + 20,
+                    height: Math.round(Math.random() * 40) + 20
+                };
+                obj[(Math.random() > 0.5 ? 'right' : 'left')] = Math.round(Math.random() * 70) + 70;
+                obj[(Math.random() > 0.5 ? 'bottom' : 'top')] = Math.round(Math.random() * 70) + 70;
+
+                myMap.margin.addArea(obj);
+            }
+
+            redrawMargins(myMap, document.getElementById('container'));
+            myMap.events.add('marginchange', function (e) {
+                redrawMargins(myMap, document.getElementById('container'));
+            });
+
+            function setPlacemarks () {
+                myMap.geoObjects.removeAll();
+                myMap.geoObjects.add(new ymaps.Placemark(myMap.getCenter()));
+                myMap.geoObjects.add(new ymaps.Placemark(myMap.getCenter({useMapMargin: true}), {}, {iconColor: '#FF0000'}));
+            }
+
+            myMap.events.add('boundschange', setPlacemarks, this);
+            setPlacemarks();
+
+
+            addGrid(myMap);
+            var log = new Log();
+            log.info("MAPSAPI-10747: Метод setZoom карты теперь обрабатывает опцию useMapMargin");
+            __log__("красная метка - центр видимой области, синяя - физический центр карты");
+
+        }
+    </script>
+    <style>
+        #container {
+            position: relative;
+        }
+
+        #map, #container {
+            width: 1000px;
+            height: 500px;
+        }
+
+        .panel {
+            position: absolute;
+            background-color: black;
+            opacity: 0.3;
+            pointer-events: none;
+        }
+
+        .rect {
+            position: absolute;
+            background-color: red;
+            opacity: 0.3;
+            pointer-events: none;
+        }
+
+    </style>
+
+</head>
+<body>
+<div id="container">
+    <div id="map"></div>
+</div>
+
+</body>
+</html>

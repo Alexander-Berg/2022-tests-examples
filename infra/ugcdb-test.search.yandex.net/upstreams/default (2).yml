@@ -1,0 +1,139 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - moridin
+      - nanny-robot
+      groups: []
+labels:
+  order: '99999999'
+---
+regexp_section:
+  matcher: {}
+  modules:
+    - shared:
+        uuid: 'backends'
+    - regexp:
+        sections:
+          post_method:
+            matcher:
+              match_fsm: {match: POST.*}
+            modules:
+            - balancer2:
+                attempts: 1
+                rr: {}
+                by_name_policy:
+                  name: !f get_geo("bygeo_", "random")
+                  simple_policy: {}
+                backends:
+                  - weight: 1
+                    name: bygeo_man
+                    modules:
+                      - balancer2:
+                          attempts: 1
+                          simple_policy: {}
+                          rr: {}
+                          generated_proxy_backends:
+                            proxy_options:
+                              backend_timeout: 500ms
+                              connect_timeout: 100ms
+                              keepalive_count: 1
+                              fail_on_5xx: true
+                            include_backends:
+                              type: BY_ID
+                              ids: [ugc_db_backend_test_man]
+                  - weight: 1
+                    name: bygeo_sas
+                    modules:
+                      - balancer2:
+                          attempts: 1
+                          simple_policy: {}
+                          rr: {}
+                          generated_proxy_backends:
+                            proxy_options:
+                              backend_timeout: 500ms
+                              connect_timeout: 100ms
+                              keepalive_count: 1
+                              fail_on_5xx: true
+                            include_backends:
+                              type: BY_ID
+                              ids: [ugc_db_backend_test_sas]
+                  - weight: 1
+                    name: bygeo_vla
+                    modules:
+                      - balancer2:
+                          attempts: 1
+                          simple_policy: {}
+                          rr: {}
+                          generated_proxy_backends:
+                            proxy_options:
+                              backend_timeout: 500ms
+                              connect_timeout: 100ms
+                              keepalive_count: 1
+                              fail_on_5xx: true
+                            include_backends:
+                              type: BY_ID
+                              ids: [ugc_db_backend_test_vla]
+                on_error:
+                  errordocument:
+                    status: 504
+                    content: "Service unavailable"
+          default:
+            matcher: {}
+            modules:
+            - balancer2:
+                attempts: 1
+                rr: {}
+                by_name_policy:
+                  name: !f get_geo("bygeo_", "random")
+                  simple_policy: {}
+                backends:
+                  - weight: 1
+                    name: bygeo_man
+                    modules:
+                      - balancer2:
+                          attempts: 3
+                          weighted2: {}
+                          generated_proxy_backends:
+                            proxy_options:
+                              backend_timeout: 1s
+                              connect_timeout: 100ms
+                              keepalive_count: 10
+                              fail_on_5xx: true
+                            include_backends:
+                              type: BY_ID
+                              ids: [ugc_db_backend_test_man]
+                  - weight: 1
+                    name: bygeo_sas
+                    modules:
+                      - balancer2:
+                          attempts: 3
+                          weighted2: {}
+                          generated_proxy_backends:
+                            proxy_options:
+                              backend_timeout: 1s
+                              connect_timeout: 100ms
+                              keepalive_count: 10
+                              fail_on_5xx: true
+                            include_backends:
+                              type: BY_ID
+                              ids: [ugc_db_backend_test_sas]
+                  - weight: 1
+                    name: bygeo_vla
+                    modules:
+                      - balancer2:
+                          attempts: 3
+                          weighted2: {}
+                          generated_proxy_backends:
+                            proxy_options:
+                              backend_timeout: 1s
+                              connect_timeout: 100ms
+                              keepalive_count: 10
+                              fail_on_5xx: true
+                            include_backends:
+                              type: BY_ID
+                              ids: [ugc_db_backend_test_vla]
+                on_error:
+                  errordocument:
+                    status: 504
+                    content: "Service unavailable"

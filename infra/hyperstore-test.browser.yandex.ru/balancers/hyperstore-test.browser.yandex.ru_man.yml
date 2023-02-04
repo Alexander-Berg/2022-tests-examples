@@ -1,0 +1,94 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - stewie
+      groups: []
+config_transport:
+  nanny_static_file:
+    service_id: rtc_balancer_hyperstore-test_browser_yandex_ru_man
+    instance_tags:
+      ctype: prod
+      itype: balancer
+      prj: hyperstore-test.browser.yandex.ru
+---
+instance_macro:
+  version: 0.0.2
+  workers: !f get_workers()
+  sd: {}
+  unistat: {}
+  sections:
+    admin:
+      ips: [127.0.0.1, '::1']
+      ports:
+        - !f get_port_var('port')
+      modules:
+        - http: {}
+        - admin: {}
+    http_section:
+      ips: ['*']
+      ports:
+        - 80
+        - !f get_port_var('port')
+      extended_http_macro:
+        modules:
+          - headers:
+              append_func:
+                X-Forwarded-For: realip
+              create_func_weak:
+                X-Real-IP: realip
+                X-Forwarded-For-Y: realip
+                X-Source-Port-Y: realport
+                X-Request-Id: reqid
+                X-Forwarded-Proto: scheme
+                Host: host
+          - response_headers:
+              create_weak:
+                # Content-Security-Policy: "default-src 'none';  script-src 'self' mc.yandex.ru yastatic.net; img-src 'self' data: avatars.mds.yandex.net mc.yandex.ru yastatic.net; style-src 'self'; connect-src 'self' an.yandex.ru mc.yandex.ru yastatic.net; font-src 'self'; report-uri https://csp.yandex.net/csp?from=hyperstore-test.browser.yandex.ru&project=hyperstore"
+                X-Content-Type-Options: nosniff
+                X-Frame-Options: DENY
+          - regexp:
+              include_upstreams:
+                filter:
+                  any: true
+                order:
+                  label:
+                    name: order
+    https_section:
+      ips: ['*']
+      ports: [443]
+      extended_http_macro:
+        enable_ssl: true
+        enable_http2: true
+        ssl_sni_contexts:
+          tapp-test.yandex.ru:
+            cert: !c tapp-test.yandex.ru_internalca
+            servername_regexp: 'tapp-test\\.yandex\\.ru'
+          hyperstore-test.browser.yandex.ru:
+            cert: !c hyperstore-test.browser.yandex.ru
+            servername_regexp: default
+        modules:
+          - headers:
+              append_func:
+                X-Forwarded-For: realip
+              create_func_weak:
+                X-Real-IP: realip
+                X-Forwarded-For-Y: realip
+                X-Source-Port-Y: realport
+                X-Request-Id: reqid
+                X-Forwarded-Proto: scheme
+                Host: host
+              create_weak:
+                X-Yandex-HTTPS: yes
+          - response_headers:
+              create_weak:
+                # Content-Security-Policy: "default-src 'none';  script-src 'self' mc.yandex.ru yastatic.net; img-src 'self' data: avatars.mds.yandex.net mc.yandex.ru yastatic.net; style-src 'self'; connect-src 'self' an.yandex.ru mc.yandex.ru yastatic.net; font-src 'self'; report-uri https://csp.yandex.net/csp?from=hyperstore-test.browser.yandex.ru&project=hyperstore"
+                X-Content-Type-Options: nosniff
+                X-Frame-Options: DENY
+          - regexp:
+              include_upstreams:
+                filter:
+                  any: true
+                order:
+                  label:
+                    name: order

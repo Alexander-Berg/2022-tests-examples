@@ -1,0 +1,58 @@
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      host: 'gobabygo\\.n\\.yandex-team\\.ru'
+  modules:
+    - report:
+        uuid: gobabygo
+        ranges: default
+    - headers:
+        create_func:
+          X-Real-Ip: "realip"
+        create_func_weak:
+          X-Scheme: 'scheme'
+          X-Source-Port: 'realport'
+          X-Forwarded-For: 'realip'
+          X-Req-Id: 'reqid'
+    - hasher:
+        mode: 'text'
+    - icookie:
+        use_default_keys: true
+        domains: [".yandex.ru", ".yandex.tr"]
+        encrypted_header: 'X-Yandex-ICookie-Encrypted'
+    - report:
+        uuid: xxx
+        ranges: default
+        matcher_map:
+          xxx:
+            match_fsm:
+              uri: '/(.*)/xxx'
+    - geobase_macro:
+        attempts: 100
+        proxy_options:
+          connect_timeout: 100s
+        nanny_snapshots:
+          - service_id: geobase
+            snapshot_id: 12345
+    - srcrwr_ext:
+        domains: yp-c.yandex.net
+        remove_prefix: m
+        balancer2:
+          attempts: 1
+          hashing: {}
+          active_policy:
+            skip_attempts: !f count_backends()
+            unique_policy: {}
+          generated_proxy_backends:
+            proxy_options:
+              backend_timeout: 5s
+              connect_timeout: 150ms
+              keepalive_count: 3
+            nanny_snapshots:
+              - service_id: gobabygo
+                snapshot_id: fb80faf52df0e452358e1344e88b8cff99089835
+                port: 911
+          on_error:
+            errordocument:
+              status: 504

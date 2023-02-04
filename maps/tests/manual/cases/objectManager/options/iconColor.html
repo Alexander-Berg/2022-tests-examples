@@ -1,0 +1,129 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Менеджер объектов: опция смена цвета объектов
+
+Description:
+Проверка работы опции смена цвета объектов. 
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+objectManager
+
+Estimated time:
+90000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась корректно со спаном СПб, на спане множество синих кластерных меток.
+  Сверху слева имеется кнопка "iconColor".
+  
+Step:
+  Action:
+  Выполнить клик в кнопку "iconColor".
+
+  Expectation:
+  Все метки на спане меняют цвет, под контейнером появляется код цвета вида: "#e54b35".
+
+Step:
+  Action:
+  Выполнить 5 кликов в кнопку "iconColor".
+
+  Expectation:
+  При каждом клике все метки на спане меняют цвет, под контейнером появляется код цвета вида: "#e54b35".  
+
+Step:
+  Action:
+  Выполнить клик в метку кластера.
+
+  Expectation:
+  Происходит призум спана карты, на спане синие метки коллекций кластера.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var map = myMap = new ymaps.Map('map', {
+                center: [59.96343157514998, 30.317977733422868],
+                zoom: 7,
+                // Добавим к стандартным поведениям карты зум колесом мыши.
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+
+            var objectManager = new ym.ObjectManager({clusterize: true});
+            var placemarksNumber = 500;
+            var bounds = map.getBounds();
+            var newPlacemarks = createGeoObjects(placemarksNumber, bounds);
+
+            objectManager.objects.add(newPlacemarks);
+            map.geoObjects.add(objectManager);
+
+            var iconColorButton = new ym.control.Button('iconColor');
+            iconColorButton.events.add('click', function () {
+                objectManager.options.set('clusterIconColor', getRandomColor());
+                __log__(getRandomColor());
+            });
+            map.controls.add(iconColorButton);
+
+            function getRandomColor() {
+                return '#' + Math.round(Math.random() * 15).toString(15) + Math.round(Math.random() * 15).toString(15) +
+                        Math.round(Math.random() * 15).toString(15) + Math.round(Math.random() * 15).toString(15) +
+                        Math.round(Math.random() * 15).toString(15) + Math.round(Math.random() * 15).toString(15);
+            }
+
+            function createGeoObjects(number, bounds) {
+                var placemarks = [];
+                // Создаем нужное количество меток
+                for (var i = 0; i < number; i++) {
+                    // Генерируем координаты метки случайным образом.
+                    var coordinates = getRandomCoordinates(bounds);
+                    // Создаем метку со случайными координатами.
+                    var myPlacemark = {
+                        "type": "Feature",
+                        "id": i,
+                        "geometry": {
+                            "type": "Point",
+                            "coordinates": coordinates
+                        },
+                        "properties": {
+                            "balloonContent": i,
+                            "clusterCaption": i,
+                            "hintContent": i
+                        }
+                    };
+                    placemarks.push(myPlacemark);
+                }
+                return placemarks;
+            }
+
+            function getRandomCoordinates(bounds) {
+                var size = [bounds[1][0] - bounds[0][0], bounds[1][1] - bounds[0][1]];
+                return [Math.random() * size[0] + bounds[0][0], Math.random() * size[1] + bounds[0][1]];
+            }
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

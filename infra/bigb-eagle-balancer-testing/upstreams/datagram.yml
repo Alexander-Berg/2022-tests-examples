@@ -1,0 +1,44 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - dancingqueue
+      groups: []
+labels:
+  order: '10000000'
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      uri: '.*'
+  modules:
+    - shared:
+        uuid: datagram_on_datagram_port
+    - balancer2:
+        attempts: 1
+        rr: {}
+        backends:
+          - name: bygeo_vla
+            weight: 100
+            modules:
+              - report: {ranges: default, uuid: requests_datagram_to_vla}
+              - balancer2:
+                  attempts: 1
+                  timeout_policy:
+                    timeout: 40ms
+                    watermark_policy:
+                      lo: 0.3
+                      hi: 0.5
+                      unique_policy: {}
+                  active:
+                    request: 'GET /sensors HTTP/1.1\r\nHost: bigb-fast.yandex.ru\r\n\r\n'
+                    delay: '20s'
+                  generated_proxy_backends:
+                    proxy_options:
+                      connect_timeout: 30ms
+                      need_resolve: False
+                      keepalive_count: 5
+                      backend_timeout: 150ms
+                    include_backends:
+                      type: BY_ID
+                      ids: [bigb-eagle-datagram-testing]

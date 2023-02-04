@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<!--
+Title:
+Кластеризация: опция призума по клику
+
+Description:
+Проверка опции призума по клику.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+regress
+
+Estimated time:
+120000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась корректно, на спане две метки кластеров, желтая метка коллекции.
+  Сверху слева кнопка "disable zoom click".
+
+Step:
+  Action:
+  Выполнить клик в метку кластера.
+
+  Expectation:
+  По клику происходит призум спана, в области видимости множество меток кластеров.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "disable zoom click", затем выполнить даблклик ПКМ.
+  Выполнить клик в метку кластера.
+  
+  Expectation:
+  При даблклике ПКМ происходит отзум спана карты, значения кластеризации в метках увеличивается. 
+  По клику в метку кластера на нем открывается балун с двумя колонками, в левой список меток, в правой содеримое балуная метки(номер метки).
+  (дождитесь открытия балуна, в метке с большим значением кластеризации он может открыться с задержкой)
+
+Step:
+  Action:
+  Выполнить клик в кнопку "disable zoom click", затем выполнить даблклик ПКМ.
+  Выполнить клик в метку кластера.
+  
+  Expectation:
+  При даблклике ПКМ происходит отзум спана карты, открытый балун закрывается, значения кластеризации в метках увеличивается. 
+  По клику в метку кластера происходит призум спана, в области видимости множество меток кластеров.
+
+Step:
+  Action:
+  Выполнить клик в метку кластера.
+  
+  Expectation:
+  По клику в метку кластера происходит призум спана, на спане появляется множество меток коллекции.
+-->
+<html>
+<head>
+    <title>API 2.0</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <script src="../helper.js"></script>
+    <script type="text/javascript">
+        Api('init');
+        function init(ymaps) {
+            var myMap = new ymaps.Map('map', {
+                center: [52, 60],
+                zoom: 4});
+            
+            var cluster = new ymaps.Clusterer(), i, j, points1 = [], points2 = [];
+            cluster.options.set({
+                minClusterSize: 11 // в минимальном кластере буддет 11
+            });
+            for (i = 50; i < 100; i++) {
+                for (j = 0; j < 50; j++) {
+                    var point = new ymaps.Placemark([50 + j * 0.1, 60 - 2 + i * 0.01]);
+                    point.properties.set({
+                        clusterCaption: j * i + j,
+                        balloonContentHeader: j * i + j + ' - заголовок метки',
+                        balloonContentBody: j * i + j + ' - тело метки',
+                        balloonContentFooter: j * i + j + ' - футер метки'
+                    });
+                    j > 30 ? points1.push(point) : points2.push(point);
+                    point.events.add("click", function (e) {
+                        cluster.options.set("maxZoom", 8);
+                    });
+                }
+            }
+            cluster.add(points1);
+            cluster.add(points2);
+            myMap.geoObjects.add(cluster);
+            myMap.events.add("dblclick", function (e) {
+                cluster.remove(points2);
+            });
+            var button = new ymaps.control.Button('disable zoom click');
+            button.events.add("select", function (e) {
+                cluster.options.set('clusterDisableClickZoom', true); // - работает странно
+            })
+                    .add("deselect", function (e) {
+                        cluster.options.set('clusterDisableClickZoom', false);
+                    });
+            myMap.controls.add(button, {left: 3, top: 3});
+            var icon = '<b style="color: red;">$[properties.geoObjects.length]</b>';
+            cluster.options.set('clusterIconContentLayout', ymaps.templateLayoutFactory.createClass(icon));
+            // MAPSAPI-5082
+            var clusterer2 = new ymaps.Clusterer();
+            clusterer2.createCluster = function (center, geoObjects) {
+                return new ymaps.Placemark([52.5927, 72.9199], {}, {preset: 'twirl#yellowIcon'});
+            };
+            myMap.geoObjects.add(clusterer2);
+            clusterer2.add(new ymaps.Placemark([58, 72.9199]));
+            clusterer2.add(new ymaps.Placemark([58, 72.9199]));
+            clusterer2.add(new ymaps.Placemark([58, 72.9199]));
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;">
+</div>
+<p><a href="https://tech.yandex.ru/maps/archive/doc/jsapi/2.0/ref/reference/Clusterer-docpage/" target="_blank">Docs</a></p>
+</body>
+</html>

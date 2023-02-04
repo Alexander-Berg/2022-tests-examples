@@ -1,0 +1,38 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - rmcf
+      - evor
+      groups: []
+labels:
+  order: 09999998
+---
+regexp_section:
+  matcher:
+    match_and:
+      - match_fsm:
+          host: pcode-static.yabs.yandex.net
+      - match_fsm:
+          url: '/pcode\\?route=prefetch.txt'
+  modules:
+    - report: {ranges: default, uuid: prefetch}
+    - rewrite:
+        actions:
+          - regexp: '/pcode\\?route=prefetch.txt(.*)'
+            rewrite: '/pcode-dynamic/prefetch.txt'
+    - headers:
+        create:
+            Host: yastatic.net
+    - balancer2:
+        attempts: 2
+        rr: {}
+        simple_policy: {}
+        generated_proxy_backends:
+          proxy_options:
+              backend_timeout: 100ms
+              connect_timeout: 50ms
+          instances:
+            - weight: 1
+              host: yastatic.net
+              port: 80

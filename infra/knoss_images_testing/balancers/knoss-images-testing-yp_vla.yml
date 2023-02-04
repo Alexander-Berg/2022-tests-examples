@@ -1,0 +1,61 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - nanny-robot
+      - mrboogie
+      groups: []
+config_transport:
+  nanny_static_file:
+    service_id: rtc_balancer_knoss-images-testing-yp_vla
+    instance_tags:
+      ctype: testing
+      itype: balancer
+      prj: l7-balancer-knoss-images-testing
+---
+instance_macro:
+  thread_mode: true
+  unistat: {}
+  sd: {}
+  workers: !f get_workers()
+  state_directory: /dev/shm/balancer-state
+  maxconn: 5000
+  sections:
+    admin:
+      ips: [127.0.0.1, '::1']
+      ports:
+        - !f get_port_var('port')
+      modules:
+        - http: {}
+        - admin: {}
+    http_section:
+      ips: ['*']
+      ports:
+        - !f get_port_var('port')
+      extended_http_macro:
+        modules:
+          - log_headers:
+              name_re: 'X-Req-Id'
+          - regexp:
+              include_upstreams:
+                filter:
+                  any: true
+                order:
+                  label:
+                    name: order
+    http_no_cryprox_section:
+      ips: ['*']
+      ports:
+        - 81
+      extended_http_macro:
+        modules:
+          - log_headers:
+              name_re: 'X-Req-Id'
+          - regexp:
+              include_upstreams:
+                filter:
+                  not:
+                    id_prefix: images_antiadblocker
+                order:
+                  label:
+                    name: order

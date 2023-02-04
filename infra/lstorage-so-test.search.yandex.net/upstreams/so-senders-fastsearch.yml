@@ -1,0 +1,41 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - tabolin
+      groups: []
+labels:
+  order: '00000100'
+---
+regexp_section:
+  matcher:
+    match_and:
+      - match_fsm:
+          host: lstorage-so-senders.mail.yandex.net
+      - match_fsm:
+          path: /sequential/search
+  modules:
+    - threshold:
+        lo_bytes: 12288000
+        hi_bytes: 16384000
+        pass_timeout: 10s
+        recv_timeout: 1s
+    - balancer2:
+        attempts: 3
+        timeout_policy:
+          timeout: 50ms
+          active_policy:
+            unique_policy: {}
+        weighted2: {}
+        generated_proxy_backends:
+          proxy_options:
+            backend_timeout: 200ms
+            connect_timeout: 50ms
+            keepalive_count: 100
+            fail_on_5xx: True
+          include_backends:
+            type: BY_ID
+            ids: [lstorage_so_senders]
+        on_error:
+          modules:
+            - errordocument: {status: 504}

@@ -1,0 +1,44 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - rodion-m
+      groups: []
+labels:
+  order: '001410'
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      host: 'mobmetd-prestable.metrika.yandex.net'
+  modules:
+     - headers_hasher:
+        header_name: "X-Yandex-Uid"
+        surround: false
+        randomize_empty_match: true
+     - report:
+        uuid: "mobmetd-testing"
+        ranges: "default"
+     - balancer2:
+        attempts: 2
+        attempts_rate_limiter:
+          limit: 0.15
+        connection_attempts: !f count_backends()
+        status_code_blacklist : ["5xx"]
+        return_last_5xx: true
+        retry_non_idempotent: false
+        unique_policy: {}
+        rendezvous_hashing:
+            request: 'GET /ping HTTP/1.1\nHost: mobmetd-prestable.metrika.yandex.net\nUser-agent: l7-balancer\n\n'
+            delay: 10s
+        generated_proxy_backends:
+          proxy_options:
+            backend_timeout: 240s
+            connect_timeout: 100ms
+          include_backends:
+            type: BY_ID
+            ids: [mobmetd-prestable-backend]
+        on_error:
+          errordocument:
+            status: 504
+            content: "Service unavailable"

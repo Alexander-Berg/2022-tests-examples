@@ -1,0 +1,159 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Кластер: задаем координаты объектов строками
+
+Description:
+Проверка поведения карты при задании координат объектов строками.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+clusterer
+
+Estimated time:
+120000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Дождаться загрузки карты и осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан Московской области(Зеленоград, Истра, Солнечногорск) в центре которого кластерная метка со значением кластеризации "2".
+  Сверху слева имеется кнопка "add".
+
+Step:
+  Action:
+  Открыть консоль разработчика командами: Windows: Ctrl + Shift + I/F12 или MacOS: ⌥ + ⌘ + I. 
+  Посмотреть сообщения во вкладке Console.
+
+  Expectation:
+  Во вкладке Console должны быть 4 предупреждающих сообщения вида: "Warning: Clusterer: coordinates of added object are strings and must be numbers (56.021, 36.983)...".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "add".
+
+  Expectation:
+  На спане карты значение кластеризации сменилось на "4".
+  Во вкладке Console добавились еще 4 предупреждающих сообщения вида: "Warning: Clusterer: coordinates of added object are strings and must be numbers (56.021, 36.983)...".
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var map = myMap = new ym.Map('map', {
+                center: [56.034, 36.992],
+                zoom: 10,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+            //https://st.yandex-team.ru/MAPSAPI-9633
+            __log__("Test case: В консоли должно быть 4 сообщения: Clusterer: coordinates of added object are strings and must be numbers");
+            var myGeoObjects = [];
+            myGeoObjects[0] = new ymaps.GeoObject({
+                geometry: { type: "Point", coordinates: ["56.034", 36.992] },
+                properties: {
+                    clusterCaption: 'Геообъект №1',
+                    balloonContentBody: 'Содержимое балуна геообъекта №1.'
+                }
+            });
+            myGeoObjects[1] = new ymaps.GeoObject({
+                geometry: { type: "Point", coordinates: [56.021, "36.983"] },
+                properties: {
+                    clusterCaption: 'Геообъект №2',
+                    balloonContentBody: 'Содержимое балуна геообъекта №2.'
+                }
+            });
+            myGeoObjects[2] = new ymaps.GeoObject({
+                geometry: { type: "Point", coordinates: "56.021, 36.983" },
+                properties: {
+                    clusterCaption: 'Геообъект №2',
+                    balloonContentBody: 'Содержимое балуна геообъекта №2.'
+                }
+            });
+            myGeoObjects[3] = new ymaps.GeoObject({
+                geometry: { type: "Point", coordinates: "[56.021, 36.983]" },
+                properties: {
+                    clusterCaption: 'Геообъект №2',
+                    balloonContentBody: 'Содержимое балуна геообъекта №2.'
+                }
+            });
+
+            var clusterer = new ymaps.Clusterer({ clusterDisableClickZoom: true });
+            var addButton = new ymaps.control.Button('add');
+
+            var placemark6 = new ymaps.GeoObject({
+                geometry: { type: "Point", coordinates: ["56.021", 36.960] },
+                properties: {
+                    clusterCaption: 'Геообъект №6',
+                    balloonContentBody: 'Содержимое балуна геообъекта №6.'
+                }
+            });
+            var placemark7 = new ymaps.GeoObject({
+                geometry: { type: "Point", coordinates: [56.038, "36.93"] },
+                properties: {
+                    clusterCaption: 'Геообъект №7',
+                    balloonContentBody: 'Содержимое балуна геообъекта №7.'
+                }
+            });
+            var placemark8 = new ymaps.GeoObject({
+                geometry: { type: "Point", coordinates: "56.021, 36.960" },
+                properties: {
+                    clusterCaption: 'Геообъект №6',
+                    balloonContentBody: 'Содержимое балуна геообъекта №6.'
+                }
+            });
+            var placemark9 = new ymaps.GeoObject({
+                geometry: { type: "Point", coordinates: "[56.038, 36.93]" },
+                properties: {
+                    clusterCaption: 'Геообъект №7',
+                    balloonContentBody: 'Содержимое балуна геообъекта №7.'
+                }
+            });
+
+            // add a couple of placemarks to clusterer, remove on deselect
+            addButton.events
+                    .add('select', function () {
+                        //https://st.yandex-team.ru/MAPSAPI-9633
+                        __log__("В консоль должно упасть 4 сообщения:  " +
+                                "Clusterer: coordinates of added object are strings and must be numbers");
+                        clusterer.add(placemark6);
+                        clusterer.add(placemark7);
+                        clusterer.add(placemark8);
+                        clusterer.add(placemark9);
+                    })
+                    .add('deselect', function () {
+                        clusterer.remove(placemark6);
+                        clusterer.remove(placemark7);
+                        clusterer.remove(placemark8);
+                        clusterer.remove(placemark9);
+                    });
+
+            clusterer.add(myGeoObjects);
+            map.geoObjects.add(clusterer);
+
+            map.controls.add(addButton);
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

@@ -1,0 +1,127 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Геообъект: обновление области bounds
+
+Description:
+Проверка обновления области bounds.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+geoobject
+
+Estimated time:
+120000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+  
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан Москвы, в контейнере дефолтный набор контролов, сверху спана видны объекты: синяя метка, линия, многоугольник, прямоугольник.
+  Под контейнером с картой 6 блоков "Check bounds..." с координатами, под каждым блоком по 4 значения "OK".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "-" контрола зума. 
+  
+  Expectation:
+  Происходит корректный отзум спана карты, на карте объекты: синяя метка, линия, многоугольник, прямоугольник, круг(фигуры синего цвета).
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../js/geoCS.js"></script>
+    <script src="../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            //ymaps = ym;
+
+            var map = myMap = new ymaps.Map('map', {
+                center: [55.74954, 37.621587],
+                zoom: 10
+            });
+            addGrid(myMap);
+            var log = new Log();
+            log.info("Test case: validate bounds");
+
+            var coords = [
+                        [55.797533, 37.412847],
+                        [55.839285, 37.592748],
+                        [55.837739, 37.741063],
+                        [55.756511, 37.805608],
+                        [55.689854, 37.63944]
+                    ],
+                    collection = new ymaps.GeoObjectCollection(),
+                    geoObjects = [],
+                    clusterer = new ymaps.Clusterer();
+            geoCSSource(ymaps, myMap, this);
+
+            for (var i = 0, iMax = coords.length * 3; i < iMax; i++) {
+                geoObjects[i] = new ymaps.Placemark(coords[i % coords.length]);
+            }
+
+            map.geoObjects.add(collection);
+            map.geoObjects.getBounds();
+            collection.add(clusterer);
+            clusterer.add(geoObjects);
+
+            var clusterBounds = clusterer.getBounds();
+            var collectionBounds = collection.getBounds();
+            var mapClusterBounds = map.geoObjects.getBounds();
+            var clusterPixelBounds = clusterer.getPixelBounds();
+            var collectionPixelBounds = collection.getPixelBounds();
+            var mapClusterPixelBounds = map.geoObjects.getPixelBounds();
+
+            validateBounds(clusterBounds, mapClusterBounds);
+            validateBounds(clusterPixelBounds, mapClusterPixelBounds);
+            validateBounds(collectionBounds, mapClusterBounds);
+            validateBounds(collectionPixelBounds, mapClusterPixelBounds);
+
+            collection.removeAll();
+            collection
+                    .add(geoObjectPlacemark)
+                    .add(geoObjectPolyline)
+                    .add(geoObjectPolygon)
+                    .add(geoObjectRectangle)
+                    .add(geoObjectCircle)
+                    .add(placemark)
+                    .add(polyline)
+                    .add(polygon)
+                    .add(rectangle)
+                    .add(circle);
+            validateBounds(collection.getBounds(), map.geoObjects.getBounds());
+
+            //remove object
+            for (var i = 0; i < 5; i++) {
+                collection.remove(collection.get(0));
+            }
+            validateBounds(collection.getBounds(), map.geoObjects.getBounds());
+
+            function validateBounds(bounds1, bounds2) {
+                try {
+                    __log__("Check bounds: " + bounds1 + " and " + bounds2);
+                    validateValue(bounds1[0][0].toFixed(6), bounds2[0][0].toFixed(6));
+                    validateValue(bounds1[0][1].toFixed(6), bounds2[0][1].toFixed(6));
+                    validateValue(bounds1[1][0].toFixed(6), bounds2[1][0].toFixed(6));
+                    validateValue(bounds1[1][1].toFixed(6), bounds2[1][1].toFixed(6));
+                } catch (err) {
+                    log.info(err)
+                }
+            }
+        }
+    </script>
+</head>
+<body>
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

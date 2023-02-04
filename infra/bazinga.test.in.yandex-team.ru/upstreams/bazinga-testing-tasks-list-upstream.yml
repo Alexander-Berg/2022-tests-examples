@@ -1,0 +1,41 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - pkrasnyuk
+      groups: []
+labels:
+  order: '10000000'
+config_mode: easy2
+---
+l7_upstream_macro:
+  compat:
+    disable_monitoring: true
+  version: 0.0.1
+  id: bazinga-testing-tasks-list-upstream
+  matcher:
+    and_:
+      - host_re: 'bazinga-test.mtrs.yandex-team.ru:8443'
+      - uri_re: /tasksMonitoringInfo
+  headers:
+    - create: {target: Host, value: 'bazinga-test.mtrs.yandex-team.ru:8443'}
+  flat_scheme:
+    balancer:
+      compat:
+        method: ACTIVE
+      attempts: 2
+      max_reattempts_share: 0.75
+      fast_attempt_all_endpoints: true
+      health_check:
+        delay: 1s
+        request: 'GET /ping HTTP/1.1\nHost: bazinga-test.mtrs.yandex-team.ru\nUser-agent: l7-balancer\n\n'
+      do_not_retry_http_responses: true
+      connect_timeout: 2s
+      backend_timeout: 60s
+    backend_ids:
+      - bazingacontrollerd-testing.DeployUnit1_sas
+      - bazingacontrollerd-testing.DeployUnit1_vla
+    on_error:
+      static:
+        status: 504
+        content: 'Service unavailable: l7-balancer'

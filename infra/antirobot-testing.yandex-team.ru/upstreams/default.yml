@@ -1,0 +1,48 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - ashagarov
+      groups: []
+labels:
+  order: '10000000'
+---
+regexp_section:
+  matcher: {}
+  modules:
+    - hasher:
+        mode: subnet
+        take_ip_from: X-Forwarded-For-Y
+    - headers:
+        create_func:
+          X-Start-Time: starttime
+          X-Req-Id: reqid
+          X-Source-Port-Y: realport
+        create_func_weak:
+          X-Forwarded-For-Y: realip
+    - h100: {}
+    - cutter: {}
+    - antirobot_wrapper: {}
+    - balancer2:
+        attempts: 1
+        rr: {}
+        by_name_policy:
+          name: !f get_geo("bygeo_", "random")
+          unique_policy: {}
+        backends:
+          - weight: 1
+            name: bygeo_sas
+            modules:
+              - stats_eater: {}
+              - balancer2:
+                  attempts: 2
+                  attempts_rate_limiter:
+                    limit: 0.3
+                  hashing: {}
+                  generated_proxy_backends:
+                    proxy_options:
+                      backend_timeout: 1s
+                      connect_timeout: 30ms
+                    include_backends:
+                      type: BY_ID
+                      ids: [antirobot-testing_sas]

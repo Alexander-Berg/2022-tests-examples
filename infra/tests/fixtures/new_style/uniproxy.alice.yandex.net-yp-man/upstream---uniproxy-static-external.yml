@@ -1,0 +1,107 @@
+---
+regexp_section:
+    matcher:
+      match_and:
+        - match_or:
+            - match_fsm: { host: "uniproxy\\\\.alice\\\\.yandex-team\\\\.ru", case_insensitive: true }
+            - match_fsm: { host: "uniproxy-internal\\\\.alice\\\\.yandex\\\\.net", case_insensitive: true }
+        - match_or:
+            - match_fsm: {path: '/settings.js', case_insensitive: true, surround: false}
+            - match_fsm: {path: '.*/mic(0|1).png', case_insensitive: true, surround: false}
+            - match_fsm: {path: '.*/spk(0|1).png', case_insensitive: true, surround: false}
+            - match_fsm: {path: '.*/(analyser|demo|service_worker|web_push).js', case_insensitive: true, surround: false}
+            - match_fsm: {path: '/highlight/', case_insensitive: true, surround: true}
+            - match_fsm: {path: '/webspeechkit/', case_insensitive: true, surround: true}
+            - match_fsm: {path: '.*/robots.txt', case_insensitive: true, surround: false}
+            - match_fsm: {path: '/speakers.*', case_insensitive: true, surround: false}
+    modules:
+        - report: {ranges: default, uuid: uniproxy_static}
+        - headers:
+            create_func:
+              X-Yandex-TCP-Info: tcp_info
+        - log_headers:
+            name_re: 'X-(UPRX-(UUID|SSID|AUTH-TOKEN|RETRY-COUNT|APP-(ID|TYPE))|ALICE-CLIENT-REQID|Yandex-TCP-Info)'
+        - balancer2:
+            attempts: 1
+            unique_policy: {}
+            rr: {weights_file: ./controls/traffic_control.weights}
+            backends:
+                -   weight: 1
+                    name: uniproxy_man
+                    modules:
+                        - report: {ranges: default, uuid: uniproxy_static_to_man}
+                        - balancer2:
+                            attempts: 3
+                            attempts_rate_limiter:
+                                limit: 2
+                            fast_attempts: !f count_backends()
+                            fast_503: true
+                            unique_policy: {}
+                            active: {delay: 10s, request: 'GET /ping HTTP/1.1\nHost: uniproxy.alice.yandex.net\n\n'}
+                            generated_proxy_backends:
+                                proxy_options:
+                                    connect_timeout: 100ms
+                                    backend_timeout: 300ms
+                                include_backends:
+                                    type: BY_ID
+                                    ids:
+                                        - wsproxy-man
+                            on_error:
+                              errordocument:
+                                status: 504
+                                content: "Service unavailable"
+                -   weight: 1
+                    name: uniproxy_sas
+                    modules:
+                        - report: {ranges: default, uuid: uniproxy_static_to_sas}
+                        - balancer2:
+                            attempts: 3
+                            attempts_rate_limiter:
+                                limit: 2
+                            fast_attempts: !f count_backends()
+                            fast_503: true
+                            unique_policy: {}
+                            active: {delay: 10s, request: 'GET /ping HTTP/1.1\nHost: uniproxy.alice.yandex.net\n\n'}
+                            generated_proxy_backends:
+                                proxy_options:
+                                    connect_timeout: 100ms
+                                    backend_timeout: 300ms
+                                include_backends:
+                                    type: BY_ID
+                                    ids:
+                                        - wsproxy-sas
+                            on_error:
+                              errordocument:
+                                status: 504
+                                content: "Service unavailable"
+                -   weight: 1
+                    name: uniproxy_vla
+                    modules:
+                        - report: {ranges: default, uuid: uniproxy_static_to_vla}
+                        - balancer2:
+                            attempts: 3
+                            attempts_rate_limiter:
+                                limit: 2
+                            fast_attempts: !f count_backends()
+                            fast_503: true
+                            unique_policy: {}
+                            active: {delay: 10s, request: 'GET /ping HTTP/1.1\nHost: uniproxy.alice.yandex.net\n\n'}
+                            generated_proxy_backends:
+                                proxy_options:
+                                    connect_timeout: 100ms
+                                    backend_timeout: 300ms
+                                include_backends:
+                                    type: BY_ID
+                                    ids:
+                                        - wsproxy-vla
+                            on_error:
+                              errordocument:
+                                status: 504
+                                content: "Service unavailable"
+                -   weight: -1
+                    name: uniproxy_devnull
+                    modules:
+                        - report: {ranges: default, uuid: uniproxy_static_to_devnull}
+                        - errordocument:
+                            status: 200
+                            content: 'OK'

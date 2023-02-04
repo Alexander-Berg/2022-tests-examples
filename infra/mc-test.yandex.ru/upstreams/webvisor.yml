@@ -1,0 +1,54 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - thegorca
+      groups: []
+labels:
+  order: '10000000'
+---
+regexp_section:
+  matcher:
+    match_fsm:
+        uri: '/webvisor/.*'
+  modules:
+    - report:
+        uuid: "webvisor"
+        ranges: "default"
+    - headers:
+        delete: "Connection"
+        create:
+          X-Forwarded-Proto: https
+        create_func:
+          Host: host
+          X-Metrika-Real-IP: realip
+          Ssl-Session-Ticket-Key-Name: ssl_ticket_name
+          Ssl-Session-Ticket-Iv: ssl_ticket_iv
+        create_func_weak:
+          X-Real-IP: realip
+        append_func:
+          X-Forwarded-For: realip
+    - response_headers:
+        create:
+          X-XSS-Protection: '1; mode=block'
+          Strict-Transport-Security: 'max-age=31536000'
+    - threshold:
+        lo_bytes: 512
+        hi_bytes: 1024
+        pass_timeout: 15s
+        recv_timeout: 15s
+    - balancer2:
+        attempts: 2
+        rr: {}
+        backends:
+          - weight: 2
+            name: bsmcphantom_test
+            modules:
+            - shared:
+                uuid: bsmc_phantom_test
+          - weight: -1
+            name: bsmcphantom_devnull
+            modules:
+            - report: {ranges: default, uuid: phantom_requests_to_devnull}
+            - errordocument:
+                status: 204

@@ -1,0 +1,100 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - nanny-robot
+      groups: []
+labels:
+  order: '99999999'
+---
+regexp_section:
+  matcher: {}
+  modules:
+    - report:
+        uuid: suggest
+        ranges: default
+    - headers_hasher:
+        header_name: X-Forwarded-For-Y
+        randomize_empty_match: true
+    - balancer2:
+        attempts: 3
+        by_hash_policy:
+          unique_policy: {}
+        rr: 
+          weights_file: ./controls/traffic_control.weights
+        backends:
+          - weight: 1
+            name: bygeo_man
+            modules:
+              - hasher:
+                  mode: subnet
+                  subnet_v4_mask: 32
+                  subnet_v6_mask: 128
+                  take_ip_from: X-Forwarded-For-Y
+              - balancer2:
+                  attempts: 2
+                  attempts_rate_limiter:
+                    limit: 0.2
+                  active_policy:
+                    skip_attempts: !f count_backends()
+                    unique_policy: {}
+                  hashing:
+                    delay: 10s
+                    request: 'GET /suggest-ping HTTP/1.1\nHost: suggest.yandex.net\n\n'
+                  generated_proxy_backends:
+                    proxy_options:
+                      backend_timeout: 150ms
+                      connect_timeout: 60ms
+                    include_backends:
+                      type: BY_ID
+                      ids: [suggest_man]
+          - weight: 1
+            name: bygeo_sas
+            modules:
+              - hasher:
+                  mode: subnet
+                  subnet_v4_mask: 32
+                  subnet_v6_mask: 128
+                  take_ip_from: X-Forwarded-For-Y
+              - balancer2:
+                  attempts: 2
+                  attempts_rate_limiter:
+                    limit: 0.2
+                  active_policy:
+                    skip_attempts: !f count_backends()
+                    unique_policy: {}
+                  hashing:
+                    delay: 10s
+                    request: 'GET /suggest-ping HTTP/1.1\nHost: suggest.yandex.net\n\n'
+                  generated_proxy_backends:
+                    proxy_options:
+                      backend_timeout: 150ms
+                      connect_timeout: 60ms
+                    include_backends:
+                      type: BY_ID
+                      ids: [suggest_sas]
+          - weight: 1
+            name: bygeo_vla
+            modules:
+              - hasher:
+                  mode: subnet
+                  subnet_v4_mask: 32
+                  subnet_v6_mask: 128
+                  take_ip_from: X-Forwarded-For-Y
+              - balancer2:
+                  attempts: 2
+                  attempts_rate_limiter:
+                    limit: 0.2
+                  active_policy:
+                    skip_attempts: !f count_backends()
+                    unique_policy: {}
+                  hashing:
+                    delay: 10s
+                    request: 'GET /suggest-ping HTTP/1.1\nHost: suggest.yandex.net\n\n'
+                  generated_proxy_backends:
+                    proxy_options:
+                      backend_timeout: 150ms
+                      connect_timeout: 60ms
+                    include_backends:
+                      type: BY_ID
+                      ids: [suggest_vla]

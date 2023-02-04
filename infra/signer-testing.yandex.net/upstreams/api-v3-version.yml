@@ -1,0 +1,49 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - aokhotin
+      groups: []
+labels:
+  order: '00010000'
+config_mode: easy2
+---
+l7_upstream_macro:
+  version: 0.0.1
+  id: api-v3-version
+  matcher:
+    path_re: '(/api/v3/version/.*)?'
+  monitoring:
+    uuid: api-v3-version
+  by_dc_scheme:
+    dc_balancer:
+      weights_section_id: bygeo
+      method: BY_DC_WEIGHT
+      attempts: 2
+    balancer:
+      attempts: 10
+      fast_attempts: 2
+      connect_timeout: 60ms
+      backend_read_timeout: 600s
+      backend_timeout: 600s
+      backend_write_timeout: 600s
+      do_not_limit_reattempts: true
+      retry_http_responses:
+        codes: [5xx]
+      retry_non_idempotent: false
+      compat:
+        method: RR
+    dcs:
+      - name: myt
+        backend_ids:
+          - signer-testing.backend_myt
+      - name: iva
+        backend_ids:
+          - signer-testing.backend_myt
+      - name: sas
+        backend_ids:
+          - signer-testing.backend_myt
+    on_error:
+      static:
+        status: 504
+        content: 'Service unavailable'

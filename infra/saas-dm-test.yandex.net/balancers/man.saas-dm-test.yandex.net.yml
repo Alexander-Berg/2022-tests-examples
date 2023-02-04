@@ -1,0 +1,44 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - moridin
+      - keepclean
+      groups:
+      - yandex_mnt_sa_runtime_cross
+      - svc_saas_administration
+config_transport:
+  nanny_static_file:
+    service_id: production_balancer_saas_dm_test_man
+---
+instance_macro:
+  maxconn: 5000
+  workers: !f get_workers()
+  sections:
+    admin:
+      ips: [127.0.0.1, '::1']
+      ports: [15230]
+      modules:
+        - http: {}
+        - admin: {}
+    http_section:
+      ips: ['2a02:6b8:0:3400::1021']
+      ports: [80]
+      local_ips: [local_v4_addr, local_v6_addr]
+      local_ports: [15230]
+      extended_http_macro:
+        port: 15230
+        modules:
+          - headers:
+              create_func:
+                X-Start-Time: starttime
+                X-Req-Id: reqid
+                X-Forwarded-For-Y: realip
+                X-Source-Port-Y: realport
+          - regexp:
+              include_upstreams:
+                filter:
+                  any: true
+                order:
+                  label:
+                    name: order

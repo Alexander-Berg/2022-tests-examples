@@ -1,0 +1,285 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Менеджер объектов: тест кластеризации и параметров кластера и геообъекта
+
+Description:
+Проверка кластеризации и параметров кластера и геообъекта. 
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+objectManager
+
+Estimated time:
+180000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась корректно, на спане множество меток кластеров и меток коллекций.
+  Сверху, а также снизу справа имеются кнопки применения параметров. Кнопка "clear log" очищает содеримое под контейнером.
+  (выполнять клик в кнопку "clear log" после каждого шага кейса)
+  
+Step:
+  Action:
+  Поводить курсором по меткам коллекций, кластерам.
+
+  Expectation:
+  При наведении на метку повляется хинт.
+  При наведении на метки под контейнером появляются события: "mouseenter", при уводе курсора "mouseleave".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "DOM".
+  Поводить курсором по меткам коллекций, кластерам.
+
+  Expectation:
+  Под контейнером появляется строка "DOM events will be ignored".
+  При наведении на метку появляется хинт, под контейнером строки событий не появляются.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "DOM".
+  Выполнить клик в метку кластера.
+
+  Expectation:
+  Под контейнером появляется строка "Waiting for DOM events...".
+  При клике в метку, на спане открывается балун с двумя колонками, под контейнером появляются строки событий клика.
+
+Step:
+  Action:
+  Закрыть балун кластера, выполнить клик в кнопку "move".
+  Навести курсор на метку коллекции.
+
+  Expectation:
+  Под контейнером появляется строка "Waiting for move events...".
+  При наведении на метку, появляется хинт, под контейнером появляются строки событий наведения курсора, а также строки "mousemove".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "move".
+  Навести курсор на метку коллекции.
+
+  Expectation:
+  Под контейнером появляется строка "Move events will be ignored.".
+  При наведении на метку, появляется хинт, под контейнером появляются строки событий наведения курсора.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "remove".
+
+  Expectation:
+  Под контейнером появляются строки "mapchange; optionschange; parentchange".
+  Со спана карты пропадают все объекты(метки коллекций, метки кластеров).
+
+Step:
+  Action:
+  Выполнить клик в кнопку "remove".
+
+  Expectation:
+  Под контейнером появляются строки "mapchange; optionschange; parentchange".
+  На спане карты вновь появляются объекты(метки коллекций, метки кластеров).
+
+Step:
+  Action:
+  Выполнить клик в кнопку "option".
+
+  Expectation:
+  Под контейнером появляется строка "optionschange".
+  Со спана карты пропадают метки кластеров, остаются только метки коллекций, одна из меток с цифрой "16".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "option".
+
+  Expectation:
+  Под контейнером появляется строка "optionschange".
+  На спане карты вновь появляются метки кластеров.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "ignore".
+  Навести курсор на метку коллекции.
+
+  Expectation:
+  Под контейнером появляется строка "Events will be ignored".
+  При наведении на меткe появляется хинт, под контейнером появляются события: "mouseenter", при уводе курсора "mouseleave".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "ignore".
+  Навести курсор на метку кластера.
+
+  Expectation:
+  Под контейнером появляется строка "Waiting for events...".
+  При наведении под контейнером появляются события: "mouseenter", при уводе курсора "mouseleave".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "freeze", затем клик в "option".
+
+  Expectation:
+  Спан карты без изменений. Меткаи кластеров и метки коллекций на спане карты.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "freeze".
+
+  Expectation:
+  Под контейнером появляется строка "optionschange".
+  Со спана карты пропадают метки кластеров, остаются только метки коллекций, одна из меток с цифрой "16".
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../helper.js"></script>
+    <script src="../../js/objectSource.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+
+            ymaps = ym;
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.716901946294286, 37.30336807048247],
+                zoom: 15,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            objectManagerSource(ym, myMap, this);
+            addGrid(myMap);
+            var log = new Log();
+
+            log.info('objectManager clusterize test + cluster and geoobject options');
+
+            var objectManager = new ymaps.ObjectManager({
+                clusterize: true,
+                clusterDisableClickZoom: true
+            });
+
+            var events = ['geometrychange', 'mapchange', 'optionschange', 'overlaychange', 'parentchange', 'propertieschange'];
+            var domevents = ['click', 'contextmenu', 'dblclick', 'mousedown', 'mouseenter', 'mouseleave', 'mouseup', 'multitouchend',
+                'multitouchstart', 'wheel'];
+            var callback = function (e) {
+                __log__(e.get('type'))
+            };
+            var moveevents = ['mousemove', 'multitouchmove'];
+
+            objectManager.events.add(events, callback);
+            objectManager.events.add(domevents, callback);
+
+            var listenerButton = new ymaps.control.Button({data: {content: 'ignore'}, options: {selectOnClick: true}});
+            var optionButton = new ymaps.control.Button({data: {content: 'option'}, options: {selectOnClick: true}});
+            var removeButton = new ymaps.control.Button({data: {content: 'remove'}, options: {selectOnClick: true}});
+            var freezeButton = new ymaps.control.Button({data: {content: 'freeze'}, options: {selectOnClick: true}});
+            var domButton = new ymaps.control.Button({data: {content: 'DOM'}, options: {selectOnClick: true}});
+            var moveButton = new ymaps.control.Button({data: {content: 'move'}, options: {selectOnClick: true}});
+            var clearButton = new ymaps.control.Button({data: {content: 'clear log'}, options: {selectOnClick: false}});
+
+            listenerButton.events
+                    .add('select', function () {
+                        log.info('Events will be ignored.');
+                        objectManager.events.remove(events, callback);
+                    })
+                    .add('deselect', function () {
+                        log.info('Waiting for events...');
+                        objectManager.events.add(events, callback);
+                    });
+
+            optionButton.events
+                    .add('select', function () {
+                        objectManager.options.set('clusterize', false);
+                    })
+                    .add('deselect', function () {
+                        objectManager.options.set('clusterize', true);
+                    });
+
+            removeButton.events
+                    .add('select', function () {
+                        map.geoObjects.remove(objectManager);
+                    })
+                    .add('deselect', function () {
+                        map.geoObjects.add(objectManager);
+                    });
+
+            freezeButton.events
+                    .add('select', function () {
+                        objectManager.options.freeze();
+                    })
+                    .add('deselect', function () {
+                        objectManager.options.unfreeze();
+                    });
+
+            domButton.events
+                    .add('deselect', function () {
+                        log.info('Waiting for DOM events...');
+                        objectManager.events.add(domevents, callback);
+                    })
+                    .add('select', function () {
+                        log.info('DOM events will be ignored.');
+                        objectManager.events.remove(domevents, callback);
+                    });
+
+            moveButton.events
+                    .add('select', function () {
+                        log.info('Waiting for move events...');
+                        objectManager.events.add(moveevents, callback);
+                    })
+                    .add('deselect', function () {
+                        log.info('Move events will be ignored.');
+                        objectManager.events.remove(moveevents, callback);
+                    });
+
+            clearButton.events.add('click', function () {
+                log.clear();
+            });
+
+            map.controls
+                    .add(listenerButton, {float: 'left'})
+                    .add(optionButton, {float: 'left'})
+                    .add(removeButton, {float: 'left'})
+                    .add(freezeButton, {float: 'none', position: {bottom: 55, right: 10}})
+                    .add(clearButton, {float: 'none', position: {bottom: 25, right: 10}})
+                    .add(moveButton, {float: 'left'})
+                    .add(domButton, {float: 'left'});
+
+            objectManager.objects
+                    .add(objectPlacemark1)
+                    .add(objectPlacemark2)
+                    .add(objectPlacemark3)
+                    .add(objectPlacemark4)
+                    .add(objectPlacemark5)
+                    .add(objectPlacemark6)
+                    .add(objectPlacemark7)
+                    .add(objectPlacemark8)
+                    .add(objectPlacemark9)
+                    .add(objectPlacemark10)
+                    .add(objectPlacemark11)
+                    .add(objectPlacemark12)
+                    .add(objectPlacemark13)
+                    .add(objectPlacemark14)
+                    .add(objectPlacemark15)
+                    .add(objectPlacemark16)
+                    .add(objectPlacemark17)
+                    .add(objectManagerArray)
+                    .add(objectManagerCollection);
+
+            map.geoObjects.add(objectManager);
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

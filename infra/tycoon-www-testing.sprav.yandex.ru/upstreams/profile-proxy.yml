@@ -1,0 +1,53 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - vladislavteli
+      groups: []
+labels:
+  order: '00100000'
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      uri: '/(sprav|rehber|directory)/profile(/.*)?'
+  modules:
+    - report:
+        uuid: profile-proxy
+        ranges: default
+    - hasher:
+        mode: subnet
+        subnet_v4_mask: 32
+        subnet_v6_mask: 128
+    - rewrite:
+        actions:
+          - regexp: '/(sprav|rehber|directory)/profile(/)?'
+            rewrite: '/preview/yandex.ru/promo/sprav/profile-sprav'
+    - headers:
+        create:
+          Host: 'lp-constructor.yandex-team.ru' 
+    - balancer2:
+        active_policy:
+          unique_policy: {}
+        attempts: 3
+        attempts_rate_limiter:
+          limit: 0.2 
+        hashing:
+          delay: '10s'
+          request: 'GET /ping HTTP/1.1\nHost: lp-constructor-internal-balancer.stable.qloud-b.yandex.net\n\n'
+        generated_proxy_backends:
+          proxy_options:
+            connect_timeout: 100ms
+            backend_timeout: 10s
+            keepalive_count: 1
+            fail_on_5xx: false
+            status_code_blacklist: ["429"]
+          instances:
+            - weight: 1
+              host: 'lp-constructor-internal-balancer.stable.qloud-b.yandex.net'
+              port: 80
+        on_error:
+          modules:
+            - errordocument:
+                status: 504
+                content: 'Service unavailable'

@@ -1,0 +1,109 @@
+<!DOCTYPE HTML>
+<!--(skip)(description)
+-->
+<!--(version)
+-->
+<!--(commands)
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+            var map = myMap = new ym.Map('map', {
+                center: [35.83649397128404, -27.987314062500015],
+                zoom: 5,
+                controls: ['fullscreenControl']
+            }, {
+                hintShowTimeout: 0
+            });
+            addGrid(myMap);
+            var log = new Log();
+            __log__("После изменения пейна не должны пропадать меточки");
+            var point1 = [];
+            var point2 = [];
+            var rectangle = [];
+            var line = [];
+            var panes = ['ground', 'areas', 'shadows', 'places', 'overlaps', 'balloon', 'outerBalloon', 'controls', 'copyrights', 'hint', 'outerHint'];
+
+            for (var i = 0; i < panes.length; i++) {
+                point1[i] = new ym.Placemark([42, -37 + i * 2], {}, {
+                    iconInteractive: false,
+                    preset: 'islands#redDotIcon'
+                });
+                point1[i].options.set("iconPane", panes[i]);
+                point1[i].options.set("draggable", true);
+                point1[i].events.add("mouseenter", function (e) {
+                    e.get('target').properties.set(
+                            'hintContent', e.get('target').options.get('iconPane') + ": " + e.get('target').geometry.getCoordinates()
+                    );
+                });
+
+                // pane не должна работать, потому что есть iconPane
+                point2[i] = new ym.Placemark([41, -37 + i * 2], {}, {
+                    iconInteractive: false,
+                    preset: 'islands#redDotIcon'
+                });
+                point2[i].options.set("pane", panes[i]);
+                point2[i].options.set("draggable", true);
+                point2[i].events.add("mouseenter", function (e) {
+                    e.get('target').properties.set(
+                            'hintContent', e.get('target').options.get('pane') + ": " + e.get('target').geometry.getCoordinates()
+                    );
+                });
+
+                rectangle[i] = new ym.Rectangle([
+                    [40, -38 + i * 2],
+                    [37, -38 + i * 2 + 1]
+                ], {}, {
+                    interactive: false
+                });
+                rectangle[i].events.add("mouseenter", function (e) {
+                    e.get('target').properties.set(
+                            'hintContent', e.get('target').options.get('pane') + ": " + e.get('target').geometry.getCoordinates()
+                    );
+                });
+                rectangle[i].options.set("pane", panes[i]);
+
+                line[i] = new ym.Polyline([
+                    [36, -38 + i * 2],
+                    [31, -38 + i * 2 + 1]
+                ], {}, {
+                    interactive: false
+                });
+                line[i].events.add("mouseenter", function (e) {
+                    e.get('target').properties.set(
+                            'hintContent', e.get('target').options.get('pane') + ": " + e.get('target').geometry.getCoordinates()
+                    );
+                });
+                line[i].options.set("pane", panes[i]);
+
+                myMap.geoObjects.add(point1[i]).add(point2[i]).add(rectangle[i]).add(line[i]);
+                start(i);
+                // MAPSAPI-8149
+                log.info(('length: ' + ymaps.hotspot.Manager.get(map.panes.get('events')).getContainerList()._list.length))
+            }
+            function start(i) {
+                setTimeout(function () {
+                    count = i;
+                    if (count == panes.length) count = 0;
+                    point1[i].options.set({iconPane: panes[count], draggable: true });
+                    point2[i].options.set({pane: panes[count], draggable: true });
+                    rectangle[i].options.set({pane: panes[count], draggable: true});
+                    line[i].options.set({pane: panes[count], draggable: true });
+                }, 1000);
+            }
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

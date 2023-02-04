@@ -1,0 +1,105 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - ildarshaym
+      groups:
+      - svc_mediapers
+labels:
+  order: '10000000'
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      uri: (.*)/get-rec-counters(.*)
+  report:
+    uuid: rec_counter
+    ranges: default
+    balancer2:
+      attempts: 3
+      rr:
+        weights_file: ./controls/traffic_control.weights
+      unique_policy: {}
+      backends:
+      - name: kpwebtesting_man
+        weight: 1.0
+        report:
+          uuid: requests_rec_counter_to_man
+          ranges: default
+          balancer2:
+            attempts: 1
+            active:
+              request: 'GET /ping HTTP/1.1\nHost: kp.testing.mediapers.yandex.net\n\n'
+              delay: 1s
+            generated_proxy_backends:
+              proxy_options:
+                connect_timeout: 100ms
+                backend_timeout: 180000ms
+                fail_on_5xx: false
+                status_code_blacklist:
+                - 4xx
+                - 5xx
+              include_backends:
+                type: BY_ID
+                ids:
+                - mediapers-testing-kp-web-man
+            attempts_rate_limiter:
+              limit: 0.10000000149011612
+              coeff: 0.9900000095367432
+      - name: kpwebtesting_sas
+        weight: 1.0
+        report:
+          uuid: requests_rec_counter_to_sas
+          ranges: default
+          balancer2:
+            attempts: 1
+            active:
+              request: 'GET /ping HTTP/1.1\nHost: kp.testing.mediapers.yandex.net\n\n'
+              delay: 1s
+            generated_proxy_backends:
+              proxy_options:
+                connect_timeout: 100ms
+                backend_timeout: 180000ms
+                fail_on_5xx: false
+                status_code_blacklist:
+                - 4xx
+                - 5xx
+              include_backends:
+                type: BY_ID
+                ids:
+                - mediapers-testing-kp-web-sas
+            attempts_rate_limiter:
+              limit: 0.10000000149011612
+              coeff: 0.9900000095367432
+      - name: kpwebtesting_vla
+        weight: 1.0
+        report:
+          uuid: requests_rec_counter_to_vla
+          ranges: default
+          balancer2:
+            attempts: 1
+            active:
+              request: 'GET /ping HTTP/1.1\nHost: kp.testing.mediapers.yandex.net\n\n'
+              delay: 1s
+            generated_proxy_backends:
+              proxy_options:
+                connect_timeout: 100ms
+                backend_timeout: 180000ms
+                fail_on_5xx: false
+                status_code_blacklist:
+                - 4xx
+                - 5xx
+              include_backends:
+                type: BY_ID
+                ids:
+                - mediapers-testing-kp-web-vla
+            attempts_rate_limiter:
+              limit: 0.10000000149011612
+              coeff: 0.9900000095367432
+      - name: kpwebtesting_devnull
+        weight: -1.0
+        report:
+          uuid: requests_rec_counter_to_devnull
+          ranges: default
+          errordocument:
+            status: 204

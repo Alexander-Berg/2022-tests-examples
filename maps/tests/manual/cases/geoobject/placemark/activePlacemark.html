@@ -1,0 +1,111 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Геообъект: состояние метки
+
+Description:
+Проверка опции состояния метки.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+geoobject
+
+Estimated time:
+180000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+  
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан Санкт-Петербурга, на спане зеленая метка коллекции.
+  Сверху слева кнопка "state".
+
+Step:
+  Action:
+  Навести курсор на метку коллекции.
+  
+  Expectation:
+  При наведении курсор меняется на палец, появляется хинт "text".
+  Под контейнером с картой появляется блок: "active: undefined; hover: true".
+
+Step:
+  Action:
+  Вывести курсор с метки коллекции.
+  
+  Expectation:
+  Под контейнером с картой появляется блок: "active: undefined; hover: false".
+
+Step:
+  Action:
+  Выполнить клик в метку коллекции.
+  
+  Expectation:
+  Балун метки не открывается, меняется пресет метки, внутри метки появляется зеленая точка.
+  При наведении и покидании курсором метки дублируются блок "active: undefined; hover: true; active: undefined; hover: false". 
+  
+Step:
+  Action:
+  Выполнить клик в кнопку "state".
+  
+  Expectation:
+  Спан карты и метка без изменений.
+  Под контейнером с картой появляется блок: "active: undefined; hover: false".
+-->
+<html>
+<head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            var map = myMap = new ymaps.Map('map', {
+                center: [59.976469003480716, 30.290052050069413],
+                zoom: 9,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            var log = new Log();
+            log.info('State changes to active if balloon is opened');
+
+            var placemark = new ymaps.GeoObject({
+                geometry: { type: "Point", coordinates: [60, 30.5] }, properties: {
+                    balloonContent: 'text', hintContent: 'text'
+                }}, {preset: 'islands#greenIcon', draggable: true, openBalloonOnClick: false});
+
+            placemark.events.add('click', function () {
+                placemark.options.set('preset', 'islands#greenDotIcon');
+            });
+
+            var monitor = new ymaps.Monitor(placemark.state)
+                    .add(['active', 'hover'], function (values) {
+                        log.info('active: ' + monitor.get('active'));
+                        log.info('hover: ' + monitor.get('hover'));
+                    });
+
+            addGrid(myMap);
+
+            myMap.geoObjects.add(placemark);
+
+            var button = new ymaps.control.Button({data: {content: 'state'}, options: {selectOnClick: false}});
+            button.events.add('click', function () {
+                log.info('active: ' + placemark.state.get('active'));
+                log.info('hover: ' + placemark.state.get('hover'));
+            });
+            myMap.controls.add(button);
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

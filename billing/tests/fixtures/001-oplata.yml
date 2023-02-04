@@ -1,0 +1,180 @@
+locals:
+  service_id: &x-service-id 625
+  contract_type: &x-contract-type OplataContract
+
+  input:
+    processor:
+      valid_input: &x-valid-input
+        renderer_type: ProcessorOplataRenderer
+        contract_type: *x-contract-type
+        service_id: *x-service-id
+        person_type: *x-person-type-ur
+        firm_id: *x-yandex-firm-id
+        service_code: *x-service-code-yandex-service
+
+
+cases:
+  cashless:
+    - description: Cashless payment workflow
+
+      foreach:
+        paths:
+          - processor.input.dry_run
+          - processor.expected.response.data.event.tariffer_payload.dry_run
+        values:
+          - [ true, true ]
+          - [ false, false ]
+
+      processor:
+        input:
+          <<: *x-valid-input
+          template: cashless-payment.json
+          dry_run: true
+          event:
+            type: payment
+            order_price: 120000
+        expected:
+          response:
+            status: 200
+            data:
+              event:
+                tariffer_payload:
+                  dry_run: true
+                  amount_wo_vat: '100.000000'
+
+      accounts:
+        input:
+          accounts: [ cashless, agent_rewards ]
+        expected:
+          response:
+            status: 200
+            data:
+              balances:
+                - loc: { type: cashless }
+                  credit: '120000.000000'
+                - loc: { type: agent_rewards }
+                  debit: '120.000000'
+
+    - description: Cashless payment with promocodes workflow
+
+      foreach:
+        paths:
+          - processor.input.dry_run
+          - processor.expected.response.data.event.tariffer_payload.dry_run
+        values:
+          - [ true, true ]
+          - [ false, false ]
+
+      processor:
+        input:
+          <<: *x-valid-input
+          template: cashless-payment.json
+          dry_run: true
+          event:
+            type: payment
+            order_price: 120000
+            item_by_card: 110000
+            item_by_promocode: 10000
+        expected:
+          response:
+            status: 200
+            data:
+              event:
+                tariffer_payload:
+                  dry_run: true
+                  amount_wo_vat: '100.000000'
+
+      accounts:
+        input:
+          accounts: [ cashless, agent_rewards, promocodes ]
+        expected:
+          response:
+            status: 200
+            data:
+              balances:
+                - loc: { type: cashless }
+                  credit: '110000.000000'
+                - loc: { type: agent_rewards }
+                  debit: '120.000000'
+                - loc: { type: promocodes }
+                  credit: '10000.000000'
+
+    - description: Cashless refund workflow
+
+      foreach:
+        paths:
+          - processor.input.dry_run
+          - processor.expected.response.data.event.tariffer_payload.dry_run
+        values:
+          - [ true, true ]
+          - [ false, false ]
+
+      processor:
+        input:
+          <<: *x-valid-input
+          template: cashless-refund.json
+          dry_run: true
+          event:
+            type: refund
+            original_order_price: 100000
+            refund_price: 10000
+        expected:
+          response:
+            status: 200
+            data:
+              event:
+                tariffer_payload:
+                  dry_run: true
+
+      accounts:
+        input:
+          accounts: [ cashless_refunds ]
+        expected:
+          response:
+            status: 200
+            data:
+              balances:
+                - loc: { type: cashless_refunds }
+                  debit: '10000.000000'
+
+    - description: Cashless refund with promocodes workflow
+
+      foreach:
+        paths:
+          - processor.input.dry_run
+          - processor.expected.response.data.event.tariffer_payload.dry_run
+        values:
+          - [ true, true ]
+          - [ false, false ]
+
+      processor:
+        input:
+          <<: *x-valid-input
+          template: cashless-refund.json
+          dry_run: true
+          event:
+            type: refund
+            original_order_price: 100000
+            refund_price: 10000
+            item_by_card: 9001
+            item_by_promocode: 999
+        expected:
+          response:
+            status: 200
+            data:
+              event:
+                tariffer_payload:
+                  dry_run: true
+
+      accounts:
+        input:
+          accounts: [ cashless_refunds, promocodes_refunds ]
+        expected:
+          response:
+            status: 200
+            data:
+              balances:
+                - loc: { type: cashless_refunds }
+                  debit: '9001.000000'
+                - loc: { type: promocodes_refunds }
+                  debit: '999.000000'

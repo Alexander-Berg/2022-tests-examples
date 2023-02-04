@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<!--
+Title:
+Кластер: установка опций кластерам
+
+Description:
+Проверка установки опций кластерам.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+regress
+
+Estimated time:
+120000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась корректно, на спане видны две метки кластеров со значением кластеризации "100", сверху контролы зума.
+  На одной из меток открыт балун с двумя колонками, в левой список меткой, выделена метка "50".
+  В правой колонке содержимое балнуа метки: заголовок: "50- заголовок метки 50"; тело: "50 - тело метки №50"; футер: "50 - футер метки №50".
+
+Step:
+  Action:
+  Выполнить клик в контрол отзума "-".
+
+  Expectation:
+  Происходит корректный отзум спана, балун кластера пропадает.
+  На спане два кластера со значением кластеризации "100", один кластер со значением "2".
+
+Step:
+  Action:
+  Выполнить клик в кластер со значением кластеризации "2".
+
+  Expectation:
+  По клику происходит призум спана, контрол "+" неактивен. 
+  На спане отображается синяя метка коллекции.
+
+Step:
+  Action:
+  Выполнить клик в метку коллекции на спане карты.
+
+  Expectation:
+  По клику метка меняет пресет, становится желтого цвета, с надписью "false".
+
+Step:
+  Action:
+  Выполнить 15 кликов в контрол отзума "-".
+
+  Expectation:
+  Происходит корректный отзум спана.
+  После 15 клика на спане два кластера со значением кластеризации "100", один кластер со значением "2".
+-->
+<html>
+<head>
+    <title>API 2.0</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <script src="../helper.js"></script>
+    <script type="text/javascript">
+        Api('init');
+        function init(ymaps) {
+            var myMap = new ymaps.Map('map', {
+                center: [36.3799, -37.2984],
+                zoom: 6});
+            
+            myMap.controls.add(new ymaps.control.SmallZoomControl(), {top: 7});
+            var cluster = new ymaps.Clusterer(), i, points1 = [], points2 = [];
+            cluster.options.set({
+                clusterBalloonWidth: 300,
+                clusterBalloonSidebarWidth: 100,
+                clusterBalloonHeight: 300,
+                synchAdd: true,
+                showInAlphabeticalOrder: true
+
+            });
+            for (i = 0; i < 100; i++) {
+                var point1 = new ymaps.Placemark([34.8006, -37.5181]);
+                var point2 = new ymaps.Placemark([34.8006, -35.5181]);
+                var j = 100 - i;
+                point1.properties.set({
+                    clusterCaption: j,
+                    balloonContentHeader: j + ' - заголовок метки ' + i,
+                    balloonContentBody: j + ' - тело метки №' + i,
+                    balloonContentFooter: j + ' - футер метки №' + i
+                });
+                point2.properties.set({
+                    clusterCaption: j,
+                    balloonContentHeader: j + ' - заголовок метки ' + i,
+                    balloonContentBody: j + ' - тело метки №' + i,
+                    balloonContentFooter: j + ' - футер метки №' + i
+                });
+                points1[i] = point1;
+                points2[i] = point2;
+            }
+            cluster.add(points1);
+            cluster.add(points2); // MAPSAPI-5061
+            myMap.geoObjects.add(cluster);
+            var object = points1[50];
+            var state = cluster.getObjectState(object);
+            state.cluster.state.set('activeObject', object);
+            state.cluster.balloon.open();
+            // MAPSAPI-5419
+            var cluster2 = new ymaps.Clusterer();
+            cluster2.options.set('maxZoom', 6);
+            var p1 = new ymaps.Placemark([37.8006, -35.5181]), p2 = new ymaps.Placemark([37.8006, -35.5181]);
+            cluster2.add([p1, p2]);
+            myMap.geoObjects.add(cluster2);
+            p1.events.add("click", function (e) {
+                p1.options.set("preset", "twirl#yellowStretchyIcon");
+                p1.properties.set("iconContent", cluster2.getObjectState(p1).isClustered);
+            });
+            p2.events.add("click", function (e) {
+                p2.options.set("preset", "twirl#yellowStretchyIcon");
+                p2.properties.set("iconContent", cluster2.getObjectState(p2).isClustered);
+            });
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;">
+<p><a href="https://tech.yandex.ru/maps/archive/doc/jsapi/2.0/ref/reference/Clusterer-docpage/" target="_blank">Docs</a></p>
+</div>
+</body>
+</html>

@@ -1,0 +1,110 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Маршрут: порядок задания географических координат 
+
+Description:
+Проверка порядка задания географических координат.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components:
+route
+
+Estimated time:
+90000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно, со спаном Центрального федерального округа.
+  Сверху в контейнере имеется кнопка "searchC...".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "searchC...".
+
+  Expectation:
+  Происходит смена спана на спан с построенным маршрутом из точек 1-СПб, 2-Торжок, 3-Рязань.
+  На спане три метки(1,2,3), маршрутная нитка, перед Рязанью имеется транзитная точка - белая круглая метка.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "searchC...".
+
+  Expectation:
+  Происходит смена цвета маршрутной нитки на зеленый, маршрут, метки, транзитная метка без изменений.
+-->
+<html>
+<head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            var map = myMap = new ym.Map('map', {
+                        center: [55.00718809437818, 38.094514924687026],
+                        zoom: 7
+                    }, {
+                        suppressObsoleteBrowserNotifier: false,
+                        suppressMapOpenBlock: false
+
+                    }),
+                    route,
+                    log = new Log(),
+                    zoom = new ym.control.ZoomControl,
+                    button1 = new ym.control.Button({data: {content: 'serachCoordOrder'}}, {selectOnClick: true});
+
+            button1.events
+                    .add("select", function (e) {
+                        route = new ymaps.route([
+                            [30, 60],
+                            [35, 57],
+                            { type: 'viaPoint', point: [38.094514924687026, 55.00718809437818] },
+                            { type: 'wayPoint', point: [39.615647888182124, 54.59766481046268] }
+                        ], {
+                            mapStateAutoApply: true,
+                            searchCoordOrder: 'longlat'
+                        }).then(function (route) {
+                                    map.geoObjects.add(route);
+                                    route.editor.start();
+                                });
+                    })
+                    .add('deselect', function () {
+                        route = new ymaps.route([
+                            [60, 30],
+                            [57, 35],
+                            { type: 'viaPoint', point: [55.00718809437818, 38.094514924687026] },
+                            { type: 'wayPoint', point: [54.59766481046268, 39.615647888182124] }
+                        ], {
+                            mapStateAutoApply: true,
+                            searchCoordOrder: 'latlong'
+                        }).then(function (route) {
+                                    route.getPaths().options.set({
+                                        strokeColor: '00FF00',
+                                        opacity: 0.9
+                                    });
+                                    map.geoObjects.add(route);
+                                    route.editor.start();
+                                });
+                    });
+
+            map.controls
+                    .add(zoom)
+                    .add(button1);
+            addGrid(map);
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

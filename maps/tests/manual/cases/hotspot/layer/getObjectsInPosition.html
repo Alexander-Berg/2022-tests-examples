@@ -1,0 +1,105 @@
+<!DOCTYPE HTML>
+<!--(skip)(description)
+
+-->
+<!--(version)
+
+-->
+<!--(commands)
+
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.73259667357658, 37.70153663432529],
+                zoom: 10,
+                controls: ['fullscreenControl']
+            });
+            addGrid(myMap);
+            var log = new Log();
+
+            var actualProvider = new ymaps.traffic.provider.Actual({}, {infoLayerShown: true});
+            actualProvider.setMap(myMap);
+
+            var coords;
+            __log__('При непрерывном движении мышки по карте запрос не резолвился в версиях <2.1.46');
+            __log__("В консоли должен возвращать одинаковое количество хотспотов на все запросы");
+            __log__('hotspotLayerObject + Geometry + Id + Hotspot + Properties');
+
+            actualProvider.getLayers().traffic.events.add('click', function (e) {
+                coords = e.get('coords');
+                var promise = actualProvider.getLayers().traffic.getObjectsInPosition(coords).then(function (ex) {
+                    console.log(ex);
+                    if (ex) {
+                        log.info(getObjectClassName(ex) +
+                                ' ' + ex.getGeometry() +
+                                ' ' + ex.getId() +
+                                ' ' + getObjectClassName(ex.getHotspot()) +
+                                ' ' + getObjectClassName(ex.getProperties()));
+                    }
+                    else {
+                        log.info(' ');
+                        log.info('ALERT: вместо HotspotLayerObject вернулся undefined');
+                    }
+
+
+                });
+                promise.always(function () {
+                    log.info('getObjectInPosition() resolved: ' + promise.isResolved());
+                    log.info('getObjectInPosition() fulfilled: ' + promise.isFulfilled());
+                    log.info('getObjectInPosition() rejected: ' + promise.isRejected());
+                })
+            });
+            var coord = [
+                [55.74886599638112, 37.61089942729403],
+                [55.80382137165915, 38.04485938823154],
+                [55.80382137165915, 38.04485938823154],
+                [55.80382137165915, 38.04485938823154],
+                [55.80382137165915, 38.04485938823154],
+                [55.80382137165915, 38.04485938823154],
+                [55.80382137165915, 38.04485938823154]
+            ];
+            setTimeout(function () {
+                //запрашивание во много потоков работает криво
+                var i = 0;
+                for (var i in coord) {
+                var promise = actualProvider.getLayers().traffic.getObjectsInPosition(coord[i]).then(function (ex) {
+                    console.log(ex);
+                    if (ex && ex[0]) {
+                        log.info(getObjectClassName(ex) +
+                                ' ' + ex[0].getGeometry() +
+                                ' ' + ex[0].getId() +
+                                ' ' + getObjectClassName(ex[0].getHotspot()) +
+                                ' ' + getObjectClassName(ex[0].getProperties()));
+                    }
+                    else {
+                        log.info(' ');
+                        log.info('ALERT: вместо HotspotLayerObject вернулся undefined');
+                    }
+                });
+                promise.always(function () {
+                    log.info('getObjectInPosition() resolved: ' + promise.isResolved());
+                    log.info('getObjectInPosition() fulfilled: ' + promise.isFulfilled());
+                    log.info('getObjectInPosition() rejected: ' + promise.isRejected());
+                });
+                }
+            }, 3000);
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

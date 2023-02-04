@@ -1,0 +1,34 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - iperfilyev
+      groups: []
+labels:
+  order: '30000003'
+---
+regexp_section:
+  matcher:
+    match_and:
+      - match_fsm:
+          path: /api2/.*
+      - match_fsm:
+          host: juggler-unstable.yandex-team.ru
+  modules:
+    - rewrite:
+        actions:
+          - regexp: '/api2/(.*)'
+            rewrite: '/v2/%1'
+    - headers:
+        create_func_weak:
+          X-Forwarded-For-Y: realip
+    - balancer2:
+        attempts: 1
+        rr: {}
+        backends:
+          - weight: 1
+            proxy:
+              backend_timeout: 30s
+              connect_timeout: 1s
+              host: juggler-unstable-api.search.yandex.net
+              port: 80

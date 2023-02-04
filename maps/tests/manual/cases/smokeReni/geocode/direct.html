@@ -1,0 +1,130 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Прямое геокодирование
+
+Description:
+Отображение результатов геокодирования запроса
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+smoke
+
+Estimated time:
+540000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан Нижнего Новгорода с меткой коллекции. 
+  Под блоком с картой текст "Тип геообъекта: locality; Название объекта: Нижний Новгород; Описание объекта: Россия; Полное описание объекта: Россия, Нижний Новгород".
+
+Step:
+  Action:
+  Клик в метку коллекции на спане карты. 
+
+  Expectation:
+  Спан карты смещается для открытия балуна.
+  На месте метки появляется балун с заголовком: "Нижний Новгород", телом: "Россия".
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            //ymaps = ym;
+
+            var myMap = new ymaps.Map('map', {
+                center: [55.753994, 37.622093],
+                zoom: 9
+            }, {
+                backgroundVisible: false
+            });
+            addGrid(myMap);
+            var log = new Log();
+            log.info("Test case: На карте отображаются результаты геокодирования по запросу 'Нижний Новгород'");
+            // Поиск координат центра Нижнего Новгорода.
+            ymaps.geocode('Нижний Новгород', {
+                /**
+                 * Опции запроса
+                 * @see https://api.yandex.ru/maps/doc/jsapi/2.1/ref/reference/geocode.xml
+                 */
+                // boundedBy: myMap.getBounds(), // Сортировка результатов от центра окна карты
+                // strictBounds: true, // Вместе с опцией boundedBy будет искать строго внутри области, указанной в boundedBy
+                results: 1 // Если нужен только один результат, экономим трафик пользователей
+            }).then(function (res) {
+                // Выбираем первый результат геокодирования.
+                var firstGeoObject = res.geoObjects.get(0),
+                // Координаты геообъекта.
+                        coords = firstGeoObject.geometry.getCoordinates(),
+                // Область видимости геообъекта.
+                        bounds = firstGeoObject.properties.get('boundedBy');
+
+                // Добавляем первый найденный геообъект на карту.
+                myMap.geoObjects.add(firstGeoObject);
+                // Масштабируем карту на область видимости геообъекта.
+                myMap.setBounds(bounds, {
+                    checkZoomRange: true // проверяем наличие тайлов на данном масштабе.
+                });
+
+                /**
+                 * Все данные в виде javascript-объекта.
+                 */
+                console.log('Все данные геообъекта: ', firstGeoObject.properties.getAll());
+                /**
+                 * Метаданные запроса и ответа геокодера.
+                 * @see https://api.yandex.ru/maps/doc/geocoder/desc/reference/GeocoderResponseMetaData.xml
+                 */
+                console.log('Метаданные ответа геокодера: ', res.metaData);
+                /**
+                 * Метаданные геокодера, возвращаемые для найденного объекта.
+                 * @see https://api.yandex.ru/maps/doc/geocoder/desc/reference/GeocoderMetaData.xml
+                 */
+                console.log('Метаданные геокодера: ', firstGeoObject.properties.get('metaDataProperty.GeocoderMetaData'));
+                /**
+                 * Точность ответа (precision) возвращается только для домов.
+                 * @see https://api.yandex.ru/maps/doc/geocoder/desc/reference/precision.xml
+                 */
+                console.log('precision', firstGeoObject.properties.get('metaDataProperty.GeocoderMetaData.precision'));
+                /**
+                 * Тип найденного объекта (kind).
+                 * @see https://api.yandex.ru/maps/doc/geocoder/desc/reference/kind.xml
+                 */
+                __log__('Тип геообъекта: ' + firstGeoObject.properties.get('metaDataProperty.GeocoderMetaData.kind'));
+                __log__('Название объекта: ' + firstGeoObject.properties.get('name'));
+                __log__('Описание объекта: ' + firstGeoObject.properties.get('description'));
+                __log__('Полное описание объекта: ' + firstGeoObject.properties.get('text'));
+
+                /**
+                 * Если нужно добавить по найденным геокодером координатам метку со своими стилями и контентом балуна, создаем новую метку по координатам найденной и добавляем ее на карту вместо найденной.
+                 */
+                /**
+                 var myPlacemark = new ymaps.Placemark(coords, {
+             iconContent: 'моя метка',
+             balloonContent: 'Содержимое балуна <strong>моей метки</strong>'
+             }, {
+             preset: 'islands#violetStretchyIcon'
+             });
+
+                 myMap.geoObjects.add(myPlacemark);
+                 */
+            });
+        }
+    </script>
+</head>
+<body>
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

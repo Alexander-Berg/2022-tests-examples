@@ -1,0 +1,271 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Оверлей:методы оверлея балуна 
+
+Description:
+Проверка работы методов оверлея балуна. 
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+overlay
+
+Estimated time:
+180000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно, в центре спана открыт кастомный балун с содержимым "b", кнопкой закрытия "close".
+  Сверху имеются кнопки "get", "panel==balloon", "panel/balloon", "open balloon".
+
+Step:
+  Action:
+  Выполнить клик в кнопку закрытия балуна "close".
+
+  Expectation:
+  Балун закрылся.
+
+Step:
+  Action:
+  Выполнить клик в кнопку закрытия балуна "open balloon".
+
+  Expectation:
+  Балун открылся на спане карты, балун аналогичен первоначальному.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "panel/balloon".
+
+  Expectation:
+  Балун закрылся.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "panel/balloon", затем клик в кнопку "panel==balloon".
+
+  Expectation:
+  По клику в "panel/balloon" балун открылся на спане карты, балун аналогичен первоначальному.
+  По клику в "panel==balloon" под контейнером блок: "balloon layout == panel layout: true; balloon layout:undefined; panel layout:undefined".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "get".
+  Выполните скриншот появившегося блока значений, скриншот прилинкуйте к кейсу.
+
+  Expectation:
+  Под контейнером с картой появлется блок со значениями вызванных методов.
+-->
+<html>
+<head>
+<title>2.1</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+<script src="../../../helper.js"></script>
+<style>
+    #customBalloon {
+        background-color: #FFFFFF;
+        border: 1px solid black;
+        height: 100px;
+        width: 150px;
+        margin: -80px;
+    }
+
+    #closeBalloon {
+        background-color: #bbbbbb;
+        border: 1px solid black;
+        height: 10px;
+        width: 30px;
+        margin-left: 110px;
+    }
+
+    #textBalloon {
+        margin-left: -60px;
+        margin-top: -30px;
+        width: 100px;
+    }
+
+    #customPanel {
+        background-color: #FFFFFF;
+        border: 1px solid black;
+        height: 100px;
+        width: 510px;
+    }
+
+    #closePanel {
+        background-color: #bbbbbb;
+        border: 1px solid black;
+        height: 10px;
+        width: 30px;
+        margin-left: 470px;
+    }
+
+    #textPanel {
+        margin-left: 20px;
+        margin-top: 0px;
+        width: 510px;
+    }
+</style>
+<script type=text/javascript>
+
+    Api('init');
+
+    function init(ymaps) {
+        ymaps = ym;
+
+        var map = myMap = new ym.Map('map', {
+            center: [55.72725771214265, 37.640390506634006],
+            zoom: 10,
+            behaviors: ['default', 'scrollZoom'],
+            controls: ['fullscreenControl']
+        });
+
+        addGrid(map);
+        var log = new Log();
+        var layout1, layout2;
+
+        var BalloonLayout = ymaps.templateLayoutFactory.createClass('<div id="customBalloon"><input id="closeBalloon" ' +
+                'value="close" onClick="balloon.events.fire(\'userclose\'); balloon.close()"></div>' +
+                '<p id="textBalloon">$[a]</p></div>', {}, {});
+        ymaps.layout.storage.add('custom#balloon', BalloonLayout);
+
+        var PanelLayout = ymaps.templateLayoutFactory.createClass('<div id="customPanel">' +
+                '<input id="closePanel" value="close" onClick="balloon.events.fire(\'userclose\'); balloon.close()">' +
+                '<p id="textPanel">$[a]</p></div>', {}, {});
+        ymaps.layout.storage.add('custom#panel', PanelLayout);
+
+        var balloon,
+                pos = map.getCenter(),
+                data = { a: 'b' },
+                options = {layout: 'custom#balloon', panelLayout: 'custom#panel'};
+
+        window.balloon = balloon = new ymaps.Balloon(map);
+        balloon.options.set(options).setParent(map.options);
+        balloon.setData(data);
+
+        balloon.open(pos);
+
+        var preventButton = new ymaps.control.Button({data: {content: 'panel/balloon'}, options: {selectOnClick: true, maxWidth: 150}});
+        var openButton = new ymaps.control.Button({data: {content: 'open balloon'}, options: {selectOnClick: true, maxWidth: 120}});
+        var checkButton = new ymaps.control.Button({data: {content: 'panel==balloon'}, options: {selectOnClick: false, maxWidth: 120}});
+
+        // Change panelMaxMapArea option. Infinity value - panel mode, zero value - balloon mode.
+        preventButton.events
+                .add('select', function () {
+                    balloon.options.set('panelMaxMapArea', Infinity);
+                })
+                .add('deselect', function () {
+                    balloon.options.set('panelMaxMapArea', 0);
+                });
+
+        // Open balloon in the center of the map, and close balloon, if button deselected
+        openButton.events
+                .add('select', function () {
+                    balloon.open(pos);
+                })
+                .add('deselect', function () {
+                    balloon.close();
+                });
+
+        checkButton.events.add('click', function () {
+            log.info('balloon layout == panel layout: ' + (layout1 == layout2));
+            log.info('balloon layout: ');
+            __log__(layout1);
+            log.info('panel layout: ');
+            __log__(layout2);
+        });
+
+        var button = new ymaps.control.Button('get');
+        button.events.add('click', function () {
+            balloon.getOverlay().then(function (overlay) {
+
+                //log
+                __log__('getBalloonElement: ');
+                __log__(overlay.getBalloonElement());
+                overlay.getBalloonLayout().then(function (layout) {
+                    __log__('getBalloonLayout: ');
+                    __log__(layout);
+                    __log__('getLayout == getLayoutSync: ');
+                    __log__((layout == overlay.getLayoutSync()))
+                });
+                __log__('getData: ');
+                __log__(overlay.getData());
+                __log__('getElement: ');
+                __log__(overlay.getElement());
+                __log__('getGeometry: ');
+                __log__(overlay.getGeometry());
+                overlay.getLayout().then(function (layout) {
+                    __log__('getLayout: ');
+                    __log__(layout);
+                    __log__('getLayout == getLayoutSync: ');
+                    __log__((layout == overlay.getLayoutSync()));
+                    if (overlay.getMode() == 'standard') {
+                        layout1 = layout
+                    } else {
+                        layout2 = layout
+                    }
+                });
+                __log__('getMap: ');
+                __log__(overlay.getMap());
+                __log__('getMode: ');
+                __log__(overlay.getMode());
+
+                __log__('getShape: ');
+                __log__(overlay.getShape());
+                __log__('isEmpty: ');
+                __log__(overlay.isEmpty());
+                __log__('getShadowElement: ');
+                __log__(overlay.getShadowElement());
+                overlay.getShadowLayout().then(function (layout) {
+                    __log__('getShadowLayout: ');
+                    __log__(layout);
+                    __log__('getLayout == getLayoutSync: ');
+                    __log__((layout == overlay.getLayoutSync()))
+                });
+
+                //console
+                __log__(overlay.getBalloonElement());
+                overlay.getBalloonLayout().then(function (layout) {
+                    __log__(layout);
+                    __log__('getLayout == getLayoutSync: ');
+                    __log__((layout == overlay.getLayoutSync()))
+                });
+                __log__(overlay.getData());
+                __log__(overlay.getElement());
+                __log__(overlay.getGeometry());
+                overlay.getLayout().then(function (layout) {
+                    __log__(layout);
+                    __log__('getLayout == getLayoutSync: ');
+                    __log__((layout == overlay.getLayoutSync()))
+                });
+                __log__(overlay.getMap());
+                __log__(overlay.getMode());
+                __log__(overlay.getShape());
+                __log__(overlay.isEmpty());
+                __log__(overlay.getShadowElement());
+                overlay.getShadowLayout().then(function (layout) {
+                    __log__(layout);
+                    __log__('getLayout == getLayoutSync: ');
+                    __log__((layout == overlay.getLayoutSync()))
+                });
+            })
+        });
+
+        map.controls
+                .add(openButton)
+                .add(preventButton)
+                .add(checkButton)
+                .add(button);
+
+    }
+</script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

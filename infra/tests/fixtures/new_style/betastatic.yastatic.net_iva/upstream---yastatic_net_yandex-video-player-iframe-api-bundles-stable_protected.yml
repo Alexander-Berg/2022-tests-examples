@@ -1,0 +1,50 @@
+---
+regexp_path_section:
+  pattern: '/yandex-video-player-iframe-api-bundles-stable/[0-9]+.[0-9]+-[0-9]+/(protected.html|tv1.html)'
+  modules:
+    - report:
+        uuid: 'yastatic_net_yandex-video-player-iframe-api-bundles-stable_protected'
+        ranges: 'default'
+    - headers:
+        create:
+            'X-AAB-PartnerToken': !f get_str_env_var("AWACS_AAB_VIDEO_TOKEN")
+            'X-Strm-Antiadblock': !f get_str_env_var("AWACS_STRM_VIDEO_TOKEN")
+            'X-Forwarded-Proto': 'https'
+    - response_headers_if:
+        matcher:
+            match_response_codes:
+                codes: [200, 204, 206, 301, 302, 304]
+        create_header:
+            Content-Security-Policy: "frame-ancestors file: yandex.ru *.yandex.ru yandex.by *.yandex.by yandex.kz *.yandex.kz yandex.ua *.yandex.ua yandex.com *.yandex.com yandex.com.tr *.yandex.com.tr yandex.uz *.yandex.uz yandex.com.ge *.yandex.com.ge yandex.az *.yandex.az yandex.co.am *.yandex.com.am yandex.co.il *.yandex.co.il yandex.kg *.yandex.kg yandex.lv *.yandex.lv yandex.lt *.yandex.lt yandex.md *.yandex.md yandex.tj *.yandex.tj yandex.tm *.yandex.tm yandex.fr *.yandex.fr yandex.ee *.yandex.ee yandex-team.ru *.yandex-team.ru kinopoisk.ru *.kinopoisk.ru yastatic.net *.yastatic.net yadi.sk *.yadi.sk disk.yandex.ru disk.yandex.com disk.yandex.com.tr disk.yandex.kz disk.yandex.ua disk.yandex.by disk.yandex.az disk.yandex.com.am disk.yandex.com.ge disk.yandex.co.il disk.yandex.kg disk.yandex.lt disk.yandex.lv disk.yandex.md disk.yandex.tj disk.yandex.tm disk.yandex.uz disk.yandex.fr disk.yandex.ee iframe-toloka.com yandex.net *.yandex.net yandexsport.ru *.yandexsport.ru yandexsport.by *.yandexsport.by yandexsport.kz *.yandexsport.kz yandexsport.uz *.yandexsport.uz;"
+    - response_headers:
+        create:
+            Cache-Control: 'public, max-age=216013'
+            Strict-Transport-Security: 'max-age=43200000; includeSubDomains;'
+            Access-Control-Allow-Origin: '*'
+            Timing-Allow-Origin: '*'
+        create_func:
+            Expires: 'time:+1h'
+        delete:
+            'content-security-policy|x-consumed-content-encoding'
+    - rewrite:
+        actions:
+            - regexp: '^(.+)/(\\?.*)?$'
+              rewrite: '%1/index.html'
+            - regexp: '/yandex-video-player-iframe-api-bundles-stable(.*)'
+              rewrite: '/yandex-video-player-iframe-api-bundles%1'
+    - balancer2:
+        disable_attempts_rate_limiter: true
+        attempts: 5
+        simple_policy: {}
+        rr: {}
+        generated_proxy_backends:
+            proxy_options:
+                backend_timeout: '5s'
+                connect_timeout: '50ms'
+                fail_on_5xx: true
+                keepalive_count: 1
+                keepalive_timeout: '60s'
+            instances:
+                - weight: 1
+                  host: 'cryprox-test.yandex.net'
+                  port: 80

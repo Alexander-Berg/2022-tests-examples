@@ -1,0 +1,1 @@
+window.console && console.log("includes works");

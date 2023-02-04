@@ -1,0 +1,41 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - tet4enko
+      groups: []
+labels:
+  order: '1000000'
+config_mode: easy2
+---
+l7_upstream_macro:
+  version: 0.0.1
+  id: api_upstream
+  headers:
+    - create: {target: Host, value: search-back.test.yandex-team.ru}
+  matcher:
+    path_re: '/(suggest|_abovemeta|_admin|_api|_backend)(/.*)?'
+  rewrite:
+    - target: PATH
+      pattern:
+        re: '/suggest$'
+      replacement: '/suggest/'
+  flat_scheme:
+    balancer:
+      compat:
+        method: RR
+      attempts: 10
+      max_reattempts_share: 0.15
+      fast_attempt_all_endpoints: true
+      do_not_retry_http_responses: true
+      connect_timeout: 100ms
+      backend_timeout: 60s
+      use_https_to_endpoints: {}
+      allow_connection_upgrade: true
+      keepalive_count: 10
+    backend_ids:
+      - backend_api_qloud
+    on_error:
+      static:
+        status: 504
+        content: 'Service is not available'

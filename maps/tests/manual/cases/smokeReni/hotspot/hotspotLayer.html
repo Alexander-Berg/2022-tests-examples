@@ -1,0 +1,126 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Хотспотный слой 
+
+Description:
+Слой активных областей.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+smoke
+
+Estimated time: 
+90000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно.
+  На карте отображен спан Москвы. В центре Москвы фиолетовый многоугольник.
+  Контрол масштабирования "-" не активен.
+
+Step:
+  Action:
+  Поводить курсором по области многоугольника.
+  
+  Expectation:
+  При наведении курсора на область смена курсора на стрелку с вопросом.
+  Появляется хинт "Полигон над Москвой".
+
+Step:
+  Action:
+  Кликнуть в области полигона.
+  
+  Expectation:
+  Открывается балун с заголовком: "над Москвой", содержимым: "Полигон", футером: "У этого полигона 7 вершин".
+
+Step:
+  Action:
+  Сделать один клик в контрол масштабирования "+".
+  
+  Expectation:
+  Происходит призум карты на одно значение зума, контрол масшабирования "+" не активен.
+
+Step:
+  Action:
+  Поводить курсором по области многоугольника.
+  
+  Expectation:
+  При наведении курсора на область смена курсора на стрелку с вопросом.
+  Появляется хинт "Полигон над Москвой".
+  
+Step:
+  Action:
+  Кликнуть в области полигона.
+  
+  Expectation:
+  Открывается балун с заголовком: "над Москвой", содержимым: "Полигон", футером: "У этого полигона 7 вершин".
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+        var myMap;
+
+        function init(ymaps) {
+            //ymaps = ym;
+
+            myMap = new ymaps.Map('map', {
+                center: [55.709243, 37.500737],
+                zoom: 9,
+                controls: ['zoomControl']
+            }, {
+                backgroundVisible: false,
+                // В нашем примере хотспотные данные есть только для 9 и 10 масштаба.
+                // Поэтому ограничим диапазон коэффициентов масштабирования карты.
+                minZoom: 9,
+                maxZoom: 10,
+                avoidFractionalZoom: false
+            });
+            addGrid(myMap);
+            var log = new Log();
+            log.info("Test case:");
+
+            // Шаблон URL для данных активных областей.
+            // Источник данных будет запрашивать данные через URL вида:
+            // '.../hotspot_layer/hotspot_data/9/tile_x=1&y=2', где
+            // x, y - это номер тайла, для которого запрашиваются данные,
+            // 9 - значение коэффициента масштабирования карты.
+            var tileUrlTemplate = 'https://sandbox.api.maps.yandex.net/examples/ru/2.1/hotspot_layer/hotspot_data/%z/tile_x=%x&y=%y',
+
+            // Шаблон callback-функции, в которую сервер будет оборачивать данные тайла.
+            // Пример callback-функции после подстановки - 'testCallback_tile_x_1_y_2_z_9'.
+                    keyTemplate = 'testCallback_tile_%c',
+
+            // URL тайлов картиночного слоя.
+            // Пример URL после подстановки -
+            // '.../hotspot_layer/images/9/tile_x=1&y=2.png'.
+                    imgUrlTemplate = 'https://sandbox.api.maps.yandex.net/examples/ru/2.1/hotspot_layer/images/%z/tile_x=%x&y=%y.png',
+
+            // Создадим источник данных слоя активных областей.
+                    objSource = new ymaps.hotspot.ObjectSource(tileUrlTemplate, keyTemplate),
+
+            // Создаем картиночный слой и слой активных областей.
+                    imgLayer = new ymaps.Layer(imgUrlTemplate, {tileTransparent: true}),
+                    hotspotLayer = new ymaps.hotspot.Layer(objSource, {cursor: 'help'});
+
+            // Добавляем слои на карту.
+            myMap.layers.add(hotspotLayer);
+            myMap.layers.add(imgLayer);
+        }
+    </script>
+</head>
+<body>
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

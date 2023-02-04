@@ -1,0 +1,234 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Геообъект: опция выключения меток редактора 
+
+Description:
+Проверка опции выключения меток редактора.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+geoobject
+
+Estimated time:
+180000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан Московской области, на спане два ряда объектов: метка, линия и многоугольник(верхний ряд синего цвета, нижний - зеленого).
+  Сверху имеются кнопки "lock point",  "polyline drawn", "polygon drawn", "editor".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "polyline drawn". 
+
+  Expectation:
+  На объекте синей линии появляются метки редактирования, к курсору прилипает пунктирная линия рисования.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "lock point". 
+
+  Expectation:
+  Нижняя метка на объекте синей линии становится серого цвета.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "polyline drawn". 
+
+  Expectation:
+  Метки редактирования на линии не пропадают, от курсора отлипает пунктирная линия рисования.
+
+Step:
+  Action:
+  Навести курсор на серую метку на линии и выполнить клик в нее. 
+
+  Expectation:
+  При наведении курсора метка не меняется, метка кликабельна, по клику метка становится желтого цвета, появляется меню с кнопками "Удалить точку", "Продолжить".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "polygon drawn". 
+
+  Expectation:
+  Меню у метки линии пропадает, метка становится белой.
+  На объекте синего многоугольника появляются метки редактирования, к курсору прилипает пунктирные линия рисования от вершин многоугольника.
+
+Step:
+  Action:
+  Выполнить два клика в кнопку "lock point". 
+
+  Expectation:
+  После первого клика с объекта линии пропадает серая метка, после второго клика на объекте линии вновь появляется серая метка, на объекте синего многоугольника появляются две серые метки.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "editor". 
+
+  Expectation:
+  На объектах зеленой линии и зеленого многоугольника появляются метки редактирования. 
+
+Step:
+  Action:
+  Выполнить два клика в кнопку "lock point". 
+
+  Expectation:
+  После первого клика с объекта синей линии и синего многоугольника пропадают серые метки, после второго клика на объекте синей линии вновь появляется серая метка, на объекте синего многоугольника появляются две серые метки.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script src="../geoCS.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+        var map;
+        function init(ymaps) {
+            ymaps = ym; // hack
+
+            __log__('Corrector case: change vertex coordinates');
+
+            map = myMap = new ym.Map('map', {
+                center: [55.73259667357658, 37.70153663432529],
+                zoom: 9,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            }, {
+                buttonMaxWidth: 99999,
+                avoidFractionalZoom: false
+            });
+
+            geoCSSource(ym, map, this);
+            addGrid(map);
+            var log = new Log();
+
+            var collection = new ymaps.GeoObjectCollection();
+            collection
+                    .add(geoObjectPlacemark)
+                    .add(geoObjectPolyline)
+                    .add(geoObjectPolygon)
+                    .add(placemark)
+                    .add(polyline)
+                    .add(polygon);
+
+            var editorButton = new ymaps.control.Button({data: {content: 'editor'}, options: {selectOnClick: true}});
+            var placemarkButton = new ymaps.control.Button({data: {content: 'placemark draw'}, options: {selectOnClick: true}});
+            var polylineButton = new ymaps.control.Button({data: {content: 'polyline draw'}, options: {selectOnClick: true}});
+            var polygonButton = new ymaps.control.Button({data: {content: 'polygon draw'}, options: {selectOnClick: true}});
+            var lockButton = new ymaps.control.Button({data: {content: 'lock point'}, options: {selectOnClick: true}});
+
+            editorButton.events
+                    .add('select', function () {
+                        collection.each(function (obj) {
+                            obj.editor.startEditing();
+                        });
+                    })
+                    .add('deselect', function () {
+                        collection.each(function (obj) {
+                            obj.editor.stopEditing();
+                        });
+                    });
+
+            placemarkButton.events
+                    .add('select', function () {
+                        placemark.editor.startDrawing();
+                    })
+                    .add('deselect', function () {
+                        placemark.editor.stopDrawing();
+                    });
+
+            polylineButton.events
+                    .add('select', function () {
+                        polyline.editor.startDrawing();
+                    })
+                    .add('deselect', function () {
+                        polyline.editor.stopDrawing();
+                    });
+
+            polygonButton.events
+                    .add('select', function () {
+                        polygon.editor.startDrawing();
+                    })
+                    .add('deselect', function () {
+                        polygon.editor.stopDrawing();
+                    });
+
+            collection.each(function (obj) {
+                obj.events.add('editorstatechange', function (e) {
+                    __log__('editorstatechange')
+                });
+            });
+
+
+            lockButton.events
+                    .add('select', function () {
+                    // лочим вершину основного и внутреннего контуров, чтобы их нельзя было разъединить
+                        polygon.editor.getView().then(function (view) {
+                                var path = view.getPathViews?view.getPathViews()[0]:view;
+                                var vertexs = path.getVertexViews();
+                                vertexs[0].disable();
+                            var path1 = view.getPathViews?view.getPathViews()[1]:view;
+                            var vertexs1 = path1.getVertexViews();
+
+                            vertexs1[1].disable();});
+
+                    //лочим вершину полилинии
+                        polyline.editor.getView().then(function (view) {
+                            var path = view;
+                            var vertexs = path.getVertexViews();
+                            vertexs[1].disable(); });
+                    })
+                    .add('deselect', function () {
+                    // разлочиваем вершину основного и внутреннего контуров
+                         polygon.editor.getView().then(function (view) {
+                                var path = view.getPathViews?view.getPathViews()[0]:view;
+                                var vertexs = path.getVertexViews();
+                                vertexs[0].enable();
+                             var path1 = view.getPathViews?view.getPathViews()[1]:view;
+                             var vertexs1 = path1.getVertexViews();
+                             vertexs1[1].enable();
+
+                             if(vertexs1[1].isEnabled() && vertexs[0].isEnabled()){
+                                 __log__("both unlocked");
+                             }
+
+                         });
+                                             //разлочим вершину полилинии
+                        polyline.editor.getView().then(function (view) {
+                            var path = view;
+                            var vertexs = path.getVertexViews();
+                            if(!vertexs[1].isEnabled()){
+
+                            vertexs[1].enable(); }else {
+                                alert("still locked");
+                            }})
+
+                    });
+
+            map.geoObjects.add(collection);
+
+            map.controls
+                    .add(editorButton)
+                    .add(polygonButton)
+                    .add(polylineButton)
+                    .add(lockButton);
+
+            __log__("после включения редактора лочатся точки полигона и линии. Если выключить лок и добавить вершины, то при повторном локе - они могут сдвинуться");
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

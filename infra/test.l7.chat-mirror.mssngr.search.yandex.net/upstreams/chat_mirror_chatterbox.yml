@@ -1,0 +1,104 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - deligor
+      groups:
+      - svc_mssngrbackend_administration
+labels:
+  order: '11000000'
+---
+regexp_section:
+    matcher:
+        match_fsm:
+            uri: '/api/chatterbox/.*'
+    modules:
+        - report: {ranges: default, uuid: chat_mirror}
+        - report: {ranges: default, uuid: chat_mirror_chatterbox_requests}
+        - threshold:
+            lo_bytes: 307200
+            hi_bytes: 716800
+            pass_timeout: 10s
+            recv_timeout: 1s
+        - shared:
+            uuid: chat_mirror_api
+        - stats_eater: {}
+        - headers_hasher:
+            header_name: 'X-User-Guid'
+            randomize_empty_match: true
+        - balancer2:
+            attempts: 3
+            rendezvous_hashing: {weights_file: ./controls/traffic_control.weights}
+            backends:
+                - weight: 1
+                  name: chatmirror_man
+                  modules:
+                    - report: {ranges: default, uuid: chat_mirror_requests_to_man}
+                    - balancer2:
+                        attempts: 2
+                        connection_attempts: 5
+                        attempts_rate_limiter:
+                            limit: 0.2
+                        rendezvous_hashing:
+                            delay: '5s'
+                            request: 'GET /admin?action=ping&from=slb HTTP/1.1\r\nHost: test.l7.chat-mirror.mssngr.search.yandex.net\r\n\r\n'
+                        generated_proxy_backends:
+                            proxy_options:
+                                backend_timeout: 3000ms
+                                connect_timeout: 50ms
+                                keepalive_count: 5
+                                keepalive_timeout: "60s"
+                                status_code_blacklist_exceptions: ["503"]
+                            include_backends:
+                                type: BY_ID
+                                ids: [testing-mssngr-chat-mirror-man]
+                - weight: 1
+                  name: chatmirror_sas
+                  modules:
+                    - report: {ranges: default, uuid: chat_mirror_requests_to_sas}
+                    - balancer2:
+                        attempts: 2
+                        connection_attempts: 5
+                        attempts_rate_limiter:
+                            limit: 0.2
+                        rendezvous_hashing:
+                            delay: '5s'
+                            request: 'GET /admin?action=ping&from=slb HTTP/1.1\r\nHost: test.l7.chat-mirror.mssngr.search.yandex.net\r\n\r\n'
+                        generated_proxy_backends:
+                            proxy_options:
+                                backend_timeout: 3000ms
+                                connect_timeout: 50ms
+                                keepalive_count: 5
+                                keepalive_timeout: "60s"
+                                status_code_blacklist_exceptions: ["503"]
+                            include_backends:
+                                type: BY_ID
+                                ids: [testing-mssngr-chat-mirror-sas]
+                - weight: 1
+                  name: chatmirror_vla
+                  modules:
+                    - report: {ranges: default, uuid: chat_mirror_requests_to_vla}
+                    - balancer2:
+                        attempts: 2
+                        connection_attempts: 5
+                        attempts_rate_limiter:
+                            limit: 0.2
+                        rendezvous_hashing:
+                            delay: '5s'
+                            request: 'GET /admin?action=ping&from=slb HTTP/1.1\r\nHost: test.l7.chat-mirror.mssngr.search.yandex.net\r\n\r\n'
+                        generated_proxy_backends:
+                            proxy_options:
+                                backend_timeout: 3000ms
+                                connect_timeout: 50ms
+                                keepalive_count: 5
+                                keepalive_timeout: "60s"
+                                status_code_blacklist_exceptions: ["503"]
+                            include_backends:
+                                type: BY_ID
+                                ids: [testing-mssngr-chat-mirror-vla]
+                - weight: -1
+                  name: chatmirror_devnull
+                  modules:
+                    - report: {ranges: default, uuid: chat_mirror_requests_to_devnull}
+                    - errordocument:
+                        status: 200

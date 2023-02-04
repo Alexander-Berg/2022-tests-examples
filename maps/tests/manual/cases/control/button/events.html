@@ -1,0 +1,284 @@
+<!DOCTYPE HTML>
+<!--(skip)(description)
+control.Button events
+-->
+<!--(version)
+2.1
+-->
+<!--(commands)
+click(207);
+click(7); // disable and enable events
+click(236);
+test();
+click(7);
+click(236);
+test();
+click(11); // mapchange, parentchange, optionschange
+test();
+click(11);
+test();
+click(239); // optionschange + freeze()
+click(222);
+click(14);
+click(14);
+test();
+click(239);
+test();
+click(1); // select, click, press and deselect
+click(4);
+click(5);
+test();
+click(210);
+click(226);
+click(210);
+click(226);
+test();
+-->
+<html>
+<head>
+<title></title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+<script src="../../../helper.js"></script>
+<script type=text/javascript>
+
+Api('init');
+
+function init(ymaps) {
+    var map = myMap = new ym.Map('map', {
+                center: [55.73259667357658, 37.70153663432529],
+                zoom: 9,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            }),
+            callback1 = function (e) {
+                log.info('button1: ' + e.get('type'))
+            },
+            callback2 = function (e) {
+                log.info('button2: ' + e.get('type'))
+            },
+            callback3 = function (e) {
+                log.info('button3: ' + e.get('type'))
+            },
+            callback4 = function (e) {
+                log.info('button4: ' + e.get('type'));
+                if (e.get('type') == 'mapchange') {
+                    try {
+                        log.info('oldMap: ' + e.get('oldMap').getCenter());
+                    } catch (e) {
+                        log.info('oldMap is null')
+                    }
+                    try {
+                        log.info('newMap: ' + e.get('newMap').getCenter());
+                    } catch (e) {
+                        log.info('newMap is null')
+                    }
+                }
+                if (e.get('type') == 'parentchange') {
+                    try {
+                        log.info('oldParent: ' + e.get('oldParent').getMap().getCenter());
+                    } catch (e) {
+                        log.info('oldParent is undefined')
+                    }
+                    try {
+                        log.info('newParent: ' + e.get('newParent').getMap().getCenter());
+                    } catch (e) {
+                        log.info('newParent is undefined')
+                    }
+                }
+            },
+            events = ['click', 'select', 'deselect', 'enable', 'disable', 'mapchange',
+                'optionschange', 'parentchange', 'press'],
+            log = new Log();
+
+    addGrid(myMap);
+
+    log.info('Test script: press buttons to check button events ');
+
+    var button1 = new ymaps.control.Button({
+        data: {
+            image: 'https://png-4.findicons.com/files/icons/2146/realistik_reloaded/16/filesave.png',
+            content: 'Save',
+            title: 'Save'
+        },
+        options: {selectOnClick: false}});
+
+    var button2 = new ymaps.control.Button({
+        data: {
+            image: 'https://png-2.findicons.com/files/icons/2166/oxygen/16/pencil2.png',
+            content: 'Edit',
+            title: 'Edit'
+        },
+        options: { selectOnClick: false}});
+
+    var button3 = new ymaps.control.Button({
+        data: {
+            image: 'https://png-1.findicons.com/files/icons/1580/devine_icons_part_2/16/rss.png',
+            title: 'Subscribe'
+        },
+        options: {selectOnClick: true},
+        state: {selected: true}});
+
+    var button4 = new ymaps.control.Button({
+        data: {
+            image: 'https://png-2.findicons.com/files/icons/2344/faenza/16/edit_copy.png',
+            content: 'Copy',
+            title: 'Copy'
+        },
+        options: {selectOnClick: false
+        },
+        state: {enabled: false}});
+
+    // Listen events on buttons
+    button1.events.add(events, callback1);
+    button2.events.add(events, callback2);
+    button3.events.add(events, callback3);
+    button4.events.add(events, callback4);
+
+    var listenerButton = new ymaps.control.Button({data: {content: 'Ignore'}, options: {selectOnClick: true}});
+    var disableButton = new ymaps.control.Button({data: {content: 'Disable'}, options: {selectOnClick: true}});
+    var isEnabledButton = new ymaps.control.Button({data: {content: 'isEnabled'}, options: {selectOnClick: false}});
+    var removeButton = new ymaps.control.Button({data: {content: 'Remove'}, options: {selectOnClick: true}});
+    var optionButton = new ymaps.control.Button({data: {content: 'Option', title: 'change visible option'},
+        options: {selectOnClick: true}});
+    var freezeButton = new ymaps.control.Button({data: {content: 'freeze'}, options: {selectOnClick: true}});
+    var isFrozenButton = new ymaps.control.Button({data: {content: 'isFrozen'}, options: {selectOnClick: false}});
+    var selectButton = new ymaps.control.Button({data: {content: 'Select'}, options: {selectOnClick: true}});
+    var isSelectedButton = new ymaps.control.Button({data: {content: 'state'}, options: {selectOnClick: false}});
+    var clearButton = new ymaps.control.Button('clear');
+
+    listenerButton.events
+            .add('deselect', function () {
+                log.info('Waiting for events...');
+                button1.events.add(events, callback1);
+                button2.events.add(events, callback2);
+                button3.events.add(events, callback3);
+                button4.events.add(events, callback4);
+            })
+            .add('select', function () {
+                log.info('Events will be ignored.');
+                button1.events.remove(events, callback1);
+                button2.events.remove(events, callback2);
+                button3.events.remove(events, callback3);
+                button4.events.remove(events, callback4);
+            });
+
+    disableButton.events
+            .add('select', function () {
+                button1.state.set('enabled', false);
+                button2.state.set('enabled', false);
+                button3.state.set('enabled', false);
+                button4.state.set('enabled', false);
+            })
+            .add('deselect', function () {
+                button1.state.set('enabled', true);
+                button2.state.set('enabled', true);
+                button3.state.set('enabled', true);
+                button4.state.set('enabled', true);
+            });
+
+    isEnabledButton.events.add('click', function () {
+        log.info('isEnabled: ' + button1.isEnabled());
+        log.info('isEnabled: ' + button2.isEnabled());
+        log.info('isEnabled: ' + button3.isEnabled());
+        log.info('isEnabled: ' + button4.isEnabled());
+    });
+
+    removeButton.events
+            .add('select', function () {
+                myMap.controls.remove(button1);
+                myMap.controls.remove(button2);
+                myMap.controls.remove(button3);
+                myMap.controls.remove(button4);
+            })
+            .add('deselect', function () {
+                myMap.controls.add(button1, { float: 'left'});
+                myMap.controls.add(button2, { float: 'left'});
+                myMap.controls.add(button3, { float: 'left'});
+                myMap.controls.add(button4, { float: 'left'});
+            });
+
+
+    optionButton.events
+            .add('select', function () {
+                button1.options.set('visible', false);
+                button2.options.set('visible', false);
+                button3.options.set('visible', false);
+                button4.options.set('visible', false);
+            })
+            .add('deselect', function () {
+                button1.options.set('visible', true);
+                button2.options.set('visible', true);
+                button3.options.set('visible', true);
+                button4.options.set('visible', true);
+            });
+
+    freezeButton.events
+            .add('select', function () {
+                button1.options.freeze();
+                button2.options.freeze();
+                button3.options.freeze();
+                button4.options.freeze();
+            })
+            .add('deselect', function () {
+                button1.options.unfreeze();
+                button2.options.unfreeze();
+                button3.options.unfreeze();
+                button4.options.unfreeze();
+            });
+
+    isFrozenButton.events.add('click', function () {
+        log.info('isFrozen (options) : ' + button1.options.isFrozen());
+        log.info('isFrozen (options) : ' + button2.options.isFrozen());
+        log.info('isFrozen (options) : ' + button3.options.isFrozen());
+        log.info('isFrozen (options) : ' + button4.options.isFrozen());
+    });
+
+    selectButton.events
+            .add('select', function () {
+                button1.select();
+                button2.select();
+                button3.select();
+                button4.select();
+            })
+            .add('deselect', function () {
+                button1.deselect();
+                button2.deselect();
+                button3.deselect();
+                button4.deselect();
+            });
+
+
+    isSelectedButton.events.add('click', function () {
+        log.info('isSelected: ' + button1.isSelected());
+        log.info('isSelected: ' + button2.isSelected());
+        log.info('isSelected: ' + button3.isSelected());
+        log.info('isSelected: ' + button4.isSelected());
+    });
+
+    clearButton.events.add('click', function () {
+        log.clear();
+    });
+
+    map.controls
+            .add(button1, { float: 'left'})
+            .add(button2, { float: 'left'})
+            .add(button3, { float: 'left'})
+            .add(button4, { float: 'left'})
+            .add(disableButton, { float: 'right'})
+            .add(listenerButton, { float: 'right'})
+            .add(removeButton, { float: 'right'})
+            .add(optionButton, { float: 'right'})
+            .add(isEnabledButton, { float: 'none', position: {bottom: 35, right: 80}})
+            .add(freezeButton, { float: 'none', position: {bottom: 35, right: 10}})
+            .add(isFrozenButton, { float: 'none', position: {bottom: 65, right: 10}})
+            .add(selectButton, { float: 'none', position: {bottom: 65, left: 10}})
+            .add(isSelectedButton, { float: 'none', position: {bottom: 35, left: 10}})
+            .add(clearButton, {float: 'none', position: {bottom: 95, right: 10}});
+}
+</script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

@@ -1,0 +1,30 @@
+SET(INSTANCECTL_TEST_SRCDIR infra/nanny/instancectl/tests)
+SET(INSTANCECTL_TEST_SRCS
+    func/__init__.py
+    func/conftest.py
+    func/utils.py
+    func/arguments_evaluation/test_evaluation.py
+    func/conf_parse/test_conf_parse.py
+    func/conf_spec_coredump/test_spec_coredump.py
+    func/forking_gay_upper/test_gay_upper.py
+    func/install/test_install.py
+    func/iss_properties/test_properties.py
+    func/liveness/test_liveness.py
+    func/sleep_time_install/test_sleep_time_install.py
+    func/sleep_time_prepare/test_sleep_time_prepare.py
+    func/loop_lock/test_loop_lock.py
+    func/minor/test_features.py
+    func/prepare_script/test_prepare_script.py
+    func/reopenlog/test_reopenlog.py
+    func/restart_script/test_restart_script.py
+    func/spec_expanding/test_spec_expanding.py
+    func/spec_init_containers/test_spec_init_containers.py
+    func/spec_its/test_spec_its.py
+    func/spec_notify_action/test_spec_notify_action.py
+    func/spec_rotate_stdout/test_spec_rotate_stdout.py
+    func/spec_term_barrier/test_spec_term_barrier.py
+    func/template_volumes/test_template_volumes.py
+    func/uninstall_action/test_uninstall.py
+    func/vault_secrets/test_get_secrets_from_vault.py
+    func/yav_secrets/test_get_secrets_from_yav.py
+)

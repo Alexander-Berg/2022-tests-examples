@@ -1,0 +1,101 @@
+
+<!--
+Title:
+Маршрут: опция учета информации о текущих пробках
+
+Description:
+Проверка опции учета информации о текущих пробках.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+regress
+
+Estimated time:
+90000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта загрузилась корректно со спаном Центральной России.
+  Сверху кнопка "avoid traffic".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "avoid traffic".
+
+  Expectation:
+  На спане карты появляются метки "1"(Москва), "2"(Тула), "3"(Рязань), виа-точка в Калуге.
+  Маршрутная нитка - фиолетовая.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "avoid traffic".
+
+  Expectation:
+  Спан карты может немного сместиться, появляется зеленая нитка аналогичного маршрута.
+  Зеленая нитка маршрута может не совпадать с фиолетовой.
+-->
+<html>
+<head>
+    <title>API 2.0</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <script src="../helper.js"></script>
+    <script type=text/javascript>
+        Api('init');
+        function init(ymaps) {
+            var myMap = new ymaps.Map('map', {
+                        center: [55.00718809437818, 38.094514924687026],
+                        zoom: 7
+                    }),
+                    route,
+                    
+                    zoom = new ymaps.control.ZoomControl(),
+                    button1 = new ymaps.control.Button({data: {content: 'avoid traffic'}}, {selectOnClick: true});
+            button1.events
+                    .add("select", function (e) {
+                        route = new ymaps.route([
+                            'москва',
+                            'тула',
+                            { type: 'viaPoint', point: 'калуга' },
+                            { type: 'wayPoint', point: [54.59766481046268, 39.615647888182124] }
+                        ], {
+                            mapStateAutoApply: true,
+                            avoidTrafficJams: true
+                        }).then(function (route) {
+                                    myMap.geoObjects.add(route);
+                                });
+                    })
+                    .add('deselect', function () {
+                        route = new ymaps.route([
+                            'москва',
+                            'тула',
+                            { type: 'viaPoint', point: 'калуга' },
+                            { type: 'wayPoint', point: [54.59766481046268, 39.615647888182124] }
+                        ], {
+                            mapStateAutoApply: true,
+                            avoidTrafficJams: false
+                        }).then(function (route) {
+                                    route.getPaths().options.set({
+                                        strokeColor: '00FF00',
+                                        opacity: 0.9
+                                    });
+                                    myMap.geoObjects.add(route);
+                                });
+                    });
+            myMap.controls
+                    .add(zoom)
+                    .add(button1);
+            
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+<p><a href="https://tech.yandex.ru/maps/archive/doc/jsapi/2.0/ref/reference/router.Route-docpage/" target="_blank">Docs</a></p>
+</body>
+</html>

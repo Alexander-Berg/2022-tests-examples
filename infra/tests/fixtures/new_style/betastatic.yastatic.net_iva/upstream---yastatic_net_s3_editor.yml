@@ -1,0 +1,79 @@
+---
+regexp_path_section:
+  pattern: '/s3/editor(/.*)?'
+  modules:
+    - report:
+        uuid: 'yastatic_net_s3_editor'
+        ranges: 'default'
+    - shared:
+        uuid: yastatic_net_s3_editor
+    - headers:
+        create:
+            'Host': 'editor.s3.yandex.net'
+    - rewrite:
+        actions:
+          - regexp: '/s3/editor(/.*)'
+            rewrite: '%1'
+    - response_headers:
+        create:
+            Cache-Control: max-age=31536000
+        create_func:
+            Expires: 'time:+1h'
+    - regexp:
+        sections:
+          br_section:
+              matcher:
+                match_and:
+                - match_fsm:
+                    path: '.*(\\.js|\\.css|\\.svg)'
+                - match_fsm:
+                    header:
+                      name: 'accept-encoding'
+                      value: '(.*,\\s*|)br(\\s*;\\s*q\\s*=\\s*(1|0\\.0*[1-9]).*|\\s*,.*|)'
+              modules:
+              - rewrite:
+                  actions:
+                    - regexp: '([^\\?]+)(.*)'
+                      rewrite: '%1.br'
+              - response_headers_if:
+                  matcher: 
+                      match_response_codes:
+                        codes: [200, 204, 206]
+                  create_header:
+                    Content-Encoding: br
+              - shared:
+                  uuid: 'yastatic_net_s3_editor_common'
+          gzip_section:
+              matcher:
+                match_and:
+                - match_fsm:
+                    path: '.*(\\.js|\\.css|\\.svg)'
+                - match_fsm:
+                    header:
+                      name: 'accept-encoding'
+                      value: '(.*,\\s*|)gzip(\\s*;\\s*q\\s*=\\s*(1|0\\.0*[1-9]).*|\\s*,.*|)'
+              modules:
+              - rewrite:
+                  actions:
+                    - regexp: '([^\\?]+)(.*)'
+                      rewrite: '%1.gz'
+              - response_headers_if:
+                  matcher: 
+                      match_response_codes:
+                        codes: [200, 204, 206]
+                  create_header:
+                    Content-Encoding: gzip
+              - shared:
+                  uuid: 'yastatic_net_s3_editor_common'
+          default:
+              matcher: {}
+              modules:
+              - shared:
+                  uuid: 'yastatic_net_s3_editor_common'
+              - headers:
+                  delete:
+                    'authorization|accept-encoding'
+              - response_headers:
+                  delete: 'content-encoding'
+              - shared:
+                  uuid: 'yastatic_s3_cached_shared'

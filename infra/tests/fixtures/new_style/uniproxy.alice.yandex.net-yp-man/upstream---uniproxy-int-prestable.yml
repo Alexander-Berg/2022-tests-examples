@@ -1,0 +1,51 @@
+---
+regexp_section:
+    matcher:
+        match_and:
+            - match_fsm: { host: "uniproxy-internal\\\\.alice\\\\.yandex\\\\.net", case_insensitive: true }
+            - match_fsm: { uri: "/prestable/h?uni.ws(.*)"}
+    modules:
+        - rewrite:
+            actions:
+              - regexp: '/prestable/h?uni.ws(.*)'
+                rewrite: '/uni.ws%1'
+        - report: {ranges: default, uuid: uniproxy_int_prestable_ws}
+        - headers:
+            create_func:
+              X-Yandex-TCP-Info: tcp_info
+        - log_headers:
+            name_re: 'X-(UPRX-(UUID|SSID|AUTH-TOKEN|RETRY-COUNT|APP-(ID|TYPE))|ALICE-CLIENT-REQID|Yandex-TCP-Info)'
+        - balancer2:
+            attempts: 1
+            unique_policy: {}
+            rr: {weights_file: ./controls/traffic_control.weights}
+            backends:
+                -   weight: 1
+                    name: uniproxy_sas
+                    modules:
+                        - report: {ranges: default, uuid: uniproxy_int_prestable_ws_to_sas}
+                        - balancer2:
+                            attempts: 3
+                            attempts_rate_limiter:
+                                limit: 2
+                            fast_attempts: 2
+                            fast_503: true
+                            unique_policy: {}
+                            active: {delay: 10s, request: 'GET /ping HTTP/1.1\nHost: uniproxy.alice.yandex.net\n\n'}
+                            generated_proxy_backends:
+                                proxy_options:
+                                    allow_connection_upgrade: true
+                                    connect_timeout: 75ms
+                                    backend_timeout: 5s
+                                    backend_read_timeout: 600s
+                                    backend_write_timeout: 600s
+                                    client_read_timeout: 600s
+                                    client_write_timeout: 600s
+                                include_backends:
+                                    type: BY_ID
+                                    ids:
+                                        - wsproxy-prestable-sas
+            on_error:
+                errordocument:
+                    status: 504
+                    content: "Service unavailable"

@@ -1,0 +1,54 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - vyacheslav
+      - sergeyv
+      - gibzer
+      - nanny-robot
+      groups:
+      - svc_kp_administration
+config_transport:
+  nanny_static_file:
+    service_id: rtc_balancer_kp-mobile-testing-balancer_kp_yandex_net_vla
+    instance_tags:
+      ctype: prod
+      itype: balancer
+      prj: kp-mobile-testing-balancer.kp.yandex.net
+mode: EASY_MODE
+---
+l7_macro:
+  version: 0.3.18
+  core:
+    trust_x_forwarded_for_y: true
+  headers:
+    - create: {target: X-Awacs-Namespace, keep_existing: false, value: 'kp-mobile-testing-balancer.kp.yandex.net' }
+    - delete: {target_re: X-Ya-User-Ticket|X-Kp-User-Id|X-Auth-Status}
+    - create: {target: X-Yandex-HTTP, keep_existing: false, value: 'yes'}
+    - create: {target: X-Yandex-L7, keep_existing: false, value: 'yes'}
+    - create: {target: X-Forwarded-Proto, keep_existing: false, value: 'https'}
+    - create: {target: X-Req-Id, keep_existing: true, func: reqid}
+    - create: {target: X-Request-Id, keep_existing: true, func: reqid}
+    - create: {target: X-Forwarded-For, keep_existing: true, func: realip}
+    - create: {target: X-Real-Host, keep_existing: false, func: host}
+    - create: {target: X-Start-Time, keep_existing: false, func: starttime}
+    - create: {target: X-Source-Port-Y, keep_existing: false, func: realport}
+    - create: {target: X-Yandex-Ja3, keep_existing: false, func: ja3}
+    - create: {target: X-Real-IP, keep_existing: false, func: realip}
+    - create: {target: X-Client-IP, keep_existing: false, func: realip}
+    - create: {target: X-Yandex-RandomUID, keep_existing: false, func: yuid}
+    - create: {target: X-Yandex-HTTPS-Info, keep_existing: false, func: ssl_handshake_info}
+    - create: {target: X-Yandex-TCP-Info, keep_existing: false, func: tcp_info}
+    - log: {target_re: '(X-Request-Id|User-Agent|X-Yandex-Ja3|X-Yandex-Ja4|X-Awacs-Namespace)', cookie_fields: [yandexuid]}
+  antirobot:
+    service: kinopoisk
+    captcha_reply: {}
+  response_headers:
+    - create: {target: Strict-Transport-Security, keep_existing: false, value: 'max-age=31536000'}
+    - create: {target: X-Request-Id, keep_existing: true, func: reqid}
+  http: {}
+  https: {enable_http2: true}
+  announce_check_reply:
+    url_re: /ping
+  health_check_reply: {}
+  include_domains: {}

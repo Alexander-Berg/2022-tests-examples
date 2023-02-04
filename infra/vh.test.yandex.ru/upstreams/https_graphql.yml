@@ -1,0 +1,50 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - mago-nn
+      groups: []
+labels:
+  order: '10000000'
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      uri: '/graphql'
+  modules:
+    - report: {uuid: test_graphql, ranges: default}
+    - rewrite:
+        actions:
+          - regexp: '/graphql[%?]*(.*)'
+            rewrite: '/vh/graphql?%1&&srcrwr=UGC_VIDEO:vh-runtime-ugc-test-1.sas.yp-c.yandex.net:6433&srcrwr=UGC_VIDEO:vh-runtime-ugc-test-2.man.yp-c.yandex.net:6433&srcrwr=TEMPLATER:vh-runtime-ugc-test-1.sas.yp-c.yandex.net:3400&srcrwr=TEMPLATER:vh-runtime-ugc-test-2.man.yp-c.yandex.net:3400'
+    
+    - exp_getter_macro:
+        service_name: vh
+        testing_mode: {}
+        _version: 3
+    - balancer2:
+        attempts: 2
+        rr: {}
+        backends:
+          - weight: 1
+            name: test_sync
+            modules:
+              - report: {uuid: test_sync, ranges: default}
+              - balancer2:
+                  attempts_rate_limiter:
+                    limit: 0.5   
+                  attempts: 3
+                  rr: {}
+                  timeout_policy:
+                    timeout: 5s
+                    unique_policy: {}
+                  generated_proxy_backends:
+                    proxy_options:
+                      backend_timeout: 5s
+                      connect_timeout: 50ms
+                      status_code_blacklist: ["408"]
+                      keepalive_count: 1
+                    include_backends:
+                      type: BY_ID
+                      ids:
+                        - man_vh_http_adapter_testing

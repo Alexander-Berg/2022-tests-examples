@@ -1,0 +1,158 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <title>KML geoXml.load</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+
+    <!-- YUI -->
+    <script type="text/javascript" src="../../../../../test/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../../../../test/yui3combo/combo.css" />
+    <script type="text/javascript" src="../../../../../test/run-test-case.js"></script>
+    <!-- Code -->
+    <script type="text/javascript">
+        initAPI({
+            lang: "ru-RU",
+            load: "package.full,geoXml.load",
+            mode: "dev",
+            ns: "ym",
+            coordorder: "longlat"
+        });
+    </script>
+    <!-- Compare objects -->
+    <script type="text/javascript" src="../compare-objects.js"></script>
+
+    <style type="text/css">
+        #container { width: 800px; height: 600px; background: #ccc; }
+    </style>
+</head>
+
+<body class="yui3-skin-sam">
+    <div id="container"></div>
+</body>
+
+<script type="text/javascript" charset="utf-8">
+    function getTestCase(Y) { return {
+        name: "geoXml.load",
+        testGeoXmlLoad: function () {
+            var xmlUrl = this.getUrl('/kml_test_data.kml'),
+                sameCollectionUrl = this.getUrl('/kml_test_data.xml'),
+                sameCollection = [],
+                testCase = this;
+
+            // Тестирование на визуальное представление
+            ym.geoXml.load(xmlUrl).then(function (res) {
+
+                    Y.assert(typeof res.geoObjects != 'undefined', "Невозможно создать объект geoObjectCollection.");
+
+                    if (res.geoObjects) {
+                        map.geoObjects.add(res.geoObjects);
+                    }
+                },
+
+                function (error) {
+                    testCase.resume(function () {
+                        Y.assert(error === null, "Ошибка при загрузке xml-файла.");
+                    });
+                }
+            );
+
+            // Тестирование на парсинг геообъектов
+            ym.geoXml.load(sameCollectionUrl).then(function (res) {
+                    testCase.getSameCollection(sameCollectionUrl).each(function (geoObject) {
+                        sameCollection.push(geoObject)
+                    });
+
+                    var f = function () {
+                        Y.assert(typeof res.geoObjects != 'undefined', "Невозможно создать объект geoObjectCollection.");
+
+                        var collection = [];
+                        if (res.geoObjects) {
+                            res.geoObjects.each(function (geoObject) {
+                                   collection.push(geoObject);
+                            });
+
+                            for (var i = 0, l = collection.length; i < l; i++) {
+                                var options1 = collection[i].options._data,
+                                    options2 = sameCollection[i].options._data,
+                                    props1 = collection[i].properties._data,
+                                    props2 = sameCollection[i].properties._data,
+                                    coords1 = collection[i].geometry.getCoordinates(),
+                                    coords2 = sameCollection[i].geometry.getCoordinates();
+
+                                Y.assert(
+                                     areSame(options1, options2),
+                                    'Разные опции у геообъектов'
+                                );
+                                Y.assert(
+                                    areSame(props1, props2),
+                                    'Разные свойства у геообъектов'
+                                );
+                                Y.assert(
+                                    areSame(coords1, coords2),
+                                    'Разные координаты у геообъектов'
+                                );
+                            }
+                        }
+                    };
+                    testCase.resume(f);
+                },
+
+                function (error) {
+                    testCase.resume(function () {
+                        Y.assert(error === null, "Ошибка при загрузке xml-файла.");
+                    });
+                }
+            );
+
+            testCase.wait(function () {
+                Y.Assert.fail("Время ожидания истекло.");
+            }, 3000);
+        },
+
+        getUrl: function (url) {
+            return window.location.href.replace(/\/[^\/]+$/, url);
+        },
+
+        getSameCollection: function (stylePrefix) {
+            //  Объявляем геообъекты
+            var collection = new ym.GeoObjectCollection({
+                    properties: {
+                        name: 'Химки.kml'
+                    }
+                }),
+                geoObject = new ym.GeoObject({
+                    properties: {
+                        name: 'Химки',
+                        description: 'Это город Химки',
+                        hintContent: 'Химки',
+                        balloonContentBody: '<h3>Химки</h3><p>Это город Химки</p>'
+                    },
+                    geometry: {
+                        type: 'Point',
+                        coordinates: [37.44363333333333, 55.88632499999999, 0]
+                    }
+                }, {
+                    showHintOnHover: true,
+                    preset: stylePrefix + '#mypreset'
+                });
+
+            collection.add(geoObject);
+            return collection;
+        }
+    }}
+
+    var map;
+    ym.ready(function () {
+        //  подготавливаем карту
+        map = new ym.Map('container', {
+            center: [37.62708, 55.750625],
+            type: "yandex#map",
+            zoom: 10
+        });
+        map.controls.add('zoomControl');
+        map.controls.add('mapTools');
+        runTestCase();
+    });
+</script>
+</html>

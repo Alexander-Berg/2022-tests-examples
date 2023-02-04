@@ -1,0 +1,442 @@
+---
+regexp_section:
+  matcher: {}
+  modules:
+    - report:
+        uuid: music
+        ranges: 1ms,4ms,7ms,11ms,17ms,26ms,39ms,58ms,87ms,131ms,150ms,200ms,250ms,300ms,350ms,400ms,450ms,500ms,550ms,600ms,650ms,700ms,1000ms,1500ms,2250ms,3375ms,5062ms,7593ms,11390ms,17085ms,30000ms,60000ms,150000ms
+    - threshold:
+        lo_bytes: 102400
+        hi_bytes: 1024000
+        pass_timeout: "10s"
+        recv_timeout: "1s"
+    - regexp:
+        sections:
+
+          # Proxy the sitemap for the translation
+          translate_s3:
+            matcher:
+              match_fsm:
+                path: '/translate/sitemap.*'
+                surround: false
+            balancer2:
+              rr: {}
+              attempts: 1
+              backends:
+                - weight: 1
+                  name: translate_s3
+                  modules:
+                    - headers:
+                        create:
+                          Host: translate.s3.mds.yandex.net
+                    - rewrite:
+                        actions:
+                          - regexp: '/translate/(.*)'
+                            rewrite: '/lyrics/%1'
+                    - balancer2:
+                        rr: {}
+                        attempts: 2
+                        timeout_policy:
+                          timeout: 5000ms
+                          simple_policy: {}
+                        generated_proxy_backends:
+                          proxy_options:
+                            backend_timeout: 5000ms
+                            connect_timeout: 100ms
+                            fail_on_5xx: true
+                            status_code_blacklist: ["4xx"]
+                          instances:
+                            - weight: 1
+                              host: translate.s3.mds.yandex.net
+                              port: 80
+              on_error:
+                shared:
+                  uuid: music_upstreams
+
+          # Proxy the translation itself
+          translate:
+            matcher:
+              match_fsm:
+                path: '/translate/.*'
+                surround: false
+            balancer2:
+              rr: {}
+              attempts: 1
+              backends:
+                - weight: 1
+                  name: translate_misc
+                  modules:
+                    - headers:
+                        create:
+                          Host: translate-misc.yandex.net
+                    - rewrite:
+                        actions:
+                          - regexp: '/translate/(.*)'
+                            rewrite: '/lyrics/%1'
+                    - balancer2:
+                        rr: {}
+                        attempts: 2
+                        timeout_policy:
+                          timeout: 5000ms
+                          simple_policy: {}
+                        generated_proxy_backends:
+                          proxy_options:
+                            backend_timeout: 5000ms
+                            connect_timeout: 100ms
+                            fail_on_5xx: true
+                            status_code_blacklist: ["4xx"]
+                          instances:
+                            - weight: 1
+                              host: translate-misc.yandex.net
+                              port: 80
+              on_error:
+                shared:
+                  uuid: music_upstreams
+
+          # a redirect for zemfira, probably useless already
+          zemfira_rewrite:
+            matcher:
+              match_fsm:
+                path: '/zemfira.*'
+            modules:
+              - headers:
+                  create:
+                    Location: '1'
+              - rewrite:
+                  actions:
+                    - regexp: '.*'
+                      header_name: Location
+                      rewrite: 'https://zemfiroom.ru'
+              - errordocument:
+                  status: 302
+                  remain_headers: Location
+
+          # MUSICBACKEND-2459 Сделать 302 редирект с /promo на /family-plus
+          promo_rewrite:
+            matcher:
+              match_fsm:
+                path: '/promo.*'
+            modules:
+              - headers:
+                  create:
+                    Location: '1'
+              - rewrite:
+                  actions:
+                    - regexp: '.*'
+                      header_name: Location
+                      rewrite: 'https://music.yandex.ru/family-plus'
+              - errordocument:
+                  status: 302
+                  remain_headers: Location
+
+          # bypass from cryproxy
+          # - do not add headers here, all headers are already set up
+          aab_proxy:
+              matcher:
+                match_fsm:
+                  header:
+                    name: 'x-aab-proxy'
+                    value: '.*'
+              shared:
+                  uuid: music_upstreams
+
+          # cryproxy http checks
+          aab_http_check:
+            matcher:
+              match_fsm:
+                header:
+                  name: 'x-aab-http-check'
+                  value: '.*'
+            shared:
+              uuid: main_cryprox_section
+
+          aab_url_prefix_check:
+            matcher:
+              match_fsm:
+                path: "/_crpd/.*"
+            shared:
+              uuid: main_cryprox_section
+
+          # POST requests go to regular music upstreams
+          http_post:
+              matcher:
+                match_fsm:
+                  match: 'POST.*'
+              modules:
+                - headers:
+                    create:
+                      X-Yandex-HTTPS: yes
+                      X-Yandex-L7: yes
+                      X-Antirobot-Service-Y: music
+                    create_func:
+                      X-Start-Time: starttime
+                      X-Request-Id: reqid
+                      X-Req-Id: reqid
+                      X-Forwarded-For: realip
+                      X-Forwarded-For-Y: realip
+                      X-Source-Port-Y: realport
+                      X-Real-IP: realip
+                      X-Scheme: scheme
+                      X-Yandex-Ja3: ja3
+                - antirobot_macro: {}
+                - geobase_macro: {}
+                - shared:
+                    uuid: music_upstreams
+
+          # requests with special cookie values go to cryproxy
+          # - also set all headers here so that they are correct when antiroboting
+          cookie_bltsr:
+            matcher:
+              match_fsm:
+                # random string will not match
+                cookie: 'OvWpxdyhuQMVC6KVXled0rz6kqJb8JAqqN3YU496'
+                #cookie: 'bltsr|qgZTpupNMGJBM|mcBaGDt|BgeeyNoBJuyII|orrXTfJaS|FgkKdCjPqoMFm|EIXtkCTlX|JPIqApiY|KIykI|HgGedof|ancQTZw|involved|instruction|engineering|telecommunications|discussion|computer|substantial|specific|engineer|adequate|Silver|Mercury|Bismuth|Silicon|Tennessine|Zinc|Sulfur|Nickel|Radon|Manganese|LBCBNrZSu|VTouhmwR|TbwgcPzRMgzVo|liPkbtFdIkYqc|HOhdORSx|EMCzniGaQ|PIwsfZeu|FxuGQqNNo|sMLIIeQQeFnYt|pClnKCSBXcHUp|tCTmkfFoXn|zmFQeXtI|ScSvCIlBC|kNAcVGYFWhx|jsOmqPGh|OqYspIFcUpLY|XcfPaDInQpzKj|hcxWnzbUzfz|MGphYZof|NBgfDVFir'
+                surround: True
+            modules:
+              - shared:
+                  uuid: main_cryprox_section
+              - headers:
+                  create:
+                    X-Yandex-HTTPS: yes
+                    X-Yandex-L7: yes
+                    X-Antirobot-Service-Y: music
+                  create_func:
+                    X-Start-Time: starttime
+                    X-Request-Id: reqid
+                    X-Req-Id: reqid
+                    X-Forwarded-For: realip
+                    X-Forwarded-For-Y: realip
+                    X-Source-Port-Y: realport
+                    X-Real-IP: realip
+                    X-Scheme: scheme
+                    X-Yandex-Ja3: ja3
+              - antirobot_macro: {}
+              - geobase_macro: {}
+              - balancer2:
+                  attempts: 1
+                  rr: {}
+                  backends:
+                    - weight: 1
+                      name: aab_on
+                      modules:
+                        - report:
+                            uuid: aab
+                            ranges: default
+                        - headers:
+                            create:
+                              x-aab-partnertoken: !f get_str_env_var("CRY_TOKEN")
+                              X-Forwarded-Proto: https
+                        - balancer2:
+                            attempts: 1
+                            rr: {}
+                            timeout_policy:
+                              timeout: 5000ms
+                              simple_policy: {}
+                            generated_proxy_backends:
+                              proxy_options:
+                                backend_timeout: 10s
+                                connect_timeout: 100ms
+                                buffering: true
+                                fail_on_5xx: true
+                              instances:
+                                - weight: 1
+                                  host: cryprox.yandex.net
+                                  port: 80
+                            on_error:
+                              regexp:
+                                  sections:
+                                      aab_http_check:
+                                          matcher:
+                                              match_fsm:
+                                                  header:
+                                                      name: 'x-aab-http-check'
+                                                      value: '.*'
+                                          modules:
+                                              - errordocument:
+                                                  status: 404
+                                      default:
+                                          matcher: {}
+                                          shared:
+                                            uuid: music_upstreams
+                    - weight: -1
+                      name: aab_off
+                      modules:
+                        - shared:
+                            uuid: music_upstreams
+
+
+          # The default section. Here get all other requests
+          # We set headers before shared:music_upstreams so that they are not set via cryproxy
+          default:
+            matcher: {}
+            modules:
+              - headers:
+                  create:
+                    X-Yandex-HTTPS: yes
+                    X-Yandex-L7: yes
+                    X-Antirobot-Service-Y: music
+                  create_func:
+                    X-Start-Time: starttime
+                    X-Request-Id: reqid
+                    X-Req-Id: reqid
+                    X-Forwarded-For: realip
+                    X-Forwarded-For-Y: realip
+                    X-Source-Port-Y: realport
+                    X-Real-IP: realip
+                    X-Scheme: scheme
+                    X-Yandex-Ja3: ja3
+              - antirobot_macro: {}
+              - geobase_macro: {}
+              - shared:
+                  uuid: music_upstreams
+              - balancer2:
+                  rr: { weights_file: ./controls/traffic_control.weights }
+                  attempts: 1
+                  backends:
+                    - weight: 1
+                      name: music_sas
+                      modules:
+                        - report:
+                            uuid: requests_music_to_sas
+                            ranges: default
+                        - balancer2:
+                            connection_attempts: !f count_backends()
+                            attempts: 1
+                            active:
+                              delay: 3s
+                              steady: true
+                              request: 'GET /handlers/ping-all.jsx HTTP/1.0\nHost: music.yandex.ru\n\n'
+                            watermark_policy:
+                              lo: 0.005
+                              hi: 0.02
+                              unique_policy: {}
+                            generated_proxy_backends:
+                              proxy_options:
+                                backend_timeout: 10s
+                                connect_timeout: 100ms
+                                buffering: true
+                                status_code_blacklist: ['409']
+                              include_backends:
+                                type: BY_ID
+                                ids: [music_stable_musfront_sas]
+                    - weight: 1
+                      name: music_man
+                      modules:
+                        - report:
+                            uuid: requests_music_to_man
+                            ranges: default
+                        - balancer2:
+                            connection_attempts: !f count_backends()
+                            attempts: 1
+                            active:
+                              delay: 3s
+                              steady: true
+                              request: 'GET /handlers/ping-all.jsx HTTP/1.0\nHost: music.yandex.ru\n\n'
+                            watermark_policy:
+                              lo: 0.005
+                              hi: 0.02
+                              unique_policy: {}
+                            generated_proxy_backends:
+                              proxy_options:
+                                backend_timeout: 10s
+                                connect_timeout: 100ms
+                                buffering: true
+                                status_code_blacklist: ['409']
+                              include_backends:
+                                type: BY_ID
+                                ids: [music_stable_musfront_man]
+                    - weight: 1
+                      name: music_myt
+                      modules:
+                        - report:
+                            uuid: requests_music_to_myt
+                            ranges: default
+                        - balancer2:
+                            connection_attempts: !f count_backends()
+                            attempts: 1
+                            active:
+                              delay: 3s
+                              steady: true
+                              request: 'GET /handlers/ping-all.jsx HTTP/1.0\nHost: music.yandex.ru\n\n'
+                            watermark_policy:
+                              lo: 0.005
+                              hi: 0.02
+                              unique_policy: {}
+                            generated_proxy_backends:
+                              proxy_options:
+                                backend_timeout: 10s
+                                connect_timeout: 100ms
+                                buffering: true
+                                status_code_blacklist: ['409']
+                              include_backends:
+                                type: BY_ID
+                                ids: [music_stable_musfront_myt]
+                  on_error:
+                    modules:
+                      - report:
+                          uuid: onerror_music
+                          ranges: default
+                      - balancer2:
+                          rr: { weights_file: ./controls/traffic_control.weights }
+                          attempts: 1
+                          backends:
+                            - weight: 1
+                              name: music_sas
+                              modules:
+                                - report:
+                                    uuid: requests_music_to_sas
+                                    ranges: default
+                                - balancer2:
+                                    connection_attempts: !f count_backends()
+                                    attempts: 1
+                                    rr: {}
+                                    generated_proxy_backends:
+                                      proxy_options:
+                                        backend_timeout: 10s
+                                        connect_timeout: 100ms
+                                        buffering: true
+                                        status_code_blacklist: []
+                                        fail_on_5xx: false
+                                      include_backends:
+                                        type: BY_ID
+                                        ids: [music_stable_musfront_sas]
+                            - weight: 1
+                              name: music_man
+                              modules:
+                                - report:
+                                    uuid: requests_music_to_man
+                                    ranges: default
+                                - balancer2:
+                                    connection_attempts: !f count_backends()
+                                    attempts: 1
+                                    rr: {}
+                                    generated_proxy_backends:
+                                      proxy_options:
+                                        backend_timeout: 10s
+                                        connect_timeout: 100ms
+                                        buffering: true
+                                        status_code_blacklist: []
+                                        fail_on_5xx: false
+                                      include_backends:
+                                        type: BY_ID
+                                        ids: [music_stable_musfront_man]
+                            - weight: 1
+                              name: music_myt
+                              modules:
+                                - report:
+                                    uuid: requests_music_to_myt
+                                    ranges: default
+                                - balancer2:
+                                    connection_attempts: !f count_backends()
+                                    attempts: 1
+                                    rr: {}
+                                    generated_proxy_backends:
+                                      proxy_options:
+                                        backend_timeout: 10s
+                                        connect_timeout: 100ms
+                                        buffering: true
+                                        status_code_blacklist: []
+                                        fail_on_5xx: false
+                                      include_backends:
+                                        type: BY_ID
+                                        ids: [music_stable_musfront_myt]

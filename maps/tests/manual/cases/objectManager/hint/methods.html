@@ -1,0 +1,185 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Менеджер объектов: методы хинта
+
+Description:
+Проверка методов хинта. 
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+objectManager
+
+Estimated time:
+180000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно.
+  На спане метки коллекции, линии, круги, прямоугольники, многоугольники.
+  При загрузке на круге появляется хинт "objectManagerCircle54", под контейнером с картой появляется строка "open".
+
+Step:
+  Action:
+  Не наводя курсор на объекты и метки на карте, выполнить клик в кнопку "get".
+
+  Expectation:
+  Под контейнером с картой появляется блок данных со строками "OK", ошибок быть не должно.
+
+Step:
+  Action:
+  Не наводя курсор на объекты и метки на карте, выполнить клик в кнопку "isOpen".
+
+  Expectation:
+  Под контейнером с картой появляется строка "isOpen: true".
+
+Step:
+  Action:
+  Не наводя курсор на объекты и метки на карте, выполнить клик в кнопку "close".
+
+  Expectation:
+  Хинт закрывается, под контейнером с картой появляется строка "close".
+
+Step:
+  Action:
+  Не наводя курсор на объекты и метки на карте, выполнить клик в кнопку "isOpen".
+
+  Expectation:
+  Под контейнером с картой появляется строка "isOpen: false".
+
+Step:
+  Action:
+  Не наводя курсор на объекты и метки на карте, выполнить клик в кнопку "close".
+
+  Expectation:
+  Хинт на круге снова открывается, под контейнером с картой появляется строка "open".
+
+Step:
+  Action:
+  Не наводя курсор на объекты и метки на карте, выполнить клик в кнопку "destroy".
+
+  Expectation:
+  Хинт закрывается, под контейнером с картой появляется строка "close", строки: "hint.open() fulfilled: false; hint.open() rejected: true".
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script src="../../../js/objectSource.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var map = myMap = new ymaps.Map('map', {
+                center: [55.716901946294286, 37.30336807048247],
+                zoom: 15,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+
+            var coords = map.getGlobalPixelCenter();
+            __log__("get срабатывает только на хинте который сразу открыт");
+            objectManagerSource(ym, myMap, this);
+
+            var objectManager = new ymaps.ObjectManager();
+
+            objectManager.objects.add(objectPlacemark1);
+            objectManager.objects.add(objectPlacemark2);
+            objectManager.objects.add(objectPlacemark3);
+            objectManager.objects.add(objectPlacemark4);
+            objectManager.objects.add(objectPlacemark5);
+            objectManager.objects.add(objectPlacemark6);
+            objectManager.objects.add(objectPlacemark7);
+            objectManager.objects.add(objectPlacemark8);
+            objectManager.objects.add(objectPlacemark9);
+            objectManager.objects.add(objectPlacemark10);
+            objectManager.objects.add(objectPlacemark11);
+            objectManager.objects.add(objectPlacemark12);
+            objectManager.objects.add(objectPlacemark13);
+            objectManager.objects.add(objectPlacemark14);
+            objectManager.objects.add(objectPlacemark15);
+            objectManager.objects.add(objectPlacemark16);
+            objectManager.objects.add(objectPlacemark17);
+            objectManager.objects.add(objectManagerArray);
+            objectManager.objects.add(objectManagerCollection);
+            objectManager.objects.add(objectManagerArrayNonPointObjects);
+            objectManager.objects.add(objectManagerCollectionNonPointObjects);
+            objectManager.objects.add(objectManagerPolygon);
+            objectManager.objects.add(objectManagerPolyline);
+            objectManager.objects.add(objectManagerCircle);
+            objectManager.objects.add(objectManagerRectangle);
+
+            map.geoObjects.add(objectManager);
+
+            objectManager.objects.hint.open(53, coords);
+            objectManager.objects.hint.events.add(['open', 'close', 'optionschange'], function (e) {
+                __log__(e.get('type'))
+            });
+
+            var getButton = new ymaps.control.Button({data: {content: 'get'}, options: {selectOnClick: false}});
+            getButton.events.add('click', function () {
+                __log__('getData: ');
+                __log__(objectManager.objects.hint.getData());
+                validateValue(objectManager.objects.hint.getData().geometry.type, "Circle");
+                __log__('getOptions: ');
+                __log__(objectManager.objects.hint.getOptions());
+                validateValue(objectManager.objects.hint.getOptions()._cache.layout, "islands#hint");
+                objectManager.objects.hint.getOverlay().then(function (res) {
+                    __log__("getOverlay: ");
+                    __log__(res);
+                    validateValue(res.options._name, objectManager.objects.hint.getOverlaySync().options._name)
+                });
+                __log__('getPosition: ' + objectManager.objects.hint.getPosition());
+                validateValue(objectManager.objects.hint.getPosition(), "5063535.477286094,2631306.436320759");
+            });
+
+            var isOpenButton = new ymaps.control.Button({data: {content: 'isOpen'}, options: {selectOnClick: false}});
+            isOpenButton.events.add('click', function () {
+                __log__('isOpen: ' + objectManager.objects.hint.isOpen(53))
+            });
+
+            var closeButton = new ymaps.control.Button('close');
+            closeButton.events
+                    .add('select', function () {
+                        objectManager.objects.hint.close()
+                    })
+                    .add('deselect', function () {
+                        objectManager.objects.hint.open(53, coords)
+                    });
+
+            var destroyButton = new ymaps.control.Button({data: {content: 'destroy'}, options: {selectOnClick: false}});
+            destroyButton.events.add('click', function () {
+                var promise = objectManager.objects.hint.open(52, coords);
+                objectManager.objects.hint.destroy();
+                promise.always(function () {
+                    log.info('hint.open() fulfilled: ' + promise.isFulfilled());
+                    log.info('hint.open() rejected: ' + promise.isRejected());
+                })
+            });
+
+            map.controls
+                    .add(getButton)
+                    .add(isOpenButton)
+                    .add(closeButton)
+                    .add(destroyButton)
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

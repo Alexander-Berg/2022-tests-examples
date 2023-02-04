@@ -1,0 +1,34 @@
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      uri: '/x?(show|check)?captcha.*'
+  modules:
+    - webauth:
+        checker:
+          headers:
+            create:
+              Host: 'webauth.yandex-team.ru'
+            proxy:
+              host: 'webauth.yandex-team.ru'
+              port: 443
+              backend_timeout: '5s'
+              https_settings:
+                sni_host: 'webauth.yandex-team.ru'
+                sni_on: true
+                verify_depth: 3
+                ca_file: !f get_ca_cert_path("allCAs-hamster.yandex.tld.pem")
+        on_forbidden:
+          errordocument:
+            status: 403
+            content: 'Access forbidden'
+        auth_path: '/check_oauth_token'
+        role: '/webauth-qloud/qloud-ext/education/yashchenko-klein/envs/crowdtest/user'
+        unauthorized_set_cookie: 'webauth_csrf_token={csrf_token}; Path=/'
+        unauthorized_redirect: 'https://oauth.yandex-team.ru/authorize?response_type=code&client_id={app_id}&state={csrf_state}'
+        allow_options_passthrough: true
+    - captcha_macro:
+        proxy_options: {}
+        nanny_snapshots:
+          - service_id: production_antirobot_iss_prestable
+            snapshot_id: 213a2a1d56c924c3cc0f2822176695f26e5c4698

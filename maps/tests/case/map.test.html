@@ -1,0 +1,104 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <title>map.test</title>
+    <script type="text/javascript">var ns = {};</script>
+    <script type="text/javascript" src="../../src/debug.js"></script>
+    <script type="text/javascript" src="../../src/include.js"></script>
+    <script type="text/javascript">
+        
+        include.def("Util", "../../src/Util/");
+        include.def("Jsmap", "../../src/");
+
+    </script>
+    <style type="text/css">
+        #map {
+            position: absolute;
+            left: 400px;
+            top: 100px;
+            height: 400px;
+            width: 400px;
+            background-color: silver;
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body>
+    <div id="map">
+    </div>
+    <input id="plus" type="button" value="+" />
+    <input id="minus" type="button" value="-" /><br/><br/>
+    <label for="value1">Value1:</label><input id="value1" value="0"/><br/>
+    <label for="value2">Value2:</label><input id="value2" value="0"/><br/>
+    <input id="move" type="button" value="<^>"/>
+
+    <script type="text/javascript">
+        include ([
+            "Util.DomEvent", "Util.browser",
+            "Jsmap.Map", 'Jsmap.Behavior.Drag', 'Jsmap.Behavior.Scroll', 'Jsmap.Behavior.Touch', 'Jsmap.Control.Zoom',
+            "Jsmap.ImageTile.Source", "Jsmap.Layer.TileLayer", "Jsmap.Projection.GeoToPixels",
+            "Jsmap.GeoObject.Overlay", "Jsmap.GeoObject.Collection", "Jsmap.View.Point",
+            "Jsmap.MapAction.Instant"
+        ], function (ns) {
+            var map = new ns.Map({
+                container: document.getElementById("map"),
+                projection: new ns.Projection.GeoToPixels(),
+                center: [37, 55], //{type: "Point", coordinates:[37, 55]},//{lat: 55, long: 37},
+                zoom: 8
+            });
+
+            if (!ns.Util.browser.support.touchscreen) {
+                (new ns.Behavior.Scroll(map)).enable();
+                (new ns.Behavior.Drag(map)).enable();
+            } else {
+                (new ns.Behavior.Touch(map)).enable();
+            }
+
+            var tileSource = new ns.ImageTile.Source(
+                    'http://vec01.maps.yandex.ru/tiles?v=2.16.0&l=map&%c',
+                    { notFoundSrc: "http://api-maps.yandex.ru/i/0.4/404.gif" }
+                );
+
+            var layer = new ns.Layer.TileLayer(tileSource);
+            layer.addToMap(map);
+
+            var geoObject1 = new ns.GeoObject({
+                geometry: {type: "Point", coordinates:[37, 55]},
+                icon:{
+                    href: "http://api-maps.yandex.ru/i/0.4/plainstyle/placemarks/red.png"
+                }
+            });
+            var geoObjectCollection = new ns.GeoObjectCollection();
+            geoObjectCollection.add(geoObject1);
+
+            geoObjectCollection.addToMap(map);
+
+            var geoObject2 = new ns.GeoObject({
+                geometry: {type: "Point", coordinates:[37.2, 55]},
+                icon:{
+                    href: "http://api-maps.yandex.ru/i/0.4/plainstyle/placemarks/green.png"
+                }
+            });
+            geoObjectCollection.add(geoObject2);
+
+            (new ns.Control.Zoom()).addToMap(map);
+
+            ns.Util.DomEvent.add(document.getElementById("plus"), "click", function () {
+                map.setState({zoom: map.zoom + 1});
+            });
+
+            ns.Util.DomEvent.add(document.getElementById("minus"), "click", function () {
+                map.setState({zoom: map.zoom - 1});
+            });
+
+            ns.Util.DomEvent.add(document.getElementById("move"), "click", function () {
+                map.execAction(new ns.MapActions.Instant([
+                    Number(document.getElementById("value1").value),
+                    Number(document.getElementById("value2").value)
+                ], map.zoom, 500));
+            });
+        });
+    </script>
+</body>
+</html>

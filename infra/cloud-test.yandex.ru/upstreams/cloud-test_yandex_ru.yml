@@ -1,0 +1,90 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - lunatic174
+      - nanny-robot
+      groups:
+      - svc_ycsite_devops
+labels:
+  order: '10000000'
+config_mode: easy2
+---
+l7_upstream_macro:
+  by_dc_scheme:
+    balancer:
+      allow_connection_upgrade: true
+      attempts: 2
+      backend_timeout: 30s
+      connect_timeout: 70ms
+      fast_attempts: 2
+      fast_attempts_type: CONNECT_FAILURE_AND_503
+      health_check:
+        delay: 5s
+        request: 'GET /ping HTTP/1.1\nHost: balancer-cloud-test.yandex.net\n\n'
+      max_pessimized_endpoints_share: 0.2
+      max_reattempts_share: 0.15
+      retry_http_responses:
+        codes:
+        - 5xx
+        on_last_failed_retry: PROXY_RESPONSE_AS_IS
+      retry_non_idempotent: false
+    dc_balancer:
+      attempt_all_dcs: true
+      method: LOCAL_THEN_BY_DC_WEIGHT
+      weights_section_id: bygeo
+    dcs:
+    - backend_ids:
+      - cloud-www-preprod_ui_sas
+      name: sas
+    - backend_ids:
+      - cloud-www-preprod_ui_vla
+      name: myt
+    on_error:
+      static:
+        content: <!DOCTYPE html><html><head><meta charset="UTF-8"><meta http-equiv="Content-Security-Policy"
+          content="style-src 'unsafe-inline'; script-src 'unsafe-inline';"><link nonce=""
+          href="https://yastatic.net/s3/home/fonts/ys/1/text-regular.woff2" rel="preload"
+          as="font" crossorigin="anonymous"><link nonce="" href="https://yastatic.net/s3/home/fonts/ys/1/text-medium.woff2"
+          rel="preload" as="font" crossorigin="anonymous"><link nonce="" href="https://yastatic.net/s3/home/fonts/ys/1/text-bold.woff2"
+          rel="preload" as="font" crossorigin="anonymous"><title>Yandex.Cloud</title><style
+          nonce="" type="text/css">body{font-family:'YS Text','Helvetica Neue',Arial,Helvetica,sans-serif}.content{display:flex;flex-direction:column;align-items:center;margin-top:70px;padding:0
+          50px;text-align:center}.content__image{margin-bottom:40px}.content__header{margin:0
+          0 20px;font-size:32px}.content__link{font-size:17px;outline:0;color:#027bf3;text-decoration:none;cursor:pointer}.content__link:hover{color:#004080}</style></head><body><div
+          class="content"><img src="https://storage.yandexcloud.net/cloud-www-assets/common/network.svg"
+          class="content__image"><h1 class="content__header">Website under maintenance</h1><a
+          class="content__link" href="#" onclick="window.location.reload(!0)">Try
+          again</a></div></body></html>
+        status: 504
+  headers:
+  - create:
+      func: starttime
+      target: X-Start-Time
+  - create:
+      func: realip
+      target: X-Real-IP
+  - create:
+      func: realip
+      target: X-Forwarded-For-Y
+  - create:
+      func: host
+      target: X-Forwarded-Host
+  - create:
+      func: host
+      target: X-Forwarded-Server
+  - create:
+      target: X-Forwarded-Port
+      value: 443
+  - create:
+      func: scheme
+      target: X-Forwarded-Proto
+  - create:
+      func: ja3
+      keep_existing: true
+      target: X-Yandex-Ja3
+  id: cloud-test_yandex_ru
+  matcher:
+    path_re: (/.*)?
+  monitoring:
+    uuid: cloud-test_yandex_ru
+  version: 0.2.0

@@ -1,0 +1,53 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - artpetroff
+      groups: []
+labels:
+  order: '9000000'
+config_mode: easy2
+---
+l7_upstream_macro:
+  version: "0.0.2"
+  id: "yang-payments-testing_yandex-team_ru_quota_service_proxy"
+  matcher:
+    and_:
+    - host_re: "yang-payments-testing\\.yandex-team\\.ru"
+    - path_re: "/api/quota/.*"
+  headers:
+  - create:
+      target: "X-Rewrite-Path"
+      func: "url"
+  - create:
+      target: "X-Original-Url"
+      func: "location"
+  - rewrite:
+      target: "Host"
+      pattern:
+        re: "(.*)"
+      replacement: "yang-quota-sandbox.crowd.yandex-team.ru"
+  - log:
+      target_re: "Host|X-Rewrite-Path"
+  rewrite:
+  - target: "PATH"
+    pattern:
+      re: "/api/quota/(.*)"
+    replacement: "/api/%1"
+  flat_scheme:
+    balancer:
+      attempts: 3
+      fast_attempts: 3
+      max_reattempts_share: 0.3
+      max_pessimized_endpoints_share: 0.2
+      backend_timeout: "10s"
+      connect_timeout: "71ms"
+      keepalive_count: 0
+      do_not_retry_http_responses: true
+      use_https_to_endpoints: {}
+    backend_ids:
+    - "yang-payments-testing.yandex-team.ru_quota_service_proxy_backend"
+    on_error:
+      static:
+        status: 504
+        content: "Gateway timeout"

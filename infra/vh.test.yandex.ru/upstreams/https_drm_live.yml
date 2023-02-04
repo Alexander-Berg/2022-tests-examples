@@ -1,0 +1,57 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - i-sokolov
+      groups: []
+labels:
+  order: '10000000'
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      uri: '/live_drm/player(.*)'
+  modules:
+    - headers:
+        create:
+            "X-Yandex-Internal-Request": "1"
+    - rewrite:
+        actions:
+          - regexp: '/live_drm/player/([^\\.\\?]*\\.json)\\??(.*)'
+            rewrite: '/vh/discrete-player?handler=public/player/%1&%2&synchronous_scheme=1&discrete_scheme=1&srcrwr=UGC_VIDEO:vm.sas.yp-c.yandex.net:8081&srcrwr=TEMPLATER:vm.sas.yp-c.yandex.net:11111'
+          - regexp: '/live_drm/player/([^?]*)\\??(.*)'
+            rewrite: '/vh/player-html?handler=public/player/%1&%2&synchronous_scheme=1&srcrwr=UGC_VIDEO:vm.sas.yp-c.yandex.net:8081&srcrwr=TEMPLATER:vm.sas.yp-c.yandex.net:11111'
+    - exp_getter_macro:
+        _version: 3
+        service_name: vh
+        testing_mode: {}
+    - balancer2:
+        attempts: 2
+        rr: {weights_file: ./controls/traffic_control.weights}
+        backends:
+        - weight: 1
+          name: bygeo_sas
+          modules:
+          - balancer2:
+              attempts: 3
+              attempts_rate_limiter:
+                  limit: 0.5
+              return_last_5xx: true
+              status_code_blacklist: ["5xx"]
+              rr: {}
+              timeout_policy:
+                  timeout: 5s
+                  unique_policy: {}
+              generated_proxy_backends:
+                proxy_options:
+                  backend_timeout: 2500ms
+                  connect_timeout: 50ms
+                  status_code_blacklist: ["408"]
+                  keepalive_count: 1
+                  fail_on_5xx: false
+                include_backends:
+                  type: BY_ID
+                  ids:
+                    - production_vh_http_adapter_sas_new
+                    - production_vh_http_adapter_man_new
+                    - production_vh_http_adapter_vla_new

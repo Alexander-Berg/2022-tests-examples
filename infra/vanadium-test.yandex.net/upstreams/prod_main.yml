@@ -1,0 +1,47 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - splav
+      - nanny-robot
+      groups: []
+labels:
+  order: '1000000'
+config_mode: easy2
+---
+l7_upstream_macro:
+  version: 0.0.1
+  id: prod_main
+  matcher:
+    path_re: '(/.*)?'
+  monitoring:
+    uuid: prod-main
+  by_dc_scheme:
+    dc_balancer:
+      weights_section_id: bygeo
+      method: LOCAL_THEN_BY_DC_WEIGHT
+      attempts: 2
+    balancer:
+      compat:
+        method: RR
+      attempts: 1
+      max_reattempts_share: 0.15
+      fast_attempts: 2
+      do_not_retry_http_responses: true
+      retry_non_idempotent: false
+      connect_timeout: 300ms
+      backend_timeout: 60s
+    dcs:
+      - name: sas
+        backend_ids:
+          - vanadium-prod.vanadium_backend_sas
+      - name: man
+        backend_ids:
+          - vanadium-prod.vanadium_backend_man
+      - name: vla
+        backend_ids:
+          - vanadium-prod.vanadium_backend_vla
+    on_error:
+      static:
+        status: 504
+        content: 'Service unavailable'

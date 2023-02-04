@@ -1,0 +1,57 @@
+---
+instance_macro:
+  buffer: 1
+  maxconn: 2
+  workers: 3
+  log_dir: /usr/local/www/logs
+  dns_ttl: !f get_random_timedelta(300, 360, 'ms')
+  enable_matcher_map_fix: true
+  sections:
+    stats_storage:
+      ips: [127.0.0.4]
+      ports: [16100]
+      modules:
+        - report:
+            uuid: "service_total"
+            ranges: "default"
+        - http: {}
+        - errordocument:
+            status: 200
+    admin_0:
+      ips: ['::1']
+      ports: [13250]
+      http: {admin: {}}
+    admin_1:
+      ips: ['::1']
+      ports: [13251]
+      http: {admin: {}}
+    admin_2:
+      ips: ['::1']
+      ports: [13252]
+      http: {admin: {}}
+    admin_3:
+      ips: ['127.0.0.1']
+      ports: [13251]
+      http: {admin: {}}
+    addr_2:
+      ips: [!f get_ip_by_iproute("v4")]
+      ports: [13250]
+      modules:
+        - extended_http_macro:
+            port: 13250
+            report_uuid: balancer
+        - regexp:
+            include_upstreams:
+              filter: {any: true}
+              order: {label: {name: "order"}}
+    addr_1:
+      ips: [!f get_ip_by_iproute("v6")]
+      ports: [13250]
+      modules:
+        - extended_http_macro:
+            port: 13250
+            report_uuid: balancer
+        - regexp:
+            include_upstreams:
+              filter: {any: true}
+              order: {label: {name: "order"}}

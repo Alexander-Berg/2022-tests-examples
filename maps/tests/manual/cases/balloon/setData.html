@@ -1,0 +1,91 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Данные для отображения балуна
+
+Description:
+Задаём новые данные для отображения балуна.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components:
+balloon
+
+Estimated time:
+60000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась, со спаном Москвы.
+  Под контейнером с картой текст: "Expected values - true".
+  Через секунду после загрузки карты на спане карты открывается балун с содержимым "text balloon" с кнопкой закрытия.
+  Под контейнером с картой добавляются строки через одну "Ok", ошибок нет.
+
+Step:
+  Action:
+  Закрыть балун кликом в кнопку закрытия - крестик.
+
+  Expectation:
+  Балун закрылся, спан карты без изменений.
+  Под контейнером с картой добавляются строки:"event: userclose; event: close".
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var myMap = new ym.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 10,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+
+            log.info('Expected values - true');
+
+            var balloon,
+                    pos = myMap.getCenter(),
+                    contentLayout = ymaps.templateLayoutFactory.createClass('$[balloonContent]<span id="tst">$[a]$[x]</span>'),
+                    data = { a: 'test balloon' },
+                    options = { contentLayout: contentLayout, preventPanelMode: true };
+            window.balloon = balloon = new ymaps.Balloon(myMap);
+            balloon.options.set(options).setParent(myMap.options);
+
+            balloon.events.add(['close', 'userclose'], function (e) {
+                log.info('event: ' + e.get('type'))
+            });
+
+            setTimeout(function () {
+                balloon.open(pos).then(function () {
+                    validateValue(balloon.getData(), null);
+                    balloon.setData(data).then(function () {
+                        log.info('data: ');
+                        validateValue(balloon.getData().toString(), data.toString());
+                        log.info('data (html): ');
+                        validateValue(data.a, document.getElementById('tst').innerHTML);
+                    });
+                });
+            }, 1000);
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

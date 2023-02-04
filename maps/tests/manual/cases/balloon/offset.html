@@ -1,0 +1,169 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Дополнительное смещение позиции балуна
+
+Description:
+Дополнительное смещение позиции относительно точки привязки.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components:
+balloon
+
+Estimated time:
+180000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан москвы, при этом при открытии ссылки спан смещается в вверх и влево.
+  На спане карты красная круглая метка, в верхнем левом углу виден открытый балун с содержимым "text".
+  Сверху имеются кнопки "[61, 32]", "[60, 30]", "!autoPan", "autoPan", "setCenter".
+  Под блоком с картой текст: "open; autopanbegin; autopanend".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "[61, 32]". 
+
+  Expectation:
+  Происходит смена спана карты на спан Ладожского озера.
+  На спане карты фиолетовая круглая метка, в верхнем левом углу открытый балун с содержимым: "text". 
+  После начала движения спана под контейнером появляется текст autopanbegin, после завершения движения спана autopanend.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "autopan". 
+
+  Expectation:
+  Происходит перемещение спана карты, при этом в открытый балун перемещается в центр карты.
+  После начала движения спана под контейнером появляется текст autopanbegin, после завершения движения спана autopanend.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "[!autoPan]". 
+  Выполнить клик в кнопку "[60, 30]".
+
+  Expectation:
+  После нажатия кнопки "[60, 30]" со спана карты пропадает балун.
+  Круглая фиолетовая метка осталась на месте.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "[!autoPan]". 
+  Выполнить клик в кнопку "[autoPan]". 
+
+  Expectation:
+  Происходит перемещение спана карты на спан чуть левее Санкт-Петербурга, балун с содержимым "text" находится в центре карты.
+  Также на спане карты имеется круглая зеленая метка.
+  После начала движения спана под контейнером появляется текст autopanbegin, после завершения движения спана autopanend.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "setCenter". 
+
+  Expectation:
+  Происходит отзум и смена центра на спане карты. На карте спан Санкт-Петербург, в центре оказывается круглая зеленая метка.
+  Балун с содержимым "text" также находится на спане карты.
+  Также на спане видна фиолетовая круглая метка.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 9,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+
+            var placemark1 = new ymaps.Placemark([56, 37], {}, {preset: 'islands#redCircleIcon'});
+            var placemark2 = new ymaps.Placemark([60, 30], {}, {preset: 'islands#greenCircleIcon'});
+            var placemark3 = new ymaps.Placemark([61, 32], {}, {preset: 'islands#violetCircleIcon'});
+            map.geoObjects.add(placemark1).add(placemark2).add(placemark3);
+
+            var balloon,
+                    contentLayout = ymaps.templateLayoutFactory.createClass('$[balloonContent]text'),
+                    options = { contentLayout: contentLayout, closeButton: false, shadow: false };
+            window.balloon = balloon = new ymaps.Balloon(myMap);
+            balloon.options.set(options).setParent(myMap.options);
+
+            // Change autoPan duration to 800ms
+            balloon.options.set('autoPanDuration', 800);
+            balloon.options.set('offset', [-100, -100]);
+
+            // Listen balloon events
+            balloon.events.add(['open', 'close', 'userclose', 'autopanbegin', 'autopanend'], function (e) {
+                log.info(e.get('type'))
+            });
+
+            // Open balloon
+            balloon.open([56, 37], true);
+
+            // Change map coordinates according to balloon coordinates and dimensions
+            var autoPanButton = new ymaps.control.Button({data: {content: 'autoPan'}, options: {selectOnClick: false}});
+            autoPanButton.events.add('click', function () {
+                balloon.options.set('autoPanDuration', 2500);
+                balloon.options.set('autoPanMargin', 200);
+                balloon.autoPan()
+            });
+
+            // Change autoPan option: turn autoPan on, if selected
+            var autoPanOptionButton = new ymaps.control.Button({data: {content: '!autoPan'}, options: {selectOnClick: true}});
+            autoPanOptionButton.events
+                    .add('select', function () {
+                        balloon.options.set('autoPan', false)
+                    })
+                    .add('deselect', function () {
+                        balloon.options.set('autoPan', true)
+                    });
+            // Change balloon coords to [60, 30]
+            var positionButton = new ymaps.control.Button({data: {content: '[60, 30]'}, options: {selectOnClick: false}});
+            positionButton.events.add('click', function () {
+                balloon.setPosition([60, 30])
+            });
+
+            // Change balloon coords to [61, 32]
+            var anotherPositionButton = new ymaps.control.Button({data: {content: '[61, 32]'}, options: {selectOnClick: false}});
+            anotherPositionButton.events.add('click', function () {
+                balloon.setPosition([61, 32])
+            });
+
+            // Change map center and zoom
+            var centerButton = new ymaps.control.Button({data: {content: 'setCenter'}, options: {selectOnClick: false}});
+            centerButton.events.add('click', function () {
+                myMap.setCenter([60, 30], 7)
+            });
+
+            myMap.controls
+                    .add(autoPanButton)
+                    .add(autoPanOptionButton)
+                    .add(positionButton)
+                    .add(anotherPositionButton)
+                    .add(centerButton, {float: 'right'});
+        }
+
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

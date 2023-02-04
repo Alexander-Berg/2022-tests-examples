@@ -1,0 +1,154 @@
+<!doctype html>
+<!--
+Title:
+Контрол: контрол измерителя расстояний без масштабной линейки
+
+Description:
+Проверка работы контрола измерителя расстояний без масштабной линейки.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+control
+
+Estimated time:
+180000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась корректно. 
+  На карте спан водной поверхности, на спане снизу справа контрол измерителя расстояний (без масштабной линейки).
+  Сверху слева имеется кнопка "distance".
+
+Step:
+  Action:
+  Выполнить клик в контрол измерителя расстояний.
+
+  Expectation:
+  Контрол измерителя расстояний становится активными, окрашен желтым.
+  
+Step:
+  Action:
+  Выполнить клик в спан карты.
+
+  Expectation:
+  На спане карты в месте клика появляется серая метка измерителя расстояний.
+
+Step:
+  Action:
+  Выполнить клик в спан карты на удалении от первой метки.
+
+  Expectation:
+  На спане карты в месте клика появляется серая круглая метка измерителя расстояний.
+  Между метками появляется немного изогнутая серая линия измерителя, на последней метке появляется балун с расстоянием между метками.
+  Спан карты может сместиться для открытия балуна с расстоянием на метке измерителя.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "distance".
+
+  Expectation:
+  Спан карты без изменений.
+  Под контейнером с картой появляется блок информации getDistance(): приблизительное расстояние общее; getDistance(0, 1): приблизительное расстояние между первыми двумя метками. 
+  Проверить соответствие информации в логах и данных в балуне метки измерителя.
+
+Step:
+  Action:
+  Выполнить клик в спан карты на удалении от первых двух меток.
+
+  Expectation:
+  На спане карты в месте клика появляется еще одна метка измерителя расстояний, метка соединяется прямой серой линией с предыдущей меткой.
+  На предыдущей метке балун с расстоянием пропадает, на выставленной метке появляется балун с расстоянием. 
+
+Step:
+  Action:
+  Выполнить клик в кнопку "distance".
+
+  Expectation:
+  Спан карты без изменений.
+  Под контейнером с картой появляется блок информации getDistance(): приблизительное расстояние общее; getDistance(0, 1): приблизительное расстояние между первыми двумя метками. 
+  Проверить соответствие информации в логах и данных в балуне метки измерителя.
+
+Step:
+  Action:
+  Выполнить максимальный отзум скролом мыши.
+
+  Expectation:
+  Метки, линия измерителя и балун с расстоянием не пропадают.
+
+Step:
+  Action:
+  Выполнить максимальный призум скролом мыши к области с меткой с балуном с расстоянием между метками.
+
+  Expectation:
+  В масштабной линейке возле контрола измерителя расстояний значение 20м(значение в линейке корректно менялось).
+  Метка, линия измерителя и балун с расстоянием не пропадают.  
+-->
+<html>
+<head>
+    <title>API 2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type="text/javascript">
+        Api('init');
+        function init(ym) {
+            var map = myMap = new ym.Map('map', {
+                        center: [34.8006, -37.5181],
+                        zoom: 5,
+                        controls: ["fullscreenControl"]
+                    }),
+                    log = new Log();
+
+            addGrid(map);
+
+            map.controls.add(new ym.control.RulerControl({
+                options: {
+                    scaleLine: false
+                }
+            }), {
+                floatIndex: 0,
+                float: 'left'
+            });
+
+            var distanceButton = new ym.control.Button({data: {content: 'distance'}, options: {selectOnClick: false}});
+            distanceButton.events.add('click', function () {
+                var ruler = map.behaviors.get('ruler');
+                log.info('getDistance(): ' + ruler.geometry.getDistance());
+                setTimeout(function () {
+                    try {
+                        log.info('getDistance(0, 1) : ' + ruler.geometry.getDistance(0, 1));
+                    } catch (err) {
+                        log.info(err.message)
+                    }
+                }, 1000);
+                setTimeout(function () {
+                    try {
+                        log.info('getDistance(2, 4) : ' + ruler.geometry.getDistance(2, 4));
+                    } catch (err) {
+                        log.info(err.message)
+                    }
+                }, 1000);
+                setTimeout(function () {
+                    try {
+                        log.info('getDistance(20, 21) : ' + ruler.geometry.getDistance(20, 21));
+                    } catch (err) {
+                        log.info(err.message)
+                    }
+                }, 1000)
+            });
+            map.controls.add(distanceButton)
+        }
+
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;">
+</div>
+</body>
+</html>

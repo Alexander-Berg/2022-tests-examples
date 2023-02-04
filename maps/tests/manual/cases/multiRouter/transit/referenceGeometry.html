@@ -1,0 +1,183 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Мультимаршрут-ОТ: геометрия меток в маршруте
+
+Description:
+Проверка геометрии меток в мультимаршруте ОТ. 
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+multiRouter
+
+Estimated time:
+180000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  При загрузке первоначально загружается карта со спаном Москвы, затем спан меняется на спан СПб с мультимаршрутом из 4 точек(A,B,C,D).
+  В контейнере контрол фулскрин, сверху кнопки "segments", "paths", "way", "routes".
+  Маршрут на спане карты - на общественном траснпорте, имеются метки транспорта(метро, автобус, маршрутка).
+
+Step:
+  Action:
+  Выполнить клик в кнопку "paths".
+
+  Expectation:
+  Маршрутная нитка перекрашивается, и делится на три участка: участок "A"-"B", участок "B"-"С", участок "С"-"D", участки выделены разными цветами. 
+
+Step:
+  Action:
+  Выполнить клик в кнопку "segments".
+
+  Expectation:
+  Сегменты маршрутной нитки перекрашиваются в разноцветные цвета, под контейнером с картой появляются 3 блока маршрутных сегментов, каждый сегмент имеет строку координат точек. 
+
+Step:
+  Action:
+  Выполнить клик в кнопку "way".
+
+  Expectation:
+  Буквы (A,B,C,D) в маршрутных метках перекрашиваются в разноцветные цвета, маршрут на спане карты без изменений. 
+  
+Step:
+  Action:
+  Выполнить клик в кнопку "routes".
+
+  Expectation:
+  Спан карты смещается, на спане появялется маршрут на общественном транспорте "A"(река Каменка), "B"(Пискаревский проспект 2к2Щ), имеется основная маршрутная нитка и альтеративные, метки транспорта. 
+  Маршрутные метки "A", "B" имеют другой пресет - у меток нет заливки.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            //TODO: написать тест
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 10,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+
+            var multiRoute = new ymaps.multiRouter.MultiRoute({
+                referencePoints: ['питер, мебельная 35', 'питер, невский 124', 'питер, степана разина 8',
+                    'питер, бухарестская 120'],
+                params: {
+                    routingMode: 'masstransit'
+                }
+            }, {
+                boundsAutoApply: true,
+                wayPointDraggable: true
+            });
+            map.geoObjects.add(multiRoute);
+
+            var routes, paths, segments, transport, transfer, walk;
+
+            setTimeout(function() {
+                routes = multiRoute.getRoutes();
+                paths = routes.get(0).getPaths();
+                segments = paths.get(2).getSegments();
+                transport = segments.get(1);
+                transfer = segments.get(2);
+                walk = segments.get(0);
+            }, 2000);
+
+            var colorPathsButton = new ymaps.control.Button('paths');
+            colorPathsButton.events.add('click', function() {
+                var paths = multiRoute.getActiveRoute().getPaths();
+                var i = 0;
+                paths.each(function(path) {
+                    path.options.set('strokeColor', getRandomColor());
+                });
+            });
+
+            var colorSegmentsButton = new ymaps.control.Button('segments');
+            colorSegmentsButton.events.add('click', function() {
+                var paths = multiRoute.getActiveRoute().getPaths();
+                var i = 0;
+                paths.each(function(path) {
+                    var segments = path.getSegments();
+                    var i = 0;
+                    log.info('Блок маршрутных сегментов:');
+                    segments.each(function(segment) {
+                        segment.options.set('strokeColor', getRandomColor());
+                        log.info('Cегмент ' + (i+1) + ': ' + segment.geometry.getCoordinates());
+                        i++;
+                    });
+                });
+            });
+
+            var colorWayButton = new ymaps.control.Button('way');
+            colorWayButton.events.add('click', function() {
+                var ways = multiRoute.getWayPoints();
+                var i = 0;
+                ways.each(function(point) {
+                    point.options.set('iconColor', getRandomColor());
+                });
+            });
+
+            var colorRoutesButton = new ymaps.control.Button('routes');
+            colorRoutesButton.events.add('click', function() {
+                var multiRoute1 = new ymaps.multiRouter.MultiRoute({
+                    referencePoints: ['питер, река каменка', 'питер, пискаревский 2к2'],
+                    params: {
+                        routingMode: 'masstransit'
+                    }
+                }, {
+                    boundsAutoApply: true,
+                    wayPointDraggable: true,
+                    preset: "islands#multiRouterSmall"
+                });
+                map.geoObjects.add(multiRoute1);
+                setTimeout(function() {
+                    var routes = multiRoute1.getRoutes();
+                    var i = 0;
+                    routes.each(function(route) {
+                        route.options.set('strokeColor', getRandomColor())
+                    });
+                }, 500);
+
+            });
+
+            map.controls
+                    .add(colorRoutesButton)
+                    .add(colorWayButton)
+                    .add(colorPathsButton)
+                    .add(colorSegmentsButton);
+
+            function getRandomColor () {
+                return [
+                    '#',
+                    (55 + Math.round(Math.random() * 200)).toString(16),
+                    (55 + Math.round(Math.random() * 200)).toString(16),
+                    (55 + Math.round(Math.random() * 200)).toString(16)
+                ].join('')
+            }
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

@@ -1,0 +1,48 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - comunodi
+      groups: []
+labels:
+  order: 049
+---
+#{"order": "049"}
+regexp_section:
+  matcher:
+    match_or:
+      - match_fsm:
+          uri: '/subscribers/api-v1/count'
+      - match_fsm:
+          uri: '/counters/.*'
+  modules:
+    - rewrite:
+        actions:
+          - regexp: '/subscribers/(.*)'
+            rewrite: '/%1'
+          - regexp: '/counters/(.*)'
+            rewrite: '/%1'
+    - report:
+        uuid: 'subscribers-api'
+        ranges: 'default'
+    - balancer2:
+        rr: {}
+        attempts: 1
+        fast_attempts: 3
+        fast_503: true
+        retry_policy:
+          unique_policy: {}
+        return_last_5xx: true
+        status_code_blacklist: ["503"]
+        generated_proxy_backends:
+          proxy_options:
+            resolve_timeout: '10ms'
+            connect_timeout: '200ms'
+            backend_timeout: '60s'
+            keepalive_count: 0
+            need_resolve: false
+            fail_on_5xx: false
+            buffering: false
+          include_backends:
+            type: BY_ID
+            ids: [zen-subscribers-default-vla, zen-subscribers-default-sas]

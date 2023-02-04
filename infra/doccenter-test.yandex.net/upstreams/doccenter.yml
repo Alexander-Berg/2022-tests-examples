@@ -1,0 +1,64 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - nikshel
+      groups: []
+labels:
+  order: '10000000'
+---
+regexp_section:
+  matcher: 
+    match_fsm:
+      host: \\.doccenter-test\\.yandex\\.
+      surround: true
+  
+  modules:
+    - report: {uuid: doccenter, ranges: default}
+    - headers:
+        create_func_weak:
+          X-Request-Id: reqid
+    - balancer2:
+        attempts: 2
+        timeout_policy:
+          timeout: 10s
+          unique_policy: {}
+          
+        rr: {}
+        backends:
+          - name: doccenter_myt
+            weight: 1
+            modules:
+              - report: {uuid: doccenter_myt, ranges: default}
+              - balancer2:
+                  attempts: 1
+                  weighted2: {}
+                  generated_proxy_backends:
+                    proxy_options:
+                      backend_timeout: 10s
+                      connect_timeout: 100ms
+                      keepalive_count: 1
+                      fail_on_5xx: false
+                    include_backends:
+                      type: BY_ID
+                      ids: [doccenter_test_myt]
+          - name: doccenter_sas
+            weight: 1
+            modules:
+              - report: {uuid: doccenter_sas, ranges: default}
+              - balancer2:
+                  attempts: 1
+                  weighted2: {}
+                  generated_proxy_backends:
+                    proxy_options:
+                      backend_timeout: 10s
+                      connect_timeout: 100ms
+                      keepalive_count: 1
+                      fail_on_5xx: true
+                    include_backends:
+                      type: BY_ID
+                      ids: [doccenter_test_sas]
+        on_error:
+          errordocument:
+            status: 502
+            content: "Backend unavailable"

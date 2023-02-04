@@ -1,0 +1,128 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - librarian
+      groups: []
+labels:
+  order: '00100000'
+---
+regexp_section:
+    matcher:
+        match_and:
+            - match_or:
+                - match_fsm:
+                    host: 'files.messenger.test.yandex-team.ru'
+                - match_fsm:
+                    host: 'files.messenger.test.yandex.(com|ru|net)'
+                - match_fsm:
+                    host: 'files.messenger.test.yandex-team.ru:443'
+                - match_fsm:
+                    host: 'files.messenger.test.yandex.(com|ru|net):443'
+                - match_fsm:
+                    host: (.*\\.)?yandex\\.(ru|com\\.tr|kz|ua|by|az|com\\.am|com\\.ge|co\\.il|kg|lt|lv|md|tj|tm|uz|fr|ee|com)
+                - match_fsm:
+                    host: (.*\\.)?yandex\\.(ru|com\\.tr|kz|ua|by|az|com\\.am|com\\.ge|co\\.il|kg|lt|lv|md|tj|tm|uz|fr|ee|com):443
+            - match_or:
+                - match_fsm:
+                    uri: '/(api|file_shortterm|voice_upload|poll_results|change_chat_avatar|upload_remote_image|chat_avatar_upload)(/.*)?'
+                - match_fsm:
+                    uri: '/messenger/api/files/(api|file_shortterm|voice_upload|poll_results|change_chat_avatar|upload_remote_image|chat_avatar_upload)(/.*)?'
+                - match_fsm:
+                    uri: '/messenger/api/alpha/files/(api|file_shortterm|voice_upload|poll_results|change_chat_avatar|upload_remote_image|chat_avatar_upload)(/.*)?'
+    modules:
+        - rewrite:
+            actions:
+                - regexp: '/messenger/api/testing/files/(.*)?'
+                  rewrite: '/%1'
+        - rewrite:
+            actions:
+                - regexp: '/messenger/api/files/(.*)?'
+                  rewrite: '/%1'
+        - report: {ranges: default, uuid: files2}
+        - threshold:
+            lo_bytes: 307200
+            hi_bytes: 716800
+            pass_timeout: 10s
+            recv_timeout: 1s
+        - shared:
+            uuid: files2
+        - stats_eater: {}
+        - balancer2:
+            attempts: 2
+            rr: {weights_file: ./controls/traffic_control.weights}
+            backends:
+                - weight: 1
+                  name: files_man
+                  modules:
+                    - report: {ranges: default, uuid: files2_requests_to_man}
+                    - balancer2:
+                        attempts: 2
+                        connection_attempts: 5
+                        attempts_rate_limiter:
+                            limit: 0.2 
+                        active:
+                            delay: '5s'
+                            request: 'GET /admin?action=ping&from=slb HTTP/1.1\r\nHost: l7.mssngr.search.yandex.net\r\n\r\n'
+                        generated_proxy_backends:
+                            proxy_options:
+                                backend_timeout: 3000ms
+                                connect_timeout: 50ms
+                                keepalive_count: 5
+                                keepalive_timeout: "60s"
+                                status_code_blacklist_exceptions: ["503"]
+                            include_backends:
+                                type: BY_ID
+                                ids: [files2_man]
+                - weight: 1
+                  name: files_vla
+                  modules:
+                    - report: {ranges: default, uuid: files2_requests_to_vla}
+                    - balancer2:
+                        attempts: 2
+                        connection_attempts: 5
+                        attempts_rate_limiter:
+                            limit: 0.2 
+                        active:
+                            delay: '5s'
+                            request: 'GET /admin?action=ping&from=slb HTTP/1.1\r\nHost: l7.mssngr.search.yandex.net\r\n\r\n'
+                        generated_proxy_backends:
+                            proxy_options:
+                                backend_timeout: 3000ms
+                                connect_timeout: 50ms
+                                keepalive_count: 5
+                                keepalive_timeout: "60s"
+                                status_code_blacklist_exceptions: ["503"]
+                            include_backends:
+                                type: BY_ID
+                                ids: [files2_vla]
+                - weight: 1
+                  name: files_sas
+                  modules:
+                    - report: {ranges: default, uuid: files2_requests_to_sas}
+                    - balancer2:
+                        attempts: 2
+                        connection_attempts: 5
+                        attempts_rate_limiter:
+                            limit: 0.2 
+                        active:
+                            delay: '5s'
+                            request: 'GET /admin?action=ping&from=slb HTTP/1.1\r\nHost: l7.mssngr.search.yandex.net\r\n\r\n'
+                        generated_proxy_backends:
+                            proxy_options:
+                                backend_timeout: 3000ms
+                                connect_timeout: 50ms
+                                keepalive_count: 5
+                                keepalive_timeout: "60s"
+                                status_code_blacklist_exceptions: ["503"]
+                            include_backends:
+                                type: BY_ID
+                                ids: [files2_sas]
+                - weight: -1
+                  name: files_devnull
+                  modules:
+                    - report: { ranges: default, uuid: requests_to_devnull}
+                    - report: {ranges: default, uuid: files2_requests_to_devnull}
+                    - errordocument:
+                        status: 200
+        

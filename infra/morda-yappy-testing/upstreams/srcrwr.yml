@@ -1,0 +1,109 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - core
+      groups: []
+labels:
+  order: '10000000'
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      host: '.*'
+  modules:
+    - report:
+        uuid: srcrwr
+        ranges: default
+    - log_headers:
+        name_re: 'X-Req-Id'
+    - headers:
+        # с http балансер редиректит до бработки апстрима,
+        # поэтому здесь можно добавить безусловно
+        create:
+          X-Yandex-Https: 'yes'
+        # Копируем оригинальный заголовок, чтобы вернуть его после rpcrewrite
+        copy:
+          Host: X-Original-Host
+    - rewrite:
+        actions:
+          # удаляем параметр l7rwr чтобы нельзя было перенаправить запрос извне
+          - regexp: '([?&])l7rwr=[^&]+'
+            global: true
+            rewrite: '%1'
+          # Переписываем Host, удаляя префиксы особенных морд
+          - header_name: Host
+            regexp: '^(any|hw|op|m|pda|phone|tel|wap|www)-(.+)$'
+            rewrite: '%2'
+    - log_headers:
+        name_re: Host|Transfer-Encoding
+    - rpcrewrite:
+        host: 'bolver-new.n.yandex-team.ru'
+        url: '/proxy'
+        dry_run: false
+        rpc_success_header: 'X-Metabalancer-Answered'
+        rpc:
+          modules:
+            - headers:
+                create:
+                  X-Yandex-Bolver-Reply-404: '1'
+            - balancer2:
+                rr: {}
+                attempts: 3
+                attempts_rate_limiter:
+                  limit: 0.15
+                connection_attempts: !f count_backends()
+                simple_policy: {}
+                generated_proxy_backends:
+                  proxy_options:
+                    backend_timeout: 10s
+                    connect_timeout: 150ms
+                  include_backends:
+                    type: BY_ID
+                    ids: [bolver]
+        on_rpc_error:
+          modules:
+            - errordocument:
+                status: 500
+                content: "Rpcrewrite failed"
+    - headers:
+        # возвращаем обратно оригинальный хост
+        copy:
+          X-Original-Host: Host
+    - log_headers:
+        name_re: 'X-Yandex-Yappy-Beta|X-Metabalancer-Answered'
+    - log_headers:
+        name_re: 'Host'
+
+    - headers:
+        # чтобы работали srcrwr
+        create:
+          X-Yandex-Internal-Request: '1'
+        delete: 'X-Original-Host'
+    - log_headers:
+        name_re: X-Yandex-ExpBoxes
+    - rewrite:
+        actions:
+          # отрезаем добавлены стокером параметры, морде про них знать не надо
+          - regexp: '([?&])(l7rwr|flag|no_bolver)=[^&]+'
+            global: true
+            rewrite: '%1'
+          - regexp: '([?&])&+'
+            rewrite: '%1'
+    - balancer2:
+        rr: {}
+        simple_policy: {}
+        attempts: 1
+        attempts_rate_limiter:
+          limit: 1
+        connection_attempts: 2
+        return_last_5xx: true
+        status_code_blacklist:
+          - 5xx
+        generated_proxy_backends:
+            proxy_options:
+              fail_on_5xx: false
+              backend_timeout: 30s
+            include_backends:
+              type: BY_ID
+              ids: [portal-hamster]

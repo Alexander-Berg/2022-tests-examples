@@ -1,0 +1,192 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Панель cдвиг карты при отображении балуна.
+
+Description:
+Проверка работы функции сдвига карты для отображения открывшегося балуна.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components:
+balloon
+
+Estimated time:
+120000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан Москвы.
+  Сверху имеются кнопки "openClose", "setCenter", "[61, 32]", "[60, 30]", "[!autoPan]", "[autoPan]".
+  Под кнопками "openClose", "setCenter" видет открытый балун.
+  Под инструкцией теста под контейнером с картой текст open; autopanbegin; autopanend.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "autoPan". 
+
+  Expectation:
+  Происходит смещение спана карты для полного отображения балуна, балун центрируется на спане карты. Содержимое балуна "text".
+  После начала движения спана под контейнером появляется текст autopanbegin, после завершения движения спана autopanend.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "[61, 32]". 
+
+  Expectation:
+  Происходит перемещение спана карты на спан Ладожского озера, балун с содержимым "text" находится в центре карты.
+  После начала движения спана под контейнером появляется текст autopanbegin, после завершения движения спана autopanend.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "[!autoPan]". 
+  Выполнить клик в кнопку "[60, 30]".
+
+  Expectation:
+  После нажатия кнопки "[60, 30]" со спана карты пропадает балун, под контейнером появляется текст balloon.setPosition() fulfilled: true; balloon.setPosition() rejected: false.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "[!autoPan]". 
+  Выполнить клик в кнопку "[autoPan]". 
+
+  Expectation:
+  Происходит перемещение спана карты на спан Ленинградской области, балун с содержимым "text" находится в нижнем левом углу карты.
+  После начала движения спана под контейнером появляется текст autopanbegin, после завершения движения спана autopanend.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "setCenter". 
+
+  Expectation:
+  Происходит отзум и смена центра на спане карты. На карте спан Санкт-Петербург, в центре открыт балун с содержимым "text".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "openClose". 
+
+  Expectation:
+  Балун пропадает со спана карты, происходит смещение спана ближе на спан с городами Вышний Волочек, Тверь.
+  Под контейнером последовательно появляется текст autopanbegin; close; balloon.open() fulfilled: false; balloon.open() rejected: true; autopanend.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var myMap = new ym.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 9,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl', 'typeSelector']
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+            __log__("Проверяем срабатывание автопана, балун полностью виден");
+            __log__("'[61, 32]' меняем положение балуна, проверяем срабатывание автопана");
+            __log__("'!autopan' отключаем автопан, '[60, 30]' меняем положение балуна, проверяем несрабатывание автопана");
+            __log__("'autopan' проверяем метод автопан, autoPanMargin = 200, autoPanDuration = 2500");
+            __log__("'setCenter' изменяем центр и зум карты");
+            __log__("'openClose' открытие и закрытие балуна без паузы");
+            __log__("У балуна отсутствует крестик закрытия");
+            var balloon,
+                    contentLayout = ymaps.templateLayoutFactory.createClass('$[balloonContent]text'),
+                    options = { contentLayout: contentLayout, closeButton: false, shadow: false };
+            window.balloon = balloon = new ymaps.Balloon(myMap);
+            balloon.options.set(options).setParent(myMap.options);
+
+            // Change autoPan duration to 800ms
+            balloon.options.set('autoPanDuration', 800);
+
+            // Listen balloon events
+            balloon.events.add(['open', 'close', 'userclose', 'autopanbegin', 'autopanend'], function (e) {
+                log.info(e.get('type'))
+            });
+
+            // Open balloon вернуть назад когда определимся с багом openClose
+            balloon.open([56, 37], true);
+
+            // Change map coordinates according to balloon coordinates and dimensions
+            var autoPanButton = new ymaps.control.Button({data: {content: 'autoPan'}, options: {selectOnClick: true}});
+            autoPanButton.events.add('select', function () {
+                balloon.options.set('autoPanDuration', 2500);
+                balloon.options.set('autoPanMargin', 200);
+                balloon.autoPan()
+            }).add('deselect', function () {
+                balloon.options.set('autoPanDuration', 500);
+                balloon.options.set('autoPanMargin', 0);
+                balloon.autoPan()
+            });
+
+            // Change autoPan option: turn autoPan on, if selected
+            var autoPanOptionButton = new ymaps.control.Button({data: {content: '!autoPan'}, options: {selectOnClick: true}});
+            autoPanOptionButton.events
+                    .add('select', function () {
+                        balloon.options.set('autoPan', false)
+                    })
+                    .add('deselect', function () {
+                        balloon.options.set('autoPan', true)
+                    });
+            // Change balloon coords to [60, 30]
+            var positionButton = new ymaps.control.Button({data: {content: '[60, 30]'}, options: {selectOnClick: false}});
+            positionButton.events.add('click', function () {
+
+                var promise =
+                        balloon.setPosition([60, 30]);
+                promise.always(function () {
+                    __log__(promise);
+                    __log__('balloon.setPosition() fulfilled: ' + promise.isFulfilled());
+                    __log__('balloon.setPosition() rejected: ' + promise.isRejected());
+                });
+            });
+
+            // Change balloon coords to [61, 32]
+            var anotherPositionButton = new ymaps.control.Button({data: {content: '[61, 32]'}, options: {selectOnClick: false}});
+            anotherPositionButton.events.add('click', function () {
+                balloon.setPosition([61, 32])
+            });
+
+            // Change map center and zoom
+            var centerButton = new ymaps.control.Button({data: {content: 'setCenter'}, options: {selectOnClick: false}});
+            centerButton.events.add('click', function () {
+                myMap.setCenter([60, 30], 7)
+            });
+            var openCloseButton = new ymaps.control.Button({data: {content: 'openClose'}, options: {selectOnClick: false}});
+            openCloseButton.events.add('click', function () {
+                var promise = balloon.open([56, 37], true);
+                balloon.close();
+                promise.always(function () {
+                    log.info('balloon.open() fulfilled: ' + promise.isFulfilled());
+                    log.info('balloon.open() rejected: ' + promise.isRejected());
+                });
+            });
+            myMap.controls.add(openCloseButton);
+            myMap.controls
+                    .add(autoPanButton)
+                    .add(autoPanOptionButton)
+                    .add(positionButton)
+                    .add(anotherPositionButton)
+                    .add(centerButton, {float: 'left'});
+        }
+
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

@@ -1,0 +1,191 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Карта: опция остановки карты на дробных значениях зума с другими методами
+
+Description:
+Проверка работы опции остановки карты на дробных значениях зума с другими методами.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+map
+
+Estimated time:
+300000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+  
+  Expectation:
+  Карта отобразилась корректно со спаном Москвы.
+  Сверху имеются кнопки "setCenter", "setZoom", "setBounds", "avoid".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "avoid", затем клик в "setZoom". 
+  
+  Expectation:
+  Под контейнером с картой появляются строка с измененный значением зума и текущим: "changing zoom to: 10.4; actual zoom: 10".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "avoid", затем клик в "setZoom". 
+  
+  Expectation:
+  Происходит призум спана карты.
+  Под контейнером с картой строки: "changing zoom to: 10.4; actual zoom: 10.4".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "avoid", затем клик в "setZoom". 
+  
+  Expectation:
+  Происходит призум спана карты.
+  Под контейнером с картой строки: "changing zoom to: 10.8; actual zoom: 11".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "avoid", затем клик в "setCenter". 
+  
+  Expectation:
+  Происходит смена спана карты на спан Невской губы, на спане часть синего прямоугольника.
+  Под контейнером с картой строки: "changing center to: [60, 30], 110.2; actual center: 59.999999999990976,29.999999999999993,11.2".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "avoid", затем клик в "setCenter". 
+  
+  Expectation:
+  Происходит небольшой отзум спана карты, изображение становится четче.
+  Под контейнером с картой строки: "changing center to: [60, 30], 11.20.2; actual center: 59.999999999990976,29.999999999999964,11".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "avoid", затем клик в "setBounds". 
+  
+  Expectation:
+  Происходит cмена спана карты на спан Королева в прямоугольной синей рамке.
+  Под контейнером с картой строки: "actual center: 59.999999999990976,29.999999999999964,11; 12.00000000559358".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "setBounds". 
+  
+  Expectation:
+  Происходит cмена спана карты на спан Новгородской области в прямоугольной синей рамке(изображение не четкое).
+  Под контейнером с картой строки: "actual center: 59.999999999990976,29.999999999999964,11; 12.00000000559358; 6.32192809488736".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "avoid", затем клик в "setBounds". 
+  
+  Expectation:
+  Происходит cмена спана карты на спан Королева в прямоугольной синей рамке.
+  Под контейнером с картой строка: "12".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "setBounds". 
+  
+  Expectation:
+  Происходит cмена спана карты на спан Новгородской области в прямоугольной синей рамке(изображение четкое).
+  Под контейнером с картой строка: "6".
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 10,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl', 'zoomControl']
+            }, {
+                //avoidFractionalZoom: false
+            });
+
+            addGrid(map);
+            var log = new Log();
+
+            var avoidButton = new ymaps.control.Button({data: {content: 'avoid'}, options: {selectOnClick: true}});
+            var setBoundsButton = new ymaps.control.Button({data: {content: 'setBounds'}, options: {selectOnClick: true}});
+            var setZoomButton = new ymaps.control.Button({data: {content: 'setZoom'}, options: {selectOnClick: false}});
+            var setCenterButton = new ymaps.control.Button({data: {content: 'setCenter'}, options: {selectOnClick: false}});
+
+            avoidButton.events
+                    .add('select', function () {
+                        myMap.options.set('avoidFractionalZoom', true);
+                    })
+                    .add('deselect', function () {
+                        myMap.options.set('avoidFractionalZoom', false);
+                    });
+
+            setBoundsButton.events
+                    .add('select', function () {
+                        myMap.setBounds([
+                            [55.973805634187, 37.81389007567776],
+                            [55.87510965298843, 37.95396575927215]
+                        ], {preciseZoom: true});
+                        __log__(map.getZoom())
+                    })
+                    .add('deselect', function () {
+                        myMap.setBounds([
+                            [56, 30],
+                            [60, 39]
+                        ], {preciseZoom: true});
+                        __log__(map.getZoom())
+                    });
+
+            setZoomButton.events.add('click', function () {
+                var zoom = map.getZoom() + 0.4;
+                __log__('changing zoom to: ' + zoom);
+                map.setZoom(zoom);
+                __log__('actual zoom: ' + map.getZoom())
+            });
+
+            setCenterButton.events.add('click', function () {
+                __log__('changing center to: ' + '[60, 30], ' + map.getZoom() + 0.2);
+                map.setCenter([60, 30], map.getZoom() + 0.2);
+                __log__('actual center: ' + map.getCenter() + ',' + map.getZoom());
+            });
+
+            myMap.controls
+                    .add(avoidButton)
+                    .add(setBoundsButton)
+                    .add(setZoomButton)
+                    .add(setCenterButton);
+
+            var largeRectangle = new ymaps.Rectangle([
+                [56, 39],
+                [60, 30]
+            ], {}, {strokeWidth: 5, fillOpacity: 0});
+
+            var rectangle = new ymaps.Rectangle([
+                [55.973805634187, 37.81389007567776],
+                [55.87510965298843, 37.95396575927215]
+            ], {}, {strokeWidth: 5, fillOpacity: 0});
+
+            myMap.geoObjects
+                    .add(rectangle)
+                    .add(largeRectangle);
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="width: 512px; height: 512px"></div>
+</body>
+</html>

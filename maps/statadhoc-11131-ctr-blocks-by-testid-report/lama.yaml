@@ -1,0 +1,73 @@
+owners:
+  - name: maps-analytics-web
+
+reactor:
+  artifacts:
+  - path: /maps/analytics/legacy/nile/statadhoc-11131-ctr-blocks-by-testid-report/byak/1d
+    project: /maps/analytics/Project
+    ttl_days: 90
+    type: YT_PATH
+  - path: /maps/analytics/legacy/nile/statadhoc-11131-ctr-blocks-by-testid-report/touch/1d
+    project: /maps/analytics/Project
+    ttl_days: 90
+    type: YT_PATH
+  reactions:
+  - path: /maps/analytics/legacy/nile/statadhoc-11131-ctr-blocks-by-testid-report/daily
+    project: /maps/analytics/Project
+    ttl_days: 90
+    trigger:
+      type: ARTIFACTS
+      refs:
+      - /maps/analytics/logs/cooked-bebr-log/desktop-maps/clean/1d
+      - /maps/analytics/logs/cooked-bebr-log/desktop-maps/fraud/1d
+      - /maps/analytics/logs/cooked-bebr-log/touch-maps/clean/1d
+      - /maps/analytics/logs/cooked-bebr-log/touch-maps/fraud/1d
+      relationship: USER_TIMESTAMP_EQUALITY
+    parameters:
+      workflow_id: 737b9634-4e93-49c8-a92c-82e49f98388c
+      workflow_owner: robot-maps-analytics
+      retry_policy:
+        type: UNIFORM
+        delay: 600000
+        retries: 1
+        result_cloning_policy: DO_NOT_CLONE
+      quota: geo-analytics
+    expressions:
+      globals: |-
+        global triggered = a'/maps/analytics/logs/cooked-bebr-log/desktop-maps/clean/1d'.triggered;
+        global date = triggered.data.path.splitToArtifact("/")[7];
+      on_success: |-
+        a'/maps/analytics/legacy/nile/statadhoc-11131-ctr-blocks-by-testid-report/byak/1d'.instantiate(
+          Datum.yt("hahn", "//home/maps/analytics/legacy/nile/statadhoc-11131-ctr-blocks-by-testid-report/daily/byak/" + date),
+          triggered.userTime.truncatedToDays()
+        );
+        a'/maps/analytics/legacy/nile/statadhoc-11131-ctr-blocks-by-testid-report/touch/1d'.instantiate(
+          Datum.yt("hahn", "//home/maps/analytics/legacy/nile/statadhoc-11131-ctr-blocks-by-testid-report/daily/touch/" + date),
+          triggered.userTime.truncatedToDays()
+        );
+    inputs:
+      globals:
+        target:
+          type: CONST
+          value: maps/analytics/legacy/nile/statadhoc-11131-ctr-blocks-by-testid-report
+        date:
+          type: VAR
+          value: date
+          value_type: PRIMITIVE_STRING
+        use-yql:
+          type: CONST
+          value: true
+
+solomon:
+  project_id: maps-analytics
+  alerts:
+  - preset: solomon/alerts/reaction-failure
+    preset_options:
+      reaction_path: /maps/analytics/legacy/nile/statadhoc-11131-ctr-blocks-by-testid-report/daily
+      solomon_graph_id: reactor-reactions-failures
+      channel_id: MapsAnalyticsMonitorings
+
+juggler:
+  checks:
+  - service: /maps/analytics/legacy/nile/statadhoc-11131-ctr-blocks-by-testid-report/daily_failure
+    preset: projects/maps-analytics/juggler/check

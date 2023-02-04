@@ -1,0 +1,71 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - robot-tap
+      groups: []
+labels:
+  order: '1000'
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      host: miniapp-api\\.tap-rc\\.yandex\\.net
+  modules:
+    - report:
+        uuid: 'services'
+        ranges: 'default'
+    - report:
+        uuid: 'sampleapp-api-release'
+        ranges: 'default'
+    - response_headers:
+        create:
+          X-Frame-Options: DENY
+          X-Content-Type-Options: nosniff
+          X-XSS-Protection: 1; mode=block
+    - balancer2:
+        attempts: !f count_backends()
+        rr: {weights_file: ./controls/traffic_control.weights}
+        backends:
+          - weight: 1
+            name: sampleappapirc_vla
+            modules:
+              - balancer2:
+                  attempts: 5
+                  connection_attempts: 5
+                  retry_non_idempotent: false
+                  attempts_rate_limiter:
+                    limit: 0.1
+                  weighted2: {}
+                  generated_proxy_backends:
+                    proxy_options:
+                      backend_timeout: 2s
+                      connect_timeout: 100ms
+                      keepalive_count: 3
+                      fail_on_5xx: false
+                    include_backends:
+                      type: BY_ID
+                      ids: [tap_sampleapp_api_release_vla]
+          - weight: 1
+            name: sampleappapirc_sas
+            modules:
+              - balancer2:
+                  attempts: 5
+                  connection_attempts: 5
+                  retry_non_idempotent: false
+                  attempts_rate_limiter:
+                    limit: 0.1
+                  weighted2: {}
+                  generated_proxy_backends:
+                    proxy_options:
+                      backend_timeout: 2s
+                      connect_timeout: 100ms
+                      keepalive_count: 3
+                      fail_on_5xx: false
+                    include_backends:
+                      type: BY_ID
+                      ids: [tap_sampleapp_api_release_sas]
+        on_error:
+          errordocument:
+            status: 503
+            content: 'Service unavailable'

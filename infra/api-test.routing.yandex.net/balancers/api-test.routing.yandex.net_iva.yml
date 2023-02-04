@@ -1,0 +1,98 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - nanny-robot
+      - sprkfocus
+      groups:
+      - yandex_content_geodev_tech
+config_transport:
+  nanny_static_file:
+    service_id: rtc_balancer_api-test_routing_yandex_net_iva
+    instance_tags:
+      ctype: prod
+      itype: balancer
+      prj: api-test.routing.yandex.net
+---
+instance_macro:
+  version: 0.0.2
+  sd: {}
+  maxconn: 1000
+  state_directory: /dev/shm/balancer-state
+  workers: !f get_workers()
+  unistat: {}
+  sections:
+    admin:
+      ips: [127.0.0.1, '::1']
+      ports:
+        - !f get_port_var("port")
+      modules:
+        - http: {}
+        - admin: {}
+    stats_storage:
+      ips: [127.0.0.4]
+      ports:
+        - !f get_port_var("port")
+      modules:
+        - report:
+            uuid: 'service_total'
+            ranges: 'default'
+            just_storage: true
+        - http: {}
+        - errordocument:
+            status: 204
+    https_section:
+      ips: ['*']
+      ports: [443]
+      stats_attr: 'https'
+      extended_http_macro:
+        port: 12486
+        report_uuid: 'https'
+        enable_ssl: true
+        force_ssl: true
+        ssl_sni_contexts:
+          api-test.routing.yandex.net:
+            cert: !c api-test.routing.yandex.net
+            servername_regexp: default
+            disable_ocsp: true
+        modules:
+          - headers:
+              create_func:
+                X-Start-Time: starttime
+                X-Req-Id: reqid
+                X-Forwarded-For-Y: realip
+                X-Source-Port-Y: realport
+          - response_headers:
+              create:
+                Strict-Transport-Security: 'max-age=31536000'
+              create_weak:
+                X-XSS-Protection: '1; mode=block'
+                X-Content-Type-Options: 'nosniff'
+          - regexp:
+              include_upstreams:
+                filter:
+                  id_prefix_in:
+                    - 'https_'
+                    - 'slbping'
+                    - 'awacs-balancer-health-check'
+                order:
+                  label:
+                    name: order
+    http_section:
+      ips: ['*']
+      ports: [80]
+      stats_attr: 'http'
+      extended_http_macro:
+        port: 12485
+        report_uuid: 'http'
+        modules:
+          - regexp:
+              include_upstreams:
+                filter:
+                  id_prefix_in:
+                    - 'http_'
+                    - 'slbping'
+                    - 'awacs-balancer-health-check'
+                order:
+                  label:
+                    name: order

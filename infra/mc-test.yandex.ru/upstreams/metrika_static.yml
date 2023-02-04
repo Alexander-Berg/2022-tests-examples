@@ -1,0 +1,45 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - frenz
+      groups: []
+labels:
+  order: '00001000'
+---
+regexp_section:
+  matcher:
+    match_or:
+      - match_fsm:
+          uri: '/metrika/.*'
+      - match_fsm:
+          uri: '/robots.txt'
+  modules:
+    - report:
+        uuid: "metrika_static"
+        ranges: "default"
+    - response_headers:
+        create:
+          Strict-Transport-Security: 'max-age=31536000'
+    - balancer2:
+        connection_attempts: 2
+        attempts: 2
+        unique_policy: {}
+        active:
+          request: 'GET /ping HTTP/1.1\nHost: localhost\nUser-agent: l7-balancer\n\n'
+          delay: 10s
+        attempts_rate_limiter:
+          limit: 0.15
+        generated_proxy_backends:
+          proxy_options:
+            backend_timeout: 121s
+            connect_timeout: 70ms
+            keepalive_count: 1
+            status_code_blacklist: ["5xx","404"]
+          include_backends:
+            type: BY_ID
+            ids: [phantom2d-static-testing]
+        on_error:
+          errordocument:
+            status: 504
+            content: "Service unavailable"

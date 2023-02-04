@@ -1,0 +1,38 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - m-smirnov
+      - nanny-robot
+      groups:
+      - svc_corpblog
+config_transport:
+  nanny_static_file:
+    service_id: rtc_balancer_blogs-test_yandex_net_vla
+    instance_tags:
+      ctype: prod
+      itype: balancer
+      prj: blogs-test.yandex.net
+mode: EASY_MODE
+---
+l7_macro:
+  version: 0.2.12
+  health_check_reply: {}
+  announce_check_reply:
+    url_re: /ping
+  http: {}
+  https: {}
+  headers:
+    - copy: {target: X-Request-Id, source: X-Req-Id, keep_existing: true}
+    - create: {target: X-Request-Id, keep_existing: true, func: reqid}
+    - log: {target_re: X-Request-Id|User-Agent|Host|Referer, cookie_fields: [yandex_login,yandexuid]}
+    - create: {target: X-Forwarded-For-Y, func: realip}
+    - create: {target: X-Forwarded-Proto, keep_existing: true, func: scheme}
+    - create: {target: X-Forwarded-Host, keep_existing: true, func: host}
+    - create: {target: X-Real-IP, keep_existing: true, func: realip}
+    - create: { target: X-Original-URL, value: 'EMPTY' }
+    - rewrite:
+        target: X-Original-URL
+        pattern: { re: 'EMPTY' }
+        replacement: '%{scheme}://%{host}%{url}'
+  include_domains: {}

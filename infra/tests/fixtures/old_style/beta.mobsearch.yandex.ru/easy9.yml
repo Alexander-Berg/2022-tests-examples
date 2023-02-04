@@ -1,0 +1,42 @@
+---
+l7_upstream_macro:
+  version: 0.1.0
+  id: easy9
+  matcher:
+    or_:
+      - and_:
+          - host_re: 'easy9\.yandex\.ru'
+          - path_re: '/xxx/.*'
+      - and_:
+          - host_re: 'easy9\.yandex\.com'
+          - path_re: '/yyy/.*'
+      - not_:
+          header:
+            name: 'X'
+            re: '.*'
+  by_dc_scheme:
+    compat:
+      disable_devnull: true
+    dc_balancer:
+      weights_section_id: 'easy9'
+      method: BY_DC_WEIGHT
+      attempt_all_dcs: true
+    balancer:
+      attempt_all_endpoints: true
+      fast_attempt_all_endpoints: true
+      fast_attempts_type: CONNECT_FAILURE_AND_503
+      backend_timeout: 1s
+      connect_timeout: 100ms
+      retry_http_responses:
+        codes: [503]
+        on_last_failed_retry: GO_TO_ON_ERROR
+      max_reattempts_share: 0.5
+      max_pessimized_endpoints_share: 0.5
+    dcs:
+      - name: man
+        backend_ids: [common-rpslimiter/rpslimiter-serval-man-sd]
+      - name: sas
+        backend_ids: [common-rpslimiter/rpslimiter-serval-sas-sd]
+    on_error:
+      static:
+        status: 201

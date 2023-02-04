@@ -1,0 +1,63 @@
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      url: '/(infected_check|redirect|safety)(.*)?'
+  modules:
+    - report: {uuid: safesearch, ranges: default}
+    - balancer2:
+        attempts: !f count_backends()
+        rr: {weights_file: ./controls/traffic_control.weights}
+        backends:
+        - weight: 1
+          name: safesearch_sas
+          modules:
+            - report: {ranges: default, uuid: requests_to_sas}
+            - balancer2:
+                attempts: 3
+                weighted2: {}
+                generated_proxy_backends:
+                  proxy_options:
+                    backend_timeout: 400ms
+                    connect_timeout: 40ms
+                    keepalive_count: 1
+                  include_backends:
+                    type: BY_ID
+                    ids: [infred_sas]
+        - weight: 1
+          name: safesearch_man
+          modules:
+            - report: {ranges: default, uuid: requests_to_man}
+            - balancer2:
+                attempts: 3
+                weighted2: {}
+                generated_proxy_backends:
+                  proxy_options:
+                    backend_timeout: 400ms
+                    connect_timeout: 40ms
+                    keepalive_count: 1
+                  include_backends:
+                    type: BY_ID
+                    ids: [infred_man]
+        - weight: 1
+          name: safesearch_vla
+          modules:
+            - report: {ranges: default, uuid: requests_to_vla}
+            - balancer2:
+                attempts: 3
+                weighted2: {}
+                generated_proxy_backends:
+                  proxy_options:
+                    backend_timeout: 400ms
+                    connect_timeout: 40ms
+                    keepalive_count: 1
+                  include_backends:
+                    type: BY_ID
+                    ids: [infred_vla]
+        on_error:
+            modules:
+              - report:
+                  uuid: onerror
+                  ranges: 1ms
+              - errordocument:
+                  status: 204

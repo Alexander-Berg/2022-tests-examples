@@ -1,0 +1,239 @@
+<!doctype html>
+<!--
+Title:
+Оверлей: события на оверлеях балунов
+
+Description:
+Проверка событий на оверлеях балунов. 
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+overlay
+
+Estimated time:
+180000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно, на спане три кластера со значением "100" и метка коллекции.
+  Сверху имеются кнопки "move", "Balloon/...".
+
+Step:
+  Action:
+  Выполнить клик в метку на спане карты.
+
+  Expectation:
+  В месте метки открывается балун, происходит смещение спана карты, в балуне стихотворение.
+
+Step:
+  Action:
+  Выполнить на открытом балуне наведение/увод курсора, клик ЛКМ, даблклик, клик ПКМ, скрол.
+
+  Expectation:
+  Под контейнером с картой ловятся события оверлея балуна: mouseenter, mouseleave, click, mousedown, mouseup, contextmenu, dbclick, wheel.
+
+Step:
+  Action:
+  Закрыть балун метки кликом в крестик.
+
+  Expectation:
+  Под контейнером с картой ловится событие оверлея балуна: shapechange BalloonOverlay.
+
+Step:
+  Action:
+  Выполнить клик в метку кластера на спане карты.
+
+  Expectation:
+  В месте метки открывается балун, происходит смещение спана карты, в балуне стихотворение.
+  Под контейнером с картой две строки: shapechange BalloonOverlay.
+
+Step:
+  Action:
+  Выполнить на открытом балуне наведение/увод курсора, клик ЛКМ, даблклик, клик ПКМ, скрол.
+
+  Expectation:
+  Под контейнером с картой ловятся события оверлея балуна: mouseenter, mouseleave, click, mousedown, mouseup, contextmenu, dbclick, wheel.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "move", провести курсор через балун кластера.
+
+  Expectation:
+  Под контейнером с картой ловятся события оверлея балуна: mouseenter, mousemove.
+
+Step:
+  Action:
+  Выполнить два клика в кнопку "Balloon/...", провести курсор через балун кластера.
+
+  Expectation:
+  Балун кластера открывается в виде панели снизу контейнера.
+  Под контейнером с картой ловятся события оверлея балуна: mouseenter, mousemove.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "move".
+  Выполнить на открытом балуне наведение/увод курсора, клик ЛКМ, даблклик, клик ПКМ, скрол.
+
+  Expectation:
+  Под контейнером с картой ловятся события оверлея балуна: mouseenter, mouseleave, click, mousedown, mouseup, contextmenu, dbclick, wheel.
+-->
+<html>
+<head>
+    <title>API 2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="//yastatic.net/jquery/1.8.3/jquery.min.js"></script>
+    <script src="../../../helper.js"></script>
+    <script type="text/javascript">
+        Api('init');
+        function init(ym) {
+            ymaps = ym;
+            var map = myMap = new ym.Map('map', {
+                        center: [55.819543, 37.611619],
+                        zoom: 5,
+                        controls: ['fullscreenControl']
+                    }, {
+                        geoObjectClusterDisableClickZoom: true
+                    }
+            );
+            addGrid(map);
+            var log = new Log();
+            __log__("После открытия балуна метки - нужно проверить события на оверлеях балунов");
+            var center = [55.819543, 37.611619],
+                    text = ['...',
+                        'Его слова — мне дальше не пройти,',
+                        'Мне надо повернуть на этот тракт,',
+                        'Что уведет от Темной Башни в мрак…',
+                        'Я понял: предо мной — конец пути,',
+                        'И рядом цель, что я мечтал найти…',
+                        'Но смысл за годы обратился в прах,',
+                        '...'].join('<br/>'), balloonOverlay,
+
+                    domEvents = ['click', 'contextmenu', 'dblclick', 'mousedown', 'mouseenter', 'mouseleave', 'mouseup', 'multitouchend',
+                        'multitouchstart', 'wheel', 'shapechange'],
+                    moveevents = ['mousemove', 'multitouchmove'],
+
+                    callback = function (e) {
+                        log.info(e.get('type') + ' ' + getObjectClassName(e.get('target')))
+                    },
+                    ClusterBalloonItemContentLayout = ym.templateLayoutFactory.createClass([
+                        '<div class=entry>',
+                        '<h3>$[properties.balloonContentHeader]</h3>',
+                        '<i>$[properties.balloonContentBody]</i>',
+                        '<h5>$[properties.balloonContentFooter]</h5>',
+                        '</div>'
+                    ].join('')),
+                    placemarks1 = [],
+                    placemarks2 = [],
+                    placemarks3 = [],
+                    clusterer1 = new ym.Clusterer({
+                        clusterBalloonContentLayout: "cluster#balloonAccordion",
+                        //clusterBalloonItemContentLayout: ClusterBalloonItemContentLayout,
+                        clusterBalloonAccordionShowIcons: false,
+                        clusterBalloonContentLayoutWidth: 400,
+                        clusterBalloonContentHeight: 200
+                    }),
+                    clusterer2 = new ym.Clusterer({
+                        showInAlphabeticalOrder: true,
+                        clusterBalloonContentLayout: "cluster#balloonCarousel",
+                        //clusterBalloonItemContentLayout: ClusterBalloonItemContentLayout,
+                        clusterBalloonCycling: true,
+                        clusterBalloonPagerSize: 5,
+                        clusterBalloonPagerType: 'numeric',
+                        clusterBalloonContentLayoutWidth: 150,
+                        clusterBalloonContentHeight: 300
+                    }),
+                    clusterer3 = new ym.Clusterer({
+                        //clusterBalloonItemContentLayout: ClusterBalloonItemContentLayout,
+                        clusterDisableClickZoom: true,
+                        clusterOpenBalloonOnClick: true,
+                        clusterBalloonContentLayoutHeight: 300,
+                        clusterBalloonContentLayoutWidth: 400,
+                        clusterBalloonLeftColumnWidth: 200
+                    });
+
+            var placemark = new ymaps.Placemark([55.650625, 37.62708], {
+                balloonContentHeader: 'Чайлд Роланд к Тёмной Башне пришёл',
+                balloonContentBody: text,
+                balloonContentFooter: 'Роберт Браунинг'
+            });
+            for (i = 0; i < 100; i++) {
+                placemarks1[i] = new ym.Placemark(center, {
+                    clusterCaption: 'Метка ' + (i),
+                    balloonContentHeader: 'Чайлд Роланд к Тёмной Башне пришёл',
+                    balloonContentBody: text,
+                    balloonContentFooter: 'Роберт Браунинг'
+                });
+                placemarks2[i] = new ym.Placemark([center[0] - 2, center[1]], {
+                    clusterCaption: 'Метка ' + (i),
+                    balloonContentHeader: 'Чайлд Роланд к Тёмной Башне пришёл',
+                    balloonContentBody: text,
+                    balloonContentFooter: 'Роберт Браунинг',
+                    iconContent: i
+                });
+                placemarks3[i] = new ym.Placemark([center[0] - 4, center[1]], {
+                    clusterCaption: 'Метка ' + (i),
+                    balloonContentHeader: 'Чайлд Роланд к Тёмной Башне пришёл',
+                    balloonContentBody: text,
+                    balloonContentFooter: 'Роберт Браунинг'
+                });
+            }
+            ;
+
+            clusterer1.add(placemarks1);
+            clusterer2.add(placemarks2);
+            clusterer3.add(placemarks3);
+
+            map.geoObjects
+                    .add(clusterer1)
+                    .add(clusterer2)
+                    .add(clusterer3)
+                    .add(placemark);
+
+            var moveButton = new ymaps.control.Button({data: {content: 'move'}, options: {selectOnClick: true}});
+            var panelSwitcherButton = new ymaps.control.Button('Balloon/Panel');
+            moveButton.events
+                    .add('select', function () {
+                        log.info('Waiting for move events...');
+                        balloonOverlay.events.add(moveevents, callback);
+                    })
+                    .add('deselect', function () {
+                        log.info('Move events will be ignored.');
+                        balloonOverlay.events.remove(moveevents, callback);
+                    });
+            panelSwitcherButton.events.add('click', function () {
+                clusterer1.options.set('clusterBalloonPanelMaxMapArea',
+                                clusterer1.options.get('clusterBalloonPanelMaxMapArea') == 0 ? Infinity : 0
+                );
+                clusterer2.options.set('clusterBalloonPanelMaxMapArea',
+                                clusterer2.options.get('clusterBalloonPanelMaxMapArea') == 0 ? Infinity : 0
+                );
+                clusterer3.options.set('clusterBalloonPanelMaxMapArea',
+                                clusterer3.options.get('clusterBalloonPanelMaxMapArea') == 0 ? Infinity : 0
+                );
+            });
+
+            map.controls.add(panelSwitcherButton, { float: 'right', floatIndex: 100 })
+                    .add(moveButton, {float: 'right', floatIndex: 99 });
+
+            placemark.events.add('balloonopen', function () {
+                placemark.balloon.getOverlay().then(function (overlay) {
+                    balloonOverlay = overlay;
+                    overlay.events.add(domEvents, callback);
+                });
+            });
+        }
+
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;">
+</div>
+</body>
+</html>

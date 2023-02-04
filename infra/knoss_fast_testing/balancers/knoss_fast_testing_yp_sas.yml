@@ -1,0 +1,171 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - nanny-robot
+      - ialand
+      groups: []
+config_transport:
+  nanny_static_file:
+    service_id: rtc_balancer_knoss_fast_testing_yp_sas
+    instance_tags:
+      ctype: testing
+      itype: balancer
+      prj: l7-balancer-knoss-fast-testing
+---
+instance_macro:
+  workers: !f get_workers()
+  tcp_listen_queue: 128
+  maxconn: 5000
+  state_directory: /dev/shm/balancer-state
+  sd: {}
+  unistat: {}
+  sections:
+    admin:
+      ips: [127.0.0.1, '::1']
+      ports:
+        - !f get_port_var('port')
+      modules:
+        - http: {}
+        - admin: {}
+    s3_section: 
+      ips: [127.0.0.7]
+      ports:
+        - !f get_port_var('port', 5)
+      modules:
+      - http: {}
+      - shared:
+          uuid: s3
+      - balancer2:
+          rr: {}
+          connection_attempts: 2
+          attempts: 2
+          attempts_rate_limiter:
+            limit: 0.1
+          generated_proxy_backends:
+            proxy_options:
+              backend_timeout: 5s
+              connect_timeout: 100ms
+            include_backends:
+              type: BY_ID
+              ids: [s3_yandex_net] 
+    http_section:
+      ips: ['*']
+      ports:
+        - !f get_port_var('port')
+      extended_http_macro:
+        prefix_path_router:
+          sections:
+            internal:
+              route: /awacs-balancer-health-check
+              errordocument: {status: 200}
+            default:
+              modules:
+                - headers:
+                    create_func_weak:
+                      X-Source-Port-Y: realport
+                      X-Start-Time: starttime
+                      X-Req-Id: reqid
+                      X-Forwarded-For-Y: realip
+                - log_headers:
+                    name_re: 'X-Req-Id'   
+                - response_headers:
+                    delete: X-Yandex-Report-Type
+                    create_weak:
+                      X-XSS-Protection: '1; mode=block'
+                      X-Content-Type-Options: nosniff
+                - geobase_macro:
+                    version: 0.0.3
+                - exp_getter_macro:
+                    _version: 3
+                - regexp:
+                    sections:
+                      to_upstream:
+                        matcher:
+                          match_fsm:
+                            header:
+                              name: X-Yandex-HTTPS
+                              value: '1|yes|da|true'
+                        modules:
+                          - regexp:
+                              sections:
+                                make_pretty_404_50x:
+                                  matcher:
+                                    match_fsm:
+                                      path: "/promo|/promo/.*|/blog|/blog/.*|/hire|/hire/.*"                                 
+                                  modules:
+                                    - response_matcher:
+                                        buffer_size: 307200
+                                        on_response:
+                                          handle_404_50x:
+                                            matcher:
+                                              match_response_codes:
+                                                codes: [404, 500, 501, 502, 503, 504, 505, 506, 507, 508]                                  
+                                            modules:
+                                              - balancer2:
+                                                  attempts: 1
+                                                  rr: {}
+                                                  backends:
+                                                  - name: default_route_any
+                                                    weight: 240
+                                                    modules:
+                                                      - report:
+                                                          uuid: default_route_any_404_50x
+                                                          ranges: "default"
+                                                      - balancer2:
+                                                          attempts: 1
+                                                          rr: {}
+                                                          generated_proxy_backends:
+                                                            proxy_options:
+                                                              connect_timeout: 100ms
+                                                              backend_timeout: 2s
+                                                              keepalive_count: 0
+                                                              fail_on_5xx: true
+                                                            include_backends:
+                                                              type: BY_ID
+                                                              ids: [any_yandex_ru_80]                                                      
+                                                  - name: default_route_devnull
+                                                    weight: -1
+                                                    modules:
+                                                      - errordocument:
+                                                          status: 204
+                                                          content: ''
+                                                  on_error:
+                                                    modules:
+                                                      - response_headers:
+                                                          create_weak:
+                                                            Content-Type: text/html
+                                                            charset: utf-8
+                                                      - errordocument:
+                                                          status: 404
+                                                          content: '<html><body>&nbsp;</body></html>'
+                                        prefix_path_router:
+                                          include_upstreams:
+                                            filter:
+                                              any: true
+                                            order:
+                                              label:
+                                                name: order
+                                default:
+                                  matcher: {}
+                                  prefix_path_router:
+                                    include_upstreams:
+                                      filter:
+                                        any: true
+                                      order:
+                                        label:
+                                          name: order
+                      default:
+                        matcher: {}
+                        modules:
+                          - headers:
+                              create:
+                                Location: replace_me
+                          - rewrite:
+                              actions:
+                                - regexp: '.*'
+                                  header_name: Location
+                                  rewrite: 'https://%{host}%{url}'
+                          - errordocument:
+                              status: 302
+                              remain_headers: Location

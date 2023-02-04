@@ -1,0 +1,57 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - live-penguin
+      groups: []
+labels:
+  order: '10000000'
+---
+regexp_section:
+  matcher:
+    match_or:
+    - match_fsm:
+        path: /api/legacy/tools/i18n/.*
+  modules:
+  - headers:
+      create:
+        Host: yastatic.net
+  - rewrite:
+      actions:
+      - literal: true
+        regexp: /api/legacy/tools/i18n/
+        rewrite: /tanker-backend/static/tools/i18n/
+  - report:
+      just_storage: false
+      outgoing_codes:
+      - '500'
+      - '502'
+      - '503'
+      - '504'
+      ranges: default
+      uuid: tanker-static-files
+  - balancer2:
+      attempts: 3
+      attempts_rate_limiter:
+        limit: 0.2
+      connection_attempts: 3
+      dynamic:
+        max_pessimized_share: 0.5
+      generated_proxy_backends:
+        include_backends:
+          ids:
+          - yastatic.net
+          type: BY_ID
+        proxy_options:
+          backend_read_timeout: 60s
+          backend_timeout: 60s
+          backend_write_timeout: 60s
+          connect_timeout: 60ms
+          fail_on_5xx: false
+          https_settings:
+            ca_file: /etc/ssl/certs/ca-certificates.crt
+            verify_depth: 3
+      on_error:
+        errordocument:
+          content: Backend unavailable
+          status: 504

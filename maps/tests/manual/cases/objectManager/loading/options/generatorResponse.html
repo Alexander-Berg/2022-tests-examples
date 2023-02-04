@@ -1,0 +1,116 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Менеджер объектов: генератор данных для неточечных геометрий менеджера объектов
+
+Description:
+Проверка возвращения координат точки, координат вокруг опорной точки для создания геометрий.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+objectManager
+
+Estimated time:
+90000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть страницу и элементы на ней.
+
+  Expectation:
+  На странице карта не отображается, под блоком тестовых кнопок спустя несколько секунд появляется 580 строк объектов.
+  С id=1, до id=500 строки объектов со значением "...geometry": { "type": "Point"..." и координатами точек.
+  Начиная с id = 501 строки c чередованием значений "...geometry": {"type": "Polygon"...", ..."type": "LineString...", "...type": "Rectangle...", "..."type": "Circle"..." и координатами области.
+
+Step:
+  Action:
+  Открыть инструменты разработчика командой Windows: Ctrl + Shift + I если у вас MacOS: ⌥ + ⌘ + I вкладку Console.
+  Проскролить консоль на тождественность данных и отсутствие ошибок.
+
+  Expectation:
+  В консоли разработчика аналогичные строки данных, отсутствуют сообщения об ошибках.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            var count = 20;
+            var countPoint = 500;
+            var id = 0;
+            var coord;
+            var dispersion = 5;
+            var types = ['школа', 'кафе', 'аптека', 'банк'];
+            var colors = ['#000000', '#ff0000', '#00ff00', '#0000ff', '#ffffff'];
+            var iconPresets = ["islands#yellowIcon", "islands#pinkIcon", "islands#greenIcon", "islands#orangeIcon"];
+            var clusterPresets = ["islands#yellowClusterIcons", "islands#pinkClusterIcons", "islands#greenClusterIcons"];
+
+            //просто генератор сырых данных для неточечных геометрий для ОМ
+            //возращает координату точки в мире
+            function coordPoint(coord) {
+                return [85 * Math.random() * (Math.random() < 0.5 ? -1 : 1),
+                    y = 180 * Math.random() * (Math.random() < 0.5 ? -1 : 1)];
+            }
+
+            //возращает координаты вокруг опорной точки для создания геометрий
+            function coordGenerator(coord) {
+                return [coord[0] + Math.random() * dispersion * (Math.random() < 0.5 ? -1 : 1), coord[1] + Math.random() * dispersion * (Math.random() < 0.5 ? -1 : 1)]
+            }
+
+            for (var i = 0; i < countPoint; i++) {
+                id++;
+                coord = coordPoint();
+                __log__('{ "id": ' + id + ', "type": "Feature", "geometry": { "type": "Point", "coordinates": [' + coord + '] },' + ' "number":' + ((Math.random() < 0.95) ? id : 5) + ', "properties": { "iconContent": 2, "balloonContent": ' + id + ', "hintContent": ' + id + ',"clusterCaption": ' + id + ', "type": "' + ((Math.random() > 0.95) ? id : types[Math.floor(Math.random() * types.length)]) + '"}, "options": {"preset": "' + iconPresets[Math.floor(Math.random() * iconPresets.length)] + '"}},');
+            }
+
+            for (var i = 0; i < count; i++) {
+                id++;
+                coord = coordPoint();
+                __log__('{"id": ' + id + ', "type": "Feature", "geometry": {"type": "Polygon", "coordinates": [' +
+                        '[' +
+                        '[' + coordGenerator(coord) + '],' +
+                        '[' + coordGenerator(coord) + '],' +
+                        '[' + coordGenerator(coord) + '],' +
+                        '[' + coordGenerator(coord) + '],' +
+                        '[' + coordGenerator(coord) + ']' +
+                        ']' +
+                        ']}, "coordBBox": [' + coord + '], "properties": {"hintContent": ' + id + ', "balloonContent": ' + id + ', "type": "' + ((Math.random() > 0.95) ? id : types[Math.floor(Math.random() * types.length)]) + '"}, "options": {"fillColor": "' + colors[Math.floor(Math.random() * colors.length)] + '" }},');
+
+                id++;
+                coord = coordPoint();
+                __log__('{"id": ' + id + ', "type": "Feature", "geometry": {"type": "LineString", "coordinates": [' +
+                        '[' + coordGenerator(coord) + '],' +
+                        '[' + coordGenerator(coord) + '],' +
+                        '[' + coordGenerator(coord) + ']' +
+                        ']}, "coordBBox": [' + coord + '], "properties": {"hintContent": ' + id + ', "balloonContent": ' + id + ', "type": "' + ((Math.random() > 0.95) ? id : types[Math.floor(Math.random() * types.length)]) + '"}, "options": {"fillColor": "' + colors[Math.floor(Math.random() * colors.length)] + '" }},');
+
+                id++;
+                coord = coordPoint();
+                __log__('{"id": ' + id + ', "type": "Feature", "geometry": {"type": "Circle", "coordinates":' +
+                        '[' + coordGenerator(coord) + '],' +
+                        '"radius": ' + Math.random() * 1000000 + '}, "coordBBox": [' + coord + '], "properties": {"hintContent": ' + id + ', "balloonContent": ' + id + ', "type": "' + ((Math.random() > 0.95) ? id : types[Math.floor(Math.random() * types.length)]) + '"}, "options": {"fillColor": "' + colors[Math.floor(Math.random() * colors.length)] + '" }},');
+
+                id++;
+                coord = coordPoint();
+                __log__('{"id": ' + id + ', "type": "Feature", "geometry": {"type": "Rectangle", "coordinates": [' +
+                        '[' + coordGenerator(coord) + '],' +
+                        '[' + coordGenerator(coord) + ']' +
+                        ']}, "coordBBox": [' + coord + '], "properties": {"hintContent": ' + id + ', "balloonContent": ' + id + ', "type": "' + ((Math.random() > 0.95) ? id : types[Math.floor(Math.random() * types.length)]) + '"}, "options": {"fillColor": "' + colors[Math.floor(Math.random() * colors.length)] + '" }},');
+            }
+
+        }
+    </script>
+</head>
+<body>
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

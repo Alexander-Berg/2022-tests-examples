@@ -1,0 +1,118 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Мультимаршрут-ОТ: построение маршрута ОТ с учетом пробок
+
+Description:
+Проверка программного построения маршрута ОТ с учетом пробок. 
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+multiRouter
+
+Estimated time:
+120000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта загружается корректно со спаном Москвы с включенным слоем пробок, на спане разноцветные линии пробок.
+  Справа сверху имеется контрол пробок в активном состоянии, слева вверху кнопка "avoidTra...".  
+
+Step:
+  Action:
+  Выполнить клик в кнопку "avoidTra...".
+
+  Expectation:
+  Происходит смена спана карты на спан Санкт-Петербурга.
+  На спане построен маршрут на общественном транспорте "A" - Пискаревский проспект 2к2Щ, "B" - метро Комендантский проспект.
+  В контроле пробок отображается текущий бал пробок и время.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "avoidTra...".
+
+  Expectation:
+  Маршрут на спане карты может перестроится, маршрут строится без учета информации о пробках.
+-->
+<html>
+<head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+
+            //TODO: написать тест
+            var map = myMap = new ym.Map('map', {
+                        center: [55.00718809437818, 38.094514924687026],
+                        zoom: 7,
+                        controls: []
+                    }),
+                    log = new Log(),
+                    zoom = new ym.control.ZoomControl,
+                    traffic = new ym.control.TrafficControl,
+                    button1 = new ym.control.Button({data: {content: 'avoidTraffic'}}, {selectOnClick: true}),
+                    multiRoute;
+
+            button1.events
+                    .add("select", function (e) {
+                        multiRoute = new ymaps.multiRouter.MultiRoute({
+                            referencePoints: ['питер, пискаревский 2к2', 'питер, ст.м. комендантский пропект'],
+                            params: {
+                                avoidTrafficJams: true,
+                                routingMode: 'masstransit',
+                                results: 1
+                            }
+                        }, {
+                            wayPointDraggable: true,
+                            viaPointDraggable: true,
+                            boundsAutoApply: true,
+                            zoomMargin: 30,
+                            preset: "islands#multiRouterSmall"
+                        });
+                        myMap.geoObjects.add(multiRoute);
+                    })
+                    .add('deselect', function () {
+                        multiRoute = new ymaps.multiRouter.MultiRoute({
+                            referencePoints: ['питер, пискаревский 2к2', 'питер, ст.м. комендантский пропект'],
+                            params: {
+                                avoidTrafficJams: false,
+                                routingMode: 'masstransit',
+                                results: 1
+                            }
+                        }, {
+                            wayPointDraggable: true,
+                            viaPointDraggable: true,
+                            boundsAutoApply: true,
+                            zoomMargin: 30,
+                            preset: "islands#multiRouterSmall"
+                        });
+                        myMap.geoObjects.add(multiRoute);
+
+                    });
+
+            map.controls
+                    .add(zoom)
+                    .add(traffic)
+                    .add(button1);
+
+            traffic.showTraffic();
+
+            addGrid(map);
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

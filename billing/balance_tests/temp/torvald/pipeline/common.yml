@@ -1,0 +1,116 @@
+# ? Асинхронные действия?
+#
+#
+#
+#
+#
+
+# Нотификации:
+# Startrek: статус получаем из отдельного поля\тега
+# оставляем только важные комментарии (для визуализации \ передачи метаданных)
+# факт выполнения ручных действий выражаем в смене статуса
+#
+# Telegram:
+# owner всегда нотифицируется обо всех событиях
+# дополнительно можно перечислить нотифицируемых в notify для перехода
+#
+#
+
+INITIAL:
+  owner: test
+  edges:
+    HAVE_CHANGES:
+      conditions:
+        - check(True)
+      actions:
+        - 2comment('HAVE_CHANGES> К выкладке есть следующие тикеты:')
+
+
+    CLOSED:
+      conditions:
+        - check(True)
+      actions:
+        - change_status('closed', 'incorrect')
+
+HAVE_CHANGES:
+  owner: dev
+  edges:
+    BUILD_IN_PROGRESS:
+      actions:
+        - build()
+
+BUILD_IN_PROGRESS:
+  owner: dev
+  edges:
+    BUILT:
+      conditions:
+        - is_task_success()
+
+    BUILD_IN_PROGRESS:
+      conditions:
+        - is_task_failed()
+      actions:
+        - change_status('NeedInfo')
+
+BUILT:
+  owner: dev
+  edges:
+    DEPLOY_IN_PROGRESS:
+      actions:
+        - deploy()
+
+DEPLOY_IN_PROGRESS:
+  owner: dev
+  edges:
+    DEPLOYED:
+      conditions:
+        - is_version_deployed()
+        - 2comment(TEXT)
+
+    DEPLOY_IN_PROGRESS:
+      conditions:
+        - is_deploy_failed()
+        - change_status('NeedInfo')
+
+DEPLOYED:
+  owner: test
+  edges:
+    TEST_IN_PROGRESS:
+      actions:
+        - start(Python_smoke)
+        - start(TRUST_smoke)
+        - start(Java_smoke)
+        - comment(TESTS_LAUNCHED)
+
+TEST_IN_PROGRESS:
+  owner: test
+  edges:
+    TEST_COMPLETE:
+      conditions:
+        - is_task_finish(Python_smoke)
+        - is_task_finish(TRUST_smoke)
+        - is_task_finish(Java_smoke)
+      actions:
+        - get_comment_values(TESTS_LAUNCHED)
+
+TEST_COMPLETE:
+  owner: test
+  edges:
+    TEST_COMPLETE:
+      conditions: # any?
+        - not(is_tests_passed(Python_smoke) and is_tests_passed(TRUST_smoke) and is_tests_passed(Java_smoke))
+      actions:
+        - change_status('NeedInfo')
+
+    TEST_SUCCESS:
+      notify: dev, dimonb@, release_chat
+      conditions:
+        - is_tests_passed(Python_smoke)
+        - is_tests_passed(TRUST_smoke)
+        - is_tests_passed(Java_smoke)
+      actions:
+#        - comment(text='Тесты ОК')
+        - change_status('tested', None)
+
+TEST_SUCCESS:
+  owner: test

@@ -1,0 +1,132 @@
+<!DOCTYPE HTML>
+<!--(skip)(description)
+multiRouter: basic test
+-->
+<!--(version)
+2.1.7
+-->
+<!--(commands)
+sleep(1000);
+test();
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            //TODO: написать тест
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 10,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+
+            __log__('multiRouter: update event');
+
+            var events = ['update'];
+
+            var multiRoute = new ymaps.multiRouter.MultiRoute({
+                referencePoints: ['питер, мебельная 35', 'питер, невский 124', 'питер, степана разина 8',
+                    'питер, бухарестская 120'],
+                params: {
+                    routingMode: 'masstransit'
+                }
+            }, {
+                boundsAutoApply: true,
+                wayPointDraggable: true,
+                editorDrawOver: false
+            });
+            map.geoObjects.add(multiRoute);
+            multiRoute.editor.start({
+                addWayPoints: true,
+                dragViaPoints: true,
+                dragWayPoints: true,
+                removeViaPoints: true,
+                removeWayPoints: true,
+                addMidPoints: true
+            });
+
+            var routes, paths, segments, transport, transfer, walk;
+
+            setTimeout(function() {
+                routes = multiRoute.getRoutes();
+                paths = routes.get(0).getPaths();
+                segments = paths.get(2).getSegments();
+                transport = segments.get(1);
+                transfer = segments.get(2);
+                walk = segments.get(0);
+            }, 2000);
+
+            var eventsButton = new ymaps.control.Button('events');
+            eventsButton.events.add('click', function() {
+                callback(multiRoute.getActiveRoute(), 'route', events);
+                callback(paths.get(2), 'path', events);
+                callback(transport, 'transport', events);
+                callback(transfer, 'transfer', events);
+                callback(walk, 'walk', events);
+            });
+
+            var wayButton = new ymaps.control.Button('way');
+            wayButton.events.add('click', function() {
+                var ways = multiRoute.getWayPoints();
+                var i = 0;
+                ways.each(function(point) {
+                    point.events.add(events, function(e) {
+                        console.log('point: ' + e.get('type')  + ', currentTarget: ' + e.get('currentTarget'))
+                    });
+                    point.model.events.add(events, function(e) {
+                        console.log('pointModel: ' + e.get('type')  + ', currentTarget: ' + e.get('currentTarget'))
+                    });
+                });
+            });
+
+            var clearButton = new ymaps.control.Button('clear');
+            clearButton.events.add('click', function() {
+                log.clear();
+            });
+
+            map.controls
+                    .add(eventsButton).add(wayButton)
+                    .add(clearButton, {float: 'none', position:{bottom: 35, right: 10}});
+
+            function getRandomColor () {
+                return [
+                    '#',
+                    (55 + Math.round(Math.random() * 200)).toString(16),
+                    (55 + Math.round(Math.random() * 200)).toString(16),
+                    (55 + Math.round(Math.random() * 200)).toString(16)
+                ].join('')
+            }
+
+            function callback (object, type, events) {
+                object.events.add(events, function(e) {
+                    console.log(type + ': ' + e.get('type') + ', target: ' + e.get('target') + ', currentTarget: ' +
+                            e.get('currentTarget'));
+                });
+                object.model.events.add(events, function(e) {
+                    console.log('(model)' + type + ': ' + e.get('type') + ', target: ' + e.get('target') + ', currentTarget: ' +
+                            e.get('currentTarget'));
+                    console.log('pathsChange : ' + e.get('pathsChange') + ', segmentsChange : ' + e.get('segmentsChange'))
+                });
+            }
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

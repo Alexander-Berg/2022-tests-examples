@@ -1,0 +1,44 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - eukho
+      groups: []
+labels:
+  order: '30000000'
+config_mode: easy2
+---
+l7_upstream_macro:
+  flat_scheme:
+    backend_ids:
+    - yp.bot-test.vintage
+    balancer:
+      attempts: 2
+      backend_timeout: 10s
+      connect_timeout: 70ms
+      fast_attempts: 2
+      max_pessimized_endpoints_share: 0.2
+      max_reattempts_share: 0.15
+      retry_http_responses:
+        codes:
+        - 5xx
+        on_last_failed_retry: PROXY_RESPONSE_AS_IS
+    on_error:
+      static:
+        content: Service unavailable
+        status: 503
+  headers:
+  - create:
+      func: realip
+      target: X-Real-IP
+  - create:
+      func: realip
+      keep_existing: true
+      target: X-Forwarded-For
+  - create:
+      func: scheme
+      target: X-Forwarded-Proto
+  id: hd
+  matcher:
+    uri_re: /(adu|cpe|crm|ocl|ofr|prn|sip|tel|zmb|scm/sale)(/.*)?
+  version: 0.2.0

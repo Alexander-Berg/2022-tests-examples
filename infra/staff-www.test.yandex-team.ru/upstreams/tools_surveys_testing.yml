@@ -1,0 +1,46 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - baranovxyz
+      groups: []
+labels:
+  order: '10000000'
+config_mode: easy2
+---
+l7_upstream_macro:
+  version: 0.0.1
+  id: tools_surveys_testing
+  matcher:
+    or_:
+      - host_re: surveys.test.yandex-team.ru
+      - and_:
+        - host_re: cab.test.tools.yandex-team.ru
+        - path_re: '/surveys(/.*)?'
+      - and_:
+        - host_re: cab.test.yandex-team.ru
+        - path_re: '/surveys(/.*)?'
+  rewrite:
+    - target: PATH
+      pattern:
+        re: ^/surveys(/(.*))?
+      replacement: '/%2'
+  flat_scheme:
+    balancer:
+      attempts: 2
+      max_reattempts_share: 0.15000000596046448
+      max_pessimized_endpoints_share: 0.20000000298023224
+      fast_attempts: 2
+      retry_http_responses:
+        codes:
+        - 5xx
+        exceptions:
+        - 500
+      connect_timeout: 1s
+      backend_timeout: 15s
+    backend_ids:
+    - tools_surveys_testing
+    on_error:
+      static:
+        status: 504
+        content: Service unavailable

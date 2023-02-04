@@ -1,0 +1,169 @@
+<!DOCTYPE HTML>
+<!--(skip)(description)
+control.GeolocationControl: events
+-->
+<!--(version)
+2.1
+-->
+<!--(commands)
+click(8);
+click(8);
+click(12);
+click(12);
+click(15);
+test();
+click(15);
+test();
+click(1);
+click(2);
+click(4);
+test();
+-->
+<html>
+<head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            var myMap = new ym.Map('map', {
+                        center: [55.73259667357658, 37.70153663432529],
+                        zoom: 9,
+                        behaviors: ['default', 'scrollZoom'],
+                        controls: []
+                    }),
+                    callback1 = function (e) {
+                        log.info('geolocation1: ' + e.get('type'))
+                    },
+                    callback2 = function (e) {
+                        log.info('geolocation2: ' + e.get('type'))
+                    },
+                    callback3 = function (e) {
+                        log.info('geolocation3: ' + e.get('type'));
+                        if (e.get('type') == 'mapchange') {
+                            try {
+                                log.info('oldMap: ' + e.get('oldMap').getCenter());
+                            } catch (e) {
+                                log.info('oldMap is null')
+                            }
+                            try {
+                                log.info('newMap: ' + e.get('newMap').getCenter());
+                            } catch (e) {
+                                log.info('newMap is null')
+                            }
+                        }
+                        if (e.get('type') == 'parentchange') {
+                            try {
+                                log.info('oldParent: ' + e.get('oldParent').getMap().getCenter());
+                            } catch (e) {
+                                log.info('oldParent is undefined')
+                            }
+                            try {
+                                log.info('newParent: ' + e.get('newParent').getMap().getCenter());
+                            } catch (e) {
+                                log.info('newParent is undefined')
+                            }
+                        }
+                    },
+                    events = ['click', 'select', 'deselect', 'enable', 'disable', 'mapchange',
+                        'optionschange', 'parentchange', 'press', 'locationchange'],
+                    log = new Log();
+
+            addGrid(myMap);
+
+            log.info('Controls: disabled, selected, enabled');
+
+            var geolocation1 = new ymaps.control.GeolocationControl({
+                data: {title: '1'},
+                options: {float: 'left'}
+            });
+
+            var geolocation2 = new ymaps.control.GeolocationControl({
+                data: {title: '2'},
+                options: {float: 'left'},
+                state: {selected: true}
+            });
+
+            var geolocation3 = new ymaps.control.GeolocationControl({
+                data: {title: '3'},
+                options: {float: 'left'},
+                state: {enabled: false}
+            });
+
+            geolocation1.events.add(events, callback1);
+            geolocation2.events.add(events, callback2);
+            geolocation3.events.add(events, callback3);
+
+            var listenerButton = new ymaps.control.Button({data: {content: 'Ignore'}, options: {selectOnClick: true}});
+            listenerButton.events
+                    .add('deselect', function () {
+                        log.info('Waiting for events...');
+                        geolocation1.events.add(events, callback1);
+                        geolocation2.events.add(events, callback2);
+                        geolocation3.events.add(events, callback3);
+                    })
+                    .add('select', function () {
+                        log.info('Events will be ignored.');
+                        geolocation1.events.remove(events, callback1);
+                        geolocation2.events.remove(events, callback2);
+                        geolocation3.events.remove(events, callback3);
+                    });
+
+            var disableButton = new ymaps.control.Button({data: {content: 'Disable'}, options: {selectOnClick: true}});
+            disableButton.events
+                    .add('select', function () {
+                        geolocation1.state.set('enabled', false);
+                        geolocation2.state.set('enabled', false);
+                        geolocation3.state.set('enabled', false);
+                    })
+                    .add('deselect', function () {
+                        geolocation1.state.set('enabled', true);
+                        geolocation2.state.set('enabled', true);
+                        geolocation3.state.set('enabled', true);
+                    });
+
+            var removeButton = new ymaps.control.Button({data: {content: 'Remove'}, options: {selectOnClick: true}});
+            removeButton.events
+                    .add('select', function () {
+                        myMap.controls.remove(geolocation1);
+                        myMap.controls.remove(geolocation2);
+                        myMap.controls.remove(geolocation3);
+                    })
+                    .add('deselect', function () {
+                        myMap.controls.add(geolocation1);
+                        myMap.controls.add(geolocation2);
+                        myMap.controls.add(geolocation3);
+                    });
+
+            var optionButton = new ymaps.control.Button({data: {content: 'Visible'}, options: {selectOnClick: true}});
+            optionButton.events
+                    .add('select', function () {
+                        geolocation1.options.set('visible', false);
+                        geolocation2.options.set('visible', false);
+                        geolocation3.options.set('visible', false);
+                    })
+                    .add('deselect', function () {
+                        geolocation1.options.set('visible', true);
+                        geolocation2.options.set('visible', true);
+                        geolocation3.options.set('visible', true);
+                    });
+
+            myMap.controls
+                    .add(geolocation1)
+                    .add(geolocation2)
+                    .add(geolocation3)
+                    .add(disableButton, { float: 'right'})
+                    .add(listenerButton, { float: 'right'})
+                    .add(removeButton, { float: 'right'})
+                    .add(optionButton, { float: 'right'});
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

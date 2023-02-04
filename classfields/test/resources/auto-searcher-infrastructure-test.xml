@@ -1,0 +1,191 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:util="http://www.springframework.org/schema/util"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+       http://www.springframework.org/schema/beans/spring-beans.xsd http://www.springframework.org/schema/util http://www.springframework.org/schema/util/spring-util.xsd"
+       default-autowire="byName" default-lazy-init="true">
+
+    <!-- Index updating -->
+
+    <bean id="carsPartitionUpdatedListeners" class="java.util.ArrayList">
+        <constructor-arg>
+            <list>
+                <ref bean="shortCarAdSearchTemplate"/>
+                <ref bean="carAdSearchTemplate"/>
+            </list>
+        </constructor-arg>
+    </bean>
+
+    <bean id="trucksPartitionUpdatedListeners" class="java.util.ArrayList">
+        <constructor-arg>
+            <list>
+                <ref bean="trucksSearchTemplate"/>
+            </list>
+        </constructor-arg>
+    </bean>
+
+    <bean id="motoPartitionUpdatedListeners" class="java.util.ArrayList">
+        <constructor-arg>
+            <list>
+                <ref bean="motoSearchTemplate"/>
+            </list>
+        </constructor-arg>
+    </bean>
+
+
+    <!-- Index loading -->
+    <bean id="initialIndexSearcher"
+          class="ru.yandex.auto.searcher.consumer.InitialIndexSearcherFactory">
+        <property name="indexConsumer" ref="carsAsyncS3IndexConsumer"/>
+    </bean>
+
+    <bean id="trucksInitialIndexSearcher"
+          class="ru.yandex.auto.searcher.consumer.InitialIndexSearcherFactory">
+        <property name="indexConsumer" ref="trucksAsyncS3IndexConsumer"/>
+    </bean>
+
+    <bean id="motoInitialIndexSearcher"
+          class="ru.yandex.auto.searcher.consumer.InitialIndexSearcherFactory">
+        <property name="indexConsumer" ref="motoAsyncS3IndexConsumer"/>
+    </bean>
+
+    <!--changed-->
+    <bean id="carsIndexConsumer"
+          class="ru.yandex.auto.index.consumer.YoctoS3Consumer">
+        <constructor-arg name="minDocs" value="${auto.index-receiver.min.offers}"/>
+        <constructor-arg name="updatePeriodInSeconds" value="${auto-searcher.index-update.period}"/>
+        <constructor-arg name="indexVersion">
+            <util:constant static-field="ru.yandex.auto.core.AutoSchemaVersions.CARS_YOCTO_INDEX_VERSION"/>
+        </constructor-arg>
+        <constructor-arg name="phaser" ref="initialIndexSearcherHolderPhaser"/>
+        <constructor-arg name="qualifier" value="cars"/>
+        <constructor-arg name="maxPartitions" value="${auto.index.maxPartitions}"/>
+    </bean>
+
+
+    <!--                                           SEARCH TEMPLATE                                           -->
+
+    <alias name="carAdSearchTemplate" alias="searchTemplate"/>
+
+    <bean id="initialIndexSearcherHolderPhaser"
+          class="java.util.concurrent.Phaser">
+        <constructor-arg value="1"/>
+    </bean>
+
+    <bean id="carAdSearchTemplate"
+          class="ru.yandex.auto.core.search2.YoctoSearchTemplateImpl">
+        <constructor-arg name="entityGetter">
+            <bean class="ru.yandex.auto.core.search2.YoctoNonCachedEntityGetter">
+                <constructor-arg name="converter">
+                    <bean class="ru.yandex.auto.core.search2.conversion.yocto.CarAdYoctoEntityConverter">
+                    </bean>
+                </constructor-arg>
+                <constructor-arg name="phaser" ref="initialIndexSearcherHolderPhaser"/>
+                <constructor-arg name="indexSearcher" ref="initialIndexSearcher"/>
+            </bean>
+        </constructor-arg>
+    </bean>
+
+    <bean id="shortCarAdSearchTemplate" class="ru.yandex.auto.core.search2.YoctoSearchTemplateImpl">
+        <constructor-arg name="entityGetter">
+            <bean class="ru.yandex.auto.indexer.lucene.ShortCarAdEntityGetter">
+                <constructor-arg name="phaser" ref="initialIndexSearcherHolderPhaser"/>
+                <constructor-arg name="indexSearcher" ref="initialIndexSearcher"/>
+                <constructor-arg name="converter">
+                    <bean class="ru.yandex.auto.core.search2.conversion.yocto.ShortCarAdYoctoEntityConverter">
+                    </bean>
+                </constructor-arg>
+            </bean>
+        </constructor-arg>
+    </bean>
+
+    <bean id="initialCatalogCardPhaser"
+          class="java.util.concurrent.Phaser">
+        <constructor-arg value="1"/>
+    </bean>
+
+    <bean id="initialTrucksCatalogCardPhaser"
+          class="java.util.concurrent.Phaser">
+        <constructor-arg value="1"/>
+    </bean>
+
+    <bean id="initialMotoCatalogCardPhaser"
+          class="java.util.concurrent.Phaser">
+        <constructor-arg value="1"/>
+    </bean>
+
+    <bean id="yoctoDocumentConverter"
+          class="ru.yandex.auto.core.search2.conversion.yocto.CatalogCardYoctoEntityConverter"/>
+
+    <bean id="trucksYoctoDocumentConverter"
+          class="ru.yandex.auto.core.search2.conversion.yocto.TrucksCatalogCardYoctoConverter"/>
+
+    <bean id="motoYoctoDocumentConverter"
+          class="ru.yandex.auto.core.search2.conversion.yocto.MotoCatalogCardYoctoConverter"/>
+
+    <!--TRUCKS-->
+    <bean id="trucksSearchTemplate"
+          class="ru.yandex.auto.core.search2.YoctoSearchTemplateImpl">
+        <constructor-arg name="entityGetter">
+            <bean class="ru.yandex.auto.core.search2.YoctoNonCachedEntityGetter">
+                <constructor-arg name="converter">
+                    <bean class="ru.yandex.auto.core.search2.conversion.yocto.TruckAdYoctoEntityConverter">
+                    </bean>
+                </constructor-arg>
+                <constructor-arg name="phaser" ref="truckInitialIndexSearcherHolderPhaser"/>
+                <constructor-arg name="indexSearcher" ref="trucksInitialIndexSearcher"/>
+            </bean>
+        </constructor-arg>
+    </bean>
+
+    <bean id="truckInitialIndexSearcherHolderPhaser"
+          class="java.util.concurrent.Phaser">
+        <constructor-arg value="1"/>
+    </bean>
+
+    <bean id="trucksS3IndexConsumer"
+          class="ru.yandex.auto.index.consumer.YoctoS3Consumer">
+        <constructor-arg value="${auto.index-receiver.trucks.min.offers}"/>
+        <constructor-arg name="indexVersion">
+            <util:constant static-field="ru.yandex.auto.core.AutoSchemaVersions.TRUCKS_YOCTO_INDEX_VERSION"/>
+        </constructor-arg>
+        <constructor-arg name="updatePeriodInSeconds" value="${auto-searcher.index-update.period}"/>
+        <constructor-arg name="phaser" ref="truckInitialIndexSearcherHolderPhaser"/>
+        <constructor-arg name="qualifier" value="trucks"/>
+        <constructor-arg name="maxPartitions" value="${auto.index.maxPartitions}"/>
+    </bean>
+
+
+    <!--MOTO-->
+    <bean id="motoSearchTemplate"
+          class="ru.yandex.auto.core.search2.YoctoSearchTemplateImpl">
+        <constructor-arg name="entityGetter">
+            <bean class="ru.yandex.auto.core.search2.YoctoNonCachedEntityGetter">
+                <constructor-arg name="converter">
+                    <bean class="ru.yandex.auto.core.search2.conversion.yocto.MotoAdYoctoEntityConverter">
+                    </bean>
+                </constructor-arg>
+                <constructor-arg name="phaser" ref="motoInitialIndexSearcherHolderPhaser"/>
+                <constructor-arg name="indexSearcher" ref="motoInitialIndexSearcher"/>
+            </bean>
+        </constructor-arg>
+    </bean>
+
+    <bean id="motoInitialIndexSearcherHolderPhaser"
+          class="java.util.concurrent.Phaser">
+        <constructor-arg value="1"/>
+    </bean>
+
+    <bean id="motoS3IndexConsumer"
+          class="ru.yandex.auto.index.consumer.YoctoS3Consumer">
+        <constructor-arg value="${auto.index-receiver.moto.min.offers}"/>
+        <constructor-arg name="indexVersion">
+            <util:constant static-field="ru.yandex.auto.core.AutoSchemaVersions.MOTO_YOCTO_INDEX_VERSION"/>
+        </constructor-arg>
+        <constructor-arg name="updatePeriodInSeconds" value="${auto-searcher.index-update.period}"/>
+        <constructor-arg name="phaser" ref="motoInitialIndexSearcherHolderPhaser"/>
+        <constructor-arg name="qualifier" value="moto"/>
+        <constructor-arg name="maxPartitions" value="${auto.index.maxPartitions}"/>
+    </bean>
+
+</beans>

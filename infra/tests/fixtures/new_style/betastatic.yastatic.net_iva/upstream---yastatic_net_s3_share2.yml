@@ -1,0 +1,63 @@
+---
+regexp_path_section:
+  pattern: '/share2(/.*)?'
+  modules:
+    - report:
+        uuid: 'yastatic_net_s3_share2'
+        ranges: 'default'
+    - shared:
+        uuid: yastatic_net_s3_share2
+    - headers:
+        create:
+            'Host': 'share2.s3.yandex.net'
+        delete:
+            'authorization'
+    - rewrite:
+        actions:
+          - regexp: '^(/.*)?/v-[^/a-zA-Z]+/(.*)(\\?.*)?$'
+            rewrite: '%1/%2%3'
+          - regexp: '/share2/(.*)'
+            rewrite: '/%1'
+    - response_headers:
+        create:
+            Cache-Control: 'public, max-age=216009'
+            Strict-Transport-Security: 'max-age=43200000; includeSubDomains;'
+            Access-Control-Allow-Origin: '*'
+            Timing-Allow-Origin: '*'
+        create_func:
+            Expires: 'time:+216006s'
+    - shared:
+        uuid: 'yastatic_net_s3_share2_common'
+    - headers:
+        delete:
+          'authorization'
+    - response_headers:
+        create:
+            Cache-Control: 'public, max-age=216013'
+    - balancer2:
+        disable_attempts_rate_limiter: true
+        attempts: 1
+        simple_policy: {}
+        rr: {}
+        on_status_code:
+            # Затираем 404 с xml ответом mds
+            404:
+                modules:
+                - errordocument:
+                    status: 404
+                    content: Not Found    
+        on_error:
+            modules:
+            - errordocument:
+                status: 503
+        generated_proxy_backends:
+            proxy_options:
+                backend_timeout: '60s'
+                connect_timeout: '50ms'
+                fail_on_5xx: true
+                keepalive_count: 5
+                keepalive_timeout: '180s'
+                need_resolve: false
+            include_backends:
+                type: BY_ID
+                ids: [share2-proxyy]

@@ -1,0 +1,184 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Контрол зум: размер и видимость контрола
+
+Description:
+Проверка смены размера и видимости контрола.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+control
+
+Estimated time:
+120000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан Москвы, в контейнерe 4 контрола зума с кнопками "+/-", с линейкой и ползунком и 1 контрол зума в виде кнопок "+", "-"(контрол без линейки третий слева).
+  Сверху слева имеются кнопка "change...", "hide".
+  
+Step:
+  Action:
+  Выполнить клик в кнопку "change...".
+
+  Expectation:
+  У второго слева контрола меняется отображение: пропадает линейка с ползунком.
+  Под контейнером с картой появляется блок логов: "change size zoom1: default; change size zoom2: small; change size zoom3: auto; change size zoom4: large".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "hide".
+
+  Expectation:
+  Из контейнера пропадает пятый слева контрол зума, чуть правее появляется новый контрол зума с линейкой и ползунком.
+  Под контейнером с картой появляется блок логов: "сhange visible zoom5: false; change visible zoom6: true".
+-->
+<html>
+<head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            //Добавляем карту
+            var map = myMap = new ym.Map('map', {
+                center: [55.73259667357658, 37.70153663432529],
+                zoom: 9,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            addGrid(map);
+            var log = new Log();
+            log.info('zoom1 - top: 50, size: large');
+            log.info('zoom2 - top: 50,left: 30, size: auto');
+            log.info('zoom3 - top: 50,right: 300, size: small');
+            log.info('zoom4 - top: 50,right: 250 no size');
+
+            // Создание зумконтрола
+            var zoom1 = new ymaps.control.ZoomControl({
+                        options: {
+                            size: 'large',
+                            position: {
+                                top: 50
+                            }
+                        }
+                    }),
+                    zoom2 = new ymaps.control.ZoomControl({
+                        options: {
+                            size: 'auto',
+                            position: {
+                                top: 50,
+                                left: 30
+                            }
+                        }
+                    }),
+                    zoom3 = new ymaps.control.ZoomControl({
+                        options: {
+                            size: 'small',
+                            position: {
+                                top: 50,
+                                right: 300
+                            }
+                        }
+                    }),
+                    zoom4 = new ymaps.control.ZoomControl({
+                        options: {
+                            position: {
+                                top: 50,
+                                right: 250
+                            }
+                        }
+                    }),
+                    zoom5 = new ymaps.control.ZoomControl({
+                        options: {
+                            position: {
+                                top: 50,
+                                right: 200
+                            },
+                            visible: true
+                        }
+                    }),
+                    zoom6 = new ymaps.control.ZoomControl({
+                        options: {
+                            position: {
+                                top: 50,
+                                right: 150
+                            },
+                            visible: false
+                        }
+                    }),
+            //Кнопка изменения размера контролов
+                    changeSizeButton = new ymaps.control.Button({data: {content: 'changeSize'}, options: {selectOnClick: true}});
+            changeSizeButton.events
+                    .add('select', function () {
+                        zoom1.options.unset('size');
+                        zoom2.options.set({size: 'small'});
+                        zoom3.options.set({size: 'auto'});
+                        zoom4.options.set({size: 'large'});
+
+                        log.info(' ');
+                        log.info('change size zoom1: default');
+                        log.info('change size zoom2: small');
+                        log.info('change size zoom3: auto');
+                        log.info('change size zoom4: large');
+                    })
+                    .add('deselect', function () {
+                        zoom1.options.set({size: 'large'});
+                        zoom2.options.set({size: 'auto'});
+                        zoom3.options.set({size: 'small'});
+                        zoom4.options.unset('size');
+
+                        log.info(' ');
+                        log.info('change size zoom1: large');
+                        log.info('change size zoom2: auto');
+                        log.info('change size zoom3: small');
+                        log.info('change size zoom4: default');
+                    });
+
+            //Кнопка изменения видимости контролов
+            var visibleButton = new ymaps.control.Button({data: {content: 'hide'}, options: {selectOnClick: true}});
+            visibleButton.events
+                    .add('select', function () {
+                        zoom5.options.set('visible', false);
+                        zoom6.options.set('visible', true);
+                        log.info(' ');
+                        log.info('change visible zoom5: false');
+                        log.info('change visible zoom6: true');
+                    })
+                    .add('deselect', function () {
+                        zoom5.options.set('visible', true);
+                        zoom6.options.set('visible', false);
+                        log.info(' ');
+                        log.info('change visible zoom5: true');
+                        log.info('change visible zoom6: false');
+                    });
+
+            map.controls
+                    .add(zoom1)
+                    .add(zoom2)
+                    .add(zoom3)
+                    .add(zoom4)
+                    .add(zoom5)
+                    .add(zoom6)
+                    .add(visibleButton)
+                    .add(changeSizeButton);
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

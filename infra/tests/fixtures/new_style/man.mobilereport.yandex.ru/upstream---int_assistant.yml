@@ -1,0 +1,98 @@
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      uri: '/((m)?search/)?assistant(/.*)?'
+  modules:
+    - report:
+        uuid: assistant
+        ranges: default
+    - threshold:
+        lo_bytes: 1048576
+        hi_bytes: 1048576
+        pass_timeout: 9s
+        recv_timeout: 1s
+    - rewrite:
+        actions:
+          - regexp: '/(m)?search/(.*)'
+            rewrite: '/%2'
+    - regexp:
+        sections:
+          CPLB-235:
+            matcher:
+              match_and:
+                - match_fsm:
+                    cgi: 'app_version=413'
+                    surround: true
+                - match_fsm:
+                    cgi: 'clid=1866855'
+                    surround: true
+            modules:
+              - regexp:
+                  sections:
+                    app_id_exists:
+                      matcher:
+                        match_fsm:
+                          cgi: 'app_id'
+                          surround: true
+                      modules:
+                        - shared:
+                            uuid: assistant_backends
+                    default:
+                      matcher: {}
+                      modules:
+                        - errordocument: {status: 404}
+          default:
+            matcher: {}
+            modules:
+              - shared:
+                  uuid: assistant_backends
+              - balancer2:
+                  attempts: 3
+                  attempts_file: './controls/assistant.attempts'
+                  rr: {weights_file: ./controls/traffic_control.weights}
+                  backends:
+                  - weight: 1
+                    name: assistant_vla
+                    modules:
+                      - report: {ranges: default, uuid: requests_assistant_to_vla}
+                      - balancer2:
+                          attempts: 2
+                          weighted2: {}
+                          generated_proxy_backends:
+                            proxy_options:
+                              backend_timeout: 5s
+                            include_backends:
+                              type: BY_ID
+                              ids: [production_assistant_vla]
+                  - weight: 1
+                    name: assistant_sas
+                    modules:
+                      - report: {ranges: default, uuid: requests_assistant_to_sas}
+                      - balancer2:
+                          attempts: 2
+                          weighted2: {}
+                          generated_proxy_backends:
+                            proxy_options:
+                              backend_timeout: 5s
+                            include_backends:
+                              type: BY_ID
+                              ids: [production_assistant_sas]
+                  - weight: 1
+                    name: assistant_man
+                    modules:
+                      - report: {ranges: default, uuid: requests_assistant_to_man}
+                      - balancer2:
+                          attempts: 2
+                          weighted2: {}
+                          generated_proxy_backends:
+                            proxy_options:
+                              backend_timeout: 5s
+                            include_backends:
+                              type: BY_ID
+                              ids: [production_assistant_man]
+                  - weight: -1
+                    name: assistant_devnull
+                    modules:
+                      - errordocument:
+                          status: 204

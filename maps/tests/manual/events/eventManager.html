@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<!--
+Title:
+Менеджер событий
+
+Description:
+Проверка менеджера событий.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+regress
+
+Estimated time:
+90000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть страницу.
+
+  Expectation:
+  На странице отображется синий прямоугольник, с хинтом "321 == 321".
+  Сверху имеется кнопка "set border".
+
+Step:
+  Action:
+  Навести курсор на прямоугольник, увести курсор с прямоугольника.
+
+  Expectation:
+  Периметр прямоугольника становится зеленого цвета, после увода курсора обводка прямоугольника - темно-синего цвета.
+
+Step:
+  Action:
+  Навести курсор на прямоугольник, зажать ЛКМ, выполнить драг карты.
+  
+  Expectation:
+  При нажатии ЛКМ пропадает хинт, происходит корректный драг карты.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "set border".
+
+  Expectation:
+  Периметр прямоугольника становится красного цвета.
+-->
+<html>
+<head>
+    <title>API 2.0</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <script src="../helper.js"></script>
+    <script type="text/javascript">
+        Api('init');
+        function init(ymaps) {
+            var myMap = new ymaps.Map('map', {
+                center: [34.8006, -37.5181],
+                zoom: 5});
+            
+            var rectangle = new ymaps.Rectangle([
+                [40.8592, -43.7583],
+                [32.8199, -35.1451]
+            ]); // 36 154
+            myMap.geoObjects.add(rectangle);
+            var listeners = rectangle.events.group();
+            listeners.events.once("mouseenter", function (e) {
+                this.options.set("strokeColor", "00FF00");
+            }, rectangle).once("mouseleave", function (e) {
+                this.options.set("strokeColor", "0000FF");
+            }, rectangle);
+            var button = new ymaps.control.Button("set border");
+            button.events.add("click", function (e) {
+                this.options.set("strokeColor", "FF0000");
+            }, rectangle);
+            myMap.controls.add(button);
+            var priorityManager = new ymaps.event.PriorityManager(), txt = "321 == ";
+            priorityManager.once("click", function (e) {
+                txt += "1";
+            }, rectangle).once("click", function (e) {
+                txt += "2";
+            }, rectangle, -1).once("click", function (e) {
+                txt += "3"
+            }, rectangle, 1);
+            priorityManager.fire("click", new ymaps.Event());
+            priorityManager.fire("click", new ymaps.Event());
+            myMap.hint.show(myMap.getCenter(), txt);
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;">
+</div>
+<p><a href="https://tech.yandex.ru/maps/archive/doc/jsapi/2.0/ref/reference/domEvent.manager-docpage/" target="_blank">Docs</a></p>
+</body>
+</html>

@@ -1,0 +1,63 @@
+service: verticals # abc service
+title: Auto.ru web canonical tests
+
+arcanum:
+  review:
+    auto_assign: true
+    min_approvers_count: 1
+    disabling_policy: need_reason
+    groups:
+      - name: reviewers_auto_tests
+        roles: ["autoru:66440791"] # reviewers_web_auto_tests
+    rules:
+      - reviewers:
+          name: reviewers_auto_tests
+          assign: 1
+
+shared:
+  java-maven-lxc-requirements: &java-maven-lxc
+    cores: 1
+    ram: 2 GB
+    sandbox:
+      client_tags: GENERIC & LINUX & SSD & LXC
+      container_resource: 2864087804 # Container with Java 8 and Maven
+      dns: dns64
+
+ci:
+  secret: sec-01fxdmcb9927kx737kx1q1t1hq
+
+  runtime:
+    sandbox:
+      owner: VERTICALS
+      tags: [ "AUTORU_WEB_CANONICAL_TESTS" ]
+      priority: # Приоритет (необходимо задавать оба параметра, по умолчанию это BACKGROUND:LOW)
+        class: SERVICE # Доступные классы: USER, SERVICE, BACKGROUND
+        subclass: NORMAL # Доступные подклассы: LOW, NORMAL, HIGH
+
+  actions:
+    compile-flow:
+      title: Compile project
+      flow: compile-flow
+      triggers:
+        - on: pr
+          into: trunk
+
+  flows:
+    compile-flow:
+      title: Compile project
+      jobs:
+        compile:
+          title: Compile project
+          task: common/misc/run_command
+          requirements: *java-maven-lxc
+          input:
+            config:
+              arc_mount_config:
+                enabled: true
+              logs_config:
+                redirect_stderr_to_stdout: true
+                stdout_ci_badge: true
+              cmd_line: |
+                set -x
+                cd classifieds/auto-canonical-tests
+                mvn clean compile test-compile -B -s settings.xml -DskipTests

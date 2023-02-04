@@ -1,0 +1,258 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:util="http://www.springframework.org/schema/util"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+       http://www.springframework.org/schema/beans/spring-beans-3.1.xsd http://www.springframework.org/schema/util
+       http://www.springframework.org/schema/util/spring-util-2.0.xsd">
+
+    <bean class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer"
+          lazy-init="false">
+        <property name="locations">
+            <list>
+                <value>classpath:/context/test.properties</value>
+            </list>
+        </property>
+        <property name="ignoreUnresolvablePlaceholders" value="false"/>
+    </bean>
+
+    <import resource="classpath:rules-content.xml"/>
+    <import resource="classpath:ext-data-service-provider-context.xml"/>
+
+    <bean id="regionService" class="ru.yandex.auto.searcher.main.region.RegionServiceImpl">
+        <property name="loader">
+            <bean class="ru.yandex.extdata.provider.loader.ExtDataLoader">
+                <property name="service" ref="extDataService"/>
+                <property name="type" ref="regionsDataType"/>
+            </bean>
+        </property>
+    </bean>
+
+    <bean name="photoUtils" class="ru.yandex.auto.util.photo.PhotoUtils"/>
+
+    <!--                                           CATALOG CARD GROUPING SERVICE                            -->
+
+    <bean id="catalogCardGroupingService"
+          class="ru.yandex.auto.core.catalog.grouping.CatalogCardGroupingCachingImpl" lazy-init="true">
+        <property name="yoctoSearchTemplate" ref="catalogCardYoctoSearchTemplate"/>
+    </bean>
+
+    <!--                                           SEARCH TEMPLATE                                          -->
+
+    <bean id="catalogCardYoctoSearchTemplate"
+          factory-bean="yoctoCatalogCardUpdateListener" factory-method="buildSearcher"/>
+
+    <bean id="initialCatalogCardPhaser"
+          class="java.util.concurrent.Phaser">
+        <constructor-arg value="1"/>
+    </bean>
+
+    <bean id="yoctoDocumentConverter"
+          class="ru.yandex.auto.core.search2.conversion.yocto.CatalogCardYoctoEntityConverter"/>
+
+    <bean id="yoctoCatalogCardUpdateListener"
+          class="ru.yandex.auto.indexer.yocto.handler.catalog.CatalogCardUpdateListener">
+        <constructor-arg name="catalogDataType" ref="catalogDataType"/>
+        <constructor-arg name="converter" ref="yoctoDocumentConverter"/>
+        <constructor-arg name="extDataService" ref="extDataService"/>
+        <constructor-arg name="phaser" ref="initialCatalogCardPhaser"/>
+        <constructor-arg name="catalogCardsRootDirectory" value="${auto.shard.catalog-dir}"/>
+    </bean>
+
+
+    <bean id="fieldPersistenceManager" class="ru.yandex.auto.core.dictionary.FieldPersistenceManagerImpl">
+        <property name="loader">
+            <bean class="ru.yandex.extdata.provider.loader.ExtDataLoader">
+                <property name="service" ref="extDataService"/>
+                <property name="type" ref="verbaDataType"/>
+            </bean>
+        </property>
+    </bean>
+
+    <bean id="fieldDictionary" class="ru.yandex.auto.core.dictionary.FieldDictionary">
+        <property name="fieldPersistenceManager" ref="fieldPersistenceManager"/>
+    </bean>
+
+    <bean id="stringIndexDictionary" class="ru.yandex.auto.clone.core.dictionary.StringIndexDictionary">
+        <property name="fieldDictionary" ref="fieldDictionary"/>
+    </bean>
+
+    <bean id="vendorManager" class="ru.yandex.auto.core.vendor.VendorManagerFactoryBeanImpl">
+        <property name="vendorFileName" value="${auto.vendor}"/>
+        <property name="regionService" ref="regionService" />
+    </bean>
+
+    <bean id="tradeInUnifiedProcessor" class="ru.yandex.auto.clone.unifier.processor.JavaProcessor">
+        <property name="parsers">
+            <list>
+            </list>
+        </property>
+        <property name="unifiers">
+            <list>
+                <bean class="ru.yandex.auto.clone.unifier.dicunifier.MarkModelParser">
+                    <property name="fieldDictionary" ref="fieldDictionary"/>
+                </bean>
+                <bean class="ru.yandex.auto.clone.unifier.dicunifier.VerbaUnifier">
+                    <property name="fieldDictionary" ref="fieldDictionary"/>
+                    <property name="fields">
+                        <util:list>
+                            <util:constant static-field="ru.yandex.auto.clone.model.UnifiedCarAccessor.BODY_TYPE_FULL"/>
+                            <util:constant static-field="ru.yandex.auto.clone.model.UnifiedCarAccessor.CURRENCY_TYPE"/>
+                            <util:constant
+                                    static-field="ru.yandex.auto.clone.model.UnifiedCarAccessor.ENGINE_TYPE_FULL"/>
+                            <util:constant static-field="ru.yandex.auto.clone.model.UnifiedCarAccessor.RUN_METRIC"/>
+                            <util:constant static-field="ru.yandex.auto.clone.model.UnifiedCarAccessor.GEAR_TYPE"/>
+                            <util:constant
+                                    static-field="ru.yandex.auto.clone.model.UnifiedCarAccessor.TRANSMISSION_FULL"/>
+                            <util:constant static-field="ru.yandex.auto.clone.model.UnifiedCarAccessor.STATE"/>
+                            <util:constant static-field="ru.yandex.auto.clone.model.UnifiedCarAccessor.STEERING_WHEEL"/>
+                            <util:constant static-field="ru.yandex.auto.clone.model.UnifiedCarAccessor.HAGGLE"/>
+                            <util:constant
+                                    static-field="ru.yandex.auto.clone.model.UnifiedCarAccessor.CUSTOM_HOUSE_STATE"/>
+                            <util:constant static-field="ru.yandex.auto.clone.model.UnifiedCarAccessor.SELLER_CITY"/>
+                            <util:constant static-field="ru.yandex.auto.clone.model.UnifiedCarAccessor.COLOR_FULL"/>
+                            <util:constant static-field="ru.yandex.auto.clone.model.UnifiedCarAccessor.STOCK"/>
+                        </util:list>
+                    </property>
+                </bean>
+            </list>
+        </property>
+        <property name="modifiers">
+            <list>
+                <bean class="ru.yandex.auto.clone.beneficator.CatalogBeneficator">
+                    <property name="catalogCardGroupingService" ref="catalogCardGroupingService"/>
+                    <property name="vendorManager" ref="vendorManager"/>
+                    <property name="complexFieldsManager" ref="complexFieldsManager"/>
+                    <property name="fieldPersistenceManager" ref="fieldPersistenceManager"/>
+                </bean>
+                <bean class="ru.yandex.auto.clone.beneficator.CatalogEquipmentBeneficator">
+                    <property name="catalogCardGroupingService" ref="catalogCardGroupingService"/>
+                    <property name="catalogOptionsProvider" ref="catalogOptionsProvider"/>
+                    <property name="catalogParamSetter" ref="catalogParamSetter"/>
+                    <property name="modificationCodesProvider" ref="modificationCodesProvider"/>
+                </bean>
+                <bean class="ru.yandex.auto.clone.unifier.modifier.TagsModifier">
+                    <property name="catalogCardGroupingService" ref="catalogCardGroupingService"/>
+                </bean>
+                <bean class="ru.yandex.auto.clone.unifier.modifier.AdvantagesModifier">
+                    <property name="catalogCardGroupingService" ref="catalogCardGroupingService"/>
+                    <property name="dealersQuarantineCallsProvider" ref="dealersQuarantineCallsProvider"/>
+                </bean>
+            </list>
+        </property>
+    </bean>
+
+    <bean id="dataTypeRegistry"
+          class="ru.yandex.extdata.common.meta.DataTypeRegistry">
+        <constructor-arg>
+            <list>
+                <ref bean="dealerCreditConfigDataType"/>
+                <ref bean="dealersDataType"/>
+                <ref bean="verbaDataType"/>
+                <ref bean="catalogDataType"/>
+                <ref bean="currencyDataType"/>
+                <ref bean="regionsDataType"/>
+                <ref bean="carsModificationCodesDataType"/>
+            </list>
+        </constructor-arg>
+    </bean>
+
+
+    <bean id="catalogParamSetter" class="ru.yandex.auto.clone.beneficator.CatalogParamSetter"/>
+    <bean id="modificationCodesProvider" class="ru.yandex.auto.core.modifications.ModificationCodesProvider">
+        <constructor-arg name="dataType" ref="carsModificationCodesDataType"/>
+        <constructor-arg name="extDataService" ref="extDataService"/>
+    </bean>
+
+    <bean id="externalStockService" class="ru.yandex.auto.core.stock.http.CurrencyService">
+        <property name="conversions">
+            <list>
+                <value>USD_TO_RUR</value>
+                <value>EUR_TO_RUR</value>
+                <value>BYR_TO_RUR</value>
+                <value>UAH_TO_RUR</value>
+                <value>KZT_TO_RUR</value>
+                <value>EUR_TO_TRY</value>
+                <value>USD_TO_TRY</value>
+                <value>UAH_TO_TRY</value>
+            </list>
+        </property>
+        <property name="loader">
+            <bean class="ru.yandex.extdata.provider.loader.ExtDataLoader">
+                <property name="service" ref="extDataService"/>
+                <property name="type" ref="currencyDataType"/>
+            </bean>
+        </property>
+    </bean>
+
+    <bean id="dealersQuarantineCallsProvider"
+          class="ru.yandex.auto.dataprovider.DealersQuarantineCallsProvider">
+        <constructor-arg name="extDataService" ref="extDataService"/>
+        <constructor-arg name="dealersQuarantineCalls" ref="dealersQuarantineCalls"/>
+    </bean>
+
+    <bean id="priceConverter" class="ru.yandex.auto.core.stock.http.ExternalHttpStockPriceConverter">
+        <property name="externalStockService" ref="externalStockService"/>
+    </bean>
+
+    <bean name="dealersProvider" class="ru.yandex.auto.dealers.DealersProvider">
+        <constructor-arg name="dataType" ref="dealersDataType"/>
+        <constructor-arg name="extDataService" ref="extDataService"/>
+    </bean>
+
+    <bean id="catalogOptionsProvider" class="ru.yandex.auto.equipments.CatalogOptionsProvider">
+        <constructor-arg name="catalogDataType" ref="catalogDataType"/>
+        <constructor-arg name="extDataService" ref="extDataService"/>
+    </bean>
+
+    <bean id="complexFieldsManager" class="ru.yandex.auto.core.filter.complex_field.ComplexFieldsManager">
+        <property name="configLocalPath" value="${auto.ext-data.dir}/filter/complex-fields.xml"/>
+    </bean>
+
+    <bean id="priceConverterWrapper" class="ru.yandex.auto.core.stock.http.PriceConverterWrapper">
+        <property name="priceConverter" ref="priceConverter"/>
+    </bean>
+
+    <bean id="multiCurrencyPriceBuilder"
+          class="ru.yandex.auto.searcher.builders.price.MultiCurrencyPriceBuilder">
+        <property name="priceConverter" ref="priceConverterWrapper"/>
+    </bean>
+
+    <bean name="offerSpecificationsBuilder"
+          class="ru.yandex.auto.searcher.builders.OfferSpecificationsBuilder">
+        <property name="catalogCardGroupingService" ref="catalogCardGroupingService"/>
+        <property name="complexFieldsManager" ref="complexFieldsManager"/>
+    </bean>
+
+    <bean id="dealerCreditConfigDataTypeProvider" class="ru.yandex.providers.DealerCreditConfigDataTypeProvider">
+        <property name="loader">
+            <bean class="ru.yandex.extdata.provider.loader.ExtDataLoader">
+                <property name="service" ref="extDataService"/>
+                <property name="type" ref="dealerCreditConfigDataType"/>
+            </bean>
+        </property>
+    </bean>
+
+    <bean id="apiSearchResultBuilder" class="ru.yandex.auto.searcher.search.api.cars.ApiSearchResultBuilder">
+        <property name="fieldPersistenceManager" ref="fieldPersistenceManager"/>
+        <property name="multiCurrencyPriceBuilder" ref="multiCurrencyPriceBuilder"/>
+        <property name="catalogCardGroupingService" ref="catalogCardGroupingService"/>
+        <property name="offerSpecificationsBuilder" ref="offerSpecificationsBuilder"/>
+        <property name="regionService" ref="regionService"/>
+        <property name="apiDealersBuilder" ref="apiDealerBuilder"/>
+        <property name="apiCommonUtils" ref="apiCommonUtils"/>
+        <property name="dealerCreditConfigDataTypeProvider" ref="dealerCreditConfigDataTypeProvider"/>
+    </bean>
+
+    <bean name="apiDealerBuilder" class="ru.yandex.auto.searcher.search.api.ApiDealersBuilder">
+        <property name="dealersProvider" ref="dealersProvider"/>
+        <property name="regionService" ref="regionService"/>
+        <property name="catalogCardGroupingService" ref="catalogCardGroupingService"/>
+        <property name="photoUtils" ref="photoUtils"/>
+    </bean>
+
+    <bean id="apiCommonUtils" class="ru.yandex.auto.searcher.search.api.api_common.ApiCommonUtils">
+        <property name="fieldPersistenceManager" ref="fieldPersistenceManager"/>
+    </bean>
+
+
+</beans>

@@ -1,0 +1,110 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Контрол: программный поиск организаций со скрытием/показом балуна.
+
+Description:
+Проверка работы программного поиска организаций со скрытием/показом балуна.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+control
+
+Estimated time:
+120000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Дождаться загрузки и осмотреть карту и элементы на ней.
+
+  Expectation:
+  При загрузке в контейнере загружается спан с подписями на арабском(вязью), сверху контейнера имеется поисковый инпут с кнопкой "Найти", кнопка "hide".
+  Через 2 секунды в инпут подставляется значение "кафе", спан карты без изменений, под инпутом появляется панель "Ничего не нашлось" и кнопкой "Добавить организацию на карту".
+  
+Step:
+  Action:
+  Выполнить отзум на одно значение скролом мыши.
+
+  Expectation:
+  Происходит корректный отзум, под инпутом появляется панель со сниппетами кафе.
+  
+Step:
+  Action:
+  Навести курсор на первый сниппет, выполнить клик в сниппет.
+
+  Expectation:
+  При наведении курсора на сниппет фон сниппета окрашивается желтым.
+  По клику панель со сниппетами пропадает, происходит смещение спана карты, снизу открывается балун-панель с карточкой организации.
+  В центре оставшегося спана карты метка организации(и другие метки кафе).
+
+Step:
+  Action:
+  Выполнить клик в кнопку "hide".
+
+  Expectation:
+  Балун-панель с карточкой организации пропадает, спан карты без изменений, метки на карте.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "hide".
+
+  Expectation:
+  Происходит смещение спана карты, снизу открывается балун-панель с карточкой организации(организация - первый сниппет в панели из первого шага).
+  В центре оставшегося спана карты метка организации(другие метки кафе также на карте).
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var map = myMap = new ym.Map('map', {
+                center: [37.640390506634006, 55.7272577121426],
+                zoom: 10,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+            __log__("provider: 'yandex#search (ППО)'");
+            __log__('Waiting 2 seconds...');
+            __log__('Должно появиться предупреждение о том что ничего не найдено, при изменении зума ППО должен что-то найти');
+            var search = new ymaps.control.SearchControl();
+            map.controls.add(search);
+            search.options.set('provider', 'yandex#search');
+
+            setTimeout(function () {
+                __log__('Searching "кафе"... Должен появиться попап');
+                __log__('hideButton - скрывает/показывает балун на карте');
+                search.search('кафе').then(function () {
+                    __log__('Ready.')
+                });
+            }, 2000);
+
+            var hideResult = new ymaps.control.Button('hide');
+            hideResult.events
+                    .add('select', function () {
+                        search.hideResult();
+                    })
+                    .add('deselect', function () {
+                        search.showResult(0);
+                    });
+            map.controls.add(hideResult);
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

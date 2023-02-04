@@ -1,0 +1,88 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Мультимаршрут: запрос сведений по маршруту
+
+Description:
+Проверка геометрии меток в мультимаршруте. 
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+multiRouter
+
+Estimated time:
+90000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  При загрузке первоначально загружается карта со спаном Москвы, затем спан меняется на спан Москвы с мультимаршрутом из 2 точек(A,B).
+  В контейнере контрол фулскрин. 
+  Под контейнером с картой появляется строка с количеством и протяженностью маршрутов(информация должна быть корректной).
+
+Step:
+  Action:
+  Выполнить клик в маршрутную нитку(если есть альтернативные нитки, прокликать и их и проверить).
+
+  Expectation:
+  На маршрутной нитке появляется балун с временем маршрута, расстоянием, временем маршрута без пробок.
+  Расстояние маршрута должно соотвествовать указанному под контейнером. 
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 10,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            addGrid(map);
+            var log = new Log();
+
+            // Создаем модель мультимаршрута.
+            var multiRouteModel = new ymaps.multiRouter.MultiRouteModel(
+                    ['москва, комсомольская площадь', 'москва, льва толстого 16'], {});
+
+            // Создаем отображение мультимаршрута на основе модели.
+            var multiRouteView = new ymaps.multiRouter.MultiRoute(multiRouteModel, {boundsAutoApply: true, zoomMargin: 50});
+            map.geoObjects.add(multiRouteView);
+
+            // Подписываемся на события модели мультимаршрута.
+            multiRouteView.model.events
+                    .add("requestsuccess", function (event) {
+                        var routes = event.get("target").getRoutes();
+                        log.info("Найдено маршрутов: " + routes.length);
+                        console.log("Найдено маршрутов: " + routes.length);
+                        for (var i = 0, l = routes.length; i < l; i++) {
+                            log.info("Длина маршрута " + (i + 1) + ": " + routes[i].properties.get("distance").text);
+                            console.log("Длина маршрута " + (i + 1) + ": " + routes[i].properties.get("distance").text);
+                        }
+                    })
+                    .add("requestfail", function (event) {
+                        log.info("Ошибка: " + event.get("error").message);
+                        console.log("Ошибка: " + event.get("error").message);
+                    });
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

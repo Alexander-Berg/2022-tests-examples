@@ -1,0 +1,120 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Метки в видимой области на карты
+
+Description:
+На карту добавляются только метки находящиеся в видимой области карты.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+smoke
+
+Estimated time: 
+90000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан Москвы, с тремя метками коллекций.
+
+Step:
+  Action:
+  Зажав ЛКМ захватить карту и выполнить инертный драг, так чтобы верхняя метка была в видимой области карты.
+
+  Expectation:
+  Драг карты корректный, карта не мигает, не пропадает, метка не пропадает.
+
+Step:
+  Action:
+  Зажав ЛКМ захватить карту и выполнить инертный драг, вернувшись на первоначальную область видимости(с тремя метками).
+
+  Expectation:
+  Драг карты корректный, карта не мигает, не пропадает.
+  После окончания драга на карту добавляются метки коллекций.
+
+Step:
+  Action:
+  Кликнуть 4 раза в контрол масштабирования "-"(отзум).
+
+  Expectation:
+  Отзум карты корректный, карта не мигает, не пропадает.
+
+Step:
+  Action:
+  Зажав ЛКМ захватить карту и выполнить инертный драг, так, чтобы в зоне видимости был спан карты между Екатеринбургом и Новосибирском.
+
+  Expectation:
+  Драг карты корректный, карта не мигает, не пропадает.
+  В области видимости карты между Екатеринбургом и Новосибирском появляется метка коллекции.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            //ymaps = ym;
+            var myMap = new ymaps.Map("map", {
+                center: [55.73, 37.75],
+                zoom: 8
+            }, {
+                backgroundVisible: false
+            });
+            addGrid(myMap);
+            var log = new Log();
+            log.info("Test case: На карту добавляются только метки, попадающие в видимую область");
+
+            // Создадим объекты на основе JSON-описания геометрий.
+            var objects = ymaps.geoQuery([
+                {
+                    type: 'Point',
+                    coordinates: [55.73, 37.75]
+                },
+                {
+                    type: 'Point',
+                    coordinates: [55.10, 37.45]
+                },
+                {
+                    type: 'Point',
+                    coordinates: [55.25, 37.35]
+                },
+                {
+                    type: 'Point',
+                    coordinates: [55.25, 67.35]
+                }
+            ]);
+
+            // Найдем объекты, попадающие в видимую область карты.
+            objects.searchInside(myMap)
+                // И затем добавим найденные объекты на карту.
+                    .addToMap(myMap);
+
+            myMap.events.add('boundschange', function () {
+                // После каждого сдвига карты будем смотреть, какие объекты попадают в видимую область.
+                var visibleObjects = objects.searchInside(myMap).addToMap(myMap);
+                // Оставшиеся объекты будем удалять с карты.
+                objects.remove(visibleObjects).removeFromMap(myMap);
+            });
+            myMap.events.add('click', function (e) {
+                // Кликальный аналог драга
+                myMap.setCenter(e.get('coords'))
+            });
+        }
+    </script>
+</head>
+<body>
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

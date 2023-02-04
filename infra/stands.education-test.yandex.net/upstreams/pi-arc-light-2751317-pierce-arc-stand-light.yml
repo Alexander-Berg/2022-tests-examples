@@ -1,0 +1,59 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - robot-edu-infra
+      groups: []
+labels:
+  order: '10000000'
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      host: 'pi-arc-light-2751317\\.stands\\.praktikum\\.yandex\\.(ru|com)'
+  modules:
+    - meta: {id: awacs-logs, fields: {upstream: pi-arc-light-2751317-pierce-arc-stand-light}}
+    - regexp:
+        sections:
+          aiopierce:
+            matcher:
+              match_fsm:
+                uri: '/async(/.*)?'
+            modules:
+              - balancer2:
+                  attempts: 2
+                  attempts_rate_limiter:
+                    limit: 0.2
+                  rr: {}
+                  generated_proxy_backends:
+                    proxy_options:
+                      backend_timeout: 40s
+                      connect_timeout: 200ms
+                      allow_connection_upgrade: true
+                    include_backends:
+                      type: BY_ID
+                      ids: [pi-arc-light-2751317-pierce-arc-stand-light.aiopierce]
+                  on_error:
+                    errordocument:
+                      status: 504
+                      content: '[aiopierce] Service unavailable'
+          backend:
+            matcher: {}
+            modules:
+              - balancer2:
+                  attempts: 2
+                  attempts_rate_limiter:
+                    limit: 0.2
+                  rr: {}
+                  generated_proxy_backends:
+                    proxy_options:
+                      backend_timeout: 40s
+                      connect_timeout: 200ms
+                      allow_connection_upgrade: true
+                    include_backends:
+                      type: BY_ID
+                      ids: [pi-arc-light-2751317-pierce-arc-stand-light.backend]
+                  on_error:
+                    errordocument:
+                      status: 504
+                      content: '[backend] Service unavailable'

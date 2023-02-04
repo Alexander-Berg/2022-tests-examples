@@ -1,0 +1,109 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Карта: обработка проимса балуна
+
+Description:
+Проверка работы промиса уничтожающего балун на картах.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+map
+
+Estimated time:
+90000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  На странице два контейнера с картой со спаном Москвы(балунов на картах нет).
+  Под контейнером с картой блоки отработки промисов: 
+  "open + destroy: balloon destroyed; resolved: true, fulfilled: false, rejected: true".
+  "close + destroy: event: open, isOpen: false; balloon destroyed; resolved: true, fulfilled: true, rejected: false".
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var map1 = myMap1 = new ym.Map('map1', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 10,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            var map2 = myMap2 = new ym.Map('map2', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 10,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            addGrid(myMap1);
+            addGrid(myMap2);
+            var log = new Log();
+
+            var pos1 = myMap1.getCenter();
+            var pos2 = myMap2.getCenter();
+
+            myMap1.balloon.events.add(['open', 'close'], function (e) {
+                log.info('event: ' + e.get('type') + ', isOpen: ' + myMap1.balloon.isOpen());
+            });
+
+            myMap1.balloon.events.add(['beforedestroy', 'destroy'], function () {
+                log.info(e.get('type'))
+            });
+
+            myMap2.balloon.events.add(['open', 'close'], function (e) {
+                log.info('event: ' + e.get('type') + ', isOpen: ' + myMap1.balloon.isOpen());
+            });
+
+            myMap2.balloon.events.add(['beforedestroy', 'destroy'], function () {
+                log.info(e.get('type'))
+            });
+
+            log.info('open + destroy: ');
+            var promise = myMap1.balloon.open(pos1);
+            myMap1.balloon.destroy();
+            log.info('balloon destroyed');
+            promise.always(function () {
+                log.info('resolved: ' + promise.isResolved() + ', fulfilled: ' + promise.isFulfilled() + ', ' +
+                        'rejected: ' + promise.isRejected());
+            });
+
+            setTimeout(function () {
+                log.info('');
+                log.info('close + destroy: ');
+                myMap2.balloon.open(pos2).then(function () {
+                    var promise = myMap2.balloon.close();
+                    myMap2.balloon.destroy();
+                    log.info('balloon destroyed');
+                    promise.always(function () {
+                        log.info('resolved: ' + promise.isResolved() + ', fulfilled: ' + promise.isFulfilled() + ', ' +
+                                'rejected: ' + promise.isRejected());
+                    });
+
+                });
+            }, 500);
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map1" style="height: 512px; width: 512px;"></div>
+<div id="map2" style="height: 512px; width: 512px; margin-left: 550px; margin-top: -512px"></div>
+</body>
+</html>

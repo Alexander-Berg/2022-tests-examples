@@ -1,0 +1,122 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Обратное геокодирование
+
+Description:
+Результаты запроса по координатам события: клик и перетаскивание метки.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+smoke
+
+Estimated time:
+180000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан Москвы. 
+
+Step:
+  Action:
+  Клик в ЛКМ в любое место на спане карты. 
+
+  Expectation:
+  На спане карты в месте клика появляется метка с фиолетовой рамкой и наименованием топонима в месте клика.
+
+Step:
+  Action:
+  Удерживая ЛКМ захватить метку с наименованием топонима и перенести в другое место на карте. 
+
+  Expectation:
+  После захвата метка переносится, по окончании переноса и установки метки, в ней меняется наименование топонима, на топоним текущего местоположения.
+
+Step:
+  Action:
+  Клик в ЛКМ в любое место на спане карты. 
+
+  Expectation:
+  Предыдущая метка пропадает.
+  В месте клика появляется метка с фиолетовой рамкой и наименованием топонима.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            //ymaps = ym;
+
+            var myPlacemark,
+                    myMap = new ymaps.Map('map', {
+                        center: [55.753994, 37.622093],
+                        zoom: 9
+                    }, {
+                        backgroundVisible: false
+                    });
+            addGrid(myMap);
+            var log = new Log();
+            log.info("Test case: кликните по карте чтобы узнать адрес");
+
+            // Слушаем клик на карте
+            myMap.events.add('click', function (e) {
+                var coords = e.get('coords');
+
+                // Если метка уже создана – просто передвигаем ее
+                if (myPlacemark) {
+                    myPlacemark.geometry.setCoordinates(coords);
+                }
+                // Если нет – создаем.
+                else {
+                    myPlacemark = createPlacemark(coords);
+                    myMap.geoObjects.add(myPlacemark);
+                    // Слушаем событие окончания перетаскивания на метке.
+                    myPlacemark.events.add('dragend', function () {
+                        getAddress(myPlacemark.geometry.getCoordinates());
+                    });
+                }
+                getAddress(coords);
+            });
+
+            // Создание метки
+            function createPlacemark(coords) {
+                return new ymaps.Placemark(coords, {
+                    iconContent: 'поиск...'
+                }, {
+                    preset: 'islands#violetStretchyIcon',
+                    draggable: true
+                });
+            }
+
+            // Определяем адрес по координатам (обратное геокодирование)
+            function getAddress(coords) {
+                myPlacemark.properties.set('iconContent', 'поиск...');
+                ymaps.geocode(coords).then(function (res) {
+                    var firstGeoObject = res.geoObjects.get(0);
+
+                    myPlacemark.properties
+                            .set({
+                                iconContent: firstGeoObject.properties.get('name'),
+                                balloonContent: firstGeoObject.properties.get('text')
+                            });
+                });
+            }
+        }
+    </script>
+</head>
+<body>
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

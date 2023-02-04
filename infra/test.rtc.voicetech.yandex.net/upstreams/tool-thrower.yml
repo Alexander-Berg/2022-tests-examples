@@ -1,0 +1,66 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - av-kotikov
+      groups: []
+labels:
+  order: '10000000'
+---
+regexp_section:
+  matcher: {match_fsm: {uri: '/throw/(.*)'}}
+  modules:
+    - rewrite:
+        actions:
+          - {regexp: '/throw/(.*)', rewrite: /%1, split: url}
+    - balancer2:
+        attempts: 2
+        rr: {weights_file: ./controls/traffic_control.weights}
+        by_name_policy:
+          name: !f get_geo("throw_", "random")
+          unique_policy: {}
+        backends:
+          - weight: 1
+            name: throw_sas
+            modules:
+              - report: {ranges: default, uuid: requests_throw_to_sas}
+              - balancer2:
+                    attempts: 1
+                    attempts_rate_limiter:
+                      limit: 0.3
+                    weighted2: {}
+                    return_last_5xx: true
+                    status_code_blacklist: [5xx]
+                    generated_proxy_backends:
+                      proxy_options:
+                        backend_timeout: 1s
+                        connect_timeout: 70ms
+                        keepalive_count: 0
+                        fail_on_5xx: false
+                      include_backends:
+                        type: BY_ID
+                        ids: [voicetech-tools-thrower-sas]
+          - weight: 1
+            name: throw_vla
+            modules:
+              - report: {ranges: default, uuid: requests_throw_to_vla}
+              - balancer2:
+                    attempts: 1
+                    attempts_rate_limiter:
+                      limit: 0.3
+                    weighted2: {}
+                    return_last_5xx: true
+                    status_code_blacklist: [5xx]
+                    generated_proxy_backends:
+                      proxy_options:
+                        backend_timeout: 1s
+                        connect_timeout: 70ms
+                        keepalive_count: 0
+                        fail_on_5xx: false
+                      include_backends:
+                        type: BY_ID
+                        ids: [voicetech-tools-thrower-vla]
+        on_error:
+          errordocument:
+            status: 504
+            content: "Service unavailable"

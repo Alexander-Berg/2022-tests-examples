@@ -1,0 +1,39 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - next0
+      - goldfarb
+      groups: []
+labels:
+  order: '01000000'
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      uri: '/ads/advertiser_info/.*'
+  modules:
+    - rewrite:
+        actions:
+          - regexp: '.*'
+            header_name: Host
+            rewrite: 'frontend-test.s3.mds.yandex.net'
+          - regexp: '.*'
+            rewrite: '/advertiser-page/v1.7.0-a7a72d732fa302e963ef0489440c07ffe6aa5660.0/index.html'
+    - balancer2:
+        rr: {}
+        attempts: 2
+        attempts_rate_limiter:
+          limit: 0.1
+          coeff: 0.99
+        generated_proxy_backends:
+          proxy_options:
+            connect_timeout: 100ms
+            backend_timeout: 10s
+          instances:
+            - host: frontend-test.s3.mds.yandex.net
+              port: 80
+              weight: 1
+        on_error:
+          modules:
+          - errordocument: {content: Gateway Timeout, status: 504}

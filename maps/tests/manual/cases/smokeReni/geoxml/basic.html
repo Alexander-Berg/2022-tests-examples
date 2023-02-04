@@ -1,0 +1,185 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Отображение загружаемых данных на карте 
+
+Description:
+Отображение данных загружаемых посредством функции geoXml.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+smoke
+
+Estimated time: 
+240000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась корректно.
+  Под блоком с картой кнопки "Показать пример YMapsML", "Показать пример KML", "Показать пример gpx".
+
+Step:
+  Action:
+  Клик в кнопку "Показать пример YMapsML".
+
+  Expectation:
+  Спан карты меняется, на карте появляются голубые метки коллекций.
+
+Step:
+  Action:
+  Поочередно прокликать метки коллекций кликом ЛКМ.
+
+  Expectation:
+  Спан карты может смещаться для открытия балуна метки.
+  При клике в метку открывается балун с адресом офиса Яндекса в городах России.
+
+Step:
+  Action:
+  Клик в кнопку "Показать пример KML".
+
+  Expectation:
+  На спане карты появляются полетные(дугообразные) линии, и метки в виде канцелярских кнопок.
+
+Step:
+  Action:
+  Выполнить клик в иконку кнопки.
+
+  Expectation:
+  На месте иконки появляется балун вида: "IST; Istanbul-Ataturk (IST), Turkey; Elevation: 163 ft; Flights: 8".
+
+Step:
+  Action:
+  Выполнить клик в полетную линию.
+
+  Expectation:
+  В месте клика появляется балун "Flights; Flights".
+
+Step:
+  Action:
+  Клик в кнопку "Показать пример gpx".
+
+  Expectation:
+  На спане карты над городами Москва и Санкт-Петербург появляются синие метки коллекций.
+
+Step:
+  Action:
+  Выполнить призум к спану Москвы.
+
+  Expectation:
+  На спане Москвы четыре синие метки коллекций.
+
+Step:
+  Action:
+  Поочередно выполнить клик в каждую метку коллекций.
+
+  Expectation:
+  При клике у меток открывается балун.
+  Балун нижней правой метки: "Россия, Москва, поселение Марушкинское, деревня Марушкино, жилой комплекс Зелёная Москва-3".
+  Балун нижней левой метки: "Россия".
+  Балун верхней левой метки: "Россия, Москва".
+  Балун верхней правой метки: "Россия, Москва".
+
+Step:
+  Action:
+  Перейти на спан Санкт-Петербурга.
+
+  Expectation:
+  На спане Санкт-Петербурга множество синих меток коллекций, а также имеются объекты в виде фиолетовых линий.
+
+Step:
+  Action:
+  Клик в метку в Финском заливе.
+
+  Expectation:
+  На месте метки открывается балун с текстом "fsdfsdfs".
+
+Step:
+  Action:
+  Клик в крайнюю нижнюю линию на спане Санкт-Петербурга.
+
+  Expectation:
+  Открывается балун с текстом "fsdfsfs".
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <script src="//yandex.st/jquery/1.6.4/jquery.min.js" type="text/javascript"></script>
+    <script src="../../../helper.js"></script>
+    <style>
+        .inputs {
+            padding: 10px;
+        }
+    </style>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            //ymaps = ym;
+            var myMap = new ymaps.Map('map', {
+                        center: [55.76, 37.64],// Москва
+                        zoom: 2,
+                        controls: ['zoomControl']
+                    }, {
+                        backgroundVisible: false
+                    }),
+                    ymapsmlButton = $('.load-ymapsml'),
+                    gpxButton = $('.load-gpx'),
+                    kmlButton = $('.load-kml');
+            addGrid(myMap);
+            var log = new Log();
+            log.info("Test case: У меток должен открываться балун");
+            log.info("State сохраняет ссылку на мою карту");
+
+            // Отключение кеширования атрибута disabled в Firefox.
+            ymapsmlButton.get(0).disabled = false;
+            kmlButton.get(0).disabled = false;
+            gpxButton.get(0).disabled = false;
+
+            // При нажатии на кнопку загружаем соответствующий XML-файл.
+            // и отображаем его данные на карте.
+            ymapsmlButton.click(function (e) {
+                ymaps.geoXml.load('https://maps.yandex.ru/export/usermaps/93jfWjoXws37exPmKH-OFIuj3IQduHal/')
+                        .then(onGeoXmlLoad);
+                e.target.disabled = true;
+            });
+            kmlButton.click(function (e) {
+                ymaps.geoXml.load('https://openflights.org/demo/openflights-sample.kml')
+                        .then(onGeoXmlLoad);
+                e.target.disabled = true;
+            });
+            gpxButton.click(function (e) {
+                ymaps.geoXml.load('http://alyniekka.com/se0ga/example.gpx')
+                        .then(onGeoXmlLoad);
+                e.target.disabled = true;
+            });
+
+            // Обработчик загрузки XML-файлов.
+            function onGeoXmlLoad(res) {
+                myMap.geoObjects.add(res.geoObjects);
+                if (res.mapState) {
+                    res.mapState.applyToMap(myMap);
+                }
+            }
+
+            myMap.state.set('mapSid', "93jfWjoXws37exPmKH-OFIuj3IQduHal");
+            myMap.state.set('mapSourceType', "mymaps");
+        }
+    </script>
+</head>
+<body>
+<div id="map" style="height: 512px; width: 512px;"></div>
+<div class="inputs">
+    <input type="button" value="Показать пример YMapsML" class="load-ymapsml"/>
+    <input type="button" value="Показать пример KML" class="load-kml"/>
+    <input type="button" value="Показать пример gpx" class="load-gpx"/>
+</div>
+</body>
+</html>

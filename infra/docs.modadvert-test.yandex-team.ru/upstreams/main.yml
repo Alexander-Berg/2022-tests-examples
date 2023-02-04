@@ -1,0 +1,45 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - artemkon
+      groups: []
+labels:
+  order: '10000000'
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      uri: (/.*)?
+  modules:
+    - rewrite:
+        actions:
+          - regexp: '/'
+            rewrite: /
+    - report:
+        ranges: default
+        uuid: modadvert-docs-test
+    - balancer2:
+        connection_attempts: 2
+        attempts: 2
+        attempts_rate_limiter:
+          limit: 0.5
+        dynamic: 
+          max_pessimized_share: 1
+          weight_increase_step: 0.5
+          active:
+            delay: 5s
+            request: 'GET /ping HTTP/1.1\nHost: docs.modadvert-test.yandex-team.ru\n\n'
+            weight_normalization_coeff: 1
+        generated_proxy_backends:
+          proxy_options:
+            backend_timeout: 120s
+            connect_timeout: 70ms
+            fail_on_5xx: false
+          include_backends:
+            type: BY_ID
+            ids: [modadvert-documents-api-test]
+        on_error:
+          errordocument:
+            status: 504
+            content: "Service unavailable"

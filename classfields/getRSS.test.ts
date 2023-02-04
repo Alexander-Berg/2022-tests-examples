@@ -1,0 +1,74 @@
+import MockDate from 'mockdate';
+
+import createHttpReq from 'autoru-frontend/mocks/createHttpReq';
+import createHttpRes from 'autoru-frontend/mocks/createHttpRes';
+
+import AppError from 'auto-core/lib/app_error';
+
+import articleMock from 'auto-core/react/dataDomain/mag/articleMock';
+
+import journalApi from 'auto-core/server/resources/journal-api/getResource.nock.fixtures';
+
+import type { THttpRequest, THttpResponse } from 'auto-core/http';
+
+import getRSS from './getRSS';
+
+let req: THttpRequest;
+let res: THttpResponse;
+
+beforeEach(() => {
+    MockDate.set('2020-05-20');
+
+    req = createHttpReq() as unknown as THttpRequest;
+    res = createHttpRes() as unknown as THttpResponse;
+});
+
+it('вернет ошибку, если отсутствуют посты', async() => {
+    journalApi
+        .get('/posts-for-feed/?pageSize=60&categories=&status=publish&orderBySort=lastEditedAt&pageNumber=0&rssOff=false&indexOff=false')
+        .reply(200, {
+            data: [],
+        });
+
+    let error;
+
+    try {
+        await getRSS(req, res);
+    } catch (e) {
+        error = e;
+    }
+
+    expect(error).toEqual(AppError.createError(AppError.CODES.PAGE_NOT_FOUND));
+});
+
+it('вернет содержимое фида для всех опубликованных постов', async() => {
+    const post = articleMock.value();
+
+    journalApi
+        .get('/posts-for-feed/?pageSize=60&categories=&status=publish&orderBySort=lastEditedAt&pageNumber=0&rssOff=false&indexOff=false')
+        .reply(200, {
+            data: [ post, post, post ],
+        });
+
+    const result = await getRSS(req, res);
+
+    expect(result).toMatchSnapshot();
+});
+
+it('вернет содержимое фида для категории testdrives', async() => {
+    const postWithCategories = articleMock.withCategories({ withDefault: true }).value();
+
+    journalApi
+        .get('/posts-for-feed/?pageSize=60&categories=testdrives&status=publish&orderBySort=lastEditedAt&pageNumber=0&rssOff=false&indexOff=false')
+        .reply(200, {
+            data: [ postWithCategories, postWithCategories, postWithCategories ],
+        });
+
+    if (req.router?.params) {
+        req.router.params = { theme_id: 'testdrives' };
+    }
+
+    const result = await getRSS(req, res);
+
+    expect(result).toMatchSnapshot();
+});

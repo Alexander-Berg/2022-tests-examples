@@ -1,0 +1,142 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Карта: отлов событий оверлеем хинта 
+
+Description:
+Проверка отлова событий оверлеем хинта.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+map
+
+Estimated time:
+240000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+  
+  Expectation:
+  Карта отобразилась корректно. 
+  На карте спан Москвы, сверху справа контрол фулскрин.  
+
+Step:
+  Action:
+  Навести курсор на спан карты. 
+  Увести курсор со спана карты.
+  
+  Expectation:
+  При наведении курсора и покидании спана с картой под контейнером появляются события "map event: mouseenter; map event: mouseleave". 
+
+Step:
+  Action:
+  Выполнить клик в спан карты. 
+  
+  Expectation:
+  При наведении, покидании, кликах и других действиях внутри контейнера с картой под контейнером появляются события с приставкой "map". 
+  При клике в спан карты под контейнером с картой появляется события: "map event: mousedown; map event: mouseup; map event: click".
+  На спане карты появляется хинт "hint", под контейнером появляются события: "event: hintopen; event: open, isOpen: true".
+
+Step:
+  Action:
+  Выполнить даблклик в спан карты. 
+  
+  Expectation:
+  При наведении, покидании, кликах и других действиях внутри контейнера с картой(не на хинте) под контейнером появляются события с приставкой "map". 
+  При даблклике в спан карты под контейнером с картой появляется событие: "map event: dblclick".
+
+Step:
+  Action:
+  Выполнить клик ПКМ в спан карты. 
+  
+  Expectation:
+  При наведении, покидании, кликах и других действиях внутри контейнера с картой(не на хинте) под контейнером появляются события с приставкой "map". 
+  При клике ПКМ в спан под контейнером с картой появляется событие: "map event: contextmenu".
+
+Step:
+  Action:
+  Навести курсор на спан и выполнить скрол колесиком мыши. 
+  
+  Expectation:
+  При наведении, покидании, кликах и других действиях внутри контейнера с картой(не на хинте) под контейнером появляются события с приставкой "map". 
+  При скроле под контейнером с картой появляется событие: "map event: wheel".
+
+Step:
+  Action:
+  При наличии возможности проверить отлов картой событий выполняя действия при помощи тачпада.  
+  При отсутствии возможности повторить выполнение действий используя мышь.
+  
+  Expectation:
+  При наведении, покидании, кликах и других действиях внутри контейнера с картой(не на хинте) под контейнером появляются события с приставкой "map". 
+  При выполнении действий на хинте, под контейнером с картой появляются соответствующие выполняемым действиям события.
+
+Step:
+  Action:
+  При наличии возможности мультисенсорного дисплея проверить отлов картой событий выполнив пинчзум на спане.
+  
+  Expectation:
+  При наведении, покидании, кликах и других действиях внутри контейнера с картой(не на хинте) под контейнером появляются события с приставкой "map". 
+  При выполнении пинчзума на спане, под контейнером с картой появляется событие: "map event: multitouchstart".
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var myMap = new ym.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 10,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+
+            myMap.events.add(['hintopen', 'hintclose'], function (e) {
+                log.info('event: ' + e.get('type'));
+            });
+
+            myMap.hint.events.add(['open', 'close'], function (e) {
+                log.info('event: ' + e.get('type') + ', isOpen: ' + myMap.hint.isOpen());
+            });
+
+            var callback = function (e) {
+                log.info('map event: ' + e.get('type'));
+            };
+
+            var callback2 = function (e) {
+                log.info('overlay event: ' + e.get('type'));
+            };
+            var domevents = ['click', 'contextmenu', 'dblclick', 'mousedown', 'mouseenter', 'mouseleave', 'mouseup', 'multitouchend',
+                'multitouchstart', 'wheel'];
+
+            myMap.events.add(domevents, callback);
+            myMap.events.add('click', function (e) {
+                var position = e.get('coords');
+                myMap.hint.open(position, {content: 'hint'}, {pane: 'hint', fitPane: true}).then(function () {
+                    myMap.hint.getOverlay().then(function (obj) {
+                        obj.events.add(domevents, callback2)
+                    });
+                });
+
+            });
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

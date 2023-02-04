@@ -1,0 +1,107 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Результаты промисов и события в инфо-объектах при повторных действиях
+
+Description:
+Результаты промисов и события в инфо-объектах при повторных действиях. 
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+map
+
+Estimated time:
+60000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно со спаном Москвы.
+  Под контейнером с картой(сверху) отображаются тестовые кнопки, под контейнером снизу строки "text".
+  В центре спана метка, в контейнере дефолтный набор контролов, а также дополнительный контрол поиска и контрол маршрутов, коопирайты, условия и лого на карте.
+  
+Step:
+  Action:
+  Проскролить страницу с картой.
+
+  Expectation:
+  Происходит скрол страницы, это видно по перемещению строк "text", карта закреплена фиксированно.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../helper.js"></script>
+    <script src="../../js/geoCS.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym; // hack
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.73259667357658, 37.70153663432529],
+                zoom: 9,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            geoCSSource(ym, myMap, this);
+            addGrid(myMap);
+            var log = new Log();
+            var collection = new ymaps.GeoObjectCollection();
+            collection
+                    .add(geoObjectPlacemark)
+                    .add(geoObjectPolyline)
+                    .add(geoObjectPolygon)
+                    .add(geoObjectRectangle)
+                    .add(geoObjectCircle)
+                    .add(placemark)
+                    .add(polyline)
+                    .add(polygon)
+                    .add(rectangle)
+                    .add(circle);
+
+            myMap.geoObjects.add(collection);
+
+            collection.each(function (object) {
+                addProperties(object);
+                testBalloonMethods(object);
+            });
+
+            function testBalloonMethods(obj) {
+                obj.events.add('mouseenter', function () {
+                    obj.balloon.open().then(function () {
+                        if (obj.balloon.isOpen()) {
+                            log.info('isOpen: true')
+                        } else log.info('isOpen: false');
+                    });
+                });
+                obj.events.add('mouseleave', function () {
+                    obj.balloon.close().then(function () {
+                        if (obj.balloon.isOpen()) {
+                            log.info('isOpen: true')
+                        } else log.info('isOpen: false')
+                    })
+                });
+            }
+
+            function addProperties(obj) {
+                obj.properties.set('iconContent', 'A');
+                obj.properties.set('balloonContent', 'balloon content');
+            }
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

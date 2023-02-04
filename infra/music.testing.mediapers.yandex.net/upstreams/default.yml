@@ -1,0 +1,43 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - glebwin
+      - nanny-robot
+      groups:
+      - svc_mediapers
+labels:
+  order: '99999999'
+config_mode: easy2
+---
+l7_upstream_macro:
+  version: 0.0.1
+  id: default
+  matcher:
+    any: true
+  by_dc_scheme:
+    dc_balancer:
+      weights_section_id: 'musicwebtesting'
+      method: BY_DC_WEIGHT
+      attempts: 1
+    balancer:
+      compat:
+        method: ACTIVE
+      health_check:
+        request: 'GET /ping HTTP/1.1\nHost: music.testing.mediapers.yandex.net\n\n'
+        delay: 1s
+      attempts: 1
+      backend_timeout: 6s
+      connect_timeout: 100ms
+      retry_http_responses:
+        codes: [4xx, 5xx]
+      max_reattempts_share: 0.1
+    dcs:
+      - name: vla
+        backend_ids:
+        - mediapers-testing-music-web-vla
+      - name: sas
+        backend_ids:
+        - mediapers-testing-music-web-sas
+    on_error:
+      rst: true

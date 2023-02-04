@@ -1,0 +1,117 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - anoh
+      groups: []
+labels:
+  order: '10000000'
+---
+regexp_section:
+  matcher: {}
+  modules:
+    - shared:
+        uuid: images_prod
+    - report:
+        uuid: images
+        ranges: default
+    - antirobot_macro:
+        hasher_take_ip_from: X-Forwarded-For-Y
+    - threshold:
+        lo_bytes: 1048576
+        hi_bytes: 5242880
+        pass_timeout: 10s
+        recv_timeout: 50ms
+        on_pass_timeout_failure:
+          modules:
+            - errordocument:
+                status: 413
+    - geobase_macro: {}
+    - exp_getter_macro:
+        service_name: images
+        exp_headers: 'X-Yandex-LogstatUID|X-Yandex-ExpSplitParams'
+    - request_replier:
+        rate_file: './controls/request_replier_images.ratefile'
+        sink:
+          modules:
+            - balancer2:
+                simple_policy: {}
+                rr: {}
+                generated_proxy_backends:
+                  proxy_options:
+                    backend_timeout: 10s
+                  instances:
+                    - weight: 1
+                      host: sinkadm.priemka.yandex.ru
+                      port: 80
+    - headers_hasher:
+        header_name: X-Yandex-LogstatUID
+        randomize_empty_match: true
+    - balancer2:
+        attempts: 2
+        attempts_file: ./controls/images.attempts
+        rr: {weights_file: ./controls/search_l7_balancer_switch.json}
+        by_hash_policy:
+          unique_policy: {}
+        backends:
+          - weight: 1
+            name: images_vla
+            modules:
+              - report: {ranges: default, uuid: images_requests_to_vla}
+              - balancer2:
+                  attempts: 2
+                  attempts_file: './controls/attempts.count'
+                  rr: {}
+                  generated_proxy_backends:
+                    proxy_options:
+                      backend_timeout: 30s
+                    include_backends:
+                      type: BY_ID
+                      ids: [images_vla]
+          - weight: 1
+            name: images_sas
+            modules:
+              - report: {ranges: default, uuid: images_requests_to_sas}
+              - balancer2:
+                  attempts: 2
+                  attempts_file: './controls/attempts.count'
+                  rr: {}
+                  generated_proxy_backends:
+                    proxy_options:
+                      backend_timeout: 30s
+                    include_backends:
+                      type: BY_ID
+                      ids: [images_sas]
+          - weight: 1
+            name: images_man
+            modules:
+              - report: {ranges: default, uuid: images_requests_to_man}
+              - balancer2:
+                  attempts: 2
+                  attempts_file: './controls/attempts.count'
+                  rr: {}
+                  generated_proxy_backends:
+                    proxy_options:
+                      backend_timeout: 30s
+                    include_backends:
+                      type: BY_ID
+                      ids: [images_man]
+          - weight: -1
+            name: images_pumpkin
+            modules:
+              - report: {ranges: default, uuid: images_requests_to_pumpkin}
+              - balancer2:
+                  attempts: 2
+                  rr: {}
+                  generated_proxy_backends:
+                    proxy_options:
+                      backend_timeout: 10s
+                    include_backends:
+                      type: BY_ID
+                      ids: [images_pumpkin]
+          - weight: -1
+            name: images_devnull
+            modules:
+              - report: {ranges: default, uuid: images_requests_to_devnull}
+              - errordocument:
+                  status: 204

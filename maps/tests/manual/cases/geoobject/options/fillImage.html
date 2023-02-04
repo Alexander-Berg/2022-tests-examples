@@ -1,0 +1,210 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Геообъект: опции заливки фигуры
+
+Description:
+Проверка опции заливки фигуры.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+geoobject
+
+Estimated time:
+180000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+  
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан карты Московской области, на спане два ряда объектов: многоугольник, прямоугольник, круг(у верхнего ряда граница фигуры синего цвета,у нижнего - зеленого), 
+  Внутри фигур имеется фон с серыми прямоугольными блоками.
+  Сверху имеются кнопки "fill", "fillOpacity: 0.5/1", "fillColor: red/unset", "tile/stretch".
+  
+Step:
+  Action:
+  Выполнить клик в кнопку "tile/stretch".  
+
+  Expectation:
+  Объекты внутри заливаются синим цветом, фон в виде прямоугольных блоков становится меньше, растягиваясь внутри блока.
+  Под контейнером с картой строка: "'fillMethod', 'tile'".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "fillColor: red/unset".  
+
+  Expectation:
+  Объекты внутри заливаются красным цветом.
+  Под контейнером с картой строка: "fillColor', '#FF0000".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "fillOpacity: 0.5/1".  
+
+  Expectation:
+  Меняется опция прозрачности фона в виде серых прямоугольников внутри объектов(становятся прозрачнее).
+  Под контейнером с картой строка: "'fillOpacity', 0.7".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "fill".  
+
+  Expectation:
+  Спан карты без изменений, под контейнером с картой строка: "'fill', true".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "fillColor: red/unset".  
+
+  Expectation:
+  Заливка красного цвета внутри объектов пропадает, остается заливка синего полупрозрачного цвета.
+  Под контейнером с картой строка: "unset('fillColor')".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "fillOpacity: 0.5/1".  
+
+  Expectation:
+  Меняется опция прозрачности фона в виде серых прямоугольников внутри объектов(становятся непрозрачней).
+  Под контейнером с картой строка: "'fillOpacity', 1".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "tile/stretch".  
+
+  Expectation:
+  Пропадает заливка синего полупрозрачного цвета, фон в виде прямоугольных блоков становится больше.
+  Под контейнером с картой строка: "'fillMethod', 'stretch'".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "fillColor: red/unset".  
+
+  Expectation:
+  Объекты внутри заливаются красным цветом.
+  Под контейнером с картой строка: "fillColor', '#FF0000".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "fill".  
+
+  Expectation:
+  Из объектов пропадает фон в виде прямоугольных серых блоков, под контейнером с картой строка: "'fill', false".
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script src="../geoCS.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym; // hack
+
+            var myMap = new ym.Map('map', {
+                center: [55.73259667357658, 37.70153663432529],
+                zoom: 9,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            geoCSSource(ym, myMap, this);
+            addGrid(myMap);
+            var log = new Log();
+
+            var collection = new ymaps.GeoObjectCollection();
+            collection
+                    .add(geoObjectPolygon)
+                    .add(geoObjectRectangle)
+                    .add(geoObjectCircle)
+                    .add(polygon)
+                    .add(rectangle)
+                    .add(circle);
+
+            collection.each(function (obj) {
+                obj.options.unset('fillColor');
+                obj.options.set('fill', true);
+                obj.options.set('fillImageHref', 'https://png-1.findicons.com/files/icons/950/android/48/small_tiles.png');
+            });
+
+            var methodButton = new ymaps.control.Button('tile/stretch');
+            var colorButton = new ymaps.control.Button('fillColor: red/unset');
+            var opacityButton = new ymaps.control.Button('fillOpacity: 0.5/1');
+            methodButton.events
+                    .add('select', function () {
+                        collection.each(function (obj) {
+                            obj.options.set('fillMethod', 'tile')
+                        });
+                        log.info("'fillMethod', 'tile'");
+                    })
+                    .add('deselect', function () {
+                        collection.each(function (obj) {
+                            obj.options.set('fillMethod', 'stretch')
+                        });
+                        log.info("'fillMethod', 'stretch'");
+                    });
+
+            colorButton.events
+                    .add('select', function () {
+                        collection.each(function (obj) {
+                            obj.options.set('fillColor', '#FF0000')
+                        });
+                        log.info("fillColor', '#FF0000");
+                    })
+                    .add('deselect', function () {
+                        collection.each(function (obj) {
+                            obj.options.unset('fillColor')
+                        });
+                        log.info("unset('fillColor')");
+                    });
+
+            opacityButton.events
+                    .add('select', function () {
+                        collection.each(function (obj) {
+                            obj.options.set('fillOpacity', 0.7)
+                        });
+                        log.info("'fillOpacity', 0.7");
+                    })
+                    .add('deselect', function () {
+                        collection.each(function (obj) {
+                            obj.options.set('fillOpacity', 1)
+                        });
+                        log.info("'fillOpacity', 1");
+                    });
+            var fillButton = new ymaps.control.Button('fill');
+            fillButton.events
+                    .add('select', function () {
+                        collection.each(function (obj) {
+                            obj.options.set('fill', true)
+                        });
+                        log.info("'fill', true");
+                    })
+                    .add('deselect', function () {
+                        collection.each(function (obj) {
+                            obj.options.set('fill', false)
+                        });
+                        log.info("'fill', false");
+                    });
+
+            myMap.geoObjects.add(collection);
+            myMap.controls
+                    .add(methodButton, {maxWidth: 99999})
+                    .add(colorButton, {maxWidth: 99999})
+                    .add(opacityButton, {maxWidth: 99999})
+                    .add(fillButton, {maxWidth: 99999});
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

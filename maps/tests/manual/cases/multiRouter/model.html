@@ -1,0 +1,178 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Мультимаршрут: запрос значений мультимаршрута
+
+Description:
+Проверка запрос значений модели мульмаршрута.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+multiRouter
+
+Estimated time:
+150000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  При загрузке загружается карта со спаном Москвы.
+  В контейнере контрол фулскрин, сверху кнопки "way", "via", "routes", "json".
+  Снизу кнопка "SetPoints", под контейнером с картой блок: "multiRoute.model: request events; requestsend; requestsuccess;[object Object]".
+  После имеются 9 строк "Ок".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "setPoints". 
+
+  Expectation:
+  Под контейнером с картой появляется блок строк: "requestchange; requestsend; requestsuccess".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "way". 
+
+  Expectation:
+  Под контейнером с картой появляется блок строк: "wayPointCollection:[object Object],[object Object]; wayPoint:[object Object]; wayPoint:[object Object]".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "via". 
+
+  Expectation:
+  Под контейнером с картой появляется блок строк: "viaPointCollection:[object Object]; viaPoint:[object Object]".
+ 
+Step:
+  Action:
+  Выполнить клик в кнопку "routes". 
+
+  Expectation:
+  Под контейнером с картой появляется блок строк: "routes:[object Object]; route:[object Object]".
+ 
+Step:
+  Action:
+  Выполнить клик в кнопку "json". 
+
+  Expectation:
+  Под контейнером с картой появляется блок строк: "json:[object Object]".
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            //TODO: написать тест
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 10,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            addGrid(map);
+            var log = new Log();
+
+            __log__('multiRoute.model: request events')
+
+            var events = ['requestcancel', 'requestchange', 'requestfail', 'requestsend', 'requestsuccess'];
+
+            var callback = function(e) {
+                log.info(e.get('type'))
+            };
+
+            var multiRoute = new ymaps.multiRouter.MultiRoute({
+                referencePoints: ['Москва, Ленинский проспект', 'Кулаков переулок', 'Санкт-Петербург, Льва Толстого'],
+                params: {
+                    viaIndexes: [1]
+                }
+            }, {});
+
+            multiRoute.model.events.add(events, callback);
+
+            var getJsonButton = new ymaps.control.Button('json');
+            var getRoutesButton = new ymaps.control.Button('routes');
+            var getViaButton = new ymaps.control.Button('via');
+            var getWayButton = new ymaps.control.Button('way');
+
+            var setPointsButton = new ymaps.control.Button('setPoints');
+
+            getJsonButton.events.add('click', function() {
+                log.info('json:' + multiRoute.model.getJson());
+                console.log(multiRoute.model.getJson());
+            });
+
+            getRoutesButton.events.add('click', function() {
+                var routesCollection = multiRoute.model.getRoutes();
+                log.info('routes:' + routesCollection);
+                console.log(routesCollection);
+                for(element in routesCollection) {
+                    log.info('route:' + routesCollection[element]);
+                    console.log(routesCollection[element])
+                }
+            });
+
+            getViaButton.events.add('click', function() {
+                var viaCollection = multiRoute.model.getViaPoints();
+                log.info('viaPointCollection:' + viaCollection);
+                console.log(viaCollection);
+                for(element in viaCollection) {
+                    log.info('viaPoint:' + viaCollection[element]);
+                    console.log(viaCollection[element])
+                }
+            });
+
+            getWayButton.events.add('click', function() {
+                var wayCollection = multiRoute.model.getWayPoints();
+                log.info('wayPointCollection:' + wayCollection);
+                console.log(wayCollection);
+                for(element in wayCollection) {
+                    log.info('wayPoint:' + wayCollection[element]);
+                    console.log(wayCollection[element])
+                }
+            });
+
+            setPointsButton.events.add('click', function() {
+                multiRoute.model.setReferencePoints(['москва', 'питер', 'хельсинки'])
+            });
+
+            map.controls
+                    .add(getJsonButton)
+                    .add(getRoutesButton)
+                    .add(getViaButton)
+                    .add(getWayButton)
+                    .add(setPointsButton, {float: 'none', position: {left: 10, bottom: 35}});
+            setTimeout(function () {
+                var params = multiRoute.model.getParams();
+                __log__(params);
+                validateValue(params.routingMode, "auto");
+                validateValue(params.avoidTrafficJams, false);
+                validateValue(params.boundedBy, null);
+                validateValue(params.results, 3);
+                validateValue(params.searchCoordOrder, "latlong");
+                validateValue(params.strictBounds, false);
+                validateValue(params.viaIndexes[0], 1);
+                validateValue(multiRoute.model.getReferencePointIndexes().way, [0, 2]);
+                validateValue(multiRoute.model.getReferencePointIndexes().via, 1);
+            }, 2000);
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

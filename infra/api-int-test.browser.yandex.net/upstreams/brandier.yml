@@ -1,0 +1,45 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - ntatarinov
+      groups: []
+labels:
+  order: '10000000'
+---
+  regexp_section:
+    matcher:
+      match_fsm:
+        uri: '/brandier(/.*)?'
+    modules:
+      - rewrite:
+          actions:
+            - regexp: '/brandier(/.*)'
+              rewrite: '%1'
+      - report:
+          uuid: brandier
+          ranges: default
+      - balancer2:
+          connection_attempts: 2
+          attempts: 2
+          dynamic:
+            max_pessimized_share: 0.2
+            active:
+              delay: '10s'
+              weight_normalization_coeff: 1
+              request: 'GET /ping HTTP/1.1\nHost: api-int-test.browser.yandex.net\n\n'
+          unique_policy: {}
+          attempts_rate_limiter:
+            limit: 0.15
+          generated_proxy_backends:
+            proxy_options:
+              backend_timeout: 10s
+              connect_timeout: 70ms
+            include_backends:
+              type: BY_ID
+              ids: [browser-api-brandier-testing]
+          on_error:
+            errordocument:
+              status: 504
+              content: "Service unavailable"
+  

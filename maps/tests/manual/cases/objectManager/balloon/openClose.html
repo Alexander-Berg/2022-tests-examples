@@ -1,0 +1,175 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Менеджер объектов: события балуна геообъекта 
+
+Description:
+Проверка автопана балуна. 
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+objectManager
+
+Estimated time:
+120000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  При появлении карты с объектами зажать ЛКМ и переместить спан карты за пределы видимости объектов. 
+
+  Expectation:
+  После загрузки карты через 4 секунды спан карты смещается к объектам, на круге открывается балун "objectManagerCircle54".
+  Под контейнером появляется строки "autopanbegin, target: [object Object]; open, target: [object Object]; autopanend, target: [object Object]".
+  Сверху кнопки "clusterize", "openBalloonOnClick".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "openBalloonOnClick".
+
+  Expectation:
+  Под контейнером появляется блоки строк, со строками "OK", ошибок быть не должно.
+
+Step:
+  Action:
+  Закрыть балун кликом в крестик. 
+
+  Expectation:
+  Балун закрывается.
+  Под контейнером появляется строки: "close, target: [object Object]; userclose, target: [object Object]".
+
+Step:
+  Action:
+  Выполнить два клика в кнопку "clusterize". 
+
+  Expectation:
+  Объекты на карте кластеризуются, появляется несколько меток кластеров со значениями кластеризации.
+
+Step:
+  Action:
+  Выполнить клик в метку кластера на спане карты. 
+
+  Expectation:
+  Спан карты немного смещается, вместо метки открывается балун с двумя колонками.
+  Под контейнером появляется строки: "autopanbegin, target: [object Object]; open, target: [object Object]; autopanend, target: [object Object]".
+
+Step:
+  Action:
+  Сместить спан для отображения кнопки закрытия балуна и выполнить клик в кнопку закрытия. 
+
+  Expectation:
+  Балун закрывается на спане карты снова появляется метка кластера.
+  Под контейнером появляется строки: "close, target: [object Object]; userclose, target: [object Object]".
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script src="../../../js/objectSource.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var map = myMap = new ymaps.Map('map', {
+                center: [55.716901946294286, 37.30336807048247],
+                zoom: 13,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+
+            objectManagerSource(ym, myMap, this);
+
+            var objectManager = new ymaps.ObjectManager({clusterize: false, clusterDisableClickZoom: true});
+
+            objectManager.objects.add(objectPlacemark1);
+            objectManager.objects.add(objectPlacemark2);
+            objectManager.objects.add(objectPlacemark3);
+            objectManager.objects.add(objectPlacemark4);
+            objectManager.objects.add(objectPlacemark5);
+            objectManager.objects.add(objectPlacemark6);
+            objectManager.objects.add(objectPlacemark7);
+            objectManager.objects.add(objectPlacemark8);
+            objectManager.objects.add(objectPlacemark9);
+            objectManager.objects.add(objectPlacemark10);
+            objectManager.objects.add(objectPlacemark11);
+            objectManager.objects.add(objectPlacemark12);
+            objectManager.objects.add(objectPlacemark13);
+            objectManager.objects.add(objectPlacemark14);
+            objectManager.objects.add(objectPlacemark15);
+            objectManager.objects.add(objectPlacemark16);
+            objectManager.objects.add(objectPlacemark17);
+            objectManager.objects.add(objectManagerArray);
+            objectManager.objects.add(objectManagerCollection);
+            objectManager.objects.add(objectManagerArrayNonPointObjects);
+            objectManager.objects.add(objectManagerCollectionNonPointObjects);
+            objectManager.objects.add(objectManagerPolygon);
+            objectManager.objects.add(objectManagerPolyline);
+            objectManager.objects.add(objectManagerCircle);
+            objectManager.objects.add(objectManagerRectangle);
+
+            map.geoObjects.add(objectManager);
+            setTimeout(function () {
+                objectManager.objects.balloon.open(53);
+            }, 4000);
+
+            __log__("Проверь события балуна геообъекта и кластера: 'open', 'close', 'userclose', 'autopanbegin', 'autopanend' ");
+            objectManager.objects.balloon.events.add(['open', 'close', 'userclose', 'autopanbegin', 'autopanend'], function (e) {
+                __log__(e.get('type') + ", target: " + e.get('target'));
+                console.log(e.get('target'))
+            });
+            objectManager.clusters.balloon.events.add(['open', 'close', 'userclose', 'autopanbegin', 'autopanend'], function (e) {
+                __log__(e.get('type') + ", target: " + e.get('target'));
+                console.log(e.get('target'))
+            });
+
+            var balloonButton = new ymaps.control.Button({data: {content: 'openBalloonOnClick'}, options: {
+                selectOnClick: true,
+                maxWidth: 160
+            }});
+            balloonButton.events
+                    .add('deselect', function () {
+                        objectManager.clusters.options.set('openBalloonOnClick', true);
+                        objectManager.objects.options.set('openBalloonOnClick', true);
+                        log.info('OpenBalloonOnClickGeoObject: ' + objectManager.clusters.options.get('openBalloonOnClick'));
+                        log.info('OpenBalloonOnClickCluster: ' + objectManager.objects.options.get('openBalloonOnClick'));
+                    })
+                    .add('select', function () {
+                        objectManager.clusters.options.set('openBalloonOnClick', false);
+                        objectManager.objects.options.set('openBalloonOnClick', false);
+                        log.info('OpenBalloonOnClickGeoObject: ' + objectManager.clusters.options.get('openBalloonOnClick'));
+                        log.info('OpenBalloonOnClickCluster: ' + objectManager.objects.options.get('openBalloonOnClick'));
+                    });
+
+            map.controls.add(balloonButton);
+
+            var clusterizeButton = new ymaps.control.Button({data: {content: 'clusterize'}, options: {
+                selectOnClick: true,
+                maxWidth: 160
+            }});
+            clusterizeButton.events
+                    .add('deselect', function () {
+                        objectManager.options.set('clusterize', true);
+                    })
+                    .add('select', function () {
+                        objectManager.options.set('clusterize', false);
+                    });
+
+            map.controls.add(clusterizeButton);
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

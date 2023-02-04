@@ -1,0 +1,111 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - evor
+      groups: []
+labels:
+  order: '10000000'
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      url: '/+adfox/.*'
+  modules:
+    - report: {ranges: default, uuid: yabs_pcode_renderer_adfox}
+    - shared:
+        uuid: backends_adfox
+    - headers:
+        delete: 'Accept-Encoding'
+        create_weak:
+          Y-Service: pcode
+          ssr-request: 'true'
+    - icookie:
+        use_default_keys: true
+        domains: [".yandex.ru", ".yandex.by", ".yandex.com", ".yandex.com.tr", ".yandex.kz", ".yandex.ua"]
+        enable_set_cookie: true
+        scheme_bitmask: 3
+    - response_headers:
+        create_weak:
+          Access-Control-Allow-Origin: '*'
+    - rewrite:
+        actions:
+          - regexp: '(/+adfox/.*)\\?(.+)$'
+            split: url
+            rewrite: '%1?%2&route=ssr&ssr-request=true'
+          - regexp: '(/+adfox)((/\\w*)+)(\\?)?$'
+            split: url
+            rewrite: '%1%2?route=ssr&ssr-request=true'                 
+    - balancer2:
+        connection_attempts: 2
+        attempts: 2
+        attempts_rate_limiter:
+          limit: 0.15
+          max_budget: 45
+        weighted2:
+          weights_file: ./controls/traffic_control.weights
+        backends:
+          - weight: 1
+            name: pcode_man
+            modules:
+              - shared:
+                  uuid: testing_man_adfox
+              - report: {ranges: default, uuid: request_to_man_adfox}
+              - balancer2:
+                  attempts: 1
+                  dynamic:
+                    max_pessimized_share: 0.2
+                  generated_proxy_backends:
+                    proxy_options:
+                      backend_timeout: 5s
+                      connect_timeout: 70ms
+                      keepalive_count: 1
+                    include_backends:
+                      type: BY_ID
+                      ids: [testing_man]
+          - weight: 1
+            name: pcode_myt
+            modules:
+              - shared:
+                  uuid: testing_myt_adfox
+              - report: {ranges: default, uuid: request_to_myt_adfox}
+              - balancer2:
+                  attempts: 1
+                  dynamic:
+                    max_pessimized_share: 0.2
+                  generated_proxy_backends:
+                    proxy_options:
+                      backend_timeout: 5s
+                      connect_timeout: 70ms
+                      keepalive_count: 1
+                    include_backends:
+                      type: BY_ID
+                      ids: [testing_myt]
+          - weight: 1
+            name: pcode_sas
+            modules:
+              - shared:
+                  uuid: testing_sas_adfox
+              - report: {ranges: default, uuid: request_to_sas_adfox}
+              - balancer2:
+                  attempts: 1
+                  dynamic:
+                    max_pessimized_share: 0.2
+                  generated_proxy_backends:
+                    proxy_options:
+                      backend_timeout: 5s
+                      connect_timeout: 70ms
+                      keepalive_count: 1
+                    include_backends:
+                      type: BY_ID
+                      ids: [testing_sas]
+          - weight: -1
+            name: pcode_devnull
+            modules:
+              - errordocument:
+                  status: 504
+                  content: "Service unavailable"
+        on_error:
+          errordocument:
+            status: 504
+            content: "Service unavailable"

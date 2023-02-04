@@ -1,0 +1,89 @@
+# Unified agent config
+# Diod service use ua as agent for metrics.
+# ====
+# Metrics are collected via pulling from localhost:9000/solomon/spack handler.
+# Solomon is configured to collect metrics from Unified agent via http://<host>:10050/read handler.
+# ====
+# Logs are gathered via https://deploy.yandex-team.ru/docs/concepts/pod/sidecars/logs/logs#5.2.-polzovatelskij-topik-(beta)
+# ====
+status:
+  port: 22502
+
+storages:
+  # logs storage
+  - name: main
+    plugin: fs
+    config:
+      directory: ./push-agent/logs
+      max_partition_size: 1gb
+      max_segment_size: 50mb
+      session_meta_mismatch_action: ignore
+  # storage for metrics from application itself
+  - name: spack_metrics_storage
+    plugin: fs
+    config:
+      directory: /var/lib/yandex/unified_agent/storage/spack_metrics
+      max_partition_size: 100mb
+  # storage for metrics from opentelemetry
+  - name: prometheus_metrics_storage
+    plugin: fs
+    config:
+      directory: /var/lib/yandex/unified_agent/storage/prometheus_metrics
+      max_partition_size: 100mb
+
+routes:
+  - input:
+      plugin: metrics_pull
+      config:
+        url: http://localhost:9000/solomon/spack
+        format:
+          spack: {}
+        project: newbilling-tarification
+        service: diod
+        cluster: diod-test
+        poll_period: 5s
+        # default metric_name is "name", without this specification UA will reject all metrics without "name" label.
+        metric_name_label: sensor
+        headers:
+          Accept: application/x-solomon-spack
+    channel:
+      pipe:
+        - storage_ref:
+            name: spack_metrics_storage
+      channel_ref:
+        name: monitoring
+  - input:
+      plugin: metrics_pull
+      config:
+        url: http://localhost:8889/metrics
+        format:
+          prometheus: {}
+        project: newbilling-tarification
+        service: diod
+        cluster: diod-test
+        poll_period: 5s
+        metric_name_label: sensor
+        headers:
+          Accept: text/plain
+    channel:
+      pipe:
+        - filter:
+            plugin: transform_metric_labels
+            config:
+              labels:
+                - sensor: "{name}"
+                - name: "-"
+        - storage_ref:
+            name: prometheus_metrics_storage
+      channel_ref:
+        name: monitoring
+
+channels:
+  - name: monitoring
+    channel:
+      output:
+        plugin: metrics_pull
+        config:
+          port: 10050
+
+

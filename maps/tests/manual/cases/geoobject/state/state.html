@@ -1,0 +1,127 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Геообъект: отлов состояний при возникновении событий на объектах
+
+Description:
+Проверка состояний при возникновении событий на объектах.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+geoobject
+
+Estimated time:
+180000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+  
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан карты Московской области, на спане два ряда объектов: метка, линия, многоугольник, прямоугольник, круг(верхний ряд синего цвета, нижний - зеленого).
+  
+Step:
+  Action:
+  Навести курсор на объект синего круга. 
+
+  Expectation:
+  Курсор при наведении меняется на палец, под контейнером с картой появляется блок: "Circle (mouseenter) state.hover: true; Circle (mouseenter) state.active: undefined; Circle (mouseenter) state.drag: undefined".
+
+Step:
+  Action:
+  Перевести курсор с круга на свободное место на спане карты.   
+
+  Expectation:
+  Курсор меняется на руку, под контейнером с картой появляется блок: "Circle (mouseleave) state.hover: false; Circle (mouseleave) state.active: undefined; Circle (mouseleave) state.drag: undefined".
+
+Step:
+  Action:
+  Выполнить клик в зеленый прямоугольник.
+
+  Expectation:
+  При наведении курсор меняется на палец, по клику на прямоугольнике открывается балун "Rectangle".
+  Под контейнером с картой появляется блок наведения курсора на объект аналогичный предыдущему шагу с приставкой: "Rectangle".
+  Под контейнером с картой появляется блок открытия балуна: "Rectangle (balloonopen) state.hover: true; Rectangle (balloonopen) state.active: true; Rectangle (balloonopen) state.drag: undefined".
+
+Step:
+  Action:
+  Закрыть балун объекта кликом в крестик.
+
+  Expectation:
+  Под контейнером с картой появляется блок закрытия балуна на объекте: "Rectangle (balloonclose) state.hover: false; Rectangle (balloonclose) state.active: false; Rectangle (balloonclose) state.drag: undefined".
+
+Step:
+  Action:
+  Навести курсор на синий многоугольник, зажать ЛКМ и выполнить драг объекта.
+
+  Expectation:
+  При наведении курсор меняется на палец.
+  Под контейнером с картой появляется блок наведения курсора на объект аналогичный предыдущему шагу с приставкой: "Polygon".
+  Под контейнером с картой появляется блок драга объекта: "Polygon (drag) state.hover: true; Polygon (drag) state.active: undefined; Polygon (drag) state.drag: true".
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script src="../geoCS.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym; // hack
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.73259667357658, 37.70153663432529],
+                zoom: 9,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            geoCSSource(ym, myMap, this);
+            addGrid(myMap);
+            var log = new Log(),
+                    collection = new ym.GeoObjectCollection();
+
+            collection.add(geoObjectPlacemark);
+            collection.add(geoObjectCircle);
+            collection.add(geoObjectPolyline);
+            collection.add(geoObjectRectangle);
+            collection.add(geoObjectPolygon);
+            collection.add(placemark);
+            collection.add(circle);
+            collection.add(polyline);
+            collection.add(rectangle);
+            collection.add(polygon);
+
+            collection.options.set('draggable', true);
+            collection.properties.set('hintContent', 'text');
+            collection.properties.set('balloonContent', 'text');
+
+            collection.each(function (e) {
+                e.properties.set({
+                    balloonContent: e.geometry.getType()
+                });
+                e.events.add(["mouseenter", "mouseleave", "balloonopen", "balloonclose", 'drag'], function (evt) {
+                    var obj = evt.get("target"),
+                            type = evt.get("type");
+                    log.info(obj.geometry.getType() + " (" + type + ") state.hover: " + obj.state.get("hover"));
+                    log.info(obj.geometry.getType() + " (" + type + ") state.active: " + obj.state.get("active"));
+                    log.info(obj.geometry.getType() + " (" + type + ") state.drag: " + obj.state.get("drag"));
+                });
+            });
+
+            myMap.geoObjects.add(collection);
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

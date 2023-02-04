@@ -1,0 +1,50 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - vladislavteli
+      groups: []
+labels:
+  order: '0111100'
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      uri: '/sprav/support(/.*)?'
+  modules:
+    - hasher:
+        mode: subnet
+        subnet_v4_mask: 32
+        subnet_v6_mask: 128
+    - rewrite:
+        actions:
+          - regexp: '/sprav/support(/)?'
+            rewrite: '/'
+    - headers:
+        create:
+          Host: 'sprav.daas.locdoc-test.yandex.ru' 
+    - balancer2:
+        active_policy:
+          unique_policy: {}
+        attempts: 3
+        attempts_rate_limiter:
+          limit: 0.2 
+        hashing:
+          delay: '10s'
+          request: 'GET /ping HTTP/1.1\nHost: internal.daas.locdoc-test.yandex.net\n\n'
+        generated_proxy_backends:
+          proxy_options:
+            connect_timeout: 300ms
+            backend_timeout: 10s
+            keepalive_count: 1
+            fail_on_5xx: false
+            status_code_blacklist: ["429"]
+          instances:
+            - weight: 1
+              host: 'internal.daas.locdoc-test.yandex.net'
+              port: 80
+        on_error:
+          modules:
+            - errordocument:
+                status: 504
+                content: 'Service unavailable'

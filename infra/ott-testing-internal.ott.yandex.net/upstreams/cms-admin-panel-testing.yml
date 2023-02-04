@@ -1,0 +1,62 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - vyacheslav
+      groups: []
+labels:
+  order: '10000000'
+config_mode: easy2
+---
+l7_upstream_macro:
+  version: 0.2.1
+  id: cms-admin-panel-testing
+  monitoring:
+    uuid: cms-admin-panel-testing
+    response_codes: [400, 401, 403, 410, 499, 500, 502, 503, 504]
+  matcher:
+    path_re: '/admin-api(/.*)?'
+  rewrite:
+    - target: 'PATH'
+      pattern:
+        re: '^/admin-api(/.*)?$'
+      replacement: '%1'
+  by_dc_scheme:
+    balancer:
+      attempts: 1
+      backend_timeout: 300s
+      connect_timeout: 120ms
+      fast_attempts: 2
+      max_pessimized_endpoints_share: 0.5
+      max_reattempts_share: 0.15
+      retry_non_idempotent: false
+      health_check:
+        delay: '5s'
+        request: 'GET /ping?l7 HTTP/1.0\n\n'
+      retry_http_responses:
+        on_last_failed_retry: PROXY_RESPONSE_AS_IS
+        codes: [5xx]
+    dc_balancer:
+      attempts: 2
+      method: BY_DC_WEIGHT
+      weights_section_id: bygeo
+    dcs:
+      - name: sas
+        monitoring:
+          uuid: cms-admin-panel-testing_sas
+        backend_ids:
+          - cms-admin-panel-testing_sas
+      - name: man
+        monitoring:
+          uuid: cms-admin-panel-testing_man
+        backend_ids:
+          - cms-admin-panel-testing_man
+      - name: vla
+        monitoring:
+          uuid: cms-admin-panel-testing_vla
+        backend_ids:
+          - cms-admin-panel-testing_vla
+    on_error:
+      static:
+        status: 504
+        content: "Service unavailable"

@@ -1,0 +1,181 @@
+<!DOCTYPE HTML>
+<!--(skip)(description)
+-->
+<!--(version)
+-->
+<!--(parameters)
+-->
+<!--(commands)
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../../../helper.js"></script>
+    <script type=text/javascript>
+        Api("init", "package.full,traffic.provider.storage,control.optionMapper,theme.islets.traffic.layout.control.JamsData,theme.islets.traffic.layout.control.PanelContent", "tr-TR");
+
+        function init(ymaps) {
+
+            //ymaps = ym;
+
+            var map = new ymaps.Map('map', {
+                center: [55.7, 37.5],
+                zoom: 10,
+                controls: ['searchControl', 'fullscreenControl']
+            });
+            var log = new Log();
+            addGrid(map);
+            var btn1 = new ymaps.control.Button('Атлантика'),
+                    btn2 = new ymaps.control.Button('Москва'),
+                    btn3 = new ymaps.control.Button('ЗаМКАД'),
+                    btn4 = new ymaps.control.Button('Питер'),
+                    btn5 = new ymaps.control.Button('Киев'),
+                    btn6 = new ymaps.control.Button('Владик'),
+                    btn7 = new ymaps.control.Button('Тверь');
+            map.controls.add(btn7).add(btn6).add(btn5).add(btn4).add(btn3).add(btn2).add(btn1);
+            btn1.events.add('click', function () {
+                map.setCenter([43.83401, -34.804204]);
+            });
+
+            btn2.events.add('click', function () {
+                map.setCenter([55.755381, 37.619044]);
+            });
+
+            btn3.events.add('click', function () {
+                map.setCenter([57.755381, 37.619044]);
+            });
+            btn4.events.add('click', function () {
+                map.setCenter([59.9420, 30.3000]);
+            });
+            btn5.events.add('click', function () {
+                map.setCenter([50.4396, 30.5344]);
+            });
+            btn6.events.add('click', function () {
+                map.setCenter([43.1161, 131.884]);
+            });
+            btn7.events.add('click', function () {
+                map.setCenter([56.8596, 35.9366]);
+            });
+            /*
+             Создаем фейковый контрол.
+             В нем остались только те методы, которые нужны контролу.
+             */
+            var fakeControl = {
+                currentProvider: null,
+
+                providers: {},
+
+                state: new ymaps.data.Manager(),
+                options: new ymaps.option.Manager(),
+
+                getProvider: function (key) {
+                    if (!key) {
+                        key = this.state.get('providerKey');
+                    }
+                    if (!this.providers.hasOwnProperty(key)) {
+                        var providerClass = ymaps.traffic.provider.storage.get(key);
+                        if (providerClass) {
+                            this.providers[key] = new providerClass();
+                        }
+                    }
+                    return this.providers[key];
+                },
+
+                getMap: function () {
+                    return map;
+                }
+            };
+            fakeControl.options.setName('trafficControl');
+            fakeControl.options.setParent(map.options);
+            fakeControl.options.setMapper(ymaps.control.optionMapper);
+
+            // Устанавливаем провайдер на карту.
+            var controlStateMonitor = new ymaps.Monitor(fakeControl.state)
+                    .add('providerKey', function (newValue, oldValue) {
+                        var oldProvider = this.currentProvider,
+                                newProvider = this.getProvider(newValue);
+                        oldProvider && oldProvider.setMap(null);
+                        if (newProvider) {
+                            newProvider.options.setParent(this.options);
+                            newProvider.setMap(this.getMap());
+                        }
+                        this.currentProvider = newProvider;
+                        // Вызывем после удаления с карты, чтобы не вызвать лишнию перерисовку макета перед его удалением.
+                        oldProvider && oldProvider.options.setParent(null);
+                    }, fakeControl);
+
+            fakeControl.state.set({
+                providerKey: 'traffic#actual',
+                trafficShown: true,
+                expanded: true
+            });
+
+            createLayouts();
+
+            /*
+             Создание макетов
+             */
+            function createLayouts() {
+                var layoutsData = {
+                    state: new ymaps.data.Manager(),
+                    controlState: fakeControl.state,
+                    control: fakeControl,
+                    options: new ymaps.option.Manager()
+                };
+
+                var buttonContentLayout = new ymaps.theme.islets.traffic.layout.control.JamsData(layoutsData),
+                        panelLayout = new ymaps.theme.islets.traffic.layout.control.PanelContent(layoutsData);
+
+                // Уведомляем фейковый контрол, что в панели изменили тип провайдера.
+                panelLayout.events.add('providerkeychange', function (e) {
+                    fakeControl.state.set('providerKey', e.get('newProviderKey'));
+                }, this);
+
+                buttonContentLayout.setParentElement(document.getElementById('header'));
+                panelLayout.setParentElement(document.getElementById('panel'));
+            }
+        }
+        ;
+    </script>
+    <style>
+        html, body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+
+        #map {
+            width: 400px;
+            height: 400px;
+            margin-left: 5px;
+            margin-top: 5px;
+        }
+
+        #container {
+            position: absolute;
+            top: 50px;
+            right: 50px;
+            width: 400px;
+            height: 500px;
+            background: #FFF;
+            border: 1px solid black;
+        }
+
+        #panel {
+            width: 400px;
+            height: 300px;
+        }
+    </style>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+<div id="container">
+    <div id="header"></div>
+    <div id="panel"></div>
+</div>
+
+</body>
+</html>

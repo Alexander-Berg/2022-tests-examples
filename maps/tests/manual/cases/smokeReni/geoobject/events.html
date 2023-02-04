@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<!--
+Title:
+События с объектом на карте
+
+Description:
+Просмотр событий с объектом на карте.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+smoke
+
+Estimated time:
+480000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан карты мира. 
+  На спане в районе Европы фигура - прозрачный синий круг.
+  В верхней части блока с картой кнопки "Изменить радиус", "Опция: geodesic", "Свойство: balloonHeader".
+  Под блоком с картой текст: "@optionschange"; "@mapchange".
+  
+Step:
+  Action:
+  Навести курсор на круг.
+
+  Expectation:
+  При наведении курсора на круг ховер - палец.
+  Появляется хинт с текстом "Хинт".
+  Под блоком карты появляется надпись: "@hintopen". 
+
+Step:
+  Action:
+  Убрать курсор из круга. 
+  Хинт пропадает.
+
+  Expectation:
+  Под блоком карты появляется надпись: "@hintclose". 
+
+Step:
+  Action:
+  Навести курсор на круг и выполнить клик ЛКМ. 
+
+  Expectation:
+  На круге открывается балун с текстом "Балун".
+  Под блоком карты появляется надпись: "@hintopen"(от наведения курсора), "@balloonopen"(после клика).
+
+Step:
+  Action:
+  Закрыть балун кликом в крестик. 
+
+  Expectation:
+  Под блоком карты появляется надпись: "@hintclose"(при выведении курсора за пределы круга), "@balloonclose"(после клика в крестик).
+
+Step:
+  Action:
+  Навести курсор на круг, зажав ЛКМ захватить круг и переместить его, затем отжав ЛКМ поставить круг на карте.
+
+  Expectation:
+  Круг захватывается курсором и переносится на карте.
+  Под блоком карты появляется надпись: "@hintopen"(при наведении курсора на круг), "@dragstart"(при начале перемещения круга), "@geometrychange"(в момент перемещения круга может появляться множество надписей), "@dragend"(при отжатии ЛКМ и установке круга на карте).
+
+Step:
+  Action:
+  Клик в кнопку "Изменить радиус".
+
+  Expectation:
+  Радиус круга увеличивается.
+  Под блоком карты появляется надпись "@geometrychange".
+
+Step:
+  Action:
+  Клик в кнопку "Изменить радиус".
+
+  Expectation:
+  Радиус круга уменьшается.
+  Под блоком карты появляется надпись "@geometrychange".
+
+Step:
+  Action:
+  Зажав ЛКМ захватить круг и поперемещать круг по карте сверху вниз, слева направо.
+
+  Expectation:
+  При перемещении круга сверху вниз, круг сужается в районе экватора, затем увеличивается(в обратном направлении аналогично). 
+  При перемещении круга слева-направо размер круга не изменяется(если при этом нет перемещения по вертикали).
+  Под блоком с картой появляются соответствующие надписи из предыдущих шагов.
+  При перемещениях форма круга не изменяется(меняется только размер). 
+
+Step:
+  Action:
+  Кликнуть в кнопку "Опция: geodesic".
+  Зажав ЛКМ захватить круг и поперемещать круг по карте сверху вниз, слева направо.
+
+  Expectation:
+  Под блоком с картой появляется надпись "@optionschange".
+  При перемещении круга сверху-вниз круг меняет форму возле полюсов на карте.
+  Под блоком с картой при перемещениях появляются соответствующие надписи из предыдущих шагов.
+ 
+Step:
+  Action:
+  Кликнуть кнопку "Свойство: balloonHeader".
+  Клик в область круга.
+
+  Expectation:
+  Под блоком с картой появляется надпись "@propertieschange".
+  Открывается балун с текстом: "Заголовок; Балун"(заголовок дирным шрифтом).
+-->
+<html lang="en">
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <script src="../../../helper.js"></script>0
+    <script type=text/javascript>
+
+        Api('init');
+        function init(ymaps) {
+
+            var log = new Log();
+            log.info('Test script: двигать круг, нажимать кнопки, смотреть как он меняется в проекции');
+            log.info('Test script: проверять, что он не увеличивается на стыке полушарий');
+
+            var myMap = new ymaps.Map("map", {
+                        center: [48.856929, 2.341198],
+                        zoom: 1,
+                        controls: ['zoomControl']
+                    }, {
+                        backgroundVisible: false
+                    }),
+                    myCircle = new ymaps.Circle([myMap.getCenter(), 1000000], {
+                        balloonContentBody: 'Балун',
+                        hintContent: 'Хинт'
+                    }, {
+                        draggable: true
+                    });
+
+            myCircle.events.add([
+                'mapchange', 'geometrychange', 'pixelgeometrychange', 'optionschange', 'propertieschange',
+                'balloonopen', 'balloonclose', 'hintopen', 'hintclose', 'dragstart', 'dragend'
+            ], function (e) {
+                var eventType = e.get('type');
+                log.info('@' + eventType);
+            });
+
+            myMap.geoObjects.add(myCircle);
+
+            setupControls(myMap, myCircle);
+
+            addGrid(myMap);
+
+            function setupControls(map, geoObject) {
+                var btnProperty = new ymaps.control.Button('Свойство: balloonHeader'),
+                        btnOption = new ymaps.control.Button('Опция: geodesic'),
+                        btnRadius = new ymaps.control.Button('Изменить радиус');
+
+                btnProperty.options.set('maxWidth', 200);
+                btnOption.options.set('maxWidth', 200);
+                btnRadius.options.set('maxWidth', 200);
+
+                btnProperty.events.add(['select', 'deselect'], function (e) {
+                    geoObject.properties.set('balloonContentHeader', e.get('type') == 'select' ? 'Заголовок' : undefined);
+                });
+                btnOption.events.add(['select', 'deselect'], function (e) {
+                    geoObject.options.set('geodesic', e.get('type') == 'select');
+                });
+                btnRadius.events.add(['select', 'deselect'], function (e) {
+                    geoObject.geometry.setRadius(e.get('type') == 'select' ? 2000000 : 1000000);
+                });
+
+                map.controls
+                        .add(btnProperty)
+                        .add(btnOption)
+                        .add(btnRadius);
+            }
+        }
+
+
+    </script>
+</head>
+<body>
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

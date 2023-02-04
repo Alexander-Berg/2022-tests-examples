@@ -1,0 +1,85 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Хинт: программное открытие, закрытие и уничтожение хинта
+
+Description:
+Проверка программного открытия, закрытия и уничтожения хинта.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+hint
+
+Estimated time:
+60000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+  
+  Expectation:
+  Карта отобразилась корректно. 
+  На карте спан Москвы, при загрузке в центре спана открывается хинт "hint", после хинт пропадает. 
+  Под контейнером с картой последовательно появляются события: "event: open....", "event: close...", "hint destroyed".
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 10,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+            __log__('Script: open, close, destroy.');
+            __log__('');
+
+            var hint,
+                    pos = myMap.getCenter(),
+                    contentLayout = ymaps.templateLayoutFactory.createClass('$[hintContent]hint'),
+                    data = { a: 'b' },
+                    options = { contentLayout: contentLayout, closeTimeout: 300 };
+            window.hint = hint = new ymaps.Hint(myMap);
+            hint.options.set(options).setParent(myMap.options);
+
+            hint.events.add(['open', 'close'], function (e) {
+                __log__('event: ' + e.get('type') + ', overlay: ' + hint.getOverlaySync().getMap() +
+                        ', isOpen: ' + hint.isOpen() + ', target: ' + e.get('target'));
+                console.log(e.get('target'));
+            });
+
+            hint.events.add(['beforedestroy', 'destroy'], function () {
+                __log__(e.get('type'))
+            });
+
+            hint.open(pos).then(function () {
+                hint.close()
+            });
+
+            setTimeout(function () {
+                hint.destroy();
+                __log__('hint destroyed')
+            }, 1500)
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

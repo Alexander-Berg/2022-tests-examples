@@ -1,0 +1,131 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Прокрас маршрутной линии над объектами на карте
+
+Description:
+Маршрут на карте окрашен цвтеами в соответсвии с границами объектов карты.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+smoke
+
+Estimated time: 
+60000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. (Дождитесь прогрузки, слоев карты)
+
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан Москвы, с маршрутной линией и маршрутными метками "1" и "2".
+  Маршрутная линия внутри МКАД окрашена красным.
+  Маршрутная линия за пределами МКАД окрашена синим.
+  Маршрутная линия проходящая на пересечении - зеленым(линия по МКАД).
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script type="text/javascript" src="//yandex.st/jquery/1.9.0/jquery.js"></script>
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            //ymaps = ym;
+            var myMap = new ymaps.Map("map", {
+                        center: [55.73, 37.75],
+                        zoom: 9
+                    }, {
+                        backgroundVisible: false
+                    }),
+                    moscowPolygon;
+            addGrid(myMap);
+            var log = new Log();
+            log.info("Test case: Маршрут внутри МКАД помечен красным, снаружи - синим");
+
+            function onPolygonLoad(json) {
+                moscowPolygon = new ymaps.Polygon(json.coordinates);
+                // Если мы не хотим, чтобы контур был виден, зададим соответствующую опцию.
+                moscowPolygon.options.set('visible', false);
+                // Чтобы корректно осуществлялись геометрические операции
+                // над спроецированным многоугольником, его нужно добавить на карту.
+                myMap.geoObjects.add(moscowPolygon);
+
+                ymaps.route([
+                    [55.654884, 37.527034],
+                    [55.767305, 37.976100]
+                ]).then(
+                        function (res) {
+                            // Объединим в выборку все сегменты маршрута.
+                            var pathsObjects = ymaps.geoQuery(res.getPaths()),
+                                    edges = [];
+
+                            // Переберем все сегменты и разобьем их на отрезки.
+                            pathsObjects.each(function (path) {
+                                var coordinates = path.geometry.getCoordinates();
+                                for (var i = 1, l = coordinates.length; i < l; i++) {
+                                    edges.push({
+                                        type: 'LineString',
+                                        coordinates: [coordinates[i], coordinates[i - 1]]
+                                    });
+                                }
+                            });
+
+
+
+
+                            // Создадим новую выборку, содержащую:
+                            // - отрезки, описываюшие маршрут;
+                            // - начальную и конечную точки;
+                            // - промежуточные точки.
+                            var routeObjects = ymaps.geoQuery(edges)
+                                            .add(res.getWayPoints())
+                                            .add(res.getViaPoints())
+                                            .setOptions('strokeWidth', 3)
+                                            .addToMap(myMap),
+                            // Найдем все объекты, попадающие внутрь МКАД.
+                                    objectsInMoscow = routeObjects.searchInside(moscowPolygon),
+                            // Найдем объекты, пересекающие МКАД.
+                                    boundaryObjects = routeObjects.sortByDistance(moscowPolygon,0.05);
+                                //   boundaryObjects = routeObjects.searchIntersect(moscowPolygon);
+                            boundaryObjects = boundaryObjects.slice(0,50);
+                            // Раскрасим в разные цвета объекты внутри, снаружи и пересекающие МКАД.
+                            boundaryObjects.setOptions({
+                                strokeColor: '#06ff00',
+                                preset: 'islands#greenIcon'
+                            });
+                            objectsInMoscow.setOptions({
+                                strokeColor: '#ff0005',
+                                preset: 'islands#redIcon'
+                            });
+
+                            // Объекты за пределами МКАД получим исключением полученных выборок из
+                            // исходной.
+                            routeObjects.remove(objectsInMoscow).remove(boundaryObjects).setOptions({
+                                strokeColor: '#0010ff',
+                                preset: 'islands#blueIcon'
+                            });
+                        }
+                );
+            }
+
+            $.ajax({
+                url: 'moscow.json',
+                dataType: 'json',
+                success: onPolygonLoad
+            });
+        }
+    </script>
+</head>
+<body>
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

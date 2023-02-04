@@ -1,0 +1,63 @@
+syntax = "proto3";
+
+package vertis.anubis.api.test;
+
+import "broker/broker_options.proto";
+import "palma/palma_options.proto";
+import "options.proto";
+
+option java_package = "vertis.anubis.api.test";
+option java_multiple_files = true;
+
+
+message InvalidMessage {
+    option (.broker.config) = {
+        name: "anubis/invalid_message",
+        yt: {
+            partition: BY_MONTH
+            spawn: {
+                days_to_watch: 1
+            }
+            repartition: {
+                timestamp_field: "event_timestamp"
+                name: "anubis/invalid/message"
+            }
+        };
+    };
+
+    string camelCase = 1;
+    bool snake_1case = 2;
+}
+
+message AnotherMessage {
+    string str = 1;
+}
+
+message Mark {
+    option (.palma.message).name = "auto/mark";
+    option (.palma.message).title = "Марка";
+
+    string code = 1 [(.palma.field).key = true];
+
+    string russian_alias = 2 [(.palma.field).title = "Синонимы"];
+    string name = 3 [(.palma.field).title = "Название марки", (required) = true, (.palma.field).as_title = true];
+    repeated Model models = 4 [(.palma.field).link = true, (.palma.field).title = "Модели марки"];
+    bool hidden = 5 [(.palma.field).title = "Скрыто"];
+}
+
+message Model {
+    option (.palma.message).name = "auto/mark/model";
+    option (.palma.message).indexes = {fields: "russian_alias"};
+    option (.palma.message).indexes = {fields: "model_type"};
+    option (.palma.message).listing_fields = "russian_alias";
+    option (.palma.message).listing_fields = "category";
+    option (.palma.message).listing_fields = "model_type";
+
+    string code = 1 [(.palma.field).key = true, (.palma.field).title = "Код"];
+    string russian_alias = 2 [(.palma.field).title = "Синонимы"];
+
+    int32 release_year = 4;
+    int64 start_price = 3 [(.palma.field).title = "Стартовая цена"];
+    double safety_score = 5 [(.palma.field).title = "Индекс безопасности"];
+    string model_type = 6 [(.palma.field).title = "Тип", (required) = true];
+}

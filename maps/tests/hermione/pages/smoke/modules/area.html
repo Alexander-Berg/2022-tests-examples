@@ -1,0 +1,125 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps.modules.define("util.calculateArea", [], function (e) {
+                function t(e) {
+                    if ("Feature" == e.type) return e.geometry;
+                    if (e.geometry && e.geometry.getType) return "Circle" == e.geometry.getType() ? {
+                        type: "Circle",
+                        coordinates: e.geometry.getCoordinates(),
+                        radius: e.geometry.getRadius()
+                    } : {type: e.geometry.getType(), coordinates: e.geometry.getCoordinates()};
+                    throw new Error("util.calculateArea: Unknown input object.")
+                }
+
+                function r(e) {
+                    var t, r = 0;
+                    switch (e.type) {
+                        case"Polygon":
+                            return o(e.coordinates);
+                        case"MultiPolygon":
+                            for (t = 0; t < e.coordinates.length; t++) r += o(e.coordinates[t]);
+                            return r;
+                        case"Rectangle":
+                            return o([[e.coordinates[0], [e.coordinates[0][0], e.coordinates[1][1]], e.coordinates[1], [e.coordinates[1][0], e.coordinates[0][1]], e.coordinates[0]]]);
+                        case"Circle":
+                            return Math.PI * Math.pow(e.radius, 2);
+                        case"Point":
+                        case"MultiPoint":
+                        case"LineString":
+                        case"MultiLineString":
+                            return 0
+                    }
+                }
+
+                function o(e) {
+                    var t = 0;
+                    if (e && e.length > 0) {
+                        t += Math.abs(n(e[0]));
+                        for (var r = 1; r < e.length; r++) t -= Math.abs(n(e[r]))
+                    }
+                    return t
+                }
+
+                function n(e) {
+                    var t, r, o, n, c, s, u = 0, g = e.length, l = "latlong" == ymaps.meta.coordinatesOrder ? 1 : 0,
+                        d = "latlong" == ymaps.meta.coordinatesOrder ? 0 : 1;
+                    if (g > 2) {
+                        for (s = 0; s < g; s++) s === g - 2 ? (o = g - 2, n = g - 1, c = 0) : s === g - 1 ? (o = g - 1, n = 0, c = 1) : (o = s, n = s + 1, c = s + 2), t = e[o], r = e[n], u += (a(e[c][l]) - a(t[l])) * Math.sin(a(r[d]));
+                        u = u * i * i / 2
+                    }
+                    return u
+                }
+
+                function a(e) {
+                    return e * Math.PI / 180
+                }
+
+                var i = 6378137;
+                e(function (e) {
+                    return r(t(e))
+                })
+            });
+            // Обратите внимание, что модуль не умеет обсчитывать полигоны с самопересечениями.
+            ymaps.ready(['util.calculateArea']).then(function () {
+                var myMap = new ymaps.Map("map", {
+                    center: [55.9238145091058, 37.897131347654376],
+                    zoom: 10,
+                    controls: ['searchControl', 'zoomControl']
+                }, {
+                    searchControlProvider: 'yandex#search'
+                });
+                // Создаем многоугольник, круг и прямоугольник.
+                var polygon = new ymaps.GeoObject({
+                    geometry: {
+                        type: "Polygon", coordinates: [[
+                            [55.97544201439153, 37.71984863281182],
+                            [55.876808118310706, 37.66697692871001],
+                            [55.8748378377763, 37.78258361816322],
+                            [55.97544201439153, 37.71984863281182]
+                        ]]
+                    }
+                });
+                var circle = new ymaps.Circle([[55.9238145091058, 38.097131347654376], 5000]);
+                var rectangle = new ymaps.Rectangle([
+                    [55.973805634187, 37.81389007567776],
+                    [55.87510965298843, 37.95396575927215]
+                ]);
+                var collection = new ymaps.GeoObjectCollection();
+                link(myMap);
+                // Добавляем геообъекты в коллекцию.
+                collection.add(polygon).add(circle).add(rectangle);
+                // Добавляем коллекцию на карту.
+                myMap.geoObjects.add(collection);
+
+                collection.each(function (obj) {
+                    // Вычисляем площадь геообъекта.
+                    var area = Math.round(ymaps.util.calculateArea(obj));
+                    // Вычисляем центр для добавления метки.
+                    var center = ymaps.util.bounds.getCenter(obj.geometry.getBounds());
+                    // Если площадь превышает 1 000 000 м², то приводим ее к км².
+                    if (area <= 1e6) {
+                        area += ' м²';
+                    } else {
+                        area = (area / 1e6).toFixed(3) + ' км²';
+                    }
+                    obj.properties.set('balloonContent', area);
+
+                    myMap.geoObjects.add(new ymaps.Placemark(center, {'iconCaption': area}, {preset: 'islands#greenDotIconWithCaption'}));
+                });
+            });
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

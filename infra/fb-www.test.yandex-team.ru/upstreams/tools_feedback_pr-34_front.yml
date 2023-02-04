@@ -1,0 +1,42 @@
+auth:
+  staff:
+    owners:
+      logins: []
+      groups: []
+labels:
+  order: '00100000'
+---
+regexp_section:
+  matcher:
+    match_and:
+      - match_fsm:
+          host: pr-34[.](.*)
+  modules:
+    - headers:
+        create:
+          Host: s3.mds.yandex.net
+    - rewrite:
+        actions:
+          - split: path
+            regexp: ^/(.+)
+            rewrite: /feedback-beta/beta/pr-34/%1
+          - split: path
+            regexp: ^/(.+/)?([^.]+)?$
+            rewrite: /feedback-beta/beta/pr-34/index.html
+    - balancer2:
+        attempts: 1
+        rr: {}
+        generated_proxy_backends:
+          proxy_options:
+            connect_timeout: 70ms
+            backend_timeout: 10s
+            fail_on_5xx: false
+          instances:
+            - host: s3.mds.yandex.net
+              port: 80
+              weight: 1
+        on_error:
+          modules:
+            - errordocument:
+                status: 504
+                content: Service unavailable

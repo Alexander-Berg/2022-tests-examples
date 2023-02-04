@@ -1,0 +1,149 @@
+---
+regexp_section:
+  matcher: {}
+  modules:
+    - shared:
+        uuid: knoss_exp_upstream
+    - report: {ranges: default, uuid: knoss_exp_checks}
+    - regexp:
+        sections:
+          she_exp:
+            matcher:
+              match_and:
+                - match_fsm:
+                    host: '(www\\.)?(m\\.)?yandex\\.(az|by|co\\.il|com|com\\.am|com\\.ge|com\\.ua|ee|fr|kg|kz|lt|lv|md|ru|tj|tm|uz|ua)'
+                - match_fsm:
+                    uri: '/mirror.*'
+            modules:
+              - exp_getter_macro:
+                  service_name: news-she
+                  testing_mode: {}
+                  _version: 2
+              - shared:
+                  uuid: knoss_after_expgetter
+          sport_exp:
+            matcher:
+              match_or:
+                - match_fsm:
+                    host: '(.+\\.)?yandexsport\\..*'
+                - match_fsm:
+                    host: 'sportyandex\\..*'
+                - match_and:
+                    - match_fsm:
+                        host: '(www\\.)?(m\\.)?yandex\\.(az|by|co\\.il|com|com\\.am|com\\.ge|com\\.ua|ee|fr|kg|kz|lt|lv|md|ru|tj|tm|uz|ua)'
+                    - match_fsm:
+                        path: '/sport.*'
+            modules:
+              - exp_getter_macro:
+                  service_name: news-sport
+                  testing_mode: {}
+                  _version: 2
+              - shared:
+                  uuid: knoss_after_expgetter
+          default:
+            matcher: {}
+            modules:
+              - exp_getter_macro:
+                  service_name: news
+                  testing_mode: {}
+                  _version: 2
+              - shared:
+                  uuid: knoss_after_expgetter
+              - regexp:
+                  sections:
+                    knoss_balancer_exp:
+                      matcher:
+                        match_fsm:
+                          header:
+                            name: X-Yandex-ExpBoxes
+                            value: '(166759|.*;166759),.*'
+                      modules:
+                        - report: {ranges: default, uuid: requests_to_knoss_balancer}
+                        - threshold:
+                            lo_bytes: 512
+                            hi_bytes: 1024
+                            pass_timeout: 2s
+                            recv_timeout: 1s
+                        - balancer2:
+                            attempts: 1
+                            rr: {}
+                            backends:
+                            - weight: 1
+                              name: default
+                              modules:
+                              - balancer2:
+                                  attempts: 2
+                                  attempts_file: ./controls/news.attempts
+                                  watermark_policy:
+                                    lo: 0.5
+                                    hi: 0.6
+                                    unique_policy: {}
+                                  rr: {weights_file: ./controls/traffic_control.weights}
+                                  backends:
+                                    - weight: 1
+                                      name: news_sas
+                                      modules:
+                                        - balancer2:
+                                            attempts: 1
+                                            weighted2: {}
+                                            timeout_policy:
+                                                timeout: 500ms
+                                                unique_policy: {}
+                                            generated_proxy_backends:
+                                                proxy_options:
+                                                    backend_timeout: 5000ms
+                                                    connect_timeout: 50ms
+                                                    status_code_blacklist: ["204"]
+                                                include_backends:
+                                                    type: BY_ID
+                                                    ids: [news_production_knoss_sas]
+                                    - weight: 1
+                                      name: news_man
+                                      modules:
+                                        - balancer2:
+                                            attempts: 1
+                                            weighted2: {}
+                                            timeout_policy:
+                                                timeout: 500ms
+                                                unique_policy: {}
+                                            generated_proxy_backends:
+                                                proxy_options:
+                                                    backend_timeout: 5000ms
+                                                    connect_timeout: 50ms
+                                                    status_code_blacklist: ["204"]
+                                                include_backends:
+                                                    type: BY_ID
+                                                    ids: [news_production_knoss_man]
+                                    - weight: 1
+                                      name: news_vla
+                                      modules:
+                                        - balancer2:
+                                            attempts: 1
+                                            weighted2: {}
+                                            timeout_policy:
+                                                timeout: 500ms
+                                                unique_policy: {}
+                                            generated_proxy_backends:
+                                                proxy_options:
+                                                    backend_timeout: 5000ms
+                                                    connect_timeout: 50ms
+                                                    status_code_blacklist: ["204"]
+                                                include_backends:
+                                                    type: BY_ID
+                                                    ids: [news_production_knoss_vla]
+                            on_error:
+                                modules:
+                                - balancer2:
+                                    attempts: 1
+                                    rr: {}
+                                    backends:
+                                        - weight: 1
+                                          name: default
+                                          modules:
+                                            - shared:
+                                                uuid: go_to_tkva
+                    default:
+                      matcher: {}
+                      modules:
+                        - shared:
+                            uuid: ext_upstreams

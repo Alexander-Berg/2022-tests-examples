@@ -1,0 +1,116 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - akimov
+      groups: []
+labels:
+  order: 099
+---
+#{ "order": "098" }
+regexp_section:
+  matcher:
+    match_fsm:
+      uri: '/promo/media/.*'
+  modules:
+    - rewrite:
+        actions:
+          -
+            regexp: '/promo/(.*)'
+            rewrite: '/%1'
+    - headers:
+        create:
+          X-Forwarded-Proto: 'https'
+        create_weak:
+          Authorization: 'FltPsREIQsuhitTFNxlmoio7JpcaoEBF'
+        create_func:
+          X-Forwarded-Zen-Host: 'host'
+          X-Zen-Original-Host: 'host'
+          X-Original-Host: 'host'
+        append_func:
+          X-Forwarded-For: 'realip'
+          Zen-Forwarded-For: 'realip'
+    - icookie:
+        use_default_keys: true
+        domains: [ ".yandex.ru", ".yandex.by", ".yandex.com", ".yandex.com.tr", ".yandex.kz", ".yandex.ua" ]
+        force_equal_to_yandexuid: true
+        force_generate_from_searchapp_uuid: true
+    - report:
+        uuid: 'to-promo'
+        ranges: 'default'
+        backend_time_ranges: '100ms,150ms,200ms,300ms,400ms,500ms,750ms,1s,3s,7s,10s'
+    - balancer2:
+        rr:
+          weights_file: ./controls/traffic_control.weights
+        attempts: 1
+        connection_attempts: 2
+        retry_policy:
+          unique_policy: {}
+        backends:
+          - weight: 20
+            name: promo_sas
+            modules:
+              - report:
+                  uuid: 'to-promo--sas'
+                  ranges: 'default'
+                  backend_time_ranges: '100ms,150ms,200ms,300ms,400ms,500ms,750ms,1s,3s,7s,10s'
+              - balancer2:
+                  rr: {}
+                  attempts: 1
+                  fast_attempts: 3
+                  fast_503: true
+                  retry_policy:
+                    unique_policy: {}
+                  generated_proxy_backends:
+                    proxy_options:
+                      resolve_timeout: '10ms'
+                      connect_timeout: '40ms'
+                      backend_timeout: '300s'
+                      keepalive_count: 0
+                      need_resolve: false
+                      fail_on_5xx: true
+                      buffering: false
+                    include_backends:
+                      type: BY_ID
+                      ids: [pub-content-yd-sas]
+          - weight: 20
+            name: promo_vla
+            modules:
+              - report:
+                  uuid: 'to-promo-vla'
+                  ranges: 'default'
+                  backend_time_ranges: '100ms,150ms,200ms,300ms,400ms,500ms,750ms,1s,3s,7s,10s'
+              - balancer2:
+                  rr:
+                    weights_file: ./controls/traffic_control.weights
+                  attempts: 1
+                  connection_attempts: 2
+                  retry_policy:
+                    unique_policy: {}
+                  backends:
+                    - weight: 90
+                      name: promo_vla
+                      modules:
+                        - report:
+                            uuid: 'to-promo-vla'
+                            ranges: 'default'
+                            backend_time_ranges: '100ms,150ms,200ms,300ms,400ms,500ms,750ms,1s,3s,7s,10s'
+                        - balancer2:
+                            rr: {}
+                            attempts: 1
+                            fast_attempts: 3
+                            fast_503: true
+                            retry_policy:
+                              unique_policy: {}
+                            generated_proxy_backends:
+                              proxy_options:
+                                resolve_timeout: '10ms'
+                                connect_timeout: '40ms'
+                                backend_timeout: '300s'
+                                keepalive_count: 0
+                                need_resolve: false
+                                fail_on_5xx: true
+                                buffering: false
+                              include_backends:
+                                type: BY_ID
+                                ids: [pub-content-yd-vla]

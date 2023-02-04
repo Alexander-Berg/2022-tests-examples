@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+       http://www.springframework.org/schema/beans/spring-beans-3.1.xsd">
+
+    <import resource="classpath:ext-data-service-provider-context.xml"/>
+
+    <bean id="regionService" class="ru.yandex.auto.searcher.main.region.RegionServiceImpl">
+        <property name="loader">
+            <bean class="ru.yandex.extdata.provider.loader.ExtDataLoader">
+                <property name="service" ref="extDataService"/>
+                <property name="type" ref="regionsDataType"/>
+            </bean>
+        </property>
+    </bean>
+
+    <bean name="photoUtils" class="ru.yandex.auto.util.photo.PhotoUtils"/>
+
+    <bean id="vendorManager" class="ru.yandex.auto.core.vendor.VendorManagerFactoryBeanImpl">
+        <property name="vendorFileName" value="${auto.vendor}"/>
+        <property name="regionService" ref="regionService" />
+    </bean>
+
+    <!--                                           CATALOG CARD GROUPING SERVICE                            -->
+
+    <bean id="catalogCardGroupingService"
+          class="ru.yandex.auto.core.catalog.grouping.CatalogCardGroupingCachingImpl" lazy-init="true">
+        <property name="yoctoSearchTemplate" ref="catalogCardYoctoSearchTemplate"/>
+    </bean>
+
+    <!--                                        TRUCKS CATALOG CARD GROUPING SERVICE                        -->
+    <bean id="trucksCatalogCardGroupingService"
+          class="ru.yandex.auto.core.catalog.grouping.trucks.TrucksCatalogCardGroupingCachingImpl">
+        <property name="yoctoSearchTemplate" ref="trucksCatalogCardYoctoSearchTemplate"/>
+    </bean>
+
+    <!--                                        MOTO CATALOG CARD GROUPING SERVICE                        -->
+    <bean id="motoCatalogCardGroupingService"
+          class="ru.yandex.auto.core.catalog.grouping.moto.MotoCatalogCardGroupingCachingImpl">
+        <property name="yoctoSearchTemplate" ref="motoCatalogCardYoctoSearchTemplate"/>
+    </bean>
+
+    <!--                                           SEARCH TEMPLATE                                          -->
+
+    <bean id="catalogCardYoctoSearchTemplate"
+          factory-bean="yoctoCatalogCardUpdateListener" factory-method="buildSearcher"/>
+
+    <bean id="initialCatalogCardPhaser"
+          class="java.util.concurrent.Phaser">
+        <constructor-arg value="1"/>
+    </bean>
+
+    <bean id="yoctoDocumentConverter"
+          class="ru.yandex.auto.core.search2.conversion.yocto.CatalogCardYoctoEntityConverter"/>
+
+    <bean id="yoctoCatalogCardUpdateListener"
+          class="ru.yandex.auto.indexer.yocto.handler.catalog.CatalogCardUpdateListener">
+        <constructor-arg name="catalogDataType" ref="catalogDataType"/>
+        <constructor-arg name="converter" ref="yoctoDocumentConverter"/>
+        <constructor-arg name="extDataService" ref="extDataService"/>
+        <constructor-arg name="phaser" ref="initialCatalogCardPhaser"/>
+        <constructor-arg name="catalogCardsRootDirectory" value="${auto.shard.catalog-dir}"/>
+    </bean>
+
+    <!--                                        TRUCKS SEARCH TEMPLATE                                      -->
+
+    <bean id="trucksCatalogCardYoctoSearchTemplate"
+          factory-bean="yoctoTrucksCatalogCardUpdateListener" factory-method="buildSearcher"/>
+
+    <bean id="yoctoTrucksCatalogCardUpdateListener"
+          class="ru.yandex.auto.indexer.yocto.handler.catalog.TrucksCatalogCardUpdateListener">
+        <constructor-arg name="catalogDataType" ref="trucksCatalogDataType"/>
+        <constructor-arg name="converter" ref="trucksYoctoDocumentConverter"/>
+        <constructor-arg name="extDataService" ref="extDataService"/>
+        <constructor-arg name="phaser" ref="initialTrucksCatalogCardPhaser"/>
+        <constructor-arg name="catalogCardsRootDirectory" value="${wizard.trucks.catalog-card.dir}"/>
+    </bean>
+
+    <bean id="trucksYoctoDocumentConverter"
+          class="ru.yandex.auto.core.search2.conversion.yocto.TrucksCatalogCardYoctoConverter"/>
+
+    <bean id="initialTrucksCatalogCardPhaser"
+          class="java.util.concurrent.Phaser">
+        <constructor-arg value="1"/>
+    </bean>
+
+    <!--                                        MOTO SEARCH TEMPLATE                                      -->
+
+    <bean id="motoCatalogCardYoctoSearchTemplate"
+          factory-bean="yoctoMotoCatalogCardUpdateListener" factory-method="buildSearcher"/>
+
+    <bean id="yoctoMotoCatalogCardUpdateListener"
+          class="ru.yandex.auto.indexer.yocto.handler.catalog.MotoCatalogCardUpdateListener">
+        <constructor-arg name="catalogDataType" ref="motoCatalogDataType"/>
+        <constructor-arg name="converter" ref="motoYoctoDocumentConverter"/>
+        <constructor-arg name="extDataService" ref="extDataService"/>
+        <constructor-arg name="phaser" ref="initialMotoCatalogCardPhaser"/>
+        <constructor-arg name="catalogCardsRootDirectory" value="${wizard.moto.catalog-card.dir}"/>
+    </bean>
+
+    <bean id="motoYoctoDocumentConverter"
+          class="ru.yandex.auto.core.search2.conversion.yocto.MotoCatalogCardYoctoConverter"/>
+
+    <bean id="initialMotoCatalogCardPhaser"
+          class="java.util.concurrent.Phaser">
+        <constructor-arg value="1"/>
+    </bean>
+</beans>

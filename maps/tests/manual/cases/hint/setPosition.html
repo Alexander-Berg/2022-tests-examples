@@ -1,0 +1,86 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Хинт: проверка метода установки позиции хинта
+
+Description:
+Проверка метода установки позиции хинта.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+hint
+
+Estimated time:
+60000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+  
+  Expectation:
+  Карта отобразилась корректно. 
+  На карте спан Европейской части России, сверху справа контрол фулскрин. 
+  При загрузке карты  в районе Москвы появляется хинт "hint", через секунду хинт перемещается на позицию в Санкт-Петербурге, под контейнером появляется блок: "overlay:OK".
+  Еще через секунду хинт перемещается на позицию в Великий Новгород, под контейнером появляется блок: "position:OK".
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var myMap = new ym.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 5,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+
+            __log__('Change and check hint position: moscow -> spb -> novgorod');
+
+            var hint,
+                    pos = myMap.getCenter(),
+                    newPos1 = [60, 30],
+                    newPos2 = [59, 31],
+                    contentLayout = ymaps.templateLayoutFactory.createClass('$[hintContent]<span id="tst">$[a]$[x]</span>'),
+                    data = { a: 'hint' },
+                    options = { contentLayout: contentLayout };
+            window.hint = hint = new ymaps.Hint(myMap);
+            hint.options.set(options).setParent(myMap.options);
+
+            hint.open(pos);
+            hint.setData(data);
+            setTimeout(function () {
+                hint.setPosition(newPos1);   //
+                hint.getOverlay().then(function (overlay) {
+                    __log__('overlay: ');
+                    validateValue(overlay, hint.getOverlaySync())
+                });
+            }, 1000);
+
+            setTimeout(function () {
+                hint.setPosition(newPos2, true).then(function () {
+                    __log__('position: ');
+                    validateValue(~~hint.getPosition().toString(), ~~newPos2.toString())
+                });
+            }, 2000);
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

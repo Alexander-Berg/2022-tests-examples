@@ -1,0 +1,50 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - tolich
+      groups: []
+labels:
+  order: '00010002'
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      uri: '/v1/upload'
+  modules:
+    - report: {uuid: upload, ranges: default}
+    - rewrite:
+        actions:
+          - regexp: '/v1/upload(.*)'
+            rewrite: '/upload%1'
+    - headers:
+        create_func_weak:
+          X-Forwarded-For: realip
+          X-Forwarded-Proto: scheme
+          X-Forwarded-Host: host
+          X-Req-Id: reqid
+    - headers_forwarder:
+        actions:
+          - request_header: 'X-Req-Id'
+            response_header: 'X-Req-Id'
+            weak: true
+    - balancer2:
+        connection_attempts: 2
+        attempts: 2
+        unique_policy: {}
+        dynamic:
+          max_pessimized_share: 0.34
+        attempts_rate_limiter:
+          limit: 0.2
+        generated_proxy_backends:
+          proxy_options:
+            backend_timeout: 600s
+            connect_timeout: 50ms
+            keepalive_count: 1
+          include_backends:
+            type: BY_ID
+            ids: [ugc_admin_api_2006059]
+        on_error:
+          errordocument:
+            status: 504
+            content: "Service unavailable"

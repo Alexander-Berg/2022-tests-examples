@@ -1,0 +1,612 @@
+module.exports = {
+    user: {
+        permissions: [ 'all_users_search' ]
+    },
+    config: {
+        lkOrigin: ''
+    },
+    client: {
+        adAgencyClients: {
+            data: {
+                total: 62,
+                list: [
+                    {
+                        id: 'bil_36116812',
+                        name: 'Эталон-Сити',
+                        offersCount: 0,
+                        validOffersCount: 0,
+                        balanceNewbuilding: 0,
+                        balanceCommercial: 0,
+                        vasOffersCount: 0,
+                        errorOffersCount: 0,
+                        adAgencyId: '403388763',
+                        campaignsStats: { village: {}, site: {} },
+                        periodData: { spentByMonthCommercial: [], spentByMonthNewbuilding: [] },
+                        callStats: {
+                            total: 0,
+                            success: 0,
+                            target: 0,
+                            nonTarget: 0,
+                            missed: 0,
+                            blocked: 0,
+                            payedTuz: 0
+                        }
+                    },
+                    {
+                        id: 'bil_35160047',
+                        name: 'Эталон-Инвест',
+                        offersCount: 0,
+                        validOffersCount: 0,
+                        balanceNewbuilding: -93160000,
+                        balanceCommercial: 0,
+                        vasOffersCount: 0,
+                        errorOffersCount: 0,
+                        adAgencyId: '403388763',
+                        campaignsStats: { village: {}, site: { total: 6, active: 0, disabled: 6 } },
+                        periodData: { spentByMonthCommercial: [], spentByMonthNewbuilding: [] },
+                        callStats: {}
+                    },
+                    {
+                        id: 'bil_49843931',
+                        name: 'Энкельманн (тест)',
+                        offersCount: 0,
+                        validOffersCount: 0,
+                        balanceNewbuilding: 0,
+                        balanceCommercial: 0,
+                        vasOffersCount: 0,
+                        errorOffersCount: 0,
+                        adAgencyId: '403388763',
+                        campaignsStats: { village: {}, site: {} },
+                        periodData: { spentByMonthCommercial: [], spentByMonthNewbuilding: [] },
+                        callStats: {
+                            total: 0,
+                            success: 0,
+                            target: 0,
+                            nonTarget: 0,
+                            missed: 0,
+                            blocked: 0,
+                            payedTuz: 0
+                        }
+                    },
+                    {
+                        id: 'bil_49705613',
+                        name: 'ФСК и ДСК коммерческая',
+                        offersCount: 0,
+                        validOffersCount: 25,
+                        balanceNewbuilding: 0,
+                        balanceCommercial: 0,
+                        vasOffersCount: 0,
+                        errorOffersCount: 0,
+                        adAgencyId: '403388763',
+                        campaignsStats: { village: {}, site: {} },
+                        periodData: { spentByMonthCommercial: [], spentByMonthNewbuilding: [] },
+                        callStats: {
+                            total: 0,
+                            success: 0,
+                            target: 0,
+                            nonTarget: 0,
+                            missed: 0,
+                            blocked: 0,
+                            payedTuz: 0
+                        }
+                    }, {
+                        id: 'bil_48661483',
+                        name: 'ФСК Лидер (тест)',
+                        offersCount: 0,
+                        validOffersCount: 0,
+                        balanceNewbuilding: 0,
+                        balanceCommercial: 0,
+                        vasOffersCount: 0,
+                        errorOffersCount: 0,
+                        adAgencyId: '403388763',
+                        campaignsStats: { village: {}, site: {} },
+                        periodData: { spentByMonthCommercial: [], spentByMonthNewbuilding: [] },
+                        callStats: {
+                            total: 0,
+                            success: 0,
+                            target: 0,
+                            nonTarget: 0,
+                            missed: 0,
+                            blocked: 0,
+                            payedTuz: 0
+                        }
+                    },
+                    {
+                        id: 'bil_51192886',
+                        name: 'ФСК Лидер (машиноместа)',
+                        offersCount: 0,
+                        validOffersCount: 906,
+                        balanceNewbuilding: 0,
+                        balanceCommercial: 0,
+                        vasOffersCount: 0,
+                        errorOffersCount: 0,
+                        adAgencyId: '403388763',
+                        campaignsStats: { village: {}, site: {} },
+                        periodData: { spentByMonthCommercial: [], spentByMonthNewbuilding: [] },
+                        callStats: {
+                            total: 0,
+                            success: 0,
+                            target: 0,
+                            nonTarget: 0,
+                            missed: 0,
+                            blocked: 0,
+                            payedTuz: 0
+                        }
+                    },
+                    {
+                        id: 'bil_48846918',
+                        name: 'ФСК Лидер (комм - зем. уч)',
+                        offersCount: 0,
+                        validOffersCount: 0,
+                        balanceNewbuilding: 0,
+                        balanceCommercial: 387300,
+                        vasOffersCount: 0,
+                        errorOffersCount: 0,
+                        adAgencyId: '403388763',
+                        campaignsStats: { village: {}, site: {} },
+                        periodData: { spentByMonthCommercial: [], spentByMonthNewbuilding: [] },
+                        callStats: {
+                            total: 0,
+                            success: 0,
+                            target: 0,
+                            nonTarget: 0,
+                            missed: 0,
+                            blocked: 0,
+                            payedTuz: 0
+                        }
+                    },
+                    {
+                        id: 'bil_32161522',
+                        name: 'ФСК Лидер',
+                        offersCount: 0,
+                        validOffersCount: 0,
+                        balanceNewbuilding: 30155000,
+                        balanceCommercial: 0,
+                        vasOffersCount: 0,
+                        errorOffersCount: 0,
+                        adAgencyId: '403388763',
+                        campaignsStats: { village: {}, site: { total: 15, active: 12, disabled: 3 } },
+                        periodData: { spentByMonthCommercial: [], spentByMonthNewbuilding: [] },
+                        callStats: {}
+                    },
+                    {
+                        id: 'bil_47683455',
+                        name: 'ФСК Лидер',
+                        offersCount: 0,
+                        validOffersCount: 0,
+                        balanceNewbuilding: 0,
+                        balanceCommercial: 14732220,
+                        vasOffersCount: 0,
+                        errorOffersCount: 0,
+                        adAgencyId: '403388763',
+                        campaignsStats: { village: {}, site: {} },
+                        periodData: { spentByMonthCommercial: [], spentByMonthNewbuilding: [] },
+                        callStats: {
+                            total: 0,
+                            success: 0,
+                            target: 0,
+                            nonTarget: 0,
+                            missed: 0,
+                            blocked: 0,
+                            payedTuz: 0
+                        }
+                    },
+                    {
+                        id: 'bil_55566080',
+                        name: 'Рогожский вал',
+                        offersCount: 0,
+                        validOffersCount: 0,
+                        balanceNewbuilding: 2250000,
+                        balanceCommercial: 0,
+                        vasOffersCount: 0,
+                        errorOffersCount: 0,
+                        adAgencyId: '403388763',
+                        campaignsStats: { village: {}, site: { total: 1, active: 1, disabled: 0 } },
+                        periodData: { spentByMonthCommercial: [], spentByMonthNewbuilding: [] },
+                        callStats: {}
+                    },
+                    {
+                        id: 'bil_38854261',
+                        name: 'РГ-Девелопмент',
+                        offersCount: 0,
+                        validOffersCount: 0,
+                        balanceNewbuilding: 2230000,
+                        balanceCommercial: 0,
+                        vasOffersCount: 0,
+                        errorOffersCount: 0,
+                        adAgencyId: '403388763',
+                        campaignsStats: { village: {}, site: { total: 2, active: 1, disabled: 1 } },
+                        periodData: { spentByMonthCommercial: [], spentByMonthNewbuilding: [] },
+                        callStats: {}
+                    },
+                    {
+                        id: '560221180',
+                        name: 'ООО "Метриум"',
+                        type: 'CLIENT_TYPE_AGENCY',
+                        offersCount: 0,
+                        validOffersCount: 0,
+                        balanceNewbuilding: 0,
+                        balanceCommercial: 0,
+                        vasOffersCount: 0,
+                        errorOffersCount: 0,
+                        adAgencyId: '403388763',
+                        campaignsStats: { village: {}, site: {} },
+                        periodData: { spentByMonthCommercial: [], spentByMonthNewbuilding: [] },
+                        callStats: {
+                            total: 0,
+                            success: 0,
+                            target: 0,
+                            nonTarget: 0,
+                            missed: 0,
+                            blocked: 0,
+                            payedTuz: 0
+                        }
+                    },
+                    {
+                        id: 'bil_41044423',
+                        name: 'ООО "ЕвроАэроСеть"',
+                        offersCount: 0,
+                        validOffersCount: 0,
+                        balanceNewbuilding: 1500000,
+                        balanceCommercial: 0,
+                        vasOffersCount: 0,
+                        errorOffersCount: 0,
+                        adAgencyId: '403388763',
+                        campaignsStats: { village: {}, site: { total: 1, active: 1, disabled: 0 } },
+                        periodData: { spentByMonthCommercial: [], spentByMonthNewbuilding: [] },
+                        callStats: {}
+                    },
+                    {
+                        id: 'bil_40044289',
+                        name: 'Нормандия',
+                        offersCount: 0,
+                        validOffersCount: 0,
+                        balanceNewbuilding: 0,
+                        balanceCommercial: 0,
+                        vasOffersCount: 0,
+                        errorOffersCount: 0,
+                        adAgencyId: '403388763',
+                        campaignsStats: { village: {}, site: {} },
+                        periodData: { spentByMonthCommercial: [], spentByMonthNewbuilding: [] },
+                        callStats: {
+                            total: 0,
+                            success: 0,
+                            target: 0,
+                            nonTarget: 0,
+                            missed: 0,
+                            blocked: 0,
+                            payedTuz: 0
+                        }
+                    },
+                    {
+                        id: 'bil_50016710',
+                        name: 'Москапстрой',
+                        offersCount: 0,
+                        validOffersCount: 0,
+                        balanceNewbuilding: 0,
+                        balanceCommercial: 0,
+                        vasOffersCount: 0,
+                        errorOffersCount: 7,
+                        adAgencyId: '403388763',
+                        campaignsStats: { village: {}, site: {} },
+                        periodData: { spentByMonthCommercial: [], spentByMonthNewbuilding: [] },
+                        callStats: {
+                            total: 0,
+                            success: 0,
+                            target: 0,
+                            nonTarget: 0,
+                            missed: 0,
+                            blocked: 0,
+                            payedTuz: 0
+                        }
+                    },
+                    {
+                        id: 'bil_49982710',
+                        name: 'Москапстрой',
+                        offersCount: 0,
+                        validOffersCount: 0,
+                        balanceNewbuilding: 10130000,
+                        balanceCommercial: 0,
+                        vasOffersCount: 0,
+                        errorOffersCount: 7,
+                        adAgencyId: '403388763',
+                        campaignsStats: { village: {}, site: { total: 2, active: 0, disabled: 2 } },
+                        periodData: { spentByMonthCommercial: [], spentByMonthNewbuilding: [] },
+                        callStats: {}
+                    },
+                    {
+                        id: 'bil_50620351',
+                        name: 'Мосинжстрой',
+                        offersCount: 0,
+                        validOffersCount: 0,
+                        balanceNewbuilding: 0,
+                        balanceCommercial: 0,
+                        vasOffersCount: 0,
+                        errorOffersCount: 0,
+                        adAgencyId: '403388763',
+                        campaignsStats: { village: {}, site: {} },
+                        periodData: { spentByMonthCommercial: [], spentByMonthNewbuilding: [] },
+                        callStats: {
+                            total: 0,
+                            success: 0,
+                            target: 0,
+                            nonTarget: 0,
+                            missed: 0,
+                            blocked: 0,
+                            payedTuz: 0
+                        }
+                    },
+                    {
+                        id: 'bil_46797010',
+                        name: 'Маяк',
+                        type: 'CLIENT_TYPE_DEVELOPER',
+                        offersCount: 0,
+                        validOffersCount: 0,
+                        balanceNewbuilding: 5000000,
+                        balanceCommercial: 0,
+                        vasOffersCount: 0,
+                        errorOffersCount: 0,
+                        adAgencyId: '403388763',
+                        campaignsStats: { village: {}, site: { total: 1, active: 1, disabled: 0 } },
+                        periodData: { spentByMonthCommercial: [], spentByMonthNewbuilding: [] },
+                        callStats: {}
+                    },
+                    {
+                        id: 'bil_49621277',
+                        name: 'МИЦ - ЦП (тест)',
+                        offersCount: 0,
+                        validOffersCount: 0,
+                        balanceNewbuilding: 0,
+                        balanceCommercial: 2360000,
+                        vasOffersCount: 0,
+                        errorOffersCount: 0,
+                        adAgencyId: '403388763',
+                        campaignsStats: { village: {}, site: {} },
+                        periodData: { spentByMonthCommercial: [], spentByMonthNewbuilding: [] },
+                        callStats: {
+                            total: 0,
+                            success: 0,
+                            target: 0,
+                            nonTarget: 0,
+                            missed: 0,
+                            blocked: 0,
+                            payedTuz: 0
+                        }
+                    },
+                    {
+                        id: 'bil_53824979',
+                        name: 'МИЦ (5 ЖК)',
+                        offersCount: 0,
+                        validOffersCount: 513,
+                        users: [ {
+                            uid: '1120000000112888',
+                            name: 'romanpoleguev',
+                            role: 'USER_ROLE_ADMIN'
+                        }, { uid: '1120000000178631', name: 'swapster', role: 'USER_ROLE_MANAGER' } ],
+                        balanceNewbuilding: 0,
+                        balanceCommercial: 0,
+                        vasOffersCount: 24,
+                        errorOffersCount: 122,
+                        adAgencyId: '403388763',
+                        campaignsStats: { village: {}, site: {} },
+                        periodData: { spentByMonthCommercial: [], spentByMonthNewbuilding: [] },
+                        callStats: {
+                            total: 0,
+                            success: 0,
+                            target: 0,
+                            nonTarget: 0,
+                            missed: 0,
+                            blocked: 0,
+                            payedTuz: 0
+                        }
+                    },
+                    {
+                        id: 'bil_46611724',
+                        name: 'МИЦ',
+                        offersCount: 0,
+                        validOffersCount: 513,
+                        balanceNewbuilding: 93160000,
+                        balanceCommercial: 0,
+                        vasOffersCount: 24,
+                        errorOffersCount: 122,
+                        adAgencyId: '403388763',
+                        campaignsStats: { village: {}, site: { total: 5, active: 4, disabled: 1 } },
+                        periodData: { spentByMonthCommercial: [], spentByMonthNewbuilding: [] },
+                        callStats: {}
+                    },
+                    {
+                        id: 'bil_35502566',
+                        name: 'Лидер Инвест (23 ЖК)',
+                        offersCount: 0,
+                        validOffersCount: 0,
+                        balanceNewbuilding: 0,
+                        balanceCommercial: 362872,
+                        vasOffersCount: 0,
+                        errorOffersCount: 0,
+                        adAgencyId: '403388763',
+                        campaignsStats: { village: {}, site: {} },
+                        periodData: { spentByMonthCommercial: [], spentByMonthNewbuilding: [] },
+                        callStats: {
+                            total: 0,
+                            success: 0,
+                            target: 0,
+                            nonTarget: 0,
+                            missed: 0,
+                            blocked: 0,
+                            payedTuz: 0
+                        }
+                    },
+                    {
+                        id: 'bil_35361270',
+                        name: 'Лидер Инвест',
+                        offersCount: 0,
+                        validOffersCount: 0,
+                        balanceNewbuilding: 15090000,
+                        balanceCommercial: 0,
+                        vasOffersCount: 0,
+                        errorOffersCount: 0,
+                        adAgencyId: '403388763',
+                        campaignsStats: { village: {}, site: { total: 24, active: 3, disabled: 21 } },
+                        periodData: { spentByMonthCommercial: [], spentByMonthNewbuilding: [] },
+                        callStats: {}
+                    },
+                    {
+                        id: 'bil_36119272',
+                        name: 'Летний Сад',
+                        offersCount: 0,
+                        validOffersCount: 0,
+                        users: [ { uid: '1120000000112888', name: 'romanpoleguev', role: 'USER_ROLE_ADMIN' } ],
+                        balanceNewbuilding: 0,
+                        balanceCommercial: 0,
+                        vasOffersCount: 0,
+                        errorOffersCount: 0,
+                        adAgencyId: '403388763',
+                        campaignsStats: { village: {}, site: {} },
+                        periodData: { spentByMonthCommercial: [], spentByMonthNewbuilding: [] },
+                        callStats: {
+                            total: 0,
+                            success: 0,
+                            target: 0,
+                            nonTarget: 0,
+                            missed: 0,
+                            blocked: 0,
+                            payedTuz: 0
+                        }
+                    },
+                    {
+                        id: 'bil_40044290',
+                        name: 'Изумрудные Холмы',
+                        offersCount: 0,
+                        validOffersCount: 0,
+                        balanceNewbuilding: 0,
+                        balanceCommercial: 708,
+                        vasOffersCount: 0,
+                        errorOffersCount: 0,
+                        adAgencyId: '403388763',
+                        campaignsStats: { village: {}, site: {} },
+                        periodData: { spentByMonthCommercial: [], spentByMonthNewbuilding: [] },
+                        callStats: {
+                            total: 0,
+                            success: 0,
+                            target: 0,
+                            nonTarget: 0,
+                            missed: 0,
+                            blocked: 0,
+                            payedTuz: 0
+                        }
+                    },
+                    {
+                        id: 'bil_32161524',
+                        name: 'ИНГРАД',
+                        offersCount: 0,
+                        validOffersCount: 0,
+                        balanceNewbuilding: 0,
+                        balanceCommercial: 0,
+                        vasOffersCount: 0,
+                        errorOffersCount: 0,
+                        adAgencyId: '403388763',
+                        campaignsStats: { village: {}, site: { total: 8, active: 0, disabled: 8 } },
+                        periodData: { spentByMonthCommercial: [], spentByMonthNewbuilding: [] },
+                        callStats: {}
+                    },
+                    {
+                        id: 'bil_46286985',
+                        name: 'ЖК Орехово-Борисово',
+                        offersCount: 0,
+                        validOffersCount: 0,
+                        balanceNewbuilding: 0,
+                        balanceCommercial: 283318,
+                        vasOffersCount: 0,
+                        errorOffersCount: 0,
+                        adAgencyId: '403388763',
+                        campaignsStats: { village: {}, site: {} },
+                        periodData: { spentByMonthCommercial: [], spentByMonthNewbuilding: [] },
+                        callStats: {
+                            total: 0,
+                            success: 0,
+                            target: 0,
+                            nonTarget: 0,
+                            missed: 0,
+                            blocked: 0,
+                            payedTuz: 0
+                        }
+                    },
+                    {
+                        id: 'bil_42273915',
+                        name: 'ЖК Альтаир',
+                        offersCount: 0,
+                        validOffersCount: 0,
+                        balanceNewbuilding: 0,
+                        balanceCommercial: 1770,
+                        vasOffersCount: 0,
+                        errorOffersCount: 0,
+                        adAgencyId: '403388763',
+                        campaignsStats: { village: {}, site: {} },
+                        periodData: { spentByMonthCommercial: [], spentByMonthNewbuilding: [] },
+                        callStats: {
+                            total: 0,
+                            success: 0,
+                            target: 0,
+                            nonTarget: 0,
+                            missed: 0,
+                            blocked: 0,
+                            payedTuz: 0
+                        }
+                    },
+                    {
+                        id: 'bil_33567246',
+                        name: 'ЖК «Новое Измайлово-2»',
+                        offersCount: 0,
+                        validOffersCount: 0,
+                        balanceNewbuilding: 0,
+                        balanceCommercial: 0,
+                        vasOffersCount: 0,
+                        errorOffersCount: 0,
+                        adAgencyId: '403388763',
+                        campaignsStats: { village: {}, site: {} },
+                        periodData: { spentByMonthCommercial: [], spentByMonthNewbuilding: [] },
+                        callStats: {
+                            total: 0,
+                            success: 0,
+                            target: 0,
+                            nonTarget: 0,
+                            missed: 0,
+                            blocked: 0,
+                            payedTuz: 0
+                        }
+                    },
+                    {
+                        id: 'bil_53754583',
+                        name: 'ЖК «Виноградный»',
+                        offersCount: 0,
+                        validOffersCount: 0,
+                        balanceNewbuilding: 0,
+                        balanceCommercial: 0,
+                        vasOffersCount: 0,
+                        errorOffersCount: 0,
+                        adAgencyId: '403388763',
+                        campaignsStats: { village: {}, site: {} },
+                        periodData: { spentByMonthCommercial: [], spentByMonthNewbuilding: [] },
+                        callStats: {
+                            total: 0,
+                            success: 0,
+                            target: 0,
+                            nonTarget: 0,
+                            missed: 0,
+                            blocked: 0,
+                            payedTuz: 0
+                        }
+                    }
+                ]
+            },
+            filters: {
+                page: 2,
+                sortOrder: 'OFFERS_COUNT',
+                sortDirection: 'DESC'
+            },
+            network: {
+                fetchClientAdAgencyClientsStatus: 'loaded'
+            }
+        }
+    }
+};

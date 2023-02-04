@@ -1,0 +1,116 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Геокод: поиск результатов в заданной области
+
+Description:
+Проверка опции поиска результатов в заданной области.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+geocode
+
+Estimated time:
+180000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан восточной Европы, в центре спана в районе Москвы имеется голубая метка коллекции.
+  Сверху слева имеется кнопка "strict".
+  
+Step:
+  Action:
+  Выполнить клик в метку на спане карты.
+
+  Expectation:
+  По клику метка пропадает, на ее месте открывается балун с содержимым: "Москва; Россия".
+
+Step:
+  Action:
+  Выполнить клик в кнопку закрытия балуна метки. 
+
+  Expectation:
+  Балун метки закрывается, метки коллекции не пропадают со спана карты.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "strict".
+
+  Expectation:
+  По клику метка в Москве пропадает со спана карты, при этом на территории Польши, Литвы, Белоруссии, Украины, Румынии появляется полупрозрачный синий прямоугольник.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "strict".
+
+  Expectation:
+  Прямоугольник пропадает, на спане карты в Москве вновь появляется метка коллекции.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            var map = myMap = new ymaps.Map('map', {
+                center: [55.753994, 37.622093],
+                zoom: 4,
+                behaviors: ['default', 'scrollZoom'],
+                controls: []
+            });
+            __log__("Геокодирование 'Москва'. strictBounds жестко ограничивает область поиска");
+
+            rectangle = new ymaps.Rectangle([
+                [55.584031731101845, 20.21456126171876],
+                [46.584031731101845, 29.21456126171876]
+            ]);
+
+            var withBoundedBy, withoutBoundedBy;
+            ymaps.geocode('Москва', {boundedBy: [
+                [55.584031731101845, 20.21456126171876],
+                [46.584031731101845, 29.21456126171876]
+            ], strictBounds: true}).then(function (res) {
+                withBoundedBy = res.geoObjects;
+            });
+            ymaps.geocode('Москва', {boundedBy: [
+                [55.584031731101845, 20.21456126171876],
+                [46.584031731101845, 29.21456126171876]
+            ], strictBounds: false}).then(function (res) {
+                withoutBoundedBy = res.geoObjects;
+                map.geoObjects.add(withoutBoundedBy);
+            });
+
+            var addButton = new ymaps.control.Button({data: {content: 'strict'}, options: {selectOnClick: true}});
+            addButton.events.add('select', function () {
+
+                map.geoObjects.remove(withoutBoundedBy);
+                map.geoObjects.add(withBoundedBy).add(rectangle);
+            })
+                    .add('deselect', function () {
+                        map.geoObjects.remove(withBoundedBy).remove(rectangle);
+                        map.geoObjects.add(withoutBoundedBy);
+                    });
+
+            addGrid(myMap);
+            var log = new Log();
+            map.controls.add(addButton);
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

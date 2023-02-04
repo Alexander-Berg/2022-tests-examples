@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<!--
+Title:
+Область видимости для текущей геолокации
+
+Description:
+Построение карты c текущим положением пользователя.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+Перед проведением теста необходимо настроить браузер для запроса геоданных. В Google Chrome в настройках "Конфиденциальность и безопастность" в блоке "Геоданные" выставить флаг "Спрашивать разрешение на доступ".
+При этом в списке разрешенных адресов вкладки "Геоданные" в подблоке "Разрешить" не должно быть URL адресов ...yandex.ru...Если URL адреса "yandex.ru" имеются удалите их, для корректного прохождения теста и появления запроса на определение местоположения.
+Либо зайти на стенд в приватном режиме.
+
+Components: 
+regress
+
+Estimated time:
+300000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть открывшееся окно. 
+
+  Expectation:
+  При открытии появляется диалоговое окно о разрешении доступа к данным о вашем местоположении, с кнопками "разрешить", "блокировать". 
+  (конфигурация и наименование кнопок и диалогового окна может варьироваться в зависимости от браузера).
+
+Step:
+  Action:
+  Клик в кнопку "разрешить" в диалоговом окне браузера.
+
+  Expectation:
+  В контейнере отображается карта, при этом в месте геолокации изображение яблока.
+  Сверху кнопка "change".
+
+Step:
+  Action:
+  Навести курсор на иконку яблока, затем клик в иконку.
+
+  Expectation:
+  При наведении появляется хинт "Тру-ля-ля".  
+  По клику на месте метки открывается балун "тра-та-та; Парам-пам-пам".
+  
+Step:
+  Action:
+  Выполнить клик в кнопку "change".
+
+  Expectation:
+  Контейнер с картой увеличивается в размерах, открытый балун на месте.
+
+Step:
+  Action:
+  Закрыть балун кликом в крестик.
+
+  Expectation:
+  Балун закрылся, на карте отображается иконка яблока.
+-->
+<html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title>Примеры. Создание карты с местоположением пользователя.</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <link href="https://yandex.st/bootstrap/3.0.0/css/bootstrap.min.css" rel="stylesheet">
+    <script src="//yandex.st/jquery/1.8.0/jquery.min.js" type="text/javascript"></script>
+    <!-- <script src="http://api-maps.tst.c.maps.yandex.ru/2.0/?lang=ru-RU&load=package.full" type="text/javascript"></script> -->
+    <script src="geolocation_service.js"
+            type="text/javascript"></script>
+    <script src="../helper.js"></script>
+    <style type="text/css">
+    </style>
+    <script type="text/javascript">
+        
+        Api('init');
+
+       function init(ymaps) {
+            console.log('2.0.38 API TEST  Geolocation Basic');
+            var myMap,
+                    service = new GeolocationService(),
+                    myLocation = service.getLocation({
+                        // Режим получения наиболее точных данных.
+                        enableHighAccuracy: true,
+                        // Максимальное время ожидания ответа (в миллисекундах).
+                        timeout: 10000,
+                        // Максимальное время жизни полученных данных (в миллисекундах).
+                        maximumAge: 1000
+                    }),
+                    changeButton = new ymaps.control.Button({data: {content: 'change'}, options: {selectOnClick: true, float: 'right'}});
+            changeButton.events
+                    .add('select', function () {
+                        $('#map').width(900);
+                        $('#map').height(900);
+                    })
+                    .add('deselect', function () {
+                        $('#map').width(512);
+                        $('#map').height(512);
+                    });
+            myLocation.then(function (loc) {
+                var myCoords = [loc.latitude, loc.longitude],
+                        myPlacemark = new ymaps.Placemark(myCoords, {
+                            hintContent: "Тру-ля-ля",
+                            balloonContentHeader: "тра-та-та",
+                            balloonContentBody: "Парам-пам-пам"
+                        }, {
+                            iconImageHref: '../img/apple.png',
+                            iconImageSize: [24, 24],
+                            iconImageOffset: [-12, -12]
+                        });
+                myMap = new ymaps.Map('map', {
+                    center: myCoords,
+                    zoom: loc.zoom || 9,
+                    behaviors: ['default', 'scrollZoom']}, {
+                    autoFitToViewport: 'always'
+                });
+                myMap.geoObjects.add(myPlacemark);
+                myMap.controls.add(changeButton);
+            });
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+<p><a href="https://tech.yandex.ru/maps/archive/doc/jsapi/2.0/ref/reference/geolocation-docpage/" target="_blank">Docs</a></p>
+</body>
+</html>

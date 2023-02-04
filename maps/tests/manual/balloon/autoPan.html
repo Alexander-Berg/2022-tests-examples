@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<!--
+Title:
+Балун: проверка автопана 
+
+Description:
+Проверка автопана балуна. 
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+smoke, regress
+
+Estimated time:
+90000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно, на спане водная поверхность.
+  В центре спана метка коллекции, сверху слева кнопка "autoPan".
+
+Step:
+  Action:
+  Выполнить клик в метку коллекции. 
+
+  Expectation:
+  Метка пропадает, на карте открывается балун при этом содержимое балуна несколько раз меняется.
+  При смене содержимого балуна, спан карты смещаеться для полного отображения балуна.
+
+Step:
+  Action:
+  Выполнить клик в кнопку закрытия балуна. 
+  Зажав ЛКМ на карте, сместить спан карты, так чтобы метка коллекции оказалась в центре спана.
+
+  Expectation:
+  Балун закрывается корректно на спане карты снова появляется метка коллекции.
+  Смещение спана карты корректное, метка не пропадает.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "autoPan", затем клик в метку коллекции.
+
+  Expectation:
+  Метка пропадает, на карте открывается балун при этом содержимое балуна несколько раз меняется.
+  При смене содержимого балуна, спан карты не смещается, часть содержимого остается за пределами вьюпорта.
+-->
+<html>
+<head>
+    <title>API 2.0</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <script src="../helper.js"></script>
+    <script type="text/javascript">
+        Api('init');
+        function init(ymaps) {
+            var myMap = new ymaps.Map('map', {
+                center: [34.8006, -37.5181],
+                zoom: 5
+            }, {
+                geoObjectBalloonOffset: [100, -100]
+            });
+            
+            var point = new ymaps.Placemark([34.8006, -37.5181]);
+            point.properties.set({
+                balloonContent: 'text'
+            });
+            point.events.add("click", function (e) {
+                setTimeout(function () {
+                    point.properties.set({
+                        balloonContent: '<img src="https://i.pinimg.com/236x/13/10/90/131090b13da67e87d975f63aa140db23--pusheen-cat-get-ready.jpg">'
+                    });
+                }, 2000);
+            });
+            point.balloon.events.add("close", function (e) {
+                point.properties.set({
+                    balloonContent: 'text'
+                });
+            });
+            myMap.geoObjects.add(point);
+            var bounds = point.getOverlay().getGeometry().getBounds();
+            bounds[0][1] -= 500; // MAPSAPI-5724
+
+            var button = new ymaps.control.Button("autoPan");
+            button.select();
+            myMap.controls.add(button, {left: 3, top: 3});
+            button.events.add("select", function (e) {
+                point.options.set("balloonAutoPan", true);
+            }).add("deselect", function (e) {
+                point.options.set("balloonAutoPan", false);
+            });
+            // MAPSAPI-5483
+            point.balloon.events.add("open", function (e) {
+                setTimeout(function () {
+                    point.properties.set({
+                        balloonContent: 'long long long long long long long long text'
+                    });
+                }, 300);
+            }).add("close", function (e) {
+                point.properties.set({
+                    balloonContent: 'text'
+                });
+            });
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;">
+</div>
+<p><a href="https://tech.yandex.ru/maps/archive/doc/jsapi/2.0/ref/reference/Balloon-docpage/" target="_blank">Docs</a></p>
+</body>
+</html>

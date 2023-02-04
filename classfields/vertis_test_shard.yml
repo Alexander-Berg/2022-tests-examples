@@ -1,0 +1,28 @@
+---
+
+- name: Role for deploy vertis_test_shard group
+  hosts: 'vertis_test_shard'
+  become: true
+
+  vars:
+    group:          'vertis_test_shard'
+    dp_environment: 'testing'
+    autoenv:        'test'
+
+  pre_tasks:
+    - name: 'updating apt cache'
+      apt: update_cache=yes
+      changed_when: False
+
+  roles:
+    - { role: common-role }
+    - { role: push-client, tags: push-client }
+    - { role: deploy-primary-secret }
+    - { role: vertis-datasources-secrets }
+    - { role: consul-dns, tags: "consul-dns" }
+    - { role: vector }
+
+  post_tasks:
+    - include: tasks/conductor-package-install.yml
+      when: ansible_pull is not defined
+      tags: conductor

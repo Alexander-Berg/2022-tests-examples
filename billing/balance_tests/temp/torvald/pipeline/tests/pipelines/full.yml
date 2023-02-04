@@ -1,0 +1,39 @@
+INITIAL:
+  owner: test
+  edges:
+    HAVE_CHANGES:
+      conditions:
+        - check(True)
+      actions:
+        - do_something('HAVE_CHANGES')
+
+HAVE_CHANGES:
+  owner: dev
+  edges:
+    DEPLOYED:
+      actions:
+        - build_and_deploy()
+
+DEPLOYED:
+  owner: test
+  edges:
+    TEST_IN_PROGRESS:
+      actions:
+        - start_teamcity(['BalanceFull', 'BalanceSmoke'])
+        - start_teamcity(['TrustGreenline'])
+        - start_aqua(['FullJava'])
+        - comment(TESTS_LAUNCHED)
+
+TEST_IN_PROGRESS:
+  owner: test
+  edges:
+    TEST_COMPLETE:
+      conditions:
+        - is_task_finish(Python_smoke)
+        - is_task_finish(TRUST_smoke)
+        - is_task_finish(Java_smoke)
+      actions:
+        - comment_values(TESTS_LAUNCHED)
+
+TEST_COMPLETE:
+  owner: test

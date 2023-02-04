@@ -1,0 +1,90 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Контрол: программный показ результата поиска
+
+Description:
+Проверка программный показ результата поиска.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+control
+
+Estimated time:
+90000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Дождаться загрузки и осмотреть карту и элементы на ней.
+
+  Expectation:
+  При загрузке в контейнере загружается спан Москвы, сверху контейнера поисковый инпут с кнопкой "Найти".
+  Происходит поиск по запросу "кафе", на карте появляются метки организаций, под инпутом панель со сниппетами.
+  
+Step:
+  Action:
+  Выполнить клик во второй сниппет в панели.
+
+  Expectation:
+  Панель со сниппетами пропадает, происходит смещение спана карты, снизу открывается балун-панель организации.
+  В карточке организации корректная информация: Название, оценка, время работы; телефон и адрес сайта, адрес; ближайшие станции метро; кнопки "Как добраться", "Об организации", "Вызвать такси", "Исправить неточность"; кнопка закрытия панели, скрол полоса прокрутки.
+  Под контейнером с картой появляется текст: "resultselect 1; resultshow 1".
+
+Step:
+  Action:
+  Выполнить клик в кнопку закрытия балуна-панели - крестик.
+
+  Expectation:
+  Панель балуна организации закрывается.
+  На спане карты метки организаций по запросу.
+  Под контейнером с картой появляется текст: "resulthide 1".
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <script src="../../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ym) {
+            var map = new ym.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 10,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            map.options.set('forceAdvert', true);
+
+            addGrid(map);
+
+            var search = new ym.control.SearchControl();
+            map.controls.add(search);
+            search.options.set('provider', 'yandex#search');
+
+            setTimeout(function () {
+                __log__('Searching "кафе"... Должен появиться попап');
+                search.search('кафе').then(function () {
+                    __log__('Ready.')
+                });
+            }, 2000);
+
+            search.events.add(['clear', 'resulthide', 'resultshow', 'resultselect'], function (e) {
+                __log__(e.get('type') + " " + e.get('index'));
+            });
+
+            __log__("provider: 'yandex#search (ППО)'");
+            __log__('Waiting 2 seconds...');
+            __log__('map.options.set("forceAdvert", ' + map.options.get('forceAdvert') + ')');
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

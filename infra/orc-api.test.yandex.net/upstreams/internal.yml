@@ -1,0 +1,55 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - mokosha
+      groups: []
+labels:
+  order: '10000000'
+---
+regexp_section:
+
+  matcher:
+    match_fsm:
+      uri: '(/.*)?'
+                  
+  modules:
+
+    - report:
+        ranges: default
+        uuid: internal
+
+    - headers:
+        create_func_weak:
+          X-Forwarded-For-Y: realip
+          X-Forwarded-Host: host
+          X-Real-IP: realip
+          X-Request-Id: reqid
+          X-Start-Time: starttime
+
+    - log_headers:
+        name_re: X-Req(.*)
+
+    - rewrite:
+        actions:
+          - regexp: /(.*)+
+            rewrite: /internal/%1
+
+    - balancer2:
+        attempts: 2
+        disable_attempts_rate_limiter: true
+        rr: {}
+        generated_proxy_backends:
+            proxy_options:
+                connect_timeout: 100ms
+                backend_timeout: 5s
+                keepalive_count: 1
+                fail_on_5xx: false
+            include_backends:
+                type: BY_ID
+                ids: [orc-testing.api-unit_sas]
+        on_error:
+          modules:
+            - errordocument:
+                status: 504
+                content: 'Service unavailable'

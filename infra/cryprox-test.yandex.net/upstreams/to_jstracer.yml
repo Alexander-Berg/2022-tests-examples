@@ -1,0 +1,57 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - dridgerve
+      groups: []
+labels:
+  order: '99999990'
+---
+regexp_section:
+  matcher:
+    match_and:
+      - match_fsm:
+          match: 'POST.*'
+      - match_fsm:
+          header:
+            name: 'x-aab-jstracer'
+            value: '.*'
+  modules:
+    - headers:
+        create:
+          Host: 'an.yandex.ru'
+        append_func_weak:
+          X-Forwarded-For: realip
+        create_func_weak:
+          X-Forwarded-For: realip
+          X-Aab-Requestid: reqid
+        delete: 'cookie|x-aab-partnertoken|x-yandex-exp.*'
+    - response_headers:
+        create:
+          Access-Control-Allow-Headers: 'X-AAB-JSTracer,Content-Type'
+    - log_headers:
+        name_re: 'X-Aab-Requestid'
+    - rewrite:
+        actions:
+          - regexp: '/.*'
+            rewrite: '/jstracer'
+    - report:
+        uuid: jstracer
+        ranges: default
+    - balancer2:
+        attempts: 1
+        rr: {}
+        timeout_policy:
+          timeout: 2000ms
+          simple_policy: {}
+        generated_proxy_backends:
+          proxy_options:
+            backend_timeout: 2000ms
+            connect_timeout: 100ms
+          instances:
+            - weight: 1
+              host: an.yandex.ru
+              port: 80
+        on_error:
+          errordocument:
+            status: 204

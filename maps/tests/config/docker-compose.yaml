@@ -1,0 +1,48 @@
+version: '3.4'
+services:
+  postgresql:
+    build:
+      context: postgresql
+    environment:
+      - POSTGRES_PASSWORD=test
+      - POSTGRES_USER=test
+      - POSTGRES_DB=test
+    ports:
+      - "9001:5432"
+
+  fake-env:
+    build:
+      context: $fakeenv
+    ports:
+      - "9002:80"
+
+  auto-navi-carwashes:
+    build:
+      context: $carwashes
+      args:
+        SERVICE: "auto-carwashes"
+    environment:
+      - ENVIRONMENT_TYPE=development
+      - ENVIRONMENT_NAME=development
+      - QLOUD_CPU_GUARANTEE=1
+      - TVM_SECRET=fake_secret
+      - TRUST_SERVICE_TICKET=trust_ticket
+      - DATABASE_PASSWORD=test
+      - ALFRED_SECRET_TO_CHECK=12345
+      - ALFRED_SECRET_TO_SEND=54321
+      - OAUTH_STARTREK_TOKEN=AAABBBCCC
+      - LLVM_PROFILE_FILE
+    ports:
+      - "9003:80"
+    depends_on:
+      - postgresql
+      - fake-env
+    volumes:
+      - ${LLVM_PROFILE_DIRNAME:-/dev/null}:${LLVM_PROFILE_DIRNAME:-/fake_volume}
+    stop_grace_period: 1m30s
+    command: ["./wait-for.sh", "fake-env:80", "-t", "120", "--", "/etc/runner/run.sh"]
+
+networks:
+  default:
+    external:
+      name: bridge6

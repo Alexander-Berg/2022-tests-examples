@@ -1,0 +1,161 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Геообъект: изменения опций и получения данных методами геообъектов
+
+Description:
+Проверка изменения опций и получения данных методами геообъектов.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+geoobject
+
+Estimated time:
+120000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+  
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан Московской области, на спане два ряда объектов: метка, линия, многоугольник, прямоугольник, круг(верхний ряд объектов синего цвета, нижний - зеленого).
+  Под контейнером с картой блок логов.
+  Сверху слева кнопка "check".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "check". 
+  
+  Expectation:
+  Спан карты и объекты без изменений.
+  Под контейнером с картой появляются блоки логов: getMap; getParent: (parent map center); getOverlay. Под каждым блоком 10 строк [object Object].
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../helper.js"></script>
+    <script src="geoCS.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym; // hack
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.73259667357658, 37.70153663432529],
+                zoom: 9,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            geoCSSource(ym, myMap, this);
+            addGrid(myMap);
+            var log = new Log();
+
+            var collection = new ymaps.GeoObjectCollection();
+            collection
+                    .add(geoObjectPlacemark)
+                    .add(geoObjectPolyline)
+                    .add(geoObjectPolygon)
+                    .add(geoObjectRectangle)
+                    .add(geoObjectCircle)
+                    .add(placemark)
+                    .add(polyline)
+                    .add(polygon)
+                    .add(rectangle)
+                    .add(circle);
+
+            var button = new ymaps.control.Button('check');
+            button.events.add('click', function () {
+                log.info('getMap:');
+                collection.each(function (obj) {
+                    var getMap = obj.getMap();
+                    __log__(getMap);
+                    //__log__(getMap.getClassName());
+                });
+
+                log.info('');
+                log.info('getParent: (parent map center)');
+                collection.each(function (obj) {
+                    var getParent = obj.getParent();
+                    __log__(getParent);
+                    //__log__(getParent.getClassName())
+                });
+
+                log.info('setParent: (parent map center)');
+                collection.each(function (obj) {
+                    obj.setParent(geoObjectPlacemark.getParent());
+                });
+
+                log.info('getParent: (parent map center)');
+                collection.each(function (obj) {
+                    var getParent = obj.getParent();
+                    __log__(getParent);
+                    //__log__(getParent.getClassName())
+                });
+
+                log.info('');
+                log.info('getOverlay:');
+                collection.each(function (obj) {
+                    obj.getOverlay().then(function (overlay) {
+                        log.info(overlay)
+                    });
+                });
+            });
+
+            collection.each(function (obj) {
+                obj.events
+                        .add('editorstatechange', function (e) {
+                            log.info('editorstatechange ' + e.get('target').geometry.getType());
+                            log.info('originalEvent: ' + e.get('originalEvent'));
+                        })
+                        .add('geometrychange', function (e) {
+                            log.info('geometrychange ' + e.get('target').geometry.getType());
+                            log.info('originalEvent: ' + e.get('originalEvent'));
+                        })
+                        .add('mapchange', function (e) {
+                            log.info('mapchange ' + e.get('target').geometry.getType());
+                            log.info('oldMap: ' + e.get('oldMap'));
+                            log.info('newMap: ' + e.get('newMap'));
+                        })
+                        .add('optionschange', function (e) {
+                            log.info('optionschange ' + e.get('target').geometry.getType())
+                        })
+                        .add('overlaychange', function (e) {
+                            log.info('overlaychange ' + e.get('target').geometry.getType());
+                            log.info('oldOverlay: ' + e.get('overlay'));
+                        })
+                        .add('parentchange', function (e) {
+                            log.info('parentchange ' + e.get('target').geometry.getType());
+                            log.info('oldParent: ' + e.get('oldParent'));
+                            log.info('newParent: ' + e.get('newParent'));
+                        })
+                        .add('propertieschange', function (e) {
+                            log.info('propertieschange ' + e.get('target').geometry.getType());
+                            log.info('originalEvent: ' + e.get('originalEvent'));
+                        })
+                        .add('pixelgeometrychange', function (e) {
+                            log.info('pixelgeometrychange ' + e.get('target').geometry.getType());
+                            log.info('oldPixelGeometry: ' + e.get('oldPixelGeometry'));
+                            log.info('newPixelGeometry: ' + e.get('newPixelGeometry'));
+                        });
+            });
+
+            myMap.controls.add(button);
+
+            myMap.geoObjects
+                    .add(collection);
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

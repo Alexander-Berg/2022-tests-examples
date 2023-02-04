@@ -1,0 +1,197 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Мультимаршрут: удаление маршрутных точек
+
+Description:
+Проверка корректности удаления маршрутных точек.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+multiRouter
+
+Estimated time:
+240000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно со спаном Москвы, затем спан сразу меняется на спан Красногорска, с маршрутом из двух точек "A","B"(могут быть альтернативные линии), курсор - рука.
+  Снизу слева кнопка "mode", сверху кнопки "editor", "setPoints".
+
+Step:
+  Action:
+  Выполнить даблклик в метку "A" маршрута.
+
+  Expectation:
+  Происходит небольшое смещение спана карты с призумом, при этом на маршруте открывается балун с данными о маршруте.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "editor".
+
+  Expectation:
+  Спан карты без изменений, под контейнером с картой появляется строка: "start".
+
+Step:
+  Action:
+  Отзумить спан карты скролом мыши для отображения маршрута, закрыть балун на маршруте, затем выполнить даблклик в метку "A" маршрута.
+
+  Expectation:
+  Балун на маршруте закрылся.
+  Метка "А" пропадает со спана карты, маршрутная нитка также пропадает, вместо метки "B", на спане карты метка "A".
+  Под контейнером с картой появляется строки: "beforewaypointremove; waypointremove".
+
+Step:
+  Action:
+  Выполнить даблклик в метку "A".
+
+  Expectation:
+  Метка "А" пропадает со спана карты.
+  Под контейнером с картой появляется строки: "beforewaypointremove; waypointremove".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "setPoints".
+
+  Expectation:
+  На спане карты появляется маршрут с 4-мя метками("A", "B"(поселок Отрадное), "C"(Химки), "D"(Долгопрудный)).
+
+Step:
+  Action:
+  Выполнить клик в кнопку "mode".
+
+  Expectation:
+  Маршрутная нитка перестраивается, на маршрутной нитке появляются метки общественного транспорта(метро, электричек), с подписями станций, пешеходные метки с временем и расстоянием.
+
+Step:
+  Action:
+  Выполнить даблклик в метку "A".
+
+  Expectation:
+  Метка "А" и участок маршрута к метке "B" пропадают со спана карты(метки меняют буквенное обозначение смещаясь).
+  Под контейнером с картой появляется строки: "beforewaypointremove; waypointremove".
+
+Step:
+  Action:
+  Выполнить даблклик в метку "С".
+
+  Expectation:
+  Метка "С" и участок маршрута к метке "С" пропадают со спана карты.
+  Под контейнером с картой появляется строки: "beforewaypointremove; waypointremove".
+
+Step:
+  Action:
+  Выполнить даблклик в метку "В".
+
+  Expectation:
+  Метка "В" и участок маршрута к метке "В" пропадают со спана карты(остается только метка "А").
+  Под контейнером с картой появляется строки: "beforewaypointremove; waypointremove".
+
+Step:
+  Action:
+  Выполнить даблклик в метку "A".
+
+  Expectation:
+  Метка "A" пропадает со спана карты.
+  Под контейнером с картой появляется строки: "beforewaypointremove; waypointremove".
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            //TODO: написать тест
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 10,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            addGrid(map);
+            var log = new Log();
+
+            var events = ['beforewaypointremove', 'waypointremove', 'start', 'stop'];
+
+            var callback = function (e) {
+                log.info(e.get('type'))
+            }
+
+            var placemark1 = new ymaps.Placemark([55.71574031323344,37.29753265380539]);
+            var placemark2 = new ymaps.Placemark([55.912150224943986,37.29753265380539]);
+
+            var multiRoute = new ymaps.multiRouter.MultiRoute({
+                referencePoints: [placemark1.geometry, placemark2.geometry]
+            }, {
+                boundsAutoApply: true,
+                preset: "islands#multiRouterSmall"
+            });
+
+            map.geoObjects.add(multiRoute);
+            multiRoute.editor.events.add(events, callback);
+
+            var clearButton = new ymaps.control.Button('clear');
+            var editorButton = new ymaps.control.Button('editor');
+
+            editorButton.events
+                    .add('select', function() {
+                        multiRoute.editor.start({
+                            removeWayPoints: true
+                        })
+                    })
+                    .add('deselect', function() {
+                        multiRoute.editor.stop()
+                    });
+
+            clearButton.events.add('click', function() {
+                log.clear();
+            });
+
+            var setPointsButton = new ymaps.control.Button('setPoints');
+            setPointsButton.events
+                    .add('select', function () {
+                        multiRoute.model.setReferencePoints(['желябино', 'московская область, отрадное',
+                            'химки', 'долгопрудный'])
+                    })
+                    .add('deselect', function () {
+                        multiRoute.model.setReferencePoints(['питер, ольховая 22', 'пискаревский 2к2'])
+                    });
+
+            map.controls.add(setPointsButton);
+
+            map.controls
+                    .add(editorButton)
+                    .add(clearButton, {float: 'none', position: {right: 10, bottom: 35}});
+
+            var modeButton = new ymaps.control.Button('mode');
+            modeButton.events
+                    .add('select', function () {
+                        multiRoute.model.setParams({routingMode: 'masstransit'}, true);
+                    })
+                    .add('deselect', function () {
+                        multiRoute.model.setParams({routingMode: 'auto'}, true);
+                    });
+            map.controls.add(modeButton, {position: {bottom: 35, left: 5}});
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

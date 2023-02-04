@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<!--
+Title:
+Геокод: проверка работы геокодирования разных объектов
+
+Description:
+Проверка работы геокодирования разных объектов.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+smoke, regress
+
+Estimated time:
+60000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно.
+  Сверху слева кнопка "search".
+ 
+Step:
+  Action:
+  Выполнить клик в кнопку "search".
+
+  Expectation:
+  По клику происходит смена спана.
+  На новом спане 5 меток коллекции, две синие, две красные, одна черная.
+
+Step:
+  Action:
+  Выполнить клик в синие метки коллекци на спане.
+
+  Expectation:
+  У меток корректно открывается балун, содержимое балуна одной из меток "Советская улица", второй "Советская улица, 53".
+-->
+<html>
+<head>
+    <title>API 2.0</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <script src="../helper.js"></script>
+    <script type="text/javascript">
+        Api('init');
+        function init(ymaps) {
+            var myMap = new ymaps.Map('map', {
+                center: [59, 30],
+                zoom: 5});
+            
+            var button = new ymaps.control.Button("search");
+            myMap.controls.add(button);
+            button.events.add("select", function (e) {
+                var geocoder = ymaps.geocode([54.181483, 45.181478], { // храм
+                    kind: "house",
+                    results: 1
+                });
+                geocoder.then(
+                        function (res) {
+                            myMap.geoObjects.add(res.geoObjects);
+                        },
+                        function (err) {
+                            // обработка ошибки
+                        }
+                );
+                geocoder = ymaps.geocode("саранск советсткая 63", {
+                    searchCoordOrder: "longlat"
+                });
+                geocoder.then(
+                        function (res) {
+                            myMap.setCenter(res.geoObjects.get(0).geometry.getCoordinates(), 15);
+                        }
+                );
+                geocoder = ymaps.geocode([45.1804, 54.1822], { // красные метки
+                    kind: "house",
+                    results: 2,
+                    searchCoordOrder: "longlat"
+                });
+                geocoder.then(
+                        function (res) {
+                            var collection = new ymaps.GeoObjectCollection();
+                            collection.options.set("preset", "twirl#redIcon");
+                            collection.add(res.geoObjects);
+                            myMap.geoObjects.add(collection);
+                        },
+                        function (err) {
+                            // обработка ошибки
+                        }
+                );
+                geocoder = ymaps.geocode([54.1811, 45.1808], { // улица
+                    results: 1
+                });
+                geocoder.then(
+                        function (res) {
+                            myMap.geoObjects.add(res.geoObjects);
+                        },
+                        function (err) {
+                            // обработка ошибки
+                        }
+                );
+                geocoder = ymaps.geocode([54.1818, 45.1832], { // черная метка
+                    kind: "house",
+                    results: 1,
+                    searchCoordOrder: "latlong"
+                });
+                geocoder.then(
+                        function (res) {
+                            var collection = new ymaps.GeoObjectCollection();
+                            collection.options.set("preset", "twirl#blackIcon");
+                            collection.add(res.geoObjects);
+                            myMap.geoObjects.add(collection);
+                        },
+                        function (err) {
+                            // обработка ошибки
+                        }
+                );
+            });
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;">
+<p><a href="https://tech.yandex.ru/maps/archive/doc/jsapi/2.0/ref/reference/geocode-docpage/" target="_blank">Docs</a></p>
+</div>
+</body>
+</html>

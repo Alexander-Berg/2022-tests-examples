@@ -1,0 +1,74 @@
+<DaemonConfig>
+    LogLevel: 7
+    LoggerType: ${LOG_PATH or "."}/${SERVER_NAME or "s"}.searchproxy.log
+    StdOut: ${LOG_PATH or "."}/${SERVER_NAME or "s"}.searchproxy.stdout.log
+    StdErr: ${LOG_PATH or "."}/${SERVER_NAME or "s"}.searchproxy.stderr.log
+    <Controller>
+        Port : ${(BasePort and (BasePort +3)) or 16003}
+        Threads : 2
+        MaxQueue : 0
+        MaxConnections : 0
+        ClientTimeout : 0
+        StartServer : 0
+    </Controller>
+</DaemonConfig>
+<SearchProxy>
+    Port: ${SEARCH_PROXY_PORT or BasePort or 16000}
+    Threads: 8
+    MaxQueueSize: 1000
+    MaxConnections: 1000
+    SearchMap: ${CONF_PATH}/searchmap_ymusic.json
+    AuthKeyWord : cookie
+    ExpConfig: ${CONF_PATH}/exp.xml
+    <Logger>
+        InfoLog: ${LOG_PATH or "."}/${SERVER_NAME or "s"}.searchproxy-access.log
+        ErrorLog: ${LOG_PATH or "."}/${SERVER_NAME or "s"}.searchproxy-error.log
+        FetchLog: ${LOG_PATH or "."}/${SERVER_NAME or "s"}.searchproxy-fetch.log
+        IncomingLog: ${LOG_PATH or "."}/${SERVER_NAME or "s"}.searchproxy-incoming.log
+        ReqAnsLog: ${LOG_PATH or "."}/${SERVER_NAME or "s"}.searchproxy-reqans.log
+    </Logger>
+    <SearchConfig>
+        SmartQueue: true
+        LoadLog: ${LOG_PATH or "."}/${SERVER_NAME or "s"}.searchproxy.load.log
+        ConnectTimeout: 60000
+        GlobalTimeout: 60000
+        Threads: 8
+        EventLog : ${LOG_PATH or "."}/${SERVER_NAME or "s"}.searchproxy.event.log
+        <SearchPageTemplate>
+            Method: builtin
+            Module: searchproxy
+        </SearchPageTemplate>
+        <HttpStatuses>
+            IncompleteStatus: 502
+            EmptySetStatus: 404
+            SyntaxErrorStatus: 400
+        </HttpStatuses>
+
+        TwoStepQuery: false
+        AllowDynamicWeights: true
+    </SearchConfig>
+    <Service>
+        Name: tests
+        TwoStepQuery: true
+        ReArrangeOptions: Ymusic(Enabled=1,Service=tests-kv,Timeout=10000000)
+        <AuxSource>
+            ServerDescr: YMUSIC-PERSONALIZATION
+            Options: ${'AllowDynamicWeights=0, EnableInheritance=0, NoCache=yes, OneStepQuery=yes, ProtocolType=proto, RandomGroupSelection=1, TimeOut=10s'}
+            CgiSearchPrefix: http://localhost:16000/?service=tests-kv@100@100@100
+            PrimusList: None
+            Tier: None
+        </AuxSource>
+    </Service>
+    <Service>
+        Name: tests-kv
+        TwoStepQuery: false
+        <ProxyMeta>
+            TasksCheckIntervalms: 7
+            TimeoutSendingms: 7
+            TimeoutConnectms: 7
+            ParallelRequestCount: 2
+            MaxAttempts: 2
+            # LoggingEnabled: true
+        </ProxyMeta>
+    </Service>
+</SearchProxy>

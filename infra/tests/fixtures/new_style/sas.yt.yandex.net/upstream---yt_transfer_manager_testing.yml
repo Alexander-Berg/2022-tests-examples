@@ -1,0 +1,72 @@
+---
+# transfer_manager_testing (backend)
+regexp_section:
+  matcher:
+    match_fsm:
+      host: 'tm-testing\\.yt\\.yandex(\\.net|-team\\.ru)(:\\d+)?'
+  modules:
+    - report:
+        uuid: transfer_manager_testing
+        ranges: default
+        events:
+          stats: report  
+    - headers:
+        create_func_weak:
+          X-Forwarded-For-Y: realip
+          X-Source-Port-Y: realport
+          X-Scheme: scheme
+        create:
+          X-YT-Omit-Trailers: 'true'
+    - regexp:
+        sections:
+          post_method:
+            matcher:
+              match_fsm: {match: '(POST|PUT).*'}
+            modules:
+              - balancer2:
+                  attempts: 1
+                  connection_attempts: !f count_backends()
+                  unique_policy: {}
+                  active:
+                    steady: false
+                    delay: 1s
+                    request: 'GET /ping/ HTTP/1.1\nHost: tm-testing.yt.yandex.net\n\n'
+                  generated_proxy_backends:
+                    proxy_options:
+                      backend_timeout: 600s
+                      connect_timeout: 5s
+                      fail_on_5xx: false
+                    include_backends:
+                      type: BY_ID
+                      ids: [yt_transfer_manager_testing]
+                  on_error:
+                    errordocument:
+                      status: 503
+                      file: './503.json'
+                      remain_headers: 'X-Req-Id'
+          default:
+            matcher: {}
+            modules:
+              - balancer2:
+                  attempts: !f count_backends()
+                  retry_policy:
+                    unique_policy: {}
+                  active:
+                    steady: false
+                    delay: 5s
+                    request: 'GET /ping/ HTTP/1.1\nHost: tm-testing.yt.yandex.net\n\n'
+                  generated_proxy_backends:
+                    proxy_options:
+                      backend_timeout: 600s
+                      connect_timeout: 5s
+                      keepalive_count: 4
+                      fail_on_5xx: false
+                      status_code_blacklist: ['503']
+                    include_backends:
+                      type: BY_ID
+                      ids: [yt_transfer_manager_testing]
+                  on_error:
+                    errordocument:
+                      status: 503
+                      file: './503.json'
+                      remain_headers: 'X-Req-Id'

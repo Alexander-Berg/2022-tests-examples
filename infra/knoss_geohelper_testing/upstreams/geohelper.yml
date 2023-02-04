@@ -1,0 +1,133 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - smalukav
+      groups: []
+labels:
+  order: '10000000'
+---
+regexp_section:
+  matcher:
+      match_fsm: {uri: '/(geohelper)(/.*)?'}
+  modules:
+    - log_headers:
+        name_re: 'X-Req-Id'
+    - report:
+        uuid: geohelper
+        ranges: default
+        matcher_map: {
+          everybodybecoolthisis: { 
+          match_fsm : { 
+            cgi: ".*everybodybecoolthisis.*"
+          } 
+        }
+      }
+    - geobase_macro: {}
+    - exp_getter_macro:
+        _version: 3
+        service_name: geohelper
+    - balancer2:
+        attempts: 2
+        rr: {weights_file: ./controls/traffic_control.weights}
+        unique_policy: {}
+        backends:
+          - weight: 1
+            name: geohelper_man
+            modules:
+              - report: {
+                  ranges: default, uuid: geohelper_requests_to_man,
+                  matcher_map: {
+                    everybodybecoolthisis: { 
+                      match_fsm : { 
+                        cgi: ".*everybodybecoolthisis.*"
+                    } 
+                  }
+                }
+              }
+              - balancer2:
+                  attempts: 2
+                  connection_attempts: 5
+                  attempts_rate_limiter: {
+                    limit: 0.2,
+                    coeff: 0.99
+                  }
+                  dynamic: {
+                    max_pessimized_share: 0.1,
+                    min_pessimization_coeff: 0.1,
+                    weight_increase_step: 0.1,
+                  }
+                  generated_proxy_backends:
+                    proxy_options:
+                      backend_timeout: 10s
+                    include_backends:
+                      type: BY_ID
+                      ids: [geohelper_man]
+          - weight: 1
+            name: geohelper_sas
+            modules:
+              - report: {
+                  ranges: default, uuid: geohelper_requests_to_sas,
+                  matcher_map: {
+                    everybodybecoolthisis: { 
+                      match_fsm : { 
+                        cgi: ".*everybodybecoolthisis.*"
+                    } 
+                  }
+                }
+              }    
+              - balancer2:
+                  attempts: 2
+                  connection_attempts: 5
+                  attempts_rate_limiter: {
+                    limit: 0.2,
+                    coeff: 0.99
+                  }
+                  dynamic: {
+                    max_pessimized_share: 0.1,
+                    min_pessimization_coeff: 0.1,
+                    weight_increase_step: 0.1,
+                  }
+                  generated_proxy_backends:
+                    proxy_options:
+                      backend_timeout: 10s
+                    include_backends:
+                      type: BY_ID
+                      ids: [geohelper_sas]
+          - weight: 1
+            name: geohelper_vla
+            modules:
+              - report: {
+                  ranges: default, uuid: geohelper_requests_to_vla,
+                  matcher_map: {
+                    everybodybecoolthisis: { 
+                      match_fsm : { 
+                        cgi: ".*everybodybecoolthisis.*"
+                    } 
+                  }
+                }
+              }              
+              - balancer2:
+                  attempts: 2
+                  connection_attempts: 5
+                  attempts_rate_limiter: {
+                    limit: 0.2,
+                    coeff: 0.99
+                  }
+                  dynamic: {
+                    max_pessimized_share: 0.1,
+                    min_pessimization_coeff: 0.1,
+                    weight_increase_step: 0.1,
+                  }
+                  generated_proxy_backends:
+                    proxy_options:
+                      backend_timeout: 10s
+                    include_backends:
+                      type: BY_ID
+                      ids: [geohelper_vla]
+          - weight: -1
+            name: geohelper_devnull
+            modules:
+              - report: {ranges: default, uuid: geohelper_requests_to_devnull}
+              - errordocument:
+                  status: 204

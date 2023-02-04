@@ -1,0 +1,52 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - yanbezborodov
+      groups: []
+labels:
+  order: '10000000'
+---
+ regexp_section:
+   matcher:
+     match_fsm:
+       uri: '/(dashboard|dashboard3|dashboard(-v2|/v2)/(get|roster|blist))(/.*)?'
+   modules:
+     - rewrite:
+         actions:
+           - regexp: '/dashboard-v2/(roster|blist)(/.*)?'
+             rewrite: '%1%2'
+           - regexp: '/dashboard/v2/(roster|blist)(/.*)?'
+             rewrite: '%1%2'
+           - regexp: '/dashboard-v2/get(/.*)?'
+             rewrite: '/get_old%1'
+           - regexp: '/dashboard/v2/get(/.*)?'
+             rewrite: '/get_old%1'
+           - regexp: '/dashboard(/.*)'
+             rewrite: '%1'
+           - regexp: '/dashboard3(/.*)'
+             rewrite: '%1'
+     - report:
+         uuid: dashboard
+         ranges: default
+     - balancer2:
+         connection_attempts: 2
+         attempts: 2
+         active:
+           delay: '10s'
+           request: 'GET /ping HTTP/1.1\nHost: api-test.browser.yandex.net\n\n'
+         unique_policy: {}
+         attempts_rate_limiter:
+           limit: 0.15
+         generated_proxy_backends:
+           proxy_options:
+             backend_timeout: 10s
+             connect_timeout: 70ms
+           include_backends:
+             type: BY_ID
+             ids: [browser-api-dashboard-testing]
+         on_error:
+           errordocument:
+             status: 504
+             content: "Service unavailable"
+ 

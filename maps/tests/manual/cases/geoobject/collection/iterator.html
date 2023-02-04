@@ -1,0 +1,113 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Геообъект: итератор коллекции объектов
+
+Description:
+Проверка итерирования коллекции геообъектов.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+geoobject
+
+Estimated time:
+60000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан Московской области.
+  На спане карты верхний ряд: красная круглая метка, за ней синие: линия, многоугольник, прямоугольник, круг; нижний ряд: зеленая метка, за ней зеленые: линия, многоугольник, прямоугольник, круг
+  Сверху слева имеется кнопка "geoiterator".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "geoiterator".
+   
+  Expectation:
+  Спан карты без изменений, под контейнером с картой появляется блок из 10 строк [object Object], в конце блока: [object Object] - STOP_ITERATION.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script src="../geoCS.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.73259667357658, 37.70153663432529],
+                zoom: 9,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+
+            log.info('Expecting 10 objects + STOP_ITERATION. Click the button');
+
+            geoCSSource(ym, myMap, this);
+
+            var geoObjectCollection = new ymaps.GeoObjectCollection({
+                properties: {
+                    hintContent: 'collection',
+                    balloonContent: 'collection'
+                },
+                children: [geoObjectPlacemark, geoObjectPolygon, geoObjectPolyline, geoObjectCircle, geoObjectRectangle, placemark, polygon, polyline, circle, rectangle]
+            }, {
+                preset: 'islands#redCircleIcon',
+                strokeColor: '#FF0000',
+                fillColor: '#FF0000',
+                fillOpacity: 0.3
+            });
+
+            var iterate = function (obj) {
+                var iterator = obj.getIterator();
+                var object;
+                var i = 1;
+                try {
+                    while (object = iterator.getNext()) {
+                        if (object == iterator.STOP_ITERATION) {
+                            log.info(object + ' - STOP_ITERATION');
+                            return;
+                        } else {
+                            log.info(i + ': ' + object);
+                        }
+                        i++;
+                    }
+                } catch (e) {
+                    log.info(e)
+                }
+
+            };
+
+            myMap.geoObjects.add(geoObjectCollection);
+
+            var geoIteratorButton = new ymaps.control.Button({data: {content: 'geoIterator'}, options: {selectOnClick: false}});
+            geoIteratorButton.events.add('click', function () {
+                iterate(geoObjectCollection)
+            });
+
+            myMap.controls.add(geoIteratorButton);
+
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

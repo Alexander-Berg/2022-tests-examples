@@ -1,0 +1,115 @@
+<!DOCTYPE HTML>
+<!--(skip)(description)
+
+-->
+<!--(version)
+
+-->
+<!--(commands)
+
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            //TODO: написать тест
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 10,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            addGrid(map);
+            var log = new Log();
+
+            var events = ['beforeviapointremove', 'beforewaypointadd', 'beforewaypointremove', 'viapointremove', 'optionschange',
+                'waypointadd', 'waypointremove', 'viapointadd', 'midpointadd', 'start', 'stop'];
+
+            var callback = function (e) {
+                log.info(e.get('type'));
+                if (e.get('type') == 'waypointadd' ||
+                        e.get('type') == 'beforewaypointadd' ||
+                        e.get('type') == 'midpointadd') {
+                    log.info(e.get('coords'))
+                } else if (e.get('type') == 'beforewaypointadd') {
+                    e.callMethod('setCoords', [0, 0])
+                }
+            };
+
+            var placemark1 = new ymaps.Placemark([55.71574031323344, 37.29753265380539]);
+            var placemark2 = new ymaps.Placemark([55.912150224943986, 37.29753265380539]);
+            var placemark3 = new ymaps.Placemark([56.16, 37.29753265380539]);
+            var placemark4 = new ymaps.Placemark([56.36, 37.29753265380539]);
+
+            var multiRoute = new ymaps.multiRouter.MultiRoute({
+                referencePoints: [placemark1.geometry, placemark2.geometry, placemark3.geometry, placemark4.geometry],
+                params: {
+                    viaIndexes: [1]
+                }
+            }, {
+                boundsAutoApply: true,
+                preset: "islands#multiRouterSmall"
+            });
+
+            map.geoObjects.add(multiRoute);
+
+            multiRoute.editor.events.add(events, callback);
+            var editor = multiRoute.editor.start({
+                addWayPoints: true,
+                dragWayPoints: true,
+                dragViaPoints: true,
+                removeWayPoints: true,
+                removeViaPoints: true,
+                addMidPoints: true
+            });
+
+            var clearButton = new ymaps.control.Button('clear');
+            var getButton = new ymaps.control.Button('getAddon');
+            var isActiveButton = new ymaps.control.Button('active');
+
+            getButton.events.add('click', function () {
+                log.info('addon: ' + multiRoute.editor);
+                console.log(multiRoute.editor);
+            });
+
+            isActiveButton.events.add('click', function () {
+                log.info('isActive: ' + multiRoute.editor.isActive());
+            });
+
+            clearButton.events.add('click', function () {
+                log.clear();
+            });
+
+            map.controls
+                    .add(getButton)
+                    .add(isActiveButton)
+                    .add(clearButton, {float: 'none', position: {right: 10, bottom: 35}});
+
+            var modeButton = new ymaps.control.Button('mode');
+            modeButton.events
+                    .add('select', function () {
+                        multiRoute.model.setParams({routingMode: 'masstransit'}, true);
+                    })
+                    .add('deselect', function () {
+                        multiRoute.model.setParams({routingMode: 'auto'}, true);
+                    });
+            map.controls.add(modeButton, {position: {bottom: 35, left: 5}});
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

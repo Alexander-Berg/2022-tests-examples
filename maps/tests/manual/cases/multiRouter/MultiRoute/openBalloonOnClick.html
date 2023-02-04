@@ -1,0 +1,129 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Мультимаршрут: опция открытия балуна маршрута
+
+Description:
+Проверка работы опции открытия балуна маршрута. 
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+multiRouter
+
+Estimated time:
+120000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  При загрузке первоначально загружается карта со спаном Москвы, затем спан несколько раз меняется отображая строящиеся маршруты на спане.
+  В контейнере контрол фулскрин, сверху кнопка "routeOp...". 
+  На спане карты 3 маршрута: Москва-СПб, Москва - Вологда, Москва - Рязань. На маршрутах могут быть альтернативные линии маршрутов. 
+
+Step:
+  Action:
+  Выполнить клик в основную маршрутную нитку маршрута Москва-СПб.
+
+  Expectation:
+  Маршрут на спане карты без изменений, балун на маршруте не открывается.
+
+Step:
+  Action:
+  Выполнить клик в основную маршрутную нитку маршрута Москва-Рязань.
+
+  Expectation:
+  Маршрут на спане карты без изменений, балун на маршруте не открывается.
+
+Step:
+  Action:
+  Выполнить клик в основную маршрутную нитку маршрута Москва-Вологда.
+
+  Expectation:
+  Маршрут на спане карты без изменений, на маршруте открывается балун с информацией о маршруте: расстоянии и времени маршрута без пробок.
+
+Step:
+  Action:
+  Закрыть балун на маршруте кликом в кнопку закрытия - крестик.
+  Выполнить клик в кнопку "routeOp...", затем клик в основную маршрутную нитку маршрута Москва-Вологда.
+
+  Expectation:
+  Маршрут на спане карты без изменений, балун на маршруте не открывается.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 10,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+            var openBalloonButton = new ym.control.Button({data: {content: 'routeOpenBalloonOnClick'}}, {selectOnClick: true});
+            openBalloonButton.events
+                    .add('select', function () {
+                        multiRoute2.options.set("routeOpenBalloonOnClick", false);
+                    })
+                    .add('deselect', function () {
+                        multiRoute2.options.set("routeOpenBalloonOnClick", true);
+                    });
+
+            log.info('Балун открывается только на маршруте Москва-Вологда');
+            log.info('routeOpenBalloonOnClick - Москва-Вологда балуна нет');
+
+            var multiRoute = new ymaps.multiRouter.MultiRoute({
+                referencePoints: ['москва', 'тула', 'калуга', 'рязань'],
+                params: {
+                    viaIndexes: [2],
+                    boundedBy: [
+                        [56.393500932099016, 35.5287338256808],
+                        [53.47902043412735, 40.72526702880481]
+                    ],
+                    strictBounds: true
+                }
+            }, {
+                boundsAutoApply: true,
+                routeOpenBalloonOnClick: false
+            });
+            var multiRoute1 = new ymaps.multiRouter.MultiRoute({
+                referencePoints: ['москва', 'Питер']
+            }, {
+                boundsAutoApply: true,
+                routeOpenBalloonOnClick: true
+            });
+            var multiRoute2 = new ymaps.multiRouter.MultiRoute({
+                referencePoints: ['москва', 'Вологда']
+            }, {
+                boundsAutoApply: true,
+                routeOpenBalloonOnClick: true
+            });
+            multiRoute1.options.set("routeOpenBalloonOnClick", false);
+
+            map.controls.add(openBalloonButton);
+            map.geoObjects.add(multiRoute).add(multiRoute1).add(multiRoute2);
+
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

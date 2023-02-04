@@ -1,0 +1,590 @@
+annotations:
+  stagectl_epoch: 788
+  stagectl_vcs:
+    svn_branch: stage_controller/stable-141-1
+    svn_revision: 8943056
+    svn_tag: stage_controller/stable-141-1
+labels:
+  deploy_engine: env_controller
+  notifications_last_timestamp: 1639475058776845000
+meta:
+  account_id: abc:service:36855
+  acl:
+  - action: allow
+    permissions:
+    - read
+    - write
+    - create
+    - ssh_access
+    - root_ssh_access
+    - read_secrets
+    subjects:
+    - robot-drug-deploy
+  id: bill-payments-testing
+  inherit_acl: true
+  project_id: bill-payments
+spec:
+  deploy_units:
+    api:
+      box_juggler_configs:
+        api:
+          archived_checks:
+          - url: rbtorrent:ae3399335908ab2c860cd75c35d6607ac425ae4f
+          port: 31579
+        custom_unified_agent_box:
+          archived_checks:
+          - url: rbtorrent:ae3399335908ab2c860cd75c35d6607ac425ae4f
+          port: 31580
+      endpoint_sets:
+      - port: 443
+      images_for_boxes:
+        api:
+          digest: sha256:0e060b657be60b67eb32ade747fb221fe6a8fc6bca02214cc1c895c10dea1fa6
+          name: bill-payments/bill_payments
+          registry_host: registry.yandex.net
+          tag: '19'
+      logrotate_configs:
+        api:
+          run_period_millisecond: 900000
+      multi_cluster_replica_set:
+        replica_set:
+          clusters:
+          - cluster: man
+            spec:
+              constraints:
+                antiaffinity_constraints:
+                - key: rack
+                  max_pods: 1
+              replica_count: 1
+          - cluster: sas
+            spec:
+              constraints:
+                antiaffinity_constraints:
+                - key: rack
+                  max_pods: 1
+              replica_count: 1
+          - cluster: vla
+            spec:
+              constraints:
+                antiaffinity_constraints:
+                - key: rack
+                  max_pods: 1
+              replica_count: 1
+          deployment_strategy:
+            max_unavailable: 2
+          pod_template_spec:
+            spec:
+              disk_volume_requests:
+              - id: disk-0
+                labels:
+                  used_by_infra: true
+                quota_policy:
+                  bandwidth_guarantee: 7864320
+                  bandwidth_limit: 3932160
+                  capacity: 2684354560
+                storage_class: hdd
+              host_infra:
+                monitoring:
+                  pod_agent:
+                    add_pod_agent_user_signals: true
+                  unistats:
+                  - output_format: yasm_json
+                    path: /unistat
+                    port: 8080
+                    workload_id: api
+                  - output_format: yasm_json
+                    path: /unistat
+                    port: 8000
+                    workload_id: api
+                  - output_format: yasm_json
+                    path: /counters/unistat
+                    port: 22501
+                    workload_id: unified_agent_workload
+              pod_agent_payload:
+                spec:
+                  boxes:
+                  - compute_resources:
+                      memory_guarantee: 1073741824
+                      memory_limit: 1073741824
+                      vcpu_guarantee: 500
+                      vcpu_limit: 500
+                    env:
+                    - name: YENV_TYPE
+                      value:
+                        literal_env:
+                          value: testing
+                    id: api
+                    rootfs: {}
+                    static_resources:
+                    - mount_point: /opt/bin
+                      resource_ref: PgPinger2007673887
+                    - mount_point: /config/local
+                      resource_ref: ApplicationConfigOverride
+                    - mount_point: /nginx
+                      resource_ref: NginxBinary
+                    - mount_point: /etc/nginx/ssl
+                      resource_ref: BillPaymentsInternalCaSSLKey
+                    volumes:
+                    - mode: read_write
+                      mount_point: /ephemeral
+                      volume_ref: ephemeral
+                  - compute_resources:
+                      memory_guarantee: 268435456
+                      memory_limit: 268435456
+                      vcpu_guarantee: 100
+                      vcpu_limit: 100
+                    id: custom_unified_agent_box
+                    rootfs:
+                      layer_refs:
+                      - bionic-app
+                    static_resources:
+                    - mount_point: /unified_agent_config
+                      resource_ref: UnifiedAgentSettings
+                    - mount_point: /unified_agent_bin
+                      resource_ref: UnifiedAgentBinary
+                    volumes:
+                    - mode: read_write
+                      mount_point: /push-agent/logs
+                      volume_ref: push-agent-logs
+                  mutable_workloads:
+                  - workload_ref: api
+                  - workload_ref: unified_agent_workload
+                  resources:
+                    layers:
+                    - checksum: 'EMPTY:'
+                      id: bionic-app
+                      url: sbr:2527306889
+                    static_resources:
+                    - id: NginxBinary
+                      url: sbr:2383206246
+                      verification:
+                        check_period_ms: 180000
+                        checksum: MD5:576f025c1f98e1688c4e254f35fdbf50
+                    - id: PgPinger2007673887
+                      url: rbtorrent:4ee4e5365d3f0efd1391612ae1c3aeba1f8b5ee8
+                      verification:
+                        check_period_ms: 180000
+                        checksum: MD5:1f182d0e04d65b5b21285e80774a2002
+                    - id: UnifiedAgentBinary
+                      url: sbr:2522676383
+                      verification:
+                        check_period_ms: 180000
+                        checksum: MD5:5242610504a29bd7da19008dfc7bcdf6
+                    - id: UnifiedAgentSettings
+                      url: sbr:2569149760
+                      verification:
+                        check_period_ms: 180000
+                        checksum: MD5:52d3fa03cf1d8e55bbbe852e5b6c5a80
+                    - access_permissions: '660'
+                      files:
+                        files:
+                        - file_name: settings.py
+                          secret_data:
+                            alias: bill-payments-settings
+                            decode_base64: true
+                            id: testing
+                        - file_name: csrf.json
+                          multi_secret_data:
+                            secret_alias: bill-payments-csrf
+                      id: ApplicationConfigOverride
+                      verification:
+                        check_period_ms: 180000
+                        checksum: 'EMPTY:'
+                    - access_permissions: '660'
+                      files:
+                        files:
+                        - file_name: bill_payments.pem
+                          secret_data:
+                            alias: bill-payments-ssl-internal
+                            id: 7F0019B0AA278BAAA51E30E91500020019B0AA_key_cert
+                      id: BillPaymentsInternalCaSSLKey
+                      verification:
+                        check_period_ms: 180000
+                        checksum: 'EMPTY:'
+                  volumes:
+                  - id: ephemeral
+                  - id: push-agent-logs
+                  workloads:
+                  - box_ref: api
+                    id: api
+                    init:
+                    - command_line: /bin/bash -c 'unified_agent_ready=$(curl localhost:22502/ready
+                        2>/dev/null); if [ "$unified_agent_ready" = "OK" ]; then exit
+                        0; else exit 1; fi;'
+                      time_limit:
+                        initial_delay_ms: 1000
+                        max_restart_period_ms: 1000
+                        min_restart_period_ms: 1000
+                    readiness_check:
+                      http_get:
+                        any: true
+                        path: /ping
+                        port: 80
+                    start: {}
+                    stop_policy:
+                      container:
+                        command_line: /bin/bash -c 'supervisorctl stop nginx && supervisorctl
+                          stop all'
+                        time_limit:
+                          max_execution_time_ms: 30000
+                          max_restart_period_ms: 10000
+                          min_restart_period_ms: 10000
+                      max_tries: 3
+                    transmit_logs: true
+                  - box_ref: custom_unified_agent_box
+                    destroy_policy:
+                      container:
+                        command_line: /bin/bash -c "/unified_agent_bin/unified_agent
+                          -c /unified_agent_config/config.yml & pid=$!; while true;
+                          do unified_agent_idle=$(curl localhost:22502/check_backlog
+                          2>/dev/null); if [ "$unified_agent_idle" = "IDLE" ]; then
+                          echo "Unified Agent is idle"; break; else echo "Unified
+                          Agent is busy '$unified_agent_idle', waiting..."; sleep
+                          1; fi; done; kill $pid"
+                      max_tries: 3
+                    env:
+                    - name: TVM_SECRET
+                      value:
+                        secret_env:
+                          alias: unified-agent-tvm-secret
+                          id: client_secret
+                    id: unified_agent_workload
+                    liveness_check:
+                      http_get:
+                        any: true
+                        path: /status
+                        port: 22502
+                        time_limit:
+                          initial_delay_ms: 150000
+                          max_execution_time_ms: 15000
+                          max_restart_period_ms: 30000
+                          min_restart_period_ms: 30000
+                    readiness_check:
+                      http_get:
+                        expected_answer: OK
+                        path: /ready
+                        port: 22502
+                        time_limit:
+                          max_execution_time_ms: 15000
+                          max_restart_period_ms: 10000
+                          min_restart_period_ms: 10000
+                    start:
+                      command_line: /unified_agent_bin/unified_agent -c /unified_agent_config/config.yml
+                    transmit_logs: true
+                    ulimit_soft:
+                    - name: core
+                      value: 805306368
+              resource_requests:
+                memory_guarantee: 1342177280
+                memory_limit: 1342177280
+                network_bandwidth_guarantee: 10485760
+                vcpu_guarantee: 600
+                vcpu_limit: 600
+              secret_refs:
+                bill-payments-csrf:
+                  secret_id: sec-01fne0s7gm1xsq7g8z89z3e591
+                  secret_version: ver-01fnv3m1mrehqxtzrd6mgc5haq
+                bill-payments-settings:
+                  secret_id: sec-01fndj1r43tmcn5kcvwqkjexe5
+                  secret_version: ver-01fnnc2pgyccvp49yv5gyzf055
+                bill-payments-ssl-internal:
+                  secret_id: sec-01fnds95f7gq354zc94b2rac8g
+                  secret_version: ver-01fnds95hmbt2zthtt30jq41vb
+                secret-tvm:
+                  secret_id: sec-01fmscgkxtwpvnjmfvrzpdzg9v
+                  secret_version: ver-01fmscgky5aj3h692a7q11denp
+                unified-agent-tvm-secret:
+                  secret_id: sec-01ex24m3j4pcj3yscvsz2njggx
+                  secret_version: ver-01ex24m3k1neaga73gvwndpwvr
+      network_defaults:
+        network_id: _BILL_PAYMENTS_TEST_NETS_
+      patchers_revision: 11
+      pod_agent_sandbox_info:
+        revision: 2621390537
+      revision: 42
+      tvm_config:
+        blackbox_environment: Test
+        clients:
+        - destinations:
+          - alias: blackbox
+            app_id: 224
+          - alias: gozora
+            app_id: 2023123
+          secret_selector:
+            alias: secret-tvm
+            id: client_secret
+          source:
+            alias: self
+            app_id: 2031687
+        mode: enabled
+    workers:
+      images_for_boxes:
+        workers:
+          digest: sha256:0e060b657be60b67eb32ade747fb221fe6a8fc6bca02214cc1c895c10dea1fa6
+          name: bill-payments/bill_payments
+          registry_host: registry.yandex.net
+          tag: '19'
+      multi_cluster_replica_set:
+        replica_set:
+          clusters:
+          - cluster: man
+            spec:
+              constraints:
+                antiaffinity_constraints:
+                - key: rack
+                  max_pods: 1
+              replica_count: 1
+          - cluster: sas
+            spec:
+              constraints:
+                antiaffinity_constraints:
+                - key: rack
+                  max_pods: 1
+              replica_count: 1
+          - cluster: vla
+            spec:
+              constraints:
+                antiaffinity_constraints:
+                - key: rack
+                  max_pods: 1
+              replica_count: 1
+          deployment_strategy:
+            max_unavailable: 2
+          pod_template_spec:
+            spec:
+              disk_volume_requests:
+              - id: infra
+                labels:
+                  used_by_infra: true
+                quota_policy:
+                  bandwidth_guarantee: 7864320
+                  bandwidth_limit: 3932160
+                  capacity: 2684354560
+                storage_class: hdd
+              host_infra:
+                monitoring:
+                  pod_agent:
+                    add_pod_agent_user_signals: true
+                  unistats:
+                  - output_format: yasm_json
+                    path: /unistat
+                    port: 8001
+                    workload_id: workers
+                  - output_format: yasm_json
+                    path: /counters/unistat
+                    port: 22501
+                    workload_id: unified_agent_workload
+              pod_agent_payload:
+                spec:
+                  boxes:
+                  - compute_resources:
+                      memory_guarantee: 268435456
+                      memory_limit: 268435456
+                      vcpu_guarantee: 500
+                      vcpu_limit: 500
+                    env:
+                    - name: YENV_TYPE
+                      value:
+                        literal_env:
+                          value: testing
+                    - name: APPLICATION_NAME
+                      value:
+                        literal_env:
+                          value: workers
+                    - name: SKIP_NGINX
+                      value:
+                        literal_env:
+                          value: 'true'
+                    - name: TASKQ_ACTION_WORKERS
+                      value:
+                        literal_env:
+                          value: '5'
+                    - name: DB_CONNECTION_MAXSIZE
+                      value:
+                        literal_env:
+                          value: '20'
+                    id: workers
+                    rootfs: {}
+                    static_resources:
+                    - mount_point: /config/local
+                      resource_ref: ApplicationConfigOverride
+                    - mount_point: /opt/bin
+                      resource_ref: PgPinger2007673887
+                    volumes:
+                    - mode: read_write
+                      mount_point: /ephemeral
+                      volume_ref: ephemeral
+                  - compute_resources:
+                      memory_guarantee: 268435456
+                      memory_limit: 268435456
+                      vcpu_guarantee: 100
+                      vcpu_limit: 100
+                    id: custom_unified_agent_box
+                    rootfs:
+                      layer_refs:
+                      - bionic-app
+                    static_resources:
+                    - mount_point: /unified_agent_config
+                      resource_ref: UnifiedAgentSettings
+                    - mount_point: /unified_agent_bin
+                      resource_ref: UnifiedAgentBinary
+                    volumes:
+                    - mode: read_write
+                      mount_point: /push-agent/logs
+                      volume_ref: push-agent-logs
+                  mutable_workloads:
+                  - workload_ref: workers
+                  - workload_ref: unified_agent_workload
+                  resources:
+                    layers:
+                    - checksum: 'EMPTY:'
+                      id: bionic-app
+                      url: sbr:2527306889
+                    static_resources:
+                    - files:
+                        files:
+                        - file_name: settings.py
+                          secret_data:
+                            alias: bill-payments-settings
+                            decode_base64: true
+                            id: testing
+                        - file_name: csrf.json
+                          multi_secret_data:
+                            secret_alias: bill-payments-csrf
+                      id: ApplicationConfigOverride
+                      verification:
+                        check_period_ms: 180000
+                        checksum: 'EMPTY:'
+                    - id: PgPinger2007673887
+                      url: rbtorrent:4ee4e5365d3f0efd1391612ae1c3aeba1f8b5ee8
+                      verification:
+                        check_period_ms: 180000
+                        checksum: MD5:1f182d0e04d65b5b21285e80774a2002
+                    - id: UnifiedAgentBinary
+                      url: sbr:2522676383
+                      verification:
+                        check_period_ms: 180000
+                        checksum: MD5:5242610504a29bd7da19008dfc7bcdf6
+                    - id: UnifiedAgentSettings
+                      url: sbr:2569149760
+                      verification:
+                        check_period_ms: 180000
+                        checksum: MD5:52d3fa03cf1d8e55bbbe852e5b6c5a80
+                  volumes:
+                  - id: ephemeral
+                  - id: push-agent-logs
+                  workloads:
+                  - box_ref: workers
+                    id: workers
+                    init:
+                    - command_line: /bin/bash -c 'unified_agent_ready=$(curl localhost:22502/ready
+                        2>/dev/null); if [ "$unified_agent_ready" = "OK" ]; then exit
+                        0; else exit 1; fi;'
+                      time_limit:
+                        initial_delay_ms: 1000
+                        max_restart_period_ms: 1000
+                        min_restart_period_ms: 1000
+                    liveness_check:
+                      http_get:
+                        any: true
+                        path: /ping
+                        port: 8003
+                        time_limit:
+                          initial_delay_ms: 150000
+                          max_execution_time_ms: 10000
+                          max_restart_period_ms: 30000
+                          min_restart_period_ms: 30000
+                    readiness_check:
+                      http_get:
+                        expected_answer: ok
+                        path: /check/workers-health
+                        port: 8003
+                        time_limit:
+                          initial_delay_ms: 15000
+                          max_execution_time_ms: 10000
+                          max_restart_period_ms: 10000
+                          min_restart_period_ms: 10000
+                    transmit_logs: true
+                  - box_ref: custom_unified_agent_box
+                    destroy_policy:
+                      container:
+                        command_line: /bin/bash -c "/unified_agent_bin/unified_agent
+                          -c /unified_agent_config/config.yml & pid=$!; while true;
+                          do unified_agent_idle=$(curl localhost:22502/check_backlog
+                          2>/dev/null); if [ "$unified_agent_idle" = "IDLE" ]; then
+                          echo "Unified Agent is idle"; break; else echo "Unified
+                          Agent is busy '$unified_agent_idle', waiting..."; sleep
+                          1; fi; done; kill $pid"
+                      max_tries: 3
+                    env:
+                    - name: TVM_SECRET
+                      value:
+                        secret_env:
+                          alias: unified-agent-tvm-secret
+                          id: client_secret
+                    id: unified_agent_workload
+                    liveness_check:
+                      http_get:
+                        any: true
+                        path: /status
+                        port: 22502
+                        time_limit:
+                          initial_delay_ms: 150000
+                          max_execution_time_ms: 15000
+                          max_restart_period_ms: 30000
+                          min_restart_period_ms: 30000
+                    readiness_check:
+                      http_get:
+                        expected_answer: OK
+                        path: /ready
+                        port: 22502
+                        time_limit:
+                          max_execution_time_ms: 15000
+                          max_restart_period_ms: 10000
+                          min_restart_period_ms: 10000
+                    start:
+                      command_line: /unified_agent_bin/unified_agent -c /unified_agent_config/config.yml
+                    transmit_logs: true
+                    ulimit_soft:
+                    - name: core
+                      value: 805306368
+              resource_requests:
+                memory_guarantee: 1342177280
+                memory_limit: 1342177280
+                network_bandwidth_guarantee: 10485760
+                vcpu_guarantee: 600
+                vcpu_limit: 600
+              secret_refs:
+                bill-payments-csrf:
+                  secret_id: sec-01fne0s7gm1xsq7g8z89z3e591
+                  secret_version: ver-01fnv3m1mrehqxtzrd6mgc5haq
+                bill-payments-settings:
+                  secret_id: sec-01fndj1r43tmcn5kcvwqkjexe5
+                  secret_version: ver-01fnnc2pgyccvp49yv5gyzf055
+                secret-tvm:
+                  secret_id: sec-01fmscgkxtwpvnjmfvrzpdzg9v
+                  secret_version: ver-01fmscgky5aj3h692a7q11denp
+                unified-agent-tvm-secret:
+                  secret_id: sec-01ex24m3j4pcj3yscvsz2njggx
+                  secret_version: ver-01ex24m3k1neaga73gvwndpwvr
+      network_defaults:
+        network_id: _BILL_PAYMENTS_TEST_NETS_
+      patchers_revision: 11
+      pod_agent_sandbox_info:
+        revision: 2621390537
+      revision: 31
+      tvm_config:
+        blackbox_environment: Test
+        clients:
+        - destinations:
+          - alias: blackbox
+            app_id: 224
+          - alias: gozora
+            app_id: 2023123
+          secret_selector:
+            alias: secret-tvm
+            id: client_secret
+          source:
+            alias: self
+            app_id: 2031687
+        mode: enabled

@@ -1,0 +1,158 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Мультимаршрут: порядок задания географических координат маршрута 
+
+Description:
+Проверка опции порядка задания географических координат маршрута.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+multiRouter
+
+Estimated time:
+90000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно со спаном Центрального федерального округа.
+  В контейнере дефолтный набор контролов, сверху кнопка "coorOr...", снизу слева кнопка "mode".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "coorOr...".
+
+  Expectation:
+  Происходит смена спана карты, на спане карты появляется маршрут, на спане маршрут "А" (Ленинградская область), "B"(Калужская область).
+  Линия маршрута - основная.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "mode".
+
+  Expectation:
+  Маршрутная нитка пропадает со спана карты, метки на месте.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "mode".
+
+  Expectation:
+  Маршрутная нитка появляется на спане карты.  
+
+Step:
+  Action:
+  Выполнить клик в кнопку "coorOr...".
+
+  Expectation:
+  Происходит смена спана карты, на спан Ирана, на спане маршрутные метки "А" (недалеко от Ашхабада), "B"(недалеко от Заболи).
+  Линия маршрута на спане нет.
+
+Step:
+  Action:
+  Навести курсор на метку "A", зажать ЛКМ и перенести метку в населенный пункт Бирдженд.
+
+  Expectation:
+  Захват и перенос метки корректные, после переноса метки на спане появляется маршрутная нитка между метками "A" и "B".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "mode".
+
+  Expectation:
+  Маршрутная нитка пропадает со спана карты, метки на месте.
+-->
+<html>
+<head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+
+            //TODO: написать тест
+            var map = myMap = new ym.Map('map', {
+                        center: [55.00718809437818, 38.094514924687026],
+                        zoom: 7
+                    }, {
+                        suppressObsoleteBrowserNotifier: false,
+                        suppressMapOpenBlock: false
+
+                    }),
+                    log = new Log(),
+                    zoom = new ym.control.ZoomControl,
+                    multiRoute,
+                    button1 = new ym.control.Button({data: {content: 'coordOrder'}}, {selectOnClick: true});
+
+            button1.events
+                    .add("select", function (e) {
+                        multiRoute = new ymaps.multiRouter.MultiRoute({
+                            referencePoints: [
+                                [59, 29],
+                                [55, 36]
+                            ],
+                            params: {
+                                viaIndexes: [],
+                                searchCoordOrder: 'latlong',
+                                results: 1
+                            }
+                        }, {
+                            wayPointDraggable: true,
+                            viaPointDraggable: true,
+                            boundsAutoApply: true,
+                            zoomMargin: 30,
+                            preset: "islands#multiRouterSmall"
+                        });
+                        myMap.geoObjects.add(multiRoute);
+                    })
+                    .add('deselect', function () {
+                        multiRoute = new ymaps.multiRouter.MultiRoute({
+                            referencePoints: [
+                                [59.81, 31.31],
+                                [57.75, 37.61]
+                            ],
+                            params: {
+                                viaIndexes: [],
+                                searchCoordOrder: 'longlat',
+                                results: 1
+                            }
+                        }, {
+                            wayPointDraggable: true,
+                            viaPointDraggable: true,
+                            boundsAutoApply: true,
+                            zoomMargin: 30,
+                            preset: "islands#multiRouterSmall"
+                        });
+                        myMap.geoObjects.add(multiRoute);
+
+                    });
+
+            map.controls.add(zoom).add(button1);
+            addGrid(map);
+
+            var modeButton = new ymaps.control.Button('mode');
+            modeButton.events
+                    .add('select', function () {
+                        multiRoute.model.setParams({routingMode: 'masstransit'}, true);
+                    })
+                    .add('deselect', function () {
+                        multiRoute.model.setParams({routingMode: 'auto'}, true);
+                    });
+            map.controls.add(modeButton, {position: {bottom: 35, left: 5}});
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

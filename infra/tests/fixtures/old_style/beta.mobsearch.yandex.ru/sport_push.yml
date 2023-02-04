@@ -1,0 +1,67 @@
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      uri: '/(sport_push_(un)?subscribe|olymp_push)(/.*)?'
+  modules:
+    - response_matcher:
+        buffer_size: 1024
+        on_response:
+          succ:
+            matcher:
+              match_response_codes:
+                codes: [200, 204]
+            balancer2:
+              attempts: 1
+              rr: {}
+              generated_proxy_backends:
+                proxy_options:
+                  backend_timeout: 10s
+                  connect_timeout: 150ms
+                include_backends:
+                  type: BY_ID
+                  ids: [common-antirobot/antirobot_vla]
+          redirect:
+            matcher:
+              match_and:
+                - match_header:
+                    name: 'location'
+                    value: 'http://yabs.yandex.ru.*'
+                    value_case_insensitive: false
+                - match_response_codes:
+                    codes: [302]
+            errordocument:
+              status: 200
+              content: 'redirect'
+    - log_headers:
+        name_re: 'X-Yandex-RandomUID'
+        cookie_fields:
+          - first_field
+          - second_field
+    - tcp_rst_on_error:
+        send_rst: false
+    - threshold:
+        lo_bytes: 512
+        hi_bytes: 1024
+        pass_timeout: 10s
+        recv_timeout: 1s
+    - stats_eater: {}
+    - balancer2:
+        attempts: !f count_backends(false)
+        active:
+          delay: '1s'
+          request: 'GET /ping HTTP/1.1\nHost: beta.mobsearch.yandex.ru\n\n'
+          steady: true
+          quorum: !f get_total_weight_percent(33, true)
+          hysteresis: !f get_total_weight_percent(0, true)
+        generated_proxy_backends:
+          proxy_options:
+            backend_timeout: 10s
+            connect_timeout: 150ms
+            https_settings:
+              ca_file: !f get_ca_cert_path("allCAs-beta.mobsearch.yandex.ru.pem")
+              sni_host: 'yandex.ru'
+              verify_depth: 1
+          nanny_snapshots:
+            - service_id: sport_push_front
+              snapshot_id: 8b38cd5aeaed32cdef2996503b667d6ac4c78419

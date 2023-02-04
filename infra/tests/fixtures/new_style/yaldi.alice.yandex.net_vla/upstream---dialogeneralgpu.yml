@@ -1,0 +1,42 @@
+---
+regexp_section:
+    matcher:
+        match_fsm:
+            uri: '/ru-ru/dialogeneralgpu/(.*)'
+    modules:
+        - report:
+            uuid: "dialogeneralgpu"
+            ranges: "300ms,500ms,1s,2s,3s,4s,5s,10s"
+        - rewrite:
+            actions:
+                - {regexp: '/ru-ru/dialogeneralgpu/(.*)', rewrite: /%1, split: url}
+        - balancer2:
+            attempts: 2
+            rr: {weights_file: ./controls/traffic_control.weights}
+            backends:
+                -   weight: 1
+                    name: dialogeneralgpu
+                    modules:
+                        - report: {ranges: "300ms,500ms,1s,2s,3s,4s,5s,10s", uuid: requests_dialogeneralgpu}
+                        - balancer2:
+                            attempts: 3
+                            connection_attempts: !f count_backends()
+                            rr: {} 
+                            generated_proxy_backends:
+                                proxy_options:
+                                    allow_connection_upgrade: true
+                                    connect_timeout: 300ms
+                                    backend_timeout: 10s
+                                    backend_read_timeout: 600s
+                                    backend_write_timeout: 600s
+                                    client_read_timeout: 600s
+                                    client_write_timeout: 600s
+                                    fail_on_5xx: true
+                                include_backends:
+                                    type: BY_ID
+                                    ids:
+                                        - asr_dialogeneralgpu
+            on_error:
+                errordocument:
+                    status: 504
+                    content: "Service unavailable"

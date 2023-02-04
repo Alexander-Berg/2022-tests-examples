@@ -1,0 +1,48 @@
+---
+regexp_path_section:
+  pattern: '/comments(/.*)?'
+  modules:
+    - rewrite:
+        actions:
+          - regexp: '/comments/(.*)'
+            rewrite: '/%1'
+    - report: 
+        uuid: 'yastatic_net_comments'
+        ranges: 'default'
+    - shared:
+        uuid: yastatic_net_comments
+    - response_headers:
+        create:
+            Access-Control-Allow-Origin: '*'
+            Timing-Allow-Origin: '*'
+    - headers:
+        create:
+            'Host': 'yastatic.net'
+            'Y-Traffic-Source': 'msk-yastatic.net'
+    - balancer2:
+        disable_attempts_rate_limiter: true
+        attempts: 1
+        simple_policy: {}
+        rr: {}
+        on_status_code:
+            # Затираем 404 с xml ответом mds
+            404:
+                modules:
+                - errordocument:
+                    status: 404
+                    content: Not Found    
+        on_error:
+            modules:
+            - errordocument:
+                status: 503
+        generated_proxy_backends:
+            proxy_options:
+                backend_timeout: '60s'
+                connect_timeout: '50ms'
+                fail_on_5xx: true
+                keepalive_count: 5
+                keepalive_timeout: '180s'
+                need_resolve: false
+            include_backends:
+                type: BY_ID
+                ids: [cmnt-loader-prod]

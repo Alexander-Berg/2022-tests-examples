@@ -1,0 +1,96 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - ihramtsov
+      groups: []
+labels:
+  order: '030'
+---
+#{ "order": "030" }
+regexp_section:
+  matcher:
+    match_fsm:
+      uri: '/user-service/.*'
+  modules:
+    - rewrite:
+        actions:
+          -
+            regexp: '/user-service/(.*)'
+            rewrite: '/%1'
+    - report:
+        uuid: 'to-user-service'
+        ranges: 'default'
+    - balancer2:
+        rr:
+          weights_file: ./controls/traffic_control.weights
+        attempts: 1
+        fast_attempts: 1
+        fast_503: true
+        by_name_policy:
+          name: !f get_geo("userservice_", "random")
+          allow_zero_weights: false
+          unique_policy: { }
+        backends:
+          - weight: 100
+            name: userservice_sas
+            modules:
+              - report:
+                  uuid: 'to-user-service-sas'
+                  ranges: 'default'
+              - balancer2:
+                  rr: {}
+                  attempts: 1
+                  fast_attempts: 3
+                  fast_503: true
+                  retry_policy:
+                    unique_policy: {}
+                  return_last_5xx: true
+                  status_code_blacklist: ["503"]
+                  generated_proxy_backends:
+                    proxy_options:
+                      resolve_timeout: '10ms'
+                      connect_timeout: '70ms'
+                      backend_timeout: '10s'
+                      keepalive_count: 0
+                      need_resolve: false
+                      fail_on_5xx: false
+                      buffering: false
+                    include_backends:
+                      type: BY_ID
+                      ids: [user-service-sas]
+          - weight: 100
+            name: userservice_vla
+            modules:
+              - report:
+                  uuid: 'to-user-service-vla'
+                  ranges: 'default'
+              - balancer2:
+                  rr: {}
+                  attempts: 1
+                  fast_attempts: 3
+                  fast_503: true
+                  retry_policy:
+                    unique_policy: {}
+                  return_last_5xx: true
+                  status_code_blacklist: ["503"]
+                  generated_proxy_backends:
+                    proxy_options:
+                      resolve_timeout: '10ms'
+                      connect_timeout: '70ms'
+                      backend_timeout: '10s'
+                      keepalive_count: 0
+                      need_resolve: false
+                      fail_on_5xx: false
+                      buffering: false
+                    include_backends:
+                      type: BY_ID
+                      ids: [user-service-vla]
+          - weight: -1
+            name: userservice_devnull
+            modules:
+              - report:
+                  uuid: 'to-user-service-devnull'
+                  ranges: 'default'
+              - errordocument:
+                  status: 204

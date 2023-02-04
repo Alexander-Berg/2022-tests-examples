@@ -1,0 +1,278 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Геообъект: редактирование объектов по кнопке
+
+Description:
+Проверка режима редактирования объектов по кнопке.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+geoobject
+
+Estimated time:
+300000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан Московской области.
+  На спане карты два ряда объектов: метка, линия, многоугольник. Верхний ряд синего цвета, нижний - зеленого.
+  Сверху имеются кнопки "polyline + corrector", "polygon + corrector", "placemark + corrector", "editor".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "polyline + corrector". 
+
+  Expectation:
+  На синей линии появились метки редактирования объекта, к курсору от левой вершины линии прилипает пунктирная синяя линия.
+
+Step:
+  Action:
+  Выполнить клик в спан карты.
+   
+  Expectation:
+  По клику на спане карты появляется метка, линия к метке становится сплошной, к курсору прилипает пунктирная линия от последней выставленной метки.
+
+Step:
+  Action:
+  Выполнить клик в выставленную на предыдущем шаге метку линии. 
+
+  Expectation:
+  При наведении курсора на метку - курсор палец, метка увеличивается в размерах.
+  По клику метка становится желтой, появляется меню: "Удалить точку; Завершить".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "Завершить".
+   
+  Expectation:
+  Меню с кнопками пропадает, линия сохраняет редактированный вид.
+  Курсор - рука, метки редактирования с объекта не пропадают.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "polygon + corrector". 
+
+  Expectation:
+  На синем многоугольнике появились метки редактирования объекта, к курсору от нижней и верхней вершин многоугольника прилипают пунктирные синии линии.
+
+Step:
+  Action:
+  Выполнить клик в спан карты. 
+
+  Expectation:
+  На спане карты появляется белая метка, пунктирные лини становятся сплошными, появляется новая окрашенная область многоугольника.
+  Курсор - стрелка, к курсору прилипают пунктирные линии от вершины прямоугольной части многоугольника и последней выставленной метки.
+
+Step:
+  Action:
+  Выполнить клик в метку добавленную на предыдущем шаге.
+   
+  Expectation:
+  При наведении курсора на метку - курсор палец, метка увеличивается в размерах.
+  По клику метка становится желтой, появляется меню: "Удалить точку; Завершить; Добавить внутренний контур".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "Завершить".
+   
+  Expectation:
+  Меню с кнопками пропадает, фигура многоугольника сохраняет редактированный вид.
+  Курсор - рука, метки редактирования с объектов не пропадают.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "placemark + corrector". 
+
+  Expectation:
+  Спан карты, объекты без изменений.
+
+Step:
+  Action:
+  Выполнить клик в свободное место на спане карты. 
+
+  Expectation:
+  Синяя метка коллекции пропаадет со своего места и появляется в месте клика.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "editor". 
+
+  Expectation:
+  На зеленом многоугольнике и линии появляются метки редактирования объектов.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script src="../geoCS.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+        var map;
+        function init(ymaps) {
+            ymaps = ym; // hack
+
+            __log__('Corrector case: change vertex coordinates');
+
+            map = myMap = new ym.Map('map', {
+                center: [55.73259667357658, 37.70153663432529],
+                zoom: 9,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            }, {
+                buttonMaxWidth: 99999,
+                avoidFractionalZoom: false
+            });
+
+            geoCSSource(ym, map, this);
+            addGrid(map);
+            var log = new Log();
+
+            var collection = new ymaps.GeoObjectCollection();
+            collection
+                    .add(geoObjectPlacemark)
+                    .add(geoObjectPolyline)
+                    .add(geoObjectPolygon)
+                    .add(placemark)
+                    .add(polyline)
+                    .add(polygon);
+
+            var editorButton = new ymaps.control.Button({data: {content: 'editor'}, options: {selectOnClick: true}});
+            var placemarkButton = new ymaps.control.Button({data: {content: 'placemark + corrector'}, options: {selectOnClick: true}});
+            var polylineButton = new ymaps.control.Button({data: {content: 'polyline + corrector'}, options: {selectOnClick: true}});
+            var polygonButton = new ymaps.control.Button({data: {content: 'polygon + corrector'}, options: {selectOnClick: true}});
+
+            editorButton.events
+                    .add('select', function () {
+                        collection.each(function (obj) {
+                            obj.editor.startEditing();
+                        });
+                    })
+                    .add('deselect', function () {
+                        collection.each(function (obj) {
+                            obj.editor.stopEditing();
+                        });
+                    });
+
+            placemarkButton.events
+                    .add('select', function () {
+                        placemark.editor.startDrawing();
+                    })
+                    .add('deselect', function () {
+                        placemark.editor.stopDrawing();
+                    });
+
+            polylineButton.events
+                    .add('select', function () {
+                        polyline.editor.startDrawing();
+                    })
+                    .add('deselect', function () {
+                        polyline.editor.stopDrawing();
+                    });
+
+            polygonButton.events
+                    .add('select', function () {
+                        polygon.editor.startDrawing();
+                    })
+                    .add('deselect', function () {
+                        polygon.editor.stopDrawing();
+                    });
+
+            collection.each(function (obj) {
+                obj.events.add('editorstatechange', function (e) {
+                    __log__('editorstatechange')
+                });
+            });
+
+            map.geoObjects.add(collection);
+            polyline.options.set({
+                editorDrawingCorrector: function (coords, index) {
+                    var coord = coords[index].slice();
+                    coord[0] += 10;
+                    coord[1] += 10;
+                    var deferred = ymaps.vow.defer();
+                    setTimeout(function () {
+                        deferred.resolve(coord);
+                    }, 100);
+                    return deferred.promise();
+                },
+                editorDrawingCorrectorTimeout: 200,
+                editorDraggingCorrector: function (coords, index) {
+                    var coord = coords[index].slice();
+                    coord[0] -= 10;
+                    coord[1] -= 10;
+                    return ymaps.vow.resolve(coord);
+                },
+                editorDraggingCorrectorTimeout: 1500
+            });
+
+            polygon.options.set({
+                editorDrawingCorrector: function (coords, pathIndex, vertexIndex) {
+                    var coord = coords[pathIndex][vertexIndex].slice();
+                    coord[0] += 10;
+                    coord[1] += 10;
+                    var deferred = ymaps.vow.defer();
+                    setTimeout(function () {
+                        deferred.resolve(coord);
+                    }, 200);
+                    return deferred.promise();
+                },
+                editorDrawingCorrectorTimeout: 100,
+                editorDraggingCorrector: function (coords, pathIndex, vertexIndex) {
+                    var coord = coords[pathIndex][vertexIndex].slice();
+                    coord[0] -= 10;
+                    coord[1] -= 10;
+                    var deferred = ymaps.vow.defer();
+                    setTimeout(function () {
+                        deferred.resolve(coord);
+                    }, 1000);
+                    return deferred.promise();
+                },
+                editorDraggingCorrectorTimeout: 1500
+            });
+
+var coords0 = placemark.geometry.getCoordinates();
+
+                placemark.options.set({
+
+           editorDrawingCorrector: function (coords, index) {
+                var coord = coords.slice();
+                coord[0] += 10;
+                coord[1] += 10;
+                return ymaps.vow.resolve(coord);
+                },
+            editorDrawingCorrectorTimeout: 100,
+
+            editorDraggingCorrector: function (coords, index) {
+                var coord = coords.slice();
+                coord[0] = Math.round(coord[0] / 10) * 10;
+                coord[1] = Math.round(coord[1] / 10) * 10;
+                return ymaps.vow.resolve(coord);
+
+            },
+            editorDraggingCorrectorTimeout: 1500
+        });
+
+            map.controls
+                    .add(editorButton)
+                    .add(placemarkButton)
+                    .add(polygonButton)
+                    .add(polylineButton);
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

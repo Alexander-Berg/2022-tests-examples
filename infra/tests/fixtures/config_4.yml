@@ -1,0 +1,81 @@
+---
+modules:
+  - instance_macro:
+      buffer: 65536
+      maxconn: 1000
+      workers: 5
+      log_dir: /tmp/
+      sections:
+        admin:
+          ips:
+            - 127.0.0.1
+          ports:
+            - 8000
+          stats_attr: ""
+          http:
+            keepalive: false
+            maxlen: 65536
+            maxreq: 65536
+            stats_attr: ""
+            admin: {}
+        main:
+          ips:
+            - 127.0.0.2
+          ports:
+            - 80
+          stats_attr: ""
+          extended_http_macro:
+            error_log_level: DEBUG
+            port: 80
+            maxlen: 100
+            maxreq: 100
+            regexp:
+              sections:
+                main:
+                  matcher:
+                    match_fsm:
+                      uri: /gobabygo(/.*)?
+                      case_insensitive: false
+                      surround: false
+                  headers:
+                    create_func_weak:
+                      X-Forwarded-For: realip
+                      X-Req-Id: reqid
+                      X-Scheme: scheme
+                      X-Source-Port: realport
+                    create_weak:
+                      X-Real-IP: realip
+                    balancer2:
+                      attempts: 3
+                      rr: {}
+                      backends:
+                        - weight: 100
+                          balancer2:
+                            attempts: 3
+                            on_error:
+                              errordocument:
+                                status: 504
+                            weighted2:
+                              feedback_time: 10s
+                              history_time: 20s
+                              max_weight: 5
+                              min_weight: 0.05
+                              minus_diff_per_sec: 0.05
+                              plus_diff_per_sec: 0.05
+                              slow_reply_time: 1s
+                            generated_proxy_backends:
+                              proxy_options:
+                                backend_timeout: 5s
+                                buffering: false
+                                connect_timeout: 999ms
+                                fail_on_5xx: false
+                                keepalive_count: 3
+                              instances:
+                                - cached_ip: 37.9.80.221
+                                  host: ws39-438.search.yandex.net
+                                  port: 1034
+                                  weight: 1
+                                - cached_ip: 37.9.80.195
+                                  host: ws39-386.search.yandex.net
+                                  port: 1029
+                                  weight: 1

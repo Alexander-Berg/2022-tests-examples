@@ -1,0 +1,46 @@
+---
+regexp_section:
+  matcher:
+    match_fsm: {uri: '(/collections)?/sitemap(/.*)?'}
+  modules:
+  - report: {ranges: default, uuid: sitemap}
+  - regexp:
+      sections:
+        post_method:
+          matcher:
+            match_fsm: {match: POST.*}
+          modules:
+          - balancer2:
+              attempts: 1
+              weighted2: {}
+              timeout_policy:
+                timeout: 1s
+                unique_policy: {}
+              generated_proxy_backends:
+                proxy_options:
+                  backend_timeout: 5s
+                  connect_timeout: 100ms
+                  keepalive_count: 1
+                include_backends:
+                  type: BY_ID
+                  ids: [pdb_sitemap_test]
+              on_error:
+                modules:
+                - errordocument: {content: Gateway Timeout, status: 504}
+        default:
+          matcher: {}
+          modules:
+          - balancer2:
+              attempts: 3
+              weighted2: {}
+              generated_proxy_backends:
+                proxy_options:
+                  backend_timeout: 5s
+                  connect_timeout: 100ms
+                  keepalive_count: 1
+                include_backends:
+                  type: BY_ID
+                  ids: [pdb_sitemap_test]
+              on_error:
+                modules:
+                - errordocument: {content: Gateway Timeout, status: 504}

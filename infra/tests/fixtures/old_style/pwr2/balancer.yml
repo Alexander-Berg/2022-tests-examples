@@ -1,0 +1,53 @@
+---
+instance_macro:
+  workers: 1
+  private_address: 127.0.0.10
+  default_tcp_rst_on_error: false
+  sections:
+    admin:
+      ips:
+        - 127.0.0.1
+        - '::1'
+      ports:
+        - 16100
+      http:
+        maxlen: 65536
+        maxreq: 65536
+        admin: {}
+    local_ips:
+      ips:
+        - local_v4_addr
+        - local_v6_addr
+      ports:
+        - 16100
+      modules:
+          - http:
+              maxlen: 65536
+              maxreq: 65536
+          - balancer2:
+              pwr2:
+                combined_criterion:
+                  criteria:
+                    - weight: 0.5
+                      fail_rate_criterion:
+                        history_time: "2000ms"
+                    - weight: 0.3
+                      load_factor_criterion: {}
+                    - weight: 0.3
+                      request_duration_criterion:
+                        history_time: "2000ms"
+                        slow_reply_time: "1000ms"
+                    - weight: 0.1
+                      backend_weight_criterion: {}
+                    - weight: 0.1
+                      combined_criterion:
+                        criteria:
+                          - weight: 0.6
+                            load_factor_criterion: {}
+                          - weight: 0.4
+                            backend_weight_criterion: {}
+              attempts: 2
+              backends:
+                - weight: 100
+                  errordocument:
+                    status: 200

@@ -1,0 +1,135 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Мультимаршрут: прокладывание маршрута с учетом информации о текущих пробках
+
+Description:
+Проверка опции прокладывания мультимаршрута с учетом информации о текущих пробках.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+multiRouter
+
+Estimated time:
+180000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно со спаном Центрального федерального округа.
+  Снизу слева кнопка "mode", сверху кнопка "avoidTra...".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "avoidTra...".
+
+  Expectation:
+  Происходит смена спана карты на спан Санкт-Петербурга, на спане маршрут "А"(Пискаревский проспект 2к2щ), "B"(Комендантский проспект).
+  Линия маршрута - основная, маршрут проложен с учетом пробок.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "mode".
+
+  Expectation:
+  Маршрутная нитка на спане карты перестраивается, имеется активный маршрут, на маршруте появляются метки общественного транспорта, пешеходные метки.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "avoidTra...".
+
+  Expectation:
+  Маршрутная нитка на спане карты перестраивается, имеется активный маршрут, маршрут проложен без учета пробок.
+
+Step:
+  Action:
+  Выполнить два клика в кнопку "mode".
+
+  Expectation:
+  Маршрутная нитка на спане карты перестраивается, имеется активный маршрут, на маршруте появляются метки общественного транспорта, пешеходные метки, маршрут проложен без учета пробок.
+-->
+<html>
+<head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+
+            //TODO: написать тест
+            var map = myMap = new ym.Map('map', {
+                        center: [55.00718809437818, 38.094514924687026],
+                        zoom: 7
+                    }),
+                    log = new Log(),
+                    zoom = new ym.control.ZoomControl,
+                    button1 = new ym.control.Button({data: {content: 'avoidTraffic'}}, {selectOnClick: true}),
+                    multiRoute;
+
+            button1.events
+                    .add("select", function (e) {
+                        multiRoute = new ymaps.multiRouter.MultiRoute({
+                            referencePoints: ['питер, пискаревский 2к2', 'питер, ст.м. комендантский пропект'],
+                            params: {
+                                viaIndexes: [],
+                                avoidTrafficJams: true,
+                                results: 1
+                            }
+                        }, {
+                            wayPointDraggable: true,
+                            viaPointDraggable: true,
+                            boundsAutoApply: true,
+                            zoomMargin: 30,
+                            preset: "islands#multiRouterSmall"
+                        });
+                        myMap.geoObjects.add(multiRoute);
+                    })
+                    .add('deselect', function () {
+                        multiRoute = new ymaps.multiRouter.MultiRoute({
+                            referencePoints: ['питер, пискаревский 2к2', 'питер, ст.м. комендантский пропект'],
+                            params: {
+                                viaIndexes: [],
+                                avoidTrafficJams: false,
+                                results: 1
+                            }
+                        }, {
+                            wayPointDraggable: true,
+                            viaPointDraggable: true,
+                            boundsAutoApply: true,
+                            zoomMargin: 30,
+                            preset: "islands#multiRouterSmall"
+                        });
+                        myMap.geoObjects.add(multiRoute);
+
+                    });
+
+            map.controls
+                    .add(zoom)
+                    .add(button1);
+            addGrid(map);
+
+            var modeButton = new ymaps.control.Button('mode');
+            modeButton.events
+                    .add('select', function () {
+                        multiRoute.model.setParams({routingMode: 'masstransit'}, true);
+                    })
+                    .add('deselect', function () {
+                        multiRoute.model.setParams({routingMode: 'auto'}, true);
+                    });
+            map.controls.add(modeButton, {position: {bottom: 35, left: 5}});
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

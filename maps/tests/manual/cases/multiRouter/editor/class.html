@@ -1,0 +1,130 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Мультимаршрут: построение маршрута и смена режима маршрута
+
+Description:
+Проверка работы построения маршрута и смена режима маршрута.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+multiRouter
+
+Estimated time:
+180000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно со спаном Москвы, затем спан сразу меняется на спан с маршрутом из двух точек("A","B"), в центре маршрута имеется виаточка.
+  Снизу слева кнопка "mode". Курсор на спане карты - палец с меткой "C".
+
+Step:
+  Action:
+  Поводить курсором по маршрутной нитке, меткам на спане карты, затем зажать ЛКМ на маршрутной метке и попробовать переместить метку "A".
+
+  Expectation:
+  Курсор на метках - палец, на маршрутной нитке - стрелка, при ведении курсором появляется метка виаточки.
+  При зажатии ЛКМ на метке и попытке переноса метка перемещается вслед за курсором, маршрут перестраивается.
+
+Step:
+  Action:
+  Выполнить клик в спан карты.
+
+  Expectation:
+  На спане карты появляется метка "С", к метке "С" прокладывается нитка маршрута, к курсору прилипает синяя метка "D".
+
+Step:
+  Action:
+  Навести курсор на линию маршрута между метками "B" и "C", зажать ЛКМ и переместить виаточку.
+
+  Expectation:
+  Курсор на линии маршрута - стрелка, на маршруте появляется круглая метка виаточки.
+  После переноса точки маршрут перестраивается с учетом появившейся точки, на ее месте появляется метка "C", последующие метки также меняют букву, к курсору прилипает метка "E".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "mode".
+
+  Expectation:
+  Маршрутная нитка перестраивается, с маршрута пропадает виаточка.
+  На маршрутной нитке появялются метки общественного транспорта(метро, электричек), с подписями станций, пешеходные метки.
+
+Step:
+  Action:
+  Выполнить клик в спан карты.
+
+  Expectation:
+  На спане карты появляется метка "F", к метке "F" прокладывается нитка маршрута(c метками общественного траснспорта), к курсору прилипает синяя метка "G".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "mode".
+
+  Expectation:
+  Маршрутная нитка перестраивается, с маршрута пропадают метки общественного траснпорта, пешеходные метки, появляется виаточка.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            ymaps.load(['multiRouter.Editor'], function() {
+                var map = myMap = new ym.Map('map', {
+                    center: [55.72725771214265, 37.640390506634006],
+                    zoom: 10,
+                    behaviors: ['default', 'scrollZoom'],
+                    controls: ['fullscreenControl']
+                });
+
+                addGrid(myMap);
+                var log = new Log();
+
+                var multiRoute = new ymaps.multiRouter.MultiRoute({
+                    referencePoints: ['Москва, Ленинский проспект', 'москва, ,jkmifz zrbvfyrf','Кулаков переулок'],
+                    params: {
+                        viaIndexes: [1]
+                    }
+                }, {
+                    boundsAutoApply: true
+                });
+
+                map.geoObjects.add(multiRoute);
+
+                var editor = new ymaps.multiRouter.Editor(multiRoute, {addWayPoints: true}, {drawOver: false});
+                editor.options.setParent(multiRoute.options);
+                console.log(editor);
+                console.log(editor.getMultiRoute());
+
+                var modeButton = new ymaps.control.Button('mode');
+                modeButton.events
+                        .add('select', function () {
+                            multiRoute.model.setParams({routingMode: 'masstransit'}, true);
+                        })
+                        .add('deselect', function () {
+                            multiRoute.model.setParams({routingMode: 'auto'}, true);
+                        });
+                map.controls.add(modeButton, {position: {bottom: 35, left: 5}});
+            })
+
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

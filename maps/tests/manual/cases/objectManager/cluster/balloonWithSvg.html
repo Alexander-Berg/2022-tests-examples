@@ -1,0 +1,184 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Менеджер объектов: балун с SVG
+
+Description:
+Проверка балуна кластера с SVG. 
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+objectManager
+
+Estimated time:
+240000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась корректно.
+  На спане три кластера в центре меток фиолетовый круг.
+
+Step:
+  Action:
+  Выполнить клик в метку кластера, расположенную справа.
+
+  Expectation:
+  Спан карты смещается для открытия балуна кластера.
+  На месте метки открывается балун кластера карусель: в балуне серая круглая метка, внизу список меток, имеются стрелки переключения балуна, кнопка закрытия балуна.
+
+Step:
+  Action:
+  Закрыть балун кластера кликом в кнопку закрытия - крестик.
+
+  Expectation:
+  Балун кластера закрывается, на спане снова появляется первоначальная метка кластера.
+
+Step:
+  Action:
+  Выполнить клик в метку кластера, расположенную в центре.
+
+  Expectation:
+  Спан карты смещается для открытия балуна кластера.
+  На месте метки открывается балун кластера аккордеон: в балуне список из меток "1" и серая круглая метка, кнопка закрытия.
+  Напротив каждой метки в списке синий круг с синей точкой внутри.
+
+Step:
+  Action:
+  Закрыть балун кластера кликом в кнопку закрытия - крестик.
+
+  Expectation:
+  Балун кластера закрывается, на спане снова появляется первоначальная метка кластера.
+
+Step:
+  Action:
+  Выполнить клик в метку кластера, расположенную слева.
+
+  Expectation:
+  Спан карты смещается для открытия балуна кластера.
+  На месте метки открывается балун кластера с двумя колонками: в левой колонке список из меток "0" и серая круглая метка, в правой колонке круглая серая метка, кнопка закрытия.
+
+Step:
+  Action:
+  Закрыть балун кластера кликом в кнопку закрытия - крестик.
+
+  Expectation:
+  Балун кластера закрывается, на спане снова появляется первоначальная метка кластера.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script src="../../../js/objectSource.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var map = myMap = new ymaps.Map('map', {
+                center: [55.716901946294286, 37.30336807048247],
+                zoom: 7,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+            log.info('Click to black or blue circle in cluster. Check error in console.');
+
+            var ClusterBalloonItemContentLayout = ym.templateLayoutFactory.createClass([
+                        '<div class=entry>',
+                        '<h3>$[properties.balloonContentHeader]</h3>',
+                        '<i>$[properties.balloonContentBody]</i>',
+                        '<h5>$[properties.balloonContentFooter]</h5>',
+                        '<svg xmlns="http://www.w3.org/2000/svg" version="1.1" height = "10px"  width = "10px">',
+                        '<circle cx="5px" cy="5px" r="5px" fill="black"  style="fill-opacity: 0.5" />',
+                        '</svg>',
+                        '</div>'
+                    ].join('')),
+                    svgExample = '<!--[if gt IE 8]><!--><svg xmlns="http://www.w3.org/2000/svg" version="1.1" height = "10px"  width = "10px">' +
+                            '<circle cx="5px" cy="5px" r="5px" fill="black"  style="fill-opacity: 0.5" /></svg><!--<![endif]-->',
+                    MyIconContentLayout = ymaps.templateLayoutFactory.createClass([
+                        '<svg xmlns="http://www.w3.org/2000/svg" version="1.1" height = "10px"  width = "10px">',
+                        '<circle cx="5px" cy="5px" r="5px" fill="blue"  style="fill-opacity: 0.5" />',
+                        '</svg>'].join(''));
+            var cluster = [];
+            cluster[0] = new ymaps.ObjectManager({
+                clusterize: true,
+                clusterBalloonContentLayout: 'cluster#balloonTwoColumns',
+                clusterBalloonItemContentLayout: ClusterBalloonItemContentLayout,
+                clusterDisableClickZoom: true,
+                clusterOpenBalloonOnClick: true,
+                clusterIconContentLayout: MyIconContentLayout});
+
+            cluster[1] = new ymaps.ObjectManager({
+                clusterize: true,
+                clusterBalloonContentLayout: 'cluster#balloonAccordion',
+                clusterBalloonItemContentLayout: ClusterBalloonItemContentLayout,
+                clusterDisableClickZoom: true,
+                clusterOpenBalloonOnClick: true,
+                clusterIconContentLayout: MyIconContentLayout});
+
+            cluster[2] = new ymaps.ObjectManager({
+                clusterize: true,
+                clusterBalloonContentLayout: 'cluster#balloonCarousel',
+                clusterBalloonItemContentLayout: ClusterBalloonItemContentLayout,
+                clusterDisableClickZoom: true,
+                clusterOpenBalloonOnClick: true,
+                clusterIconContentLayout: MyIconContentLayout});
+
+
+            for (var i = 0; i < 3; i++) {
+                var points = [];
+
+                var x = myMap.getCenter()[0], y = myMap.getCenter()[1];
+                x += (i / 4) ^ 0;
+                y += i % 4;
+
+                var point1 = {
+                    "type": "Feature",
+                    "id": i,
+                    "geometry": {
+                        "type": "Point",
+                        "coordinates": [x - 1.2, y - 1.2]
+                    },
+                    "properties": {
+                        "clusterCaption": i + svgExample
+                    }
+                };
+                var point2 = {
+                    "type": "Feature",
+                    "id": i,
+                    "geometry": {
+                        "type": "Point",
+                        "coordinates": [x - 1.2, y - 1.2]
+                    },
+                    "properties": {
+                        "clusterCaption": i + svgExample
+                    }
+                };
+
+                points.push(point1, point2);
+                cluster[i].objects.add(points);
+            }
+            map.geoObjects
+                    .add(cluster[0])
+                    .add(cluster[1])
+                    .add(cluster[2]);
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

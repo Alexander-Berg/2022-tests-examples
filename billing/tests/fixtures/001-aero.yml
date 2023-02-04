@@ -1,0 +1,99 @@
+locals:
+  client_id: &x-client-id 37008957
+  service_id: &x-service-id 607
+  contract_type: &x-contract-type AeroContract
+
+  input:
+    processor:
+      valid_input: &x-valid-input
+        renderer_type: *x-processor-renderer-trust
+        contract_type: *x-contract-type
+        client_id: *x-client-id
+        service_id: *x-service-id
+        template: *x-event-template-trust-standard
+        person_type: *x-person-type-ur
+        firm_id: *x-yandex-firm-id
+        contract:
+          currency_iso_code: RUB
+        trust_event: &x-valid-input-event
+          currency: RUB
+          products:
+            - { service_fee: 1 }
+          payment_method_id: *x-payment-method-card
+          rows:
+            - { amount: 123.12 }
+
+
+system_test_bundle:
+  <<: *x-trust-system-test-bundle
+  accounts: [ cashless ]
+  processor_input:
+    <<: *x-valid-input
+
+
+cases:
+  payment:
+    - description: Workflow without agent rewards (service_fee == 1)
+
+      processor:
+        input:
+          <<: *x-valid-input
+          contract:
+            currency_iso_code: RUB
+            collaterals:
+              "0":
+                partner_commission_sum: 1
+          trust_event:
+            <<: *x-valid-input-event
+            rows:
+              - { amount: 5432.12 }
+              - { amount: 1521.21 }
+        expected:
+          response:
+            status: 200
+
+      accounts:
+        input:
+          accounts: [ cashless, agent_rewards ]
+        expected:
+          response:
+            status: 200
+            data:
+              balances:
+                - loc: { type: cashless }
+                  credit: '6953.330000'
+
+    - description: Workflow with agent rewards (service_fee != 1)
+
+      foreach:
+        paths:
+          - processor.input.event.products.[0].service_fee
+          - processor.input.contract.collaterals.0.partner_commission_sum
+          - accounts.expected.response.data.balances.[1].credit
+        values:
+          - [ 12, "40.34", "80.680000" ]   # 2 payment rows => agent_rewards = partner_commission_sum * 2
+          - [ ~, "20.02", "40.040000" ]
+          - [ ~, "0.00", "0.020000" ]      # min_reward = 0.01, max(0.00, min_reward) = min_reward => agent_rewards = min_reward * 2
+      processor:
+        input:
+          <<: *x-valid-input
+          trust_event:
+            <<: *x-valid-input-event
+            rows:
+              - { amount: 5432.12 }
+              - { amount: 1521.21 }
+        expected:
+          response:
+            status: 200
+
+      accounts:
+        input:
+          accounts: [ cashless, agent_rewards ]
+        expected:
+          response:
+            status: 200
+            data:
+              balances:
+                - loc: { type: cashless }
+                  credit: '6953.330000'
+                - loc: { type: agent_rewards }

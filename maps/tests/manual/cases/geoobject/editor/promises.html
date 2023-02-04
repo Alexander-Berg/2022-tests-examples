@@ -1,0 +1,97 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Геообъект: возвращение промисов на старте редактора и рисования
+
+Description:
+Проверка возвращения промисов на старте редактора и рисования.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+geoobject
+
+Estimated time:
+60000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан Московской области.
+  На спане карты два ряда объектов: метка, линия, многоугольник. Верхний ряд синего цвета, нижний - зеленого.
+  На линиях и многоугольниках метки редактирования, к курсору прилипают пунктирные линии от вершин синего многоугольника.
+  Под контейнером с картой блоки с промисами: startEditing() promises - за ним 18 строк "Ок"; startDrawing() promises - за ним  18 строк "Ок".
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script src="../geoCS.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym; // hack
+
+            var myMap = new ym.Map('map', {
+                center: [55.73259667357658, 37.70153663432529],
+                zoom: 9,
+                behaviors: ['default', 'scrollZoom'],
+                controls: []
+            });
+
+            geoCSSource(ym, myMap, this);
+            addGrid(myMap);
+            var log = new Log();
+
+            __log__('Проверить, что при вызове start* методов возвращается промис');
+
+            var collection = new ymaps.GeoObjectCollection();
+            collection
+                    .add(geoObjectPlacemark)
+                    .add(geoObjectPolyline)
+                    .add(geoObjectPolygon)
+                    .add(placemark)
+                    .add(polyline)
+                    .add(polygon);
+
+            myMap.geoObjects.add(collection);
+
+            __log__('startEditing() promises');
+            collection.each(function (obj) {
+                var promise = obj.editor.startEditing();
+                promise.always(function () {
+                    validateValue(promise.isResolved(), true);
+                    validateValue(promise.isFulfilled(), true);
+                    validateValue(promise.isRejected(), false);
+                });
+            });
+
+            setTimeout(function () {
+                __log__('startDrawing() promises');
+                collection.each(function (obj) {
+                    var promise = obj.editor.startDrawing();
+                    promise.always(function () {
+                        validateValue(promise.isResolved(), true);
+                        validateValue(promise.isFulfilled(), true);
+                        validateValue(promise.isRejected(), false);
+                    });
+                });
+            }, 2000);
+
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

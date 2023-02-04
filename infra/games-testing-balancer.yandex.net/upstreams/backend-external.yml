@@ -1,0 +1,35 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - dude
+      groups: []
+labels:
+  order: '10000300'
+config_mode: easy2
+---
+l7_upstream_macro:
+  version: 0.0.1
+  id: backend-external
+  matcher:
+    and_:
+    - host_re: 'api\.games-test\.(yandex\.ru)|(playhop\.com)'
+    - path_re: '/internal/trust/v1/notifications(/.*)?'
+
+  flat_scheme:
+    balancer:
+      attempts: 3
+      fast_attempts: 2
+      retry_http_responses:
+        codes:
+        - 429
+      connect_timeout: 300ms
+      backend_timeout: 5s
+      max_reattempts_share: 0.15
+      max_pessimized_endpoints_share: 0.2
+    backend_ids:
+    - backend-external
+    on_error:
+      static:
+        status: 504
+        content: Service unavailable

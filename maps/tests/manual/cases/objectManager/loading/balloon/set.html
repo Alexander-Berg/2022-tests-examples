@@ -1,0 +1,103 @@
+<!DOCTYPE HTML>
+<!--(skip)(description)
+
+-->
+<!--(version)
+
+-->
+<!--(commands)
+
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var center = [56, 34];
+            var map = myMap = new ymaps.Map('map', {
+                center: center,
+                zoom: 4,
+                type: 'yandex#map',
+                controls: ['fullscreenControl', 'typeSelector']
+            });
+            addGrid(myMap);
+            var log = new Log();
+            log.info('Server: apps/loadingServerNonPointsObjects, port: 4778');
+            log.info('Set position, options and data balloon');
+
+            //балун улетает(пропадает) из-за того что setOptions скидывает все опции при задании новой опции,
+            //после этого координаты балуна расчитываются не как гео а как пиксельные
+            var loadingObjectManager = new ymaps.LoadingObjectManager('https://alexa.maps.dev.yandex.ru:4778/?bbox=%b', {
+                paddingTemplate: 'managerResponse_bbox_%b',
+                splitRequests: true
+            });
+            map.geoObjects.add(loadingObjectManager);
+
+            setTimeout(function () {
+                loadingObjectManager.objects.balloon.open(1007);
+            }, 2000);
+
+            var currentId = 0;
+            var dataButton = new ymaps.control.Button({data: {content: 'setData'}, options: {selectOnClick: false}});
+            var optionsButton = new ymaps.control.Button({data: {content: 'setOptions'}, options: {selectOnClick: false}});
+            var positionButton = new ymaps.control.Button({data: {content: 'setPosition'}, options: {selectOnClick: false}});
+            dataButton.events.add('click', function () {
+                var newData = {
+                    type: 'Feature',
+                    id: 68,
+                    geometry: {type: 'Point', coordinates: [55.714, 37.297]},
+                    properties: {hintContent: 'new data ' + currentId,
+                        balloonContent: 'new data ' + currentId,
+                        type: 'кафе'},
+                    options: {preset: 'islands#orangeIcon', zIndex: currentId}
+                };
+                var promise = loadingObjectManager.objects.balloon.setData(newData).then(function () {
+                    validateValue(loadingObjectManager.objects.balloon.getData(), newData)
+                });
+                promise.always(function () {
+                    log.info('fulfilled: ' + promise.isFulfilled());
+                    log.info('rejected: ' + promise.isRejected());
+                })
+            });
+
+            optionsButton.events.add('click', function () {
+                var newOptions = {closeButton: false};
+                var promise = loadingObjectManager.objects.balloon.setOptions(newOptions).then(function () {
+                    validateValue(loadingObjectManager.objects.balloon.getOptions(), newOptions)
+                });
+                promise.always(function () {
+                    log.info('fulfilled: ' + promise.isFulfilled());
+                    log.info('rejected: ' + promise.isRejected());
+                })
+            });
+
+            positionButton.events.add('click', function () {
+                var newCoords = [66.38714894418855, 53.457310879602986];
+                var promise = loadingObjectManager.objects.balloon.setPosition(newCoords).then(function () {
+                    validateValue(loadingObjectManager.objects.balloon.getPosition(), newCoords)
+                });
+                promise.always(function () {
+                    log.info('fulfilled: ' + promise.isFulfilled());
+                    log.info('rejected: ' + promise.isRejected());
+                })
+            });
+
+            map.controls
+                    .add(dataButton)
+                    .add(optionsButton)
+                    .add(positionButton);
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

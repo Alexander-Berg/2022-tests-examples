@@ -1,0 +1,118 @@
+---
+regexp_section:
+  matcher:
+    match_or:
+      - match_and:
+          - match_fsm:
+              host: '(pda|m)\\.news\\.yandex\\..*(:\\d+)?'
+          - match_fsm:
+              uri: '/turbo(/.*)?'
+      - match_fsm:
+          uri: '(.*\\.js|.*\\.rss|/rss/.*|/api/.*|/live(/.*)?|/cl2picture.*|/crossdomain.xml.*|/export/.*|/favicon\\.ico|/lasttimeout|/opensearch\\.xml.*|/robots\\.txt|/apple-touch-icon(|-precomposed)\\.png)'
+      - match_fsm:
+          uri: '/google419fbd824d7ff97d.html'
+      - match_fsm:
+          uri: '/quotes/([\\d]+/)?graph_[\\d]+.json'
+      - match_fsm:
+          uri: '/news/quotes/([\\d]+/)?graph_[\\d]+.json'
+      - match_and:
+          - match_fsm:
+              host: '(m\\.)?yandex\\.(az|by|co\\.il|com|com\\.am|com\\.ge|com\\.ua|ee|fr|kg|kz|lt|lv|md|ru|tj|tm|uz|ua)'
+          - match_fsm:
+              uri: '/sport/live/?'
+  modules:
+    - shared:
+        uuid: nginx_proxy
+    - report:
+        uuid: nginx
+        ranges: default
+    - request_replier:
+        sink:
+          balancer2:
+            attempts: 3
+            connection_attempts: 3
+            attempts_rate_limiter:
+              limit: 0.2
+            weighted2: {}
+            retry_policy:
+              unique_policy: {}
+            generated_proxy_backends:
+              proxy_options: {}
+              instances:
+                - weight: 1
+                  host: 'news.sinkadm.priemka.yandex.ru'
+                  port: 80
+    - balancer2:
+        attempts: 2
+        attempts_file: './controls/nginx.attempts'
+        watermark_policy:
+          lo: 0.05
+          hi: 0.1
+          unique_policy: {}
+        rr: {weights_file: ./controls/traffic_control.weights}
+        backends:
+        - weight: 1
+          name: news_sas
+          modules:
+            - report: {ranges: default, uuid: requests_nginx_to_sas}
+            - balancer2:
+                attempts: !f count_backends()
+                attempts_rate_limiter:
+                  limit: 0.2
+                weighted2: {}
+                timeout_policy:
+                  timeout: 500ms
+                  unique_policy: {}
+                generated_proxy_backends:
+                  proxy_options:
+                    backend_timeout: 2500ms
+                    connect_timeout: 50ms
+                  include_backends:
+                    type: BY_ID
+                    ids: [production_news_nginx_sas]
+        - weight: 1
+          name: news_man
+          modules:
+            - report: {ranges: default, uuid: requests_nginx_to_man}
+            - balancer2:
+                attempts: !f count_backends()
+                attempts_rate_limiter:
+                  limit: 0.2
+                weighted2: {}
+                timeout_policy:
+                  timeout: 500ms
+                  unique_policy: {}
+                generated_proxy_backends:
+                  proxy_options:
+                    backend_timeout: 2500ms
+                    connect_timeout: 50ms
+                  include_backends:
+                    type: BY_ID
+                    ids: [production_news_nginx_man]
+        - weight: 1
+          name: news_vla
+          modules:
+            - report: {ranges: default, uuid: requests_nginx_to_vla}
+            - balancer2:
+                attempts: !f count_backends()
+                attempts_rate_limiter:
+                  limit: 0.2
+                weighted2: {}
+                timeout_policy:
+                  timeout: 500ms
+                  unique_policy: {}
+                generated_proxy_backends:
+                  proxy_options:
+                    backend_timeout: 2500ms
+                    connect_timeout: 50ms
+                  include_backends:
+                    type: BY_ID
+                    ids: [production_news_nginx_vla]
+        - weight: -1
+          name: news_devnull
+          modules:
+            - report:
+                uuid: requests_nginx_to_devnull
+                ranges: 1ms
+            - errordocument:
+                status: 204

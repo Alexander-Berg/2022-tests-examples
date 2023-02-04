@@ -1,0 +1,92 @@
+monitoring:
+  port: 12501
+  tvm:
+    client_id: 2010000
+    allowed_clients:
+      - 2012024
+      - 2012026
+      - 2012028
+    disk_cache_directory: /push-agent/internal/tvm-cache/monitoring
+  static_labels:
+    - name: Project
+      env: DEPLOY_PROJECT
+    - name: Stage
+      env: DEPLOY_STAGE
+    - name: DeployUnit
+      env: DEPLOY_DEPLOY_UNIT
+  static_sensors:
+    - name: BuildTaskId
+      value: 678106182
+
+status:
+  port: 12502
+
+routes:
+  - input:
+      plugin: grpc
+      config:
+        uri: localhost:12500
+        shared_secret_key: TEST_STATIC_SECRET
+      flow_control:
+        inflight:
+          limit: 30mb
+          limit_messages: 100000
+    channel:
+      pipe:
+        - storage_ref:
+            name: main
+            flow_control:
+              inflight:
+                limit: 30mb
+                limit_messages: 30000
+        - filter:
+            plugin: assign
+            config:
+              session:
+                - deploy_project: "{$env('DEPLOY_PROJECT')}"
+                - deploy_stage: "{$env('DEPLOY_STAGE')}"
+                - deploy_unit: "{$env('DEPLOY_DEPLOY_UNIT')}"
+                - deploy_pod: "{$env('DEPLOY_POD_ID')}"
+                - deploy_pod_transient_fqdn:  "{$env('DEPLOY_POD_TRANSIENT_FQDN')}"
+                - deploy_pod_persistent_fqdn:  "{$env('DEPLOY_POD_PERSISTENT_FQDN')}"
+                - deploy_node_fqdn: "{$env('DEPLOY_NODE_FQDN')}"
+        - filter:
+            plugin: combine_backtraces
+            enable_if:
+              session:
+                deploy_logger_name: [stdout, stderr]
+            config:
+              flush_period: 300ms
+        - filter:
+            plugin: yd_format
+            config:
+              format_version: v2
+        - filter:
+            plugin: batch
+            config:
+              delimiter: "\n"
+              flush_period: 300ms
+              limit:
+                bytes: 100kb
+      output:
+        plugin: logbroker
+        id: output-logbroker-yd-format-v2
+        config:
+          endpoint: logbroker.yandex.net
+          topic: test/logs
+          tvm:
+            client_id: 2010000
+            secret:
+              env: TVM_SECRET
+            disk_cache_directory: /push-agent/internal/tvm-cache/logbroker-yd-format-v2
+storages:
+  - name: main
+    plugin: fs
+    config:
+      directory: /push-agent/logs
+      max_partition_size: 1gb
+      max_segment_size: 50mb
+      session_meta_mismatch_action: ignore
+
+system:
+  lock_executable_in_memory: true

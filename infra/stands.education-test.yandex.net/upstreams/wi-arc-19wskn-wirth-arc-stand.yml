@@ -1,0 +1,36 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - robot-edu-infra
+      groups: []
+labels:
+  order: '10000000'
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      host: 'wi-arc-19wskn\\.stands\\.praktikum\\.yandex\\.(ru|com)'
+  modules:
+    - meta: {id: awacs-logs, fields: {upstream: wi-arc-19wskn-wirth-arc-stand}}
+    - regexp:
+        sections:
+          frontend:
+            matcher: {}
+            modules:
+              - balancer2:
+                  attempts: 2
+                  attempts_rate_limiter:
+                    limit: 0.2
+                  rr: {}
+                  generated_proxy_backends:
+                    proxy_options:
+                      allow_connection_upgrade: true
+                      backend_timeout: 600s
+                    include_backends:
+                      type: BY_ID
+                      ids: [wi-arc-19wskn-wirth-arc-stand.frontend]
+                  on_error:
+                    errordocument:
+                      status: 504
+                      content: '[frontend] Service unavailable'

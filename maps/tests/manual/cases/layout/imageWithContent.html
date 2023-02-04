@@ -1,0 +1,115 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../helper.js"></script>
+    <script type="text/javascript">
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+            var map = geoMap = new ymaps.Map('map', {
+                center: [0, 0],
+                zoom: 1.5,
+                behaviors: ['drag', 'scrollZoom']
+            }, {
+                avoidFractionalZoom: false,
+                geoObjectDraggable: true
+            });
+
+            function Dragon(geoMap, startFrom, speed, options) {
+                this._geoObject = new ymaps.Placemark(startFrom, {
+                    iconContent: 'dragon'
+                }, ymaps.util.extend({
+                    iconLayout: ymaps.layout.ImageWithContent,
+                    iconImageHref: 'http://ajaxy.ru/yandex/dragon.png'
+                }, options || {}));
+
+                this._startFrom = startFrom;
+                this._speed = speed;
+                this._counter = 0;
+                this._clipRect = this._geoObject.options.get('iconImageClipRect');
+
+                geoMap.geoObjects.add(this._geoObject);
+            }
+
+            Dragon.prototype.fly = function () {
+                var prevClipRect = this._clipRect,
+                        prevPosition = this._geoObject.geometry.getCoordinates(),
+                        _t = this;
+
+                if (this._counter % 4 == 0) {
+                    if (prevClipRect[0][0] >= 670) {
+                        prevClipRect[0][0] = -75;
+                        prevClipRect[1][0] = 0;
+                    }
+
+                    this._clipRect = [
+                        [prevClipRect[0][0] + 75, prevClipRect[0][1]],
+                        [prevClipRect[1][0] + 75, prevClipRect[1][1]]
+                    ];
+                    this._geoObject.options.set('iconImageClipRect', this._clipRect);
+                }
+
+                var step = this._counter % 40 / 40,
+                        deltaY = Math.cos(Math.PI * 2 * step) * 2;
+
+                this._geoObject.geometry.setCoordinates([this._startFrom[0] + deltaY, prevPosition[1] + this._speed]);
+
+                this._counter++;
+                setTimeout(function () {
+                    _t.fly();
+                }, 30);
+            }
+
+            new Dragon(geoMap, [-30, -150], -1, {
+                iconImageSize: [40, 40],
+                iconImageClipRect: [
+                    [0, 280],
+                    [75, 350]
+                ]
+            }).fly();
+
+
+            new Dragon(geoMap, [50, 150], 1.5, {
+                iconImageSize: [90, 90],
+                iconImageClipRect: [
+                    [0, 0],
+                    [75, 70]
+                ]
+            }).fly();
+
+            geoMap.geoObjects.add(new ymaps.Placemark([0, -100], {
+                iconContent: 'smaller'
+            }, {
+                iconLayout: ymaps.layout.ImageWithContent,
+                iconImageHref: 'http://ajaxy.ru/yandex/yamaps-icon-big.png',
+                iconImageSize: [24, 24]
+            }));
+            geoMap.geoObjects.add(new ymaps.Placemark([0, 0], {
+                iconContent: 'same'
+            }, {
+                iconLayout: ymaps.layout.ImageWithContent,
+                iconImageHref: 'http://ajaxy.ru/yandex/yamaps-icon-big.png',
+                iconImageSize: [48, 48]
+            }));
+            geoMap.geoObjects.add(new ymaps.Placemark([0, 100], {
+                iconContent: 'bigger'
+            }, {
+                iconLayout: ymaps.layout.ImageWithContent,
+                iconImageHref: 'http://ajaxy.ru/yandex/yamaps-icon-big.png',
+                iconImageSize: [64, 64]
+            }));
+        }
+
+
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

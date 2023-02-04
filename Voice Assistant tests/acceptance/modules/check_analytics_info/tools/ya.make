@@ -1,3 +1,0 @@
-RECURSE(
-    canonize_checkers
-)

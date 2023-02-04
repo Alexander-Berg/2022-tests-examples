@@ -1,0 +1,71 @@
+name: "cannon/events"
+message: "broker.cannon.Event"
+timestamp: "timestamp"
+allow_recursion: []
+services: [ "broker-cannon" ]
+yt:
+  sort_by: [ "event_type" ]
+  spawn:
+    days_to_watch: 1
+    cut_period_minutes: 5
+  expire_in_days: 3
+  retro_evolution: true
+clickhouse:
+  cluster: "autoru"
+  db: "broker_load_test"
+  table: "cannonball"
+  expire_in_days: 1
+logbroker:
+  disabled: true
+  output_format: JSON
+  compression: ZSTD
+kafka:
+  - disabled: false
+    mdb_kafka:
+      name: "kafka-shared-01"
+      topic: "broker-cannon-events"
+  - disabled: false
+    output_format: JSON
+
+substreams:
+  - name: "cars"
+    filter:
+      field_name: "card_category"
+      field_value: "CARS"
+      yt:
+        expire_in_days: 1
+      clickhouse:
+        - cluster: "autoru"
+          db: "broker_load_test"
+          table: "cannonball_cars"
+          expire_in_days: 1
+          fields: [ "timestamp", "event_type", "app", "request_id", "owner_dealer_uid", "owner_user_uid", "offer_id", "card_category", "card_mark", "card_model", "card_generation", "user_id", "owner_location_federal_subject_id", "card_id", "owner_location_region_id", "card_vin", "owner_user_ref", "opt_long"]
+
+      logbroker:
+        output_format: JSON
+        compression: ZSTD
+  - name: "moto"
+    filter:
+      field_name: "card_category"
+      field_value: "MOTO"
+      yt:
+        expire_in_days: 2
+        retro_evolution: true
+      kafka:
+        - disabled: true #default old kafka
+        - disabled: false
+          mdb_kafka:
+            name: "kafka-shared-01"
+            topic: "broker-cannon-events-moto"
+      logbroker:
+        - disabled: true
+  - name: "trucks"
+    filter:
+      field_name: "card_category"
+      field_value: "TRUCKS"
+      clickhouse:
+        - cluster: "autoru"
+          db: "broker_load_test"
+          table: "cannonball_trucks"
+          expire_in_days: 1
+          fields: ["timestamp", "event_type", "app", "request_id", "owner_dealer_uid", "owner_user_uid", "offer_id", "card_category", "card_mark", "card_model", "card_generation", "user_id", "owner_location_federal_subject_id", "card_id", "owner_location_region_id", "card_vin", "owner_user_ref", "opt_long"]

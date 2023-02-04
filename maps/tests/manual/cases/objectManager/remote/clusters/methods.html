@@ -1,0 +1,122 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Менеджер объектов: методы RemoteObjectManager
+
+Description:
+Проверка методов RemoteObjectManager. 
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+objectManager
+
+Estimated time:
+30000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась корректно со спаном Москвы.
+  На спане метки коллекции, метки кластеров со значениями кластеризации, линия, прямоугольники, круг.
+  Через 2 секунды после загрузки под контейнером появляется блоки методов.
+  В блоке each, getAll, две строки [object Object], в блоке getIterator: [object Object], getLength: length:2, getObjectManager: remoteObjectManager:[object Object].
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var center = [55.763338, 37.565466];
+
+            var map = myMap = new ymaps.Map('map', {
+                center: center,
+                zoom: 10,
+                type: 'yandex#map',
+                controls: ['fullscreenControl'],
+                minZoom: 4
+            });
+
+            // создаем экземпляр класса RemoteObjectManager
+            var remoteObjectManager = new ymaps.RemoteObjectManager('../objectData2.js?%l', {
+                //splitRequests: true,
+                paddingTemplate: 'managerResponse',
+                clusterDisableClickZoom: true,
+                geoObjectBalloonContentLayout: ymaps.templateLayoutFactory.createClass('{{properties.balloonContent}}')
+                //clusterDisableClickZoom: false
+            });
+            map.geoObjects.add(remoteObjectManager);
+
+            addGrid(myMap);
+            var log = new Log();
+
+            setTimeout(function () {
+                //each
+                log.info('--------each--------');
+                remoteObjectManager.clusters.each(function (obj) {
+                    this.info(obj);
+                    console.log(obj);
+                }, log);
+                log.info('');
+
+                //getAll
+                log.info('---------getAll----------');
+                var array = remoteObjectManager.clusters.getAll();
+                for (var i = 0; i < array.length; i++) {
+                    log.info(array[i]);
+                    console.log(array[i])
+                }
+                log.info('');
+
+                //getIterator
+                log.info('---------getIterator----------');
+                var iterator = remoteObjectManager.clusters.getIterator();
+                var next = iterator.getNext();
+                log.info(next);
+                console.log(next);
+                log.info('');
+
+                //getLength
+                log.info('---------getLength----------');
+                log.info('length:' + remoteObjectManager.clusters.getLength());
+                log.info('');
+
+                //getObjectManager
+                log.info('---------getObjectManager----------');
+                log.info('remoteObjectManager:' + remoteObjectManager.clusters.getObjectManager());
+                console.log(remoteObjectManager.clusters.getObjectManager());
+                log.info('');
+
+                //setClusterOptions
+                remoteObjectManager.clusters.events.add('mouseenter', function (e) {
+                    var cluster = remoteObjectManager.clusters.getById(e.get('objectId')),
+                            objects = cluster.properties.geoObjects;
+                    console.log(cluster);
+                    console.log(objects);
+                    remoteObjectManager.clusters.setClusterOptions(e.get('objectId'), {preset: 'islands#redClusterIcons'})
+                });
+                remoteObjectManager.clusters.events.add('mouseleave', function (e) {
+                    remoteObjectManager.clusters.setClusterOptions(e.get('objectId'), {preset: 'islands#yellowClusterIcons'})
+                });
+            }, 2000)
+
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

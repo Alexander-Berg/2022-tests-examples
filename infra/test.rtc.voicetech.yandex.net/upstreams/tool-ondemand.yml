@@ -1,0 +1,62 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - av-kotikov
+      groups: []
+labels:
+  order: '10000000'
+---
+regexp_section:
+  matcher: {match_fsm: {uri: '/ondemand/(.*)'}}
+  modules:
+    - rewrite:
+        actions:
+          - {regexp: '/ondemand/(.*)', rewrite: /%1, split: url}
+    - balancer2:
+        attempts: 2
+        rr: {weights_file: ./controls/traffic_control.weights}
+        by_name_policy:
+          name: !f get_geo("ondemand_", "random")
+          unique_policy: {}
+        backends:
+          - weight: 1
+            name: ondemand_sas
+            modules:
+              - report: {ranges: default, uuid: requests_ondemand_to_sas}
+              - balancer2:
+                    attempts: 2
+                    attempts_rate_limiter:
+                      limit: 0.3
+                    weighted2: {}
+                    generated_proxy_backends:
+                      proxy_options:
+                        backend_timeout: 1s
+                        connect_timeout: 70ms
+                        keepalive_count: 0
+                        fail_on_5xx: true
+                      include_backends:
+                        type: BY_ID
+                        ids: [voicetech-tools-ondemand-sas]
+          - weight: 1
+            name: ondemand_vla
+            modules:
+              - report: {ranges: default, uuid: requests_ondemand_to_vla}
+              - balancer2:
+                    attempts: 2
+                    attempts_rate_limiter:
+                      limit: 0.3
+                    weighted2: {}
+                    generated_proxy_backends:
+                      proxy_options:
+                        backend_timeout: 1s
+                        connect_timeout: 70ms
+                        keepalive_count: 0
+                        fail_on_5xx: true
+                      include_backends:
+                        type: BY_ID
+                        ids: [voicetech-tools-ondemand-vla]
+        on_error:
+          errordocument:
+            status: 504
+            content: "Service unavailable"

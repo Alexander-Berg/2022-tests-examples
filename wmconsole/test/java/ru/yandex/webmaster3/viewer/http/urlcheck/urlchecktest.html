@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.5.1/dist/jquery.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.1/dist/js/bootstrap.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.1/dist/css/bootstrap.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.form/4.3.0/jquery.form.js"></script>
+
+    <script>
+        let refreshTimerId = null;
+        let startTime;
+
+        $(document).ready(function() {
+            // обработчик для submit формы
+            $('#startCheckForm').ajaxForm({
+                dataType: 'json',
+                data: { userId: 464323397, deviceType: 'MOBILE'},
+                success: processStartUrlCheckResponse
+            });
+
+        });
+
+        // обрабатывает ответ urlchecker3/start.json
+        function processStartUrlCheckResponse(data) {
+            // создадим таймер на получение результата проверки
+            if (refreshTimerId) {
+                clearInterval(refreshTimerId);
+                refreshTimerId = null;
+            }
+
+            refreshTimerId = setInterval(refreshCheckUrlInfo, 100, data.data.requestId);
+            startTime = Date.now();
+
+            // включим спиннер
+            const btn = $("#btnCheck");
+            $(btn).prop("disabled", true);
+            $(btn).attr("data-original-text", $(btn).html());
+            $(btn).html(
+                `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Loading...`
+            );
+        }
+
+        // ходит в ручку urlchecker3/info.json
+        function refreshCheckUrlInfo(requestId) {
+            $.get("http://webmaster.dev.search.yandex.net:33535/urlchecker3/info.json", { requestId: requestId } )
+                .done(function( data ) {
+                    renderUrlCheckInfo(data.data);
+                });
+        }
+
+        const blocksMap = new Map([
+            ['searchInfoData', [
+                    { path: 'urlStatus', divId: 'searchInfoUrlStatus'},
+                    { path: 'title', divId: 'pageContentTitle'},
+                    { path: 'description', divId: 'pageContentDesc'},
+                    { path: 'searchInfo.httpCode.code', divId: 'technicalInfoSearchHttpCode'},
+                    { path: 'searchInfo.lastAccess', divId: 'technicalInfoSearchLastAccess'},
+                    { path: 'indexingInfo.httpCode.code', divId: 'technicalInfoLastCrawlHttpCode'},
+                    { path: 'indexingInfo.lastAccess', divId: 'technicalInfoLastCrawlLastAccess'},
+                    { path: 'searchInfo.canonicalStatus', divId: 'technicalInfoCanonicalStatus'},
+            ]
+            ],
+
+            ['pageTextContentData', [
+                    { path: 'content', divId: 'pageContentHtml'},
+                ]
+            ],
+        ]);
+
+        // рендерит ответ ручки urlchecker3/info.json
+        function renderUrlCheckInfo(data) {
+            // новых данных больше не будет, погасим таймер обновления
+            if (data.inProgress === false) {
+                clearInterval(refreshTimerId);
+                refreshTimerId = null;
+                const endTime = Date.now();
+                console.log("renderUrlCheckInfo: " + ((endTime - startTime) / 1000));
+
+                // выключим спиннер
+                const btn = $("#btnCheck");
+                $(btn).prop("disabled", false);
+                $(btn).html($(btn).attr("data-original-text"));
+            }
+
+            // отрендерим данные
+            renderBlockDivs('searchInfoData', data.searchBaseInfo.searchInfoData);
+            renderBlockDivs('pageTextContentData', data.searchBaseInfo.pageTextContentData);
+        }
+
+        function renderBlockDivs(blockName, blockData) {
+            const divsList = blocksMap.get(blockName);
+
+            // данные есть, заполним ими дивы блока
+            if (blockData.state === 'DONE') {
+                // для всех дивов блока
+                for (const divObj of divsList) {
+                    const divData = getObjectFieldByPath(blockData, divObj.path);
+                    const divText = divData == null? 'Нет данных' : '' + divData;
+                    $('#' + divObj.divId).text(divText);
+                }
+            } else {
+                // данные не готовы или произошла ошибка, обновим статусный текст для всех дивов блока
+                const stateText = getTextForState(blockData.state);
+                const divsList = blocksMap.get(blockName);
+
+                // для всех дивов блока
+                for (const divObj of divsList) {
+                    $('#' + divObj.divId).text(stateText);
+                }
+            }
+        }
+
+        // возвращает значения поля объекта по его пути
+        function getObjectFieldByPath(obj, path) {
+            for (var i = 0, path = path.split('.'), len = path.length; i < len; i++) {
+                obj = obj[path[i]];
+                if (obj == null) {
+                    return null;
+                }
+            }
+
+            return obj;
+        }
+
+        function getTextForState(state) {
+            if (state === 'IN_PROGRESS') {
+                return 'Данные загружаются';
+            } else if (state === 'TIMED_OUT' || state === 'INTERNAL_ERROR') {
+                return 'Ошибка загрузки';
+            } else {
+                return "";
+            }
+        }
+
+    </script>
+</head>
+<body>
+    <div class="card card-body" style="width: 50rem;">
+        <form id="startCheckForm" action="http://webmaster.dev.search.yandex.net:33535/urlchecker3/start.json">
+            <div class="form-group">
+                <label for="hostIdInput">Host id</label>
+                <input class="form-control" id="hostIdInput" name="hostId" value="https:lenta.ru:443">
+            </div>
+            <div class="form-group">
+                <label for="urlInput">Url</label>
+                <input class="form-control" id="urlInput" name="url" value="/">
+            </div>
+            <button type="submit" id="btnCheck" class="btn btn-primary">Check url</button>
+        </form>
+    </div>
+
+    <br/>
+
+    <div class="card card-body" style="width: 50rem;">
+        <h5 class="card-title">Состояние в поиске</h5>
+        <p id="searchInfoUrlStatus"></p>
+    </div>
+
+    <br/>
+
+    <div class="card card-body" style="width: 50rem;">
+        <h5 class="card-title">Контент страницы</h5>
+        <div>
+            <div class="row">
+                <label for="pageContentTitle" class="col-sm-2 col-form-label">Title</label>
+                <div class="col-sm-10">
+                    <div class="form-control-plaintext" id="pageContentTitle" >
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <label for="pageContentDesc" class="col-sm-2 col-form-label">Description</label>
+                <div class="col-sm-10">
+                    <div class="form-control-plaintext" id="pageContentDesc" >
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="accordion">
+        <div class="card" style="width: 50rem;">
+            <div class="card-title" id="headingTwo">
+                <h5 class="mb-0">
+                    <button class="btn btn-link collapsed" data-toggle="collapse" data-target="#collapseTwo" aria-expanded="false" aria-controls="collapseTwo">
+                        Текстовая версия страницы
+                    </button>
+                </h5>
+            </div>
+            <div id="collapseTwo" class="collapse" aria-labelledby="headingTwo" data-parent="#accordion">
+                <div class="card-body">
+                    <p id="pageContentHtml"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <br/>
+
+    <div class="card card-body" style="width: 50rem;">
+        <h5 class="card-title">Технические данные</h5>
+        <div>
+            <div class="row">
+                <label for="technicalInfoSearchHttpCode" class="col-sm-3 col-form-label">Код статуса HTTP</label>
+                <div class="col-sm-8">
+                    <div class="form-control-plaintext" id="technicalInfoSearchHttpCode" >
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <label for="technicalInfoSearchLastAccess" class="col-sm-3 col-form-label">Дата обхода</label>
+                <div class="col-sm-8">
+                    <div class="form-control-plaintext" id="technicalInfoSearchLastAccess" >
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <hr/>
+
+        <div>
+            <div class="row">
+                <label for="technicalInfoLastCrawlHttpCode" class="col-sm-3 col-form-label">Последний обход</label>
+                <div class="col-sm-8">
+                    <div class="form-control-plaintext" id="technicalInfoLastCrawlHttpCode" >
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <label for="technicalInfoLastCrawlLastAccess" class="col-sm-3 col-form-label">Дата обхода</label>
+                <div class="col-sm-8">
+                    <div class="form-control-plaintext" id="technicalInfoLastCrawlLastAccess" >
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <hr/>
+
+        <div>
+            <p id="technicalInfoCanonicalStatus"></p>
+        </div>
+    </div>
+
+</body>
+</html>

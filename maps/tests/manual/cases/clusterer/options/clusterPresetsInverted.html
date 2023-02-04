@@ -1,0 +1,135 @@
+<!doctype html>
+<!--
+Title:
+Кластер: inverted пресет кластерных меток
+
+Description:
+Проверка установки inverted пресета кластерных меток.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+clusterer
+
+Estimated time:
+90000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась корректно.
+  На карте 4 ряда(в ряду 4 метки) кластеров со значением кластеризации "3", все метки c разноцветным кругом внутри, цвета соотвествуют цветам указанным под контейнером.
+
+Step:
+  Action:
+  Поочередно выполнить клик в кнопки "dom", "canvas", "auto".
+
+  Expectation:
+  При кликах спан карты без изменений, отображение и пресет меток не меняется. 
+
+Step:
+  Action:
+  Выполнить клик в произвольную кластерную метку на спане карты.
+
+  Expectation:
+  Спан карты мещается для открытия балуна.
+  На месте кластерной метки открывается балун со списком меток "1, 2, 3", напротив меток в списке красная, зеленая, синяя метки.
+-->
+<html>
+<head>
+    <title>API 2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <style>
+        .graphics-canvas {
+            opacity: 0.5;
+        }
+
+        .graphics-canvas canvas {
+            border: 1px solid #F00;
+        }
+    </style>
+    <script src="../../../helper.js"></script>
+    <script type="text/javascript">
+        Api('init');
+        function init(ym) {
+            var map = myMap = new ym.Map('map', {
+                center: [36.3799, -37.2984],
+                zoom: 7,
+                controls: []
+            });
+
+            var log = new Log();
+            addGrid(map);
+
+            log.info('"olive", "yellow", "brown", "black"');
+            log.info('"orange", "pink", "red", "violet"');
+            log.info('"green", "grey", "lightblue", "night"');
+            log.info('"blue", "darkblue", "darkgreen", "darkorange"');
+
+            var colors = ["blue", "darkblue", "darkgreen", "darkorange", "green", "grey", "lightblue", "night",
+                "orange", "pink", "red", "violet", "olive", "yellow", "brown", "black"];
+
+            for (var i = 0; i < colors.length; i++) {
+                var cluster = new ym.Clusterer(), points = [];
+                var color = colors[i].substr(0, 1).toUpperCase() + colors[i].substring(1);
+                cluster.options.set({
+                    disableClickZoom: true,
+                    preset: 'islands#inverted' + color + 'ClusterIcons',
+                    clusterBalloonContentLayout: "cluster#balloonAccordionContent"
+                });
+                var x = map.getCenter()[0], y = myMap.getCenter()[1];
+                x += (i / 4) ^ 0;
+                y += i % 4;
+                var point1 = new ym.Placemark([x - 1.2, y - 1.2]);
+                var point2 = new ym.Placemark([x - 1.2, y - 1.2]);
+                var point3 = new ym.Placemark([x - 1.2, y - 1.2]);
+                point1.properties.set({
+                    clusterCaption: "1",
+                    balloonContent: 'balloon'
+                });
+                point2.properties.set({
+                    clusterCaption: "2",
+                    balloonContent: 'balloon'
+                });
+                point3.properties.set({
+                    clusterCaption: "3",
+                    balloonContent: 'balloon'
+                });
+                point1.options.set({
+                    iconColor: "#FF0000"
+                });
+                point2.options.set({
+                    iconColor: "#00FF00"
+                });
+                points.push(point1, point2, point3);
+                cluster.add(points);
+                map.geoObjects.add(cluster);
+            }
+
+            var autoButton = new ym.control.Button('auto');
+            var canvasButton = new ym.control.Button('canvas');
+            var domButton = new ym.control.Button('dom');
+            autoButton.events.add('click', function () {
+                cluster.options.set('clusterIconRenderMode', 'auto')
+            });
+            canvasButton.events.add('click', function () {
+                cluster.options.set('clusterIconRenderMode', 'canvas')
+            });
+            domButton.events.add('click', function () {
+                cluster.options.set('clusterIconRenderMode', 'dom')
+            });
+            map.controls.add(autoButton).add(canvasButton).add(domButton);
+        }
+
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;">
+</div>
+</body>
+</html>

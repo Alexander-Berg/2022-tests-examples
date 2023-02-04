@@ -1,0 +1,166 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Util: асинхронный доступ к значениям по ключам
+
+Description:
+Проверка асинхронного доступа к значениям по ключам.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components:
+util
+
+Estimated time:
+30000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть страницу и элементы на ней. 
+
+  Expectation:
+  На странице блок тестовых кнопок.
+  Под блоком кнопок в течении нескольких секунд появляются блоки данных со строками "OK", сообщения об ошибках на странице отсутствуют.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+        //TODO: добить тест
+        function init(ymaps) {
+            ymaps = ym;
+
+            var log = new Log();
+
+            // Пример 1
+
+            var asyncStorage = new ymaps.util.AsyncStorage();
+            asyncStorage.define('blue', function (provide) {
+                // Эмулируем асинхронную операцию. К примеру, запрос к удаленном серверу.
+                setTimeout(function () {
+                    provide('#001EFF');
+                }, 200);
+                this.info('example0: OK');
+                this.info('')
+            }, log);
+
+            // Асинхронный запрос значения ключа "blue".
+            asyncStorage.require(['blue'], function (blue) {
+                this.info('Waiting for #001EFF (example1): ' + blue); // #001EFF
+                // После выполнения первого асинхронного вызова значение уже будет сохранено в хранилище.
+                this.info('Waiting for #001EFF (example1): ' + asyncStorage.get('blue')); // #001EFF
+                this.info('example1: OK');
+                this.info('')
+            }, log);
+
+            // Пример 2
+
+            var asyncStorage2 = new ymaps.util.AsyncStorage();
+            asyncStorage2
+                    .define('green', function (provide) {
+                        setTimeout(function () {
+                            provide('#008000');
+                        }, 400);
+                    })
+                    .define('red', function (provide) {
+                        provide('#FF0000');
+                        this.info('example2: OK');
+                        this.info('')
+                    }, log);
+            var promise = asyncStorage2.require(['red', 'green']);
+            // Используем объект-promise для асинхронного доступа к данным.
+            promise.spread(function (red, green) {
+                validateValue(red, '#FF0000');
+                validateValue('#008000', green); // #FF0000 #008000
+            });
+
+            // Пример сложных зависимостей между значениями в хранилище.
+            var asyncStorage3 = new ymaps.util.AsyncStorage();
+            asyncStorage3
+                    .define('red', function (provide) {
+                        provide('#FF0000');
+                    })
+                // Для получения значения 'green' необходимо значение ключа 'red'.
+                    .define('green', ['red'], function (provide, red) {
+                        validateValue(red, '#FF0000'); // #FF0000
+                        setTimeout(function () {
+                            provide('#008000');
+                        }, 2000);
+                    })
+                    .define('yellow', function (provide) {
+                        setTimeout(function () {
+                            provide('#FFFF00');
+                        }, 1000);
+                    });
+            // Запрашиваем три значения.
+            asyncStorage3.require(['yellow', 'green'], function (yellow, green) {
+                validateValue(yellow, '#FFFF00');
+                validateValue(green, '#008000');
+                validateValue(asyncStorage3.get('red'), '#FF0000'); // #FFFF00 #008000 #FF0000
+                validateValue(this.x, 'Function-Ctx case: OK');
+                log.info('')
+            }, {
+                x: 'Function-Ctx case: OK'
+            });
+
+            asyncStorage3.require(['yellow', 'green'], function (yellow, green) {
+                validateValue(yellow, '#FFFF00');
+                validateValue(green, '#008000');
+                validateValue(asyncStorage3.get('red'), '#FF0000'); // #FFFF00 #008000 #FF0000
+                log.info('')
+            });
+
+            asyncStorage3.require(['green'], function () {
+                log.info('Function-Function case (ok): ');
+                log.info('OK');
+            }, function (error) {
+                log.info('Function-Function case (ok): ');
+                log.info('FAIL: ' + error.message);
+            });
+
+            asyncStorage3.require(['white'], function () {
+                log.info('Function-Function case (fail): ');
+                log.info('FAIL');
+            }, function (error) {
+                log.info('Function-Function case (fail): ');
+                log.info('OK: ' + error.message);
+            });
+
+            asyncStorage3.require(['black'], function () {
+                log.info(this.x);
+            }, function (error) {
+                log.info('Error message case: OK, ' + error.message);
+            }, {
+                x: 'Error message case: FAIL, context'
+            });
+
+            asyncStorage3.require(['pink'], function () {
+                validateValue(this.x, 'Function-Function-Ctx case: FAIL');
+                log.info('')
+            }, function () {
+                validateValue(this.y, 'Function-Function-Ctx case: OK');
+                log.info('')
+            }, {
+                x: 'Function-Function-Ctx case: FAIL',
+                y: 'Function-Function-Ctx case: OK'
+            });
+
+            asyncStorage3.require(['yellow'], function () {
+                log.info(this.x);
+                log.info('')
+            }, null, {
+                x: 'Function-Null-Ctx case: OK'
+            });
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+</body>
+</html>

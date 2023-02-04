@@ -1,0 +1,272 @@
+---
+regexp_section:
+  matcher: {}
+  modules:
+    - shared:
+        uuid: ext_default_module
+    - pinger:
+        ping_request_data: 'GET /robots.txt HTTP/1.1\r\nHost: news.yandex.ru\r\n\r\n'
+        admin_request_uri: '/robots.txt'
+        admin_error_replier:
+          modules:
+            - errordocument:
+                status: 503
+    - report:
+        uuid: antirobot_result
+        ranges: default
+        matcher_map:
+          internal_net:
+            match_fsm:
+              header:
+                name: 'X-Yandex-Internal-Request'
+                value: '1' 
+          external_net:
+            match_not:
+              match_fsm:
+                header:
+                  name: 'X-Yandex-Internal-Request'
+                  value: '1'
+    - regexp:
+        sections:
+          bad_host:
+              matcher:
+                match_or:
+                  - match_fsm:
+                      header:
+                        name: 'Host'
+                        value: '.*news.yandex.com.ua'
+                  - match_not:
+                      match_or:
+                        - match_fsm:
+                            header:
+                              name: 'Host'
+                              value: '(www\\.)?([^.]+-d-[^.]+\\.)?((dev-)?nind([^.]*)\\.)?((pda|m)\\.)?(cryprox-test\\.)?((test)\\.)?news\\.(.+\\.)?yandex\\.\\w+(\\.\\w+)?(:[0-9]+)?'
+                        - match_and:
+                            - match_fsm:
+                                host: '(www\\.)?yandex\\.\\w+(:[0-9]+)?'
+                            - match_or:
+                                - match_fsm:
+                                    uri: '/news.*'
+                                - match_fsm:
+                                    uri: '/mirror.*'
+              modules:
+                - errordocument:
+                    status: 400
+          aab_proxy:
+              matcher:
+                match_fsm:
+                  header:
+                    name: 'x-aab-proxy'
+                    value: '.*'
+              shared:
+                  uuid: int_upstreams
+
+          aab_http_check:
+            matcher:
+              match_fsm:
+                header:
+                  name: 'x-aab-http-check'
+                  value: '.*'
+            shared:
+                uuid: main_cryprox_section
+
+          http_post:
+              matcher:
+                match_fsm:
+                  match: 'POST.*'
+              shared:
+                  uuid: int_upstreams
+
+          testing_bltsr:
+            matcher:
+              match_and:
+                - match_or:
+                    - match_fsm:
+                          host : '(www\\.)?([^.]+-d-[^.]+\\.)?((dev-)?nind([^.]*)\\.)?((pda|m)\\.)?(cryprox-test\\.)?((test)\\.)?news\\.(.+\\.)?yandex\\.\\w+(\\.\\w+)?(:[0-9]+)?'
+                    - match_and:
+                        - match_fsm:
+                            host: '(www\\.)?yandex\\.\\w+(:[0-9]+)?'
+                        - match_fsm:
+                            uri: '/news.*'
+                - match_or:
+                  - match_fsm:
+                        uri: '/_nzp.*'
+                  - match_fsm:
+                        uri: '/news/_nzp.*'
+                  - match_fsm: {cookie: 'bltsr=1', surround: True}
+                  - match_fsm: {cookie: 'qgZTpupNMGJBM=1', surround: True}
+                  - match_fsm: {cookie: 'mcBaGDt=1', surround: True}
+                  - match_fsm: {cookie: 'BgeeyNoBJuyII=1', surround: True}
+                  - match_fsm: {cookie: 'orrXTfJaS=1', surround: True}
+                  - match_fsm: {cookie: 'FgkKdCjPqoMFm=1', surround: True}
+                  - match_fsm: {cookie: 'EIXtkCTlX=1', surround: True}
+                  - match_fsm: {cookie: 'JPIqApiY=1', surround: True}
+                  - match_fsm: {cookie: 'KIykI=1', surround: True}
+                  - match_fsm: {cookie: 'HgGedof=1', surround: True}
+                  - match_fsm: {cookie: 'ancQTZw=1', surround: True}
+                  - match_fsm: {cookie: 'involved=1', surround: True}
+                  - match_fsm: {cookie: 'instruction=1', surround: True}
+                  - match_fsm: {cookie: 'engineering=1', surround: True}
+                  - match_fsm: {cookie: 'telecommunications=1', surround: True}
+                  - match_fsm: {cookie: 'discussion=1', surround: True}
+                  - match_fsm: {cookie: 'computer=1', surround: True}
+                  - match_fsm: {cookie: 'substantial=1', surround: True}
+                  - match_fsm: {cookie: 'specific=1', surround: True}
+                  - match_fsm: {cookie: 'engineer=1', surround: True}
+                  - match_fsm: {cookie: 'adequate=1', surround: True}
+                - match_fsm:
+                    header:
+                      name: 'X-Yandex-Internal-Request'
+                      value: '1'
+                - match_or:
+                  - match_fsm:
+                      header:
+                        name: 'Host'
+                        value: '(m\\.)?cryprox-test\\.news\\.yandex\\.ru'
+                  - match_fsm:
+                      cookie: 'cryptox-test=1'
+                      surround: True
+            modules:
+              - shared:
+                  uuid: testing_cryprox_section
+              - balancer2:
+                  attempts: 1
+                  rr: {weights_file: ./controls/traffic_control.weights}
+                  backends:
+                    - weight: 1
+                      name: aab_on
+                      modules:
+                        - report:
+                            uuid: aab-test
+                            ranges: default
+                        - headers:
+                            create:
+                              x-aab-partnertoken: !f get_str_env_var("AWACS_AAB_TOKEN")
+                              X-Forwarded-Proto: https
+                        - balancer2:
+                            attempts: 1
+                            rr: {}
+                            timeout_policy:
+                              timeout: 5000ms
+                              simple_policy: {}
+                            generated_proxy_backends:
+                              proxy_options:
+                                backend_timeout: 5000ms
+                                connect_timeout: 100ms
+                                fail_on_5xx: true
+                                status_code_blacklist: ["4xx"]
+                              instances:
+                                - weight: 1
+                                  host: cryprox-test.yandex.net
+                                  port: 80
+                            on_error:
+                              shared:
+                                uuid: int_upstreams
+
+          cookie_bltsr:
+            matcher:
+              match_and:
+                - match_or:
+                    - match_fsm:
+                          host : '(www\\.)?([^.]+-d-[^.]+\\.)?((dev-)?nind([^.]*)\\.)?((pda|m)\\.)?(cryprox-test\\.)?((test)\\.)?news\\.(.+\\.)?yandex\\.\\w+(\\.\\w+)?(:[0-9]+)?'
+                    - match_and:
+                        - match_fsm:
+                            host: '(www\\.)?yandex\\.\\w+(:[0-9]+)?'
+                        - match_fsm:
+                            uri: '/news.*'
+                - match_or:
+                    - match_fsm:
+                        uri: '/news/_nzp.*'
+                    - match_fsm:
+                        uri: '/_nzp.*'
+                    - match_fsm: {cookie: 'bltsr=1', surround: True}
+                    - match_fsm: {cookie: 'qgZTpupNMGJBM=1', surround: True}
+                    - match_fsm: {cookie: 'mcBaGDt=1', surround: True}
+                    - match_fsm: {cookie: 'BgeeyNoBJuyII=1', surround: True}
+                    - match_fsm: {cookie: 'orrXTfJaS=1', surround: True}
+                    - match_fsm: {cookie: 'FgkKdCjPqoMFm=1', surround: True}
+                    - match_fsm: {cookie: 'EIXtkCTlX=1', surround: True}
+                    - match_fsm: {cookie: 'JPIqApiY=1', surround: True}
+                    - match_fsm: {cookie: 'KIykI=1', surround: True}
+                    - match_fsm: {cookie: 'HgGedof=1', surround: True}
+                    - match_fsm: {cookie: 'ancQTZw=1', surround: True}
+                    - match_fsm: {cookie: 'involved=1', surround: True}
+                    - match_fsm: {cookie: 'instruction=1', surround: True}
+                    - match_fsm: {cookie: 'engineering=1', surround: True}
+                    - match_fsm: {cookie: 'telecommunications=1', surround: True}
+                    - match_fsm: {cookie: 'discussion=1', surround: True}
+                    - match_fsm: {cookie: 'computer=1', surround: True}
+                    - match_fsm: {cookie: 'substantial=1', surround: True}
+                    - match_fsm: {cookie: 'specific=1', surround: True}
+                    - match_fsm: {cookie: 'engineer=1', surround: True}
+                    - match_fsm: {cookie: 'adequate=1', surround: True}
+            modules:
+              - shared:
+                  uuid: main_cryprox_section
+              - regexp:
+                  sections:
+                    turbo:
+                      matcher:
+                        match_fsm:
+                          uri: "/turbo"
+                      shared:
+                          uuid: int_upstreams
+                    default:
+                      matcher: {}
+                      modules:
+                        - balancer2:
+                            attempts: 1
+                            rr: {weights_file: ./controls/traffic_control.weights}
+                            backends:
+                              - weight: 1
+                                name: aab_on
+                                modules:
+                                  - report:
+                                      uuid: aab
+                                      ranges: default
+                                  - headers:
+                                      create:
+                                        x-aab-partnertoken: !f get_str_env_var("AWACS_AAB_TOKEN")
+                                        X-Forwarded-Proto: https
+                                  - balancer2:
+                                      attempts: 1
+                                      rr: {}
+                                      timeout_policy:
+                                        timeout: 5000ms
+                                        simple_policy: {}
+                                      generated_proxy_backends:
+                                        proxy_options:
+                                          backend_timeout: 5000ms
+                                          connect_timeout: 100ms
+                                          fail_on_5xx: true
+                                          status_code_blacklist: ["4xx"]
+                                        instances:
+                                          - weight: 1
+                                            host: cryprox.yandex.net
+                                            port: 80
+                                      on_error:
+                                        regexp:
+                                            sections:
+                                                aab_http_check:
+                                                    matcher:
+                                                        match_fsm:
+                                                            header:
+                                                                name: 'x-aab-http-check'
+                                                                value: '.*'
+                                                    modules:
+                                                        - errordocument:
+                                                            status: 404
+                                                default:
+                                                    matcher: {}
+                                                    shared:
+                                                      uuid: int_upstreams
+                              - weight: -1
+                                name: aab_off
+                                modules:
+                                  - shared:
+                                      uuid: int_upstreams
+
+          default:
+              matcher: {}
+              shared:
+                uuid: int_upstreams

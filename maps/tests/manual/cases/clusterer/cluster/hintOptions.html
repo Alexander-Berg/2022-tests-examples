@@ -1,0 +1,257 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Кластер: хинт кластера
+
+Description:
+Проверка работы опций хинта кластера.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+clusterer
+
+Estimated time:
+180000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась корректно.
+  После загрузки на спане в районе Москвы несколько кластерных меток(может быть синяя метка коллекции).
+  Сверху кнопки "empty hint", "open hint", " object hint", " disable hint".
+
+Step:
+  Action:
+  Навести курсор на кластерные метки.
+
+  Expectation:
+  При наведении курсор - палец, хинт не появляется.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "open hint", навести курсор на кластерные метки.
+
+  Expectation:
+  По клику в кнопку под контейнером строка: "true".
+  При наведении курсор - палец, на метке со значением кластеризации больше 100 хинт "Меток навалом", значение больше 10 хинт "Нормально так меток", меньше 10 хинта нет.
+
+Step:
+  Action:
+  Выполнить даблклик в спан карты, клик в кнопку "empty hint", затем навести курсор на кластерные метки.
+
+  Expectation:
+  После даблклика происходит корректный призум спана карты, метки распадаются на более мелкие кластеры.
+  По клику в кнопку под контейнером с картой строка: "true".
+  При наведении курсор - палец, на метке со значением кластеризации больше 100 хинт "Меток навалом", значение больше 10 хинт "Нормально так меток", меньше 10 появляется пустой маленький хинт.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "empty hint", затем навести курсор на кластерные метки.
+
+  Expectation:
+  По клику в кнопку под контейнером с картой строка: "false".
+  При наведении курсор - палец, на метке со значением кластеризации больше 100 хинт "Меток навалом", значение больше 10 хинт "Нормально так меток", меньше 10 хинта нет.
+
+Step:
+  Action:
+  Выполнить призум спана карты до появления на спане меток коллекции, затем клик в кнопку "object hint", затем навести курсор на кластерные метки, метки коллекций.
+
+  Expectation:
+  Происходит корректный призум спана карты, метки кластеров распадаются на более мелкие кластеры и метки коллекции.
+  По клику в кнопку под контейнером с картой строка: "geoObjectHasHint: false".
+  При наведении курсор - палец, на кластерных метках(значение менее 10) хинт не появляется, на метках коллекции хинта также нет.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "object hint", затем навести курсор на кластерные метки, метки коллекций.
+
+  Expectation:
+  По клику в кнопку под контейнером с картой строка: "geoObjectHasHint: true".
+  При наведении курсор - палец, на кластерных метках(значение менее 10) хинт не появляется, на метках коллекции хинт с номером метки.
+
+Step:
+  Action:
+  Выполнить отзум спана карты до кластеризации всех меток коллекции, затем клик в кнопку "disable hint", затем навести курсор на кластерные метки.
+
+  Expectation:
+  Происходит корректный отзум спана карты, метки коллекций кластеризуются в кластерные метки.
+  По клику в кнопку под контейнером с картой строка: "hasHint: false".
+  При наведении курсор - палец, на кластерных метках хинт не появляется.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "disable hint", затем навести курсор на кластерные метки.
+
+  Expectation:
+  По клику в кнопку под контейнером с картой строка: "hasHint: true".
+  При наведении курсор - палец, на метке со значением кластеризации больше 100 хинт "Меток навалом", значение больше 10 хинт "Нормально так меток", меньше 10 хинта нет.
+
+Step:
+  Action:
+  Выполнить максимальный отзум спана карты до кластеризации в один кластер, затем навести курсор на кластерную метку.
+
+  Expectation:
+  Происходит корректный отзум спана карты, метки кластеров кластеризуются в одну метку "200".
+  При наведении курсор - палец, на кластерной метке хинт "Меток навалом".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "open hint", навести курсор на кластерную метку.
+
+  Expectation:
+  По клику в кнопку под контейнером строка: "false".
+  При наведении курсор - палец, хинт не появляется.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        //TODO: разобраться почему браузер зависает при открытии балуна большого кластера
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 10,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            addGrid(map);
+            var log = new Log();
+
+            var clusterer = new ymaps.Clusterer({
+                preset: 'islands#redClusterIcons',
+                disableClickZoom: true,
+                clusterOpenHintOnHover: false,
+                clusterOpenEmptyHint: false
+            });
+            var placemarksNumber = 200;
+            var bounds = map.getBounds();
+            var newPlacemarks = createGeoObjects(placemarksNumber, bounds);
+
+            clusterer.createCluster = function (center, geoObjects) {
+                var clusterPlacemark = ymaps.Clusterer.prototype.createCluster.call(this, center, geoObjects),
+                        geoObjectsLength = clusterPlacemark.getGeoObjects().length,
+                        hintContent;
+                if (geoObjectsLength < 10) {
+                    hintContent = '';
+                } else if (geoObjectsLength < 100) {
+                    hintContent = 'Нормально так меток';
+                } else {
+                    hintContent = 'Меток навалом';
+                }
+                clusterPlacemark.properties.set('hintContent', hintContent);
+                return clusterPlacemark;
+            };
+
+            // add 200 placemarks
+            clusterer.add(newPlacemarks);
+            map.geoObjects.add(clusterer);
+
+            var hintButton = new ymaps.control.Button({data: {content: 'disable hint'}, options: {
+                selectOnClick: true,
+                maxWidth: 160
+            }});
+            var geoHintButton = new ymaps.control.Button({data: {content: 'object hint'}, options: {
+                selectOnClick: true,
+                maxWidth: 160
+            }});
+            var openHintButton = new ymaps.control.Button({data: {content: "open hint"}, options: {
+                selectOnClick: true,
+                maxWidth: 200
+            }});
+            var emptyHintButton = new ymaps.control.Button({data: {content: "empty hint"}, options: {
+                selectOnClick: true,
+                maxWidth: 200
+            }});
+
+            hintButton.events
+                    .add('select', function () {
+                        clusterer.options.set('hasHint', false);
+                        log.info('hasHint: ' + clusterer.options.get('hasHint'))
+                    })
+                    .add('deselect', function () {
+                        clusterer.options.set('hasHint', true);
+                        log.info('hasHint: ' + clusterer.options.get('hasHint'))
+                    });
+
+            geoHintButton.events
+                    .add('select', function () {
+                        clusterer.options.set('geoObjectHasHint', false);
+                        log.info('geoObjectHasHint: ' + clusterer.options.get('geoObjectHasHint'))
+                    })
+                    .add('deselect', function () {
+                        clusterer.options.set('geoObjectHasHint', true);
+                        log.info('geoObjectHasHint: ' + clusterer.options.get('geoObjectHasHint'))
+                    });
+
+            openHintButton.events
+                    .add('select', function () {
+                        clusterer.options.set('clusterOpenHintOnHover', true);
+                        log.info(clusterer.options.get('clusterOpenHintOnHover'))
+                    })
+                    .add('deselect', function () {
+                        clusterer.options.set('clusterOpenHintOnHover', false);
+                        log.info(clusterer.options.get('clusterOpenHintOnHover'))
+                    });
+
+            emptyHintButton.events
+                    .add('select', function () {
+                        clusterer.options.set('clusterOpenEmptyHint', true);
+                        log.info(clusterer.options.get('clusterOpenEmptyHint'))
+                    })
+                    .add('deselect', function () {
+                        clusterer.options.set('clusterOpenEmptyHint', false);
+                        log.info(clusterer.options.get('clusterOpenEmptyHint'))
+                    });
+
+            map.controls
+                    .add(hintButton)
+                    .add(geoHintButton)
+                    .add(openHintButton)
+                    .add(emptyHintButton);
+
+
+            // change map zoom
+            setTimeout(function () {
+                map.setZoom(7)
+            }, 1000);
+
+            function createGeoObjects(number, bounds) {
+                var placemarks = [];
+                // Создаем нужное количество меток
+                for (var i = 0; i < number; i++) {
+                    // Генерируем координаты метки случайным образом.
+                    var coordinates = getRandomCoordinates(bounds);
+                    // Создаем метку со случайными координатами.
+                    var myPlacemark = new ymaps.Placemark(coordinates, {
+                        balloonContent: i, hintContent: i, clusterCaption: i}, {});
+                    placemarks.push(myPlacemark);
+                }
+                return placemarks;
+            }
+
+            function getRandomCoordinates(bounds) {
+                var size = [bounds[1][0] - bounds[0][0], bounds[1][1] - bounds[0][1]];
+                return [Math.random() * size[0] + bounds[0][0], Math.random() * size[1] + bounds[0][1]];
+            }
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

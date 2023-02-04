@@ -1,0 +1,169 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Util: возвращение все пересечений двух прямоугольных областей
+
+Description:
+Проверка возвращения все пересечений двух прямоугольных областей.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components:
+util
+
+Estimated time:
+180000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть страницу и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно со спаном материков Евразии и Северная Америка, сверху кнопка "clear".
+  При открытии на карте отображается два пересечения(пересечения выделены красной областью прямоугольников).
+
+Step:
+  Action:
+  Выполнить клик в кнопку "clear".
+  Выполнить клик в центр спана с левой стороны контейнера, затем клик в центр спана у правой стороны. 
+
+  Expectation:
+  При клике на спане карты появляется синяя метка коллекции.
+  После второго клика на спане появляется область прямоугольника с вершинами - метками.
+
+Step:
+  Action:
+  Выполнить клик в центр спана сверху контейнера, затем клик в центр спана снизу контейнера. 
+
+  Expectation:
+  При клике на сверху спана карты появляется красная метка коллекции.
+  После второго клика на спане появляется область прямоугольника с вершинами - метками.
+  Область пересечения построенных прямоугольников окрашена красным, под контейнером с картой появляются строки данных, одна из строк "areIntersecting: true".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "clear".
+  Выполнить два клика в верхней части спана карты, затем два клика в нижней части спана карты(построить два непересекающихся прямоугольника). 
+
+  Expectation:
+  На спане карты два неперсекающихся прямоугольника с вершинами - метками.
+  Под контейнером с картой появляются строки данных, одна из строк "areIntersecting: false".
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            //ymaps = ym;
+            var myMap = new ymaps.Map("map", {
+                center: [50, -179],
+                zoom: 3,
+                controls: []
+            }, {
+                geoObjectInteractivityModel: 'default#silent'
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+            log.info("При открытии на карте отображается два пересечения");
+            log.info("Проверить корректную работу fromPoints, getIntersections, areIntersecting, containsBounds, containsPoint");
+
+            var projection = myMap.options.get('projection'),
+                    clearBtn = new ymaps.control.Button('clear'),
+                    coords = [],
+                    testBounds = [];
+            myMap.controls.add(clearBtn);
+
+            clearBtn.events.add('click', clear);
+
+            myMap.events.add('click', function (e) {
+                if (testBounds.length == 2) {
+                    clear();
+                }
+                coords.push(e.get('coords'));
+
+                if (coords.length % 2 == 0) {
+                    var bounds = ymaps.util.bounds.fromPoints(coords.slice(-2), projection);
+                    testBounds.push(bounds);
+                    var rect = new ymaps.Rectangle(bounds, {}, {
+                        opacity: 0.2
+                    });
+                    myMap.geoObjects.add(rect);
+                }
+
+                myMap.geoObjects.add(new ymaps.Placemark(e.get('coords'), {}, {
+                    preset: (coords.length == 3) ? 'islands#redIcon' : 'islands#blueIcon'
+                }));
+
+                if (testBounds.length == 2) {
+                    var intersections = ymaps.util.bounds.getIntersections(testBounds[0], testBounds[1]);
+                    for (var i = 0, l = intersections.length; i < l; i++) {
+                        var rect = new ymaps.Rectangle(intersections[i], {}, {
+                            fillColor: "FF0000",
+                            opacity: 0.4
+                        });
+                        myMap.geoObjects.add(rect);
+                    }
+                    __log__('source bounds: ' + JSON.stringify(testBounds));
+                    __log__('areIntersecting: ' + ymaps.util.bounds.areIntersecting(testBounds[0], testBounds[1]));
+                    __log__('getIntersecting: ' + JSON.stringify(intersections));
+                    __log__('containsBounds: ' + ymaps.util.bounds.containsBounds(testBounds[0], testBounds[1]));
+                    __log__('containsPoint: ' + ymaps.util.bounds.containsPoint(testBounds[0], coords[2]));
+                    __log__(testBounds[0]);
+                    __log__(coords[2]);
+
+                    __log__('------------');
+                }
+            });
+            var rect = new ymaps.Rectangle([
+                [-70, -170],
+                [70, 170]
+            ], {}, {
+                opacity: 0.2,
+                coordRendering: 'boundsPath'
+            });
+            myMap.geoObjects.add(rect);
+
+            var rect1 = new ymaps.Rectangle([
+                [-60, 160],
+                [60, -160]
+            ], {}, {
+                opacity: 0.2,
+                coordRendering: 'boundsPath'
+            });
+            myMap.geoObjects.add(rect1);
+
+            var intersections = ymaps.util.bounds.getIntersections([
+                [-70, -170],
+                [70, 170]
+            ], [
+                [-60, 160],
+                [60, -160]
+            ]);
+            for (var i = 0, l = intersections.length; i < l; i++) {
+                var rect = new ymaps.Rectangle(intersections[i], {}, {
+                    fillColor: "FF0000",
+                    opacity: 0.4
+                });
+                myMap.geoObjects.add(rect);
+            }
+            function clear() {
+                myMap.geoObjects.removeAll();
+                coords = [];
+                testBounds = [];
+            }
+        }
+    </script>
+</head>
+<body>
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

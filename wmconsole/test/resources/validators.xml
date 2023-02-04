@@ -1,0 +1,881 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:util="http://www.springframework.org/schema/util"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd http://www.springframework.org/schema/util http://www.springframework.org/schema/util/spring-util.xsd">
+
+    <!-- Schema.org validator begins -->
+
+    <bean id="schemaBasicClassmap" factory-method="getSchemaClassMap" class="ru.yandex.webmaster3.core.semantic.schema_org_information_extractor.RDFsSchemaUtils">
+        <constructor-arg value="rdfs.html"/>
+    </bean>
+
+
+    <bean id="yandexedSchemaClassMap" factory-method="readAndMerge" class="ru.yandex.webmaster3.core.semantic.schema_org_information_extractor.RDFsSchemaUtils">
+        <constructor-arg ref="schemaBasicClassmap"/>
+        <constructor-arg>
+            <bean class="ru.yandex.webmaster3.core.semantic.schema_org_information_extractor.RDFsSchemaUtils" factory-method="getContentFromResource">
+                <constructor-arg value="yandex-schema.patch.html"/>
+            </bean>
+        </constructor-arg>
+    </bean>
+
+    <bean id="schemaOrgValidator" class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.rdfa.validator.SchemaValidator">
+        <constructor-arg ref="yandexedSchemaClassMap"/>
+        <property name="vocab" value="schema.org"/>
+    </bean>
+
+    <bean id="dataVocabMap" factory-method="getSchemaClassMap" class="ru.yandex.webmaster3.core.semantic.schema_org_information_extractor.RDFsSchemaUtils">
+        <constructor-arg value="data-vocab.html"/>
+    </bean>
+
+    <bean id="dataVocabValidator" class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.rdfa.validator.SchemaValidator">
+        <constructor-arg ref="dataVocabMap"/>
+        <property name="vocab" value="data-vocabulary.org"/>
+    </bean>
+
+    <bean id="schemedGoodRelationsClassmap" factory-method="readAndMerge"
+          class="ru.yandex.webmaster3.core.semantic.schema_org_information_extractor.RDFsSchemaUtils">
+        <constructor-arg ref="goodRelationsBasicClassmap"/>
+        <constructor-arg>
+            <bean class="ru.yandex.webmaster3.core.semantic.schema_org_information_extractor.RDFsSchemaUtils" factory-method="getContentFromResource">
+                <constructor-arg value="rdfs.html"/>
+            </bean>
+        </constructor-arg>
+    </bean>
+
+    <bean id="microdataGoodRelationsValidator" class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.microdata.validators.GoodRelationsValidator">
+        <constructor-arg ref="schemedGoodRelationsClassmap"/>
+        <property name="vocab" value="purl.org"/>
+    </bean>
+
+
+    <!-- schema.org/Review -->
+
+    <bean id="reviewValidator" class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.microdata.validators.YandexSOrgReviewMicrodataValidator"/>
+
+    <bean id="businessReviewValidator"
+          class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.microdata.validators.BusinessReviewCheckingMicrodataValidatorWrapper">
+        <constructor-arg>
+            <list>
+                <ref bean="reviewValidator"/>
+            </list>
+        </constructor-arg>
+    </bean>
+    <bean id="autoReviewValidator" class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.microdata.validators.AutoReviewCheckingMicrodataValidatorWrapper">
+        <constructor-arg>
+            <list>
+                <bean class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.microdata.validators.MustBeFieldsMicrodataValidator">
+                    <constructor-arg value="false"/>
+                    <constructor-arg>
+                        <list>
+                            <value>url</value>
+                            <value>author/name</value>
+                            <value>itemReviewed/model</value>
+                            <value>itemReviewed/brand</value>
+                        </list>
+                    </constructor-arg>
+                </bean>
+                <bean class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.microdata.validators.AltFieldListsMicrodataValidator">
+                    <constructor-arg value="false"/>
+                    <constructor-arg>
+                        <list>
+                            <value>pro</value>
+                            <value>contra</value>
+                            <value>description</value>
+                            <value>reviewBody</value>
+                        </list>
+                    </constructor-arg>
+                </bean>
+            </list>
+        </constructor-arg>
+    </bean>
+
+    <bean id="reviewValidatorWrapper"
+          class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.microdata.validators.SchemaOrgTypeCheckingMicrodataValidatorWrapper">
+        <constructor-arg type="java.lang.String" value="Review"/>
+        <constructor-arg>
+            <list>
+                <!--<ref bean="businessReviewValidator"/>-->
+
+                <bean class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.microdata.validators.PrefixWrapperMicrodataValidator">
+                    <constructor-arg ref="businessReviewValidator"/>
+                    <constructor-arg value="biz_rev_condition"/>
+                </bean>
+                <!--<ref bean="autoReviewValidator"/>-->
+                <bean class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.microdata.validators.PrefixWrapperMicrodataValidator">
+                    <constructor-arg ref="autoReviewValidator"/>
+                    <constructor-arg value="auto_rev_condition"/>
+                </bean>
+                <bean class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.microdata.validators.UnsupportedItemReviewedMicrodataValidator"/>
+            </list>
+        </constructor-arg>
+    </bean>
+
+    <!-- schema.org/Place and schema.org/Organization and children -->
+
+    <bean id="orgFieldsValidator" class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.microdata.validators.MustBeFieldsMicrodataValidator">
+        <constructor-arg value="false"/>
+        <constructor-arg>
+            <list>
+                <value>name</value>
+                <value>address</value>
+            </list>
+        </constructor-arg>
+    </bean>
+
+    <bean id="orgPhoneValidator" class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.microdata.validators.YaOrgTelMicrodataValidator">
+        <constructor-arg value="false"/>
+    </bean>
+
+    <bean id="orgCountryValidator" class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.microdata.validators.UnsupportedCountryMicrodataValidator">
+        <property name="countries">
+            <list>
+                <value>РОССИЯ</value>
+                <value>УКРАИНА</value>
+                <value>БЕЛАРУСЬ</value>
+                <value>БЕЛОРУССИЯ</value>
+                <value>КАЗАХСТАН</value>
+                <value>BY</value>
+                <value>RU</value>
+                <value>UA</value>
+            </list>
+        </property>
+    </bean>
+
+    <bean id="orgValidator" class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.microdata.validators.AggregateMicrodataValidator">
+        <constructor-arg>
+            <list>
+                <ref bean="orgFieldsValidator"/>
+                <ref bean="orgPhoneValidator"/>
+                <ref bean="orgCountryValidator"/>
+            </list>
+        </constructor-arg>
+    </bean>
+
+    <bean id="placeValidatorWrapper"
+          class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.microdata.validators.SchemaOrgTypeCheckingMicrodataValidatorWrapper">
+        <constructor-arg type="java.lang.String" value="Place"/>
+        <constructor-arg>
+            <list>
+                <!--<ref bean="orgValidator"/>-->
+                <bean class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.microdata.validators.PrefixWrapperMicrodataValidator">
+                    <constructor-arg ref="orgValidator"/>
+                    <constructor-arg value="org_condition"/>
+                </bean>
+            </list>
+        </constructor-arg>
+    </bean>
+
+    <bean id="orgValidatorWrapper"
+          class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.microdata.validators.SchemaOrgTypeCheckingMicrodataValidatorWrapper">
+        <constructor-arg type="java.lang.String" value="Organization"/>
+        <constructor-arg>
+            <list>
+                <!--<ref bean="orgValidator"/>-->
+                <bean class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.microdata.validators.PrefixWrapperMicrodataValidator">
+                    <constructor-arg ref="orgValidator"/>
+                    <constructor-arg value="org_condition"/>
+                </bean>
+            </list>
+        </constructor-arg>
+    </bean>
+
+    <!-- schema.org/ScholarlyArticle -->
+
+    <bean id="schoolArtValidator" class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.microdata.validators.MustBeFieldsMicrodataValidator">
+        <constructor-arg value="false"/>
+        <constructor-arg>
+            <list>
+                <value>headline</value>
+                <value>articleBody</value>
+            </list>
+        </constructor-arg>
+    </bean>
+
+    <bean id="schoolArtValidatorWrapper"
+          class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.microdata.validators.SchemaOrgTypeCheckingMicrodataValidatorWrapper">
+        <constructor-arg type="java.lang.String" value="ScholarlyArticle"/>
+        <constructor-arg>
+            <list>
+                <!--<ref bean="schoolArtValidator"/>-->
+                <bean class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.microdata.validators.PrefixWrapperMicrodataValidator">
+                <constructor-arg ref="schoolArtValidator"/>
+                    <constructor-arg value="scholarly_article_condition"/>
+                </bean>
+            </list>
+        </constructor-arg>
+    </bean>
+
+    <bean id="creativeWorkValidator" class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.microdata.validators.AltFieldListsMicrodataValidator">
+        <constructor-arg value="false"/>
+        <constructor-arg>
+            <list>
+                <value>description</value>
+                <value>articleBody</value>
+            </list>
+        </constructor-arg>
+    </bean>
+
+    <bean id="creativeWorkValidatorWrapper"
+          class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.microdata.validators.SchemaOrgTypeCheckingMicrodataValidatorWrapper">
+        <constructor-arg>
+            <list>
+                <value>CreativeWork</value>
+                <value>Article</value>
+                <value>BlogPosting</value>
+                <value>NewsArticle</value>
+                <value>ScholarlyArticle</value>
+                <value>MedicalScholarlyArticle</value>
+                <value>Blog</value>
+                <value>Book</value>
+                <value>Diet</value>
+                <value>ExercisePlan</value>
+                <value>MediaObject</value>
+                <value>AudioObject</value>
+                <!--<value>ImageObject</value>-->
+                <value>MusicVideoObject</value>
+                <value>VideoObject</value>
+                <value>Painting</value>
+                <value>Photograph</value>
+                <value>Sculpture</value>
+                <value>TVEpisode</value>
+                <value>TVSeason</value>
+                <value>TVSeries</value>
+            </list>
+        </constructor-arg>
+        <constructor-arg>
+            <list>
+                <!--<ref bean="schoolArtValidator"/>-->
+                <bean class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.microdata.validators.PrefixWrapperMicrodataValidator">
+                    <constructor-arg ref="creativeWorkValidator"/>
+                    <constructor-arg value="creative_work_condition"/>
+                </bean>
+            </list>
+        </constructor-arg>
+    </bean>
+
+    <!-- schema.org/Recipe -->
+
+    <bean id="recipeValidator" class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.microdata.validators.MustBeFieldsMicrodataValidator">
+        <constructor-arg value="false"/>
+        <constructor-arg>
+            <list>
+                <value>name</value>
+                <value>recipeIngredient</value>
+                <!--<value>recipeInstructions</value>-->
+            </list>
+        </constructor-arg>
+    </bean>
+
+    <bean id="recipeValidatorWrapper"
+          class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.microdata.validators.SchemaOrgTypeCheckingMicrodataValidatorWrapper">
+        <constructor-arg type="java.lang.String" value="Recipe"/>
+        <constructor-arg>
+            <list>
+                <!--<ref bean="recipeValidator"/>-->
+                <bean class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.microdata.validators.PrefixWrapperMicrodataValidator">
+                    <constructor-arg ref="recipeValidator"/>
+                    <constructor-arg value="recipie_condition"/>
+                </bean>
+            </list>
+        </constructor-arg>
+    </bean>
+
+    <!-- schema.org/ImageObject-->
+
+    <bean id="imgObjValidator" class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.microdata.validators.AltFieldListsMicrodataValidator">
+        <constructor-arg value="false"/>
+        <constructor-arg>
+            <list>
+                <value>contentUrl</value>
+                <value>image</value>
+                <value>thumbnail</value>
+            </list>
+        </constructor-arg>
+    </bean>
+
+    <bean id="imgObjValidatorWrapper"
+          class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.microdata.validators.SchemaOrgTypeCheckingMicrodataValidatorWrapper">
+        <constructor-arg type="java.lang.String" value="ImageObject"/>
+        <constructor-arg>
+            <list>
+                <bean class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.microdata.validators.PrefixWrapperMicrodataValidator">
+                    <constructor-arg ref="imgObjValidator"/>
+                    <constructor-arg value="image_condition"/>
+                </bean>
+            </list>
+        </constructor-arg>
+    </bean>
+
+
+
+    <!-- schema.org/VideoObject-->
+    <bean name="mustBeVideoPropertyList" class="java.util.ArrayList">
+        <constructor-arg>
+            <list>
+                <value>name</value>
+                <value>url</value>
+                <value>uploadDate</value>
+                <value>description</value>
+                <value>duration</value>
+                <value>isFamilyFriendly</value>
+                <value>thumbnail</value>
+            </list>
+        </constructor-arg>
+    </bean>
+
+    <bean id="videoObjValidator" class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.microdata.validators.MustBeFieldsMicrodataValidator">
+        <constructor-arg value="false"/>
+        <constructor-arg ref="mustBeVideoPropertyList"/>
+    </bean>
+    <bean id="videoFieldValidator" class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.microdata.validators.MustBeFieldsMicrodataValidator">
+        <constructor-arg value="false"/>
+        <constructor-arg>
+            <list>
+                <value>video</value>
+            </list>
+        </constructor-arg>
+    </bean>
+
+    <bean id="musicVideoValidator" class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.microdata.validators.MustBeFieldsMicrodataValidator">
+        <constructor-arg value="false"/>
+        <constructor-arg>
+            <list>
+                <value>trackName</value>
+            </list>
+        </constructor-arg>
+    </bean>
+
+    <bean id="tvShowValidator" class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.microdata.validators.MustBeFieldsMicrodataValidator">
+        <constructor-arg value="false"/>
+        <constructor-arg>
+            <list>
+                <value>dateReleased</value>
+            </list>
+        </constructor-arg>
+    </bean>
+    <bean id="tvEpisodeValidator" class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.microdata.validators.MustBeFieldsMicrodataValidator">
+        <constructor-arg value="false"/>
+        <constructor-arg>
+            <list>
+                <value>episodeNumber</value>
+            </list>
+        </constructor-arg>
+    </bean>
+
+
+    <bean id="videoValidatorWrapper"
+          class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.microdata.validators.SchemaOrgTypeCheckingMicrodataValidatorWrapper">
+        <constructor-arg type="java.lang.String" value="VideoObject"/>
+        <constructor-arg>
+            <list>
+                <bean class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.microdata.validators.PrefixWrapperMicrodataValidator">
+                    <constructor-arg ref="videoObjValidator"/>
+                    <constructor-arg value="video_condition"/>
+                </bean>
+            </list>
+        </constructor-arg>
+    </bean>
+    <bean id="movieValidatorWrapper"
+          class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.microdata.validators.SchemaOrgTypeCheckingMicrodataValidatorWrapper">
+        <constructor-arg type="java.lang.String" value="Movie"/>
+        <constructor-arg>
+            <list>
+                <bean class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.microdata.validators.PrefixWrapperMicrodataValidator">
+                    <constructor-arg ref="videoFieldValidator"/>
+                    <constructor-arg value="video_condition"/>
+                </bean>
+
+            </list>
+        </constructor-arg>
+    </bean>
+    <bean id="tvShowValidatorWrapper"
+          class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.microdata.validators.SchemaOrgTypeCheckingMicrodataValidatorWrapper">
+        <constructor-arg type="java.lang.String" value="TVShow"/>
+        <constructor-arg>
+            <list>
+                <bean class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.microdata.validators.PrefixWrapperMicrodataValidator">
+                    <constructor-arg ref="videoFieldValidator"/>
+                    <constructor-arg value="video_condition"/>
+                </bean>
+                <bean class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.microdata.validators.PrefixWrapperMicrodataValidator">
+                    <constructor-arg ref="tvShowValidator"/>
+                    <constructor-arg value="video_condition"/>
+                </bean>
+            </list>
+        </constructor-arg>
+    </bean>
+
+    <bean id="tvSeriesValidatorWrapper"
+          class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.microdata.validators.SchemaOrgTypeCheckingMicrodataValidatorWrapper">
+        <constructor-arg type="java.lang.String" value="TVEpisode"/>
+        <constructor-arg>
+            <list>
+                <bean class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.microdata.validators.PrefixWrapperMicrodataValidator">
+                    <constructor-arg ref="videoFieldValidator"/>
+                    <constructor-arg value="video_condition"/>
+                </bean>
+                <bean class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.microdata.validators.PrefixWrapperMicrodataValidator">
+                    <constructor-arg ref="tvEpisodeValidator"/>
+                    <constructor-arg value="video_condition"/>
+                </bean>
+
+            </list>
+        </constructor-arg>
+    </bean>
+    <bean id="broadcastValidatorWrapper"
+          class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.microdata.validators.SchemaOrgTypeCheckingMicrodataValidatorWrapper">
+        <constructor-arg type="java.lang.String" value="Broadcast"/>
+        <constructor-arg>
+            <list>
+                <bean class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.microdata.validators.PrefixWrapperMicrodataValidator">
+                    <constructor-arg ref="videoFieldValidator"/>
+                    <constructor-arg value="video_condition"/>
+                </bean>
+            </list>
+        </constructor-arg>
+    </bean>
+    <bean id="musicVideoValidatorWrapper"
+          class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.microdata.validators.SchemaOrgTypeCheckingMicrodataValidatorWrapper">
+        <constructor-arg type="java.lang.String" value="MusicVideoObject"/>
+        <constructor-arg>
+            <list>
+                <!--<ref bean="videoFieldValidator"/>-->
+                <bean class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.microdata.validators.PrefixWrapperMicrodataValidator">
+                    <constructor-arg  ref="videoFieldValidator"/>
+                    <constructor-arg value="video_condition"/>
+                </bean>
+
+                <bean class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.microdata.validators.PrefixWrapperMicrodataValidator">
+                    <constructor-arg ref="musicVideoValidator"/>
+                    <constructor-arg value="video_condition"/>
+                </bean>
+            </list>
+        </constructor-arg>
+    </bean>
+
+    <bean id="chordsFieldValidator" class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.microdata.validators.DeprecatedMicrodataValidator">
+        <constructor-arg name="isCritical" value="false"/>
+
+        <constructor-arg name="fields">
+            <list>
+                <value>chordsLine</value>
+                <value>chordsBlock</value>
+            </list>
+        </constructor-arg>
+    </bean>
+
+    <bean id="chordsValidatorWrapper"
+          class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.microdata.validators.SchemaOrgTypeCheckingMicrodataValidatorWrapper">
+        <constructor-arg type="java.lang.String" value="MusicRecording"/>
+        <constructor-arg>
+            <list>
+                <ref bean="chordsFieldValidator"/>
+
+            </list>
+        </constructor-arg>
+     </bean>
+
+    <!-- <bean id="videoObjValidator" class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.microdata.validators.AltFieldListsMicrodataValidator">
+        <constructor-arg value="false"/>
+        <constructor-arg>
+            <list>
+                <value>thumbnail</value>
+                <value>image</value>
+            </list>
+        </constructor-arg>
+    </bean>
+
+    <bean id="videoObjValidatorWrapper"
+          class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.microdata.validators.SchemaOrgTypeCheckingMicrodataValidatorWrapper">
+        <constructor-arg type="java.lang.String" value="VideoObject"/>
+        <constructor-arg>
+            <list>
+                <ref bean="videoObjValidator"/>
+            </list>
+        </constructor-arg>
+    </bean> -->
+
+
+    <!-- Schema.org validator ends -->
+
+    <!-- Yandex vocab microdata validators -->
+
+    <bean id="encArticleValidator" class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.microdata.validators.MustBeFieldsMicrodataValidator">
+        <constructor-arg value="false"/>
+        <constructor-arg>
+            <list>
+                <value>title</value>
+                <value>content</value>
+            </list>
+        </constructor-arg>
+    </bean>
+
+    <bean id="encArticleValidatorWrapper"
+          class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.microdata.validators.SchemaOrgTypeCheckingMicrodataValidatorWrapper">
+        <constructor-arg type="java.lang.String" value="enc-article"/>
+        <constructor-arg>
+            <list>
+                <ref bean="encArticleValidator"/>
+            </list>
+        </constructor-arg>
+    </bean>
+
+    <bean id="termDefValidator" class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.microdata.validators.MustBeFieldsMicrodataValidator">
+        <constructor-arg value="false"/>
+        <constructor-arg>
+            <list>
+                <value>term</value>
+                <value>definition</value>
+            </list>
+        </constructor-arg>
+    </bean>
+
+    <bean id="termDefValidatorWrapper"
+          class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.microdata.validators.SchemaOrgTypeCheckingMicrodataValidatorWrapper">
+        <constructor-arg type="java.lang.String" value="term-def"/>
+        <constructor-arg>
+            <list>
+                <ref bean="termDefValidator"/>
+            </list>
+        </constructor-arg>
+    </bean>
+
+
+
+
+    <!-- Yandex vocab microdata validators end-->
+
+    <!-- Product with Offer validators -->
+
+    <bean id="productValidatorWrapper" class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.microdata.validators.SchemaOrgTypeCheckingMicrodataValidatorWrapper">
+        <constructor-arg type="java.lang.String" value="Product"/>
+        <constructor-arg>
+            <list>
+                    <bean class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.microdata.validators.ProductWithOfferCheckingMicrodataValidatorWrapper">
+                    <constructor-arg>
+                        <list>
+                            <bean class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.microdata.validators.AltFieldListsMicrodataValidator">
+                                <constructor-arg value="true"/>
+                                <constructor-arg>
+                                    <list>
+                                        <value>offers/price</value>
+                                        <value>offers/lowPrice</value>
+                                    </list>
+                                </constructor-arg>
+                            </bean>
+                            <bean class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.microdata.validators.MustBeFieldsMicrodataValidator">
+                                <constructor-arg value="true"/>
+                                <constructor-arg>
+                                    <list>
+                                        <value>name</value>
+                                        <value>description</value>
+                                        <value>offers/priceCurrency</value>
+                                    </list>
+                                </constructor-arg>
+                            </bean>
+                        </list>
+                    </constructor-arg>
+                </bean>
+            </list>
+        </constructor-arg>
+    </bean>
+    <!-- Application -->
+    <bean id="softwareApplicationValidator" class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.microdata.validators.MustBeFieldsMicrodataValidator">
+        <constructor-arg value="false"/>
+        <constructor-arg>
+            <list>
+                <value>description</value>
+            </list>
+        </constructor-arg>
+    </bean>
+
+    <bean id="softwareApplicationValidatorWrapper"
+          class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.microdata.validators.SchemaOrgTypeCheckingMicrodataValidatorWrapper">
+        <constructor-arg type="java.lang.String" value="SoftwareApplication"/>
+        <constructor-arg>
+            <list>
+                <!--<ref bean="recipeValidator"/>-->
+                <bean class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.microdata.validators.PrefixWrapperMicrodataValidator">
+                    <constructor-arg ref="softwareApplicationValidator"/>
+                    <constructor-arg value="swa_condition"/>
+                </bean>
+            </list>
+        </constructor-arg>
+    </bean>
+
+    <!--Question -->
+    <bean id="questionMustBeFieldsValidator" class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.microdata.validators.MustBeFieldsMicrodataValidator">
+        <constructor-arg value="false"/>
+        <constructor-arg>
+            <list>
+                <value>name</value>
+            </list>
+        </constructor-arg>
+    </bean>
+    <bean id="questionAltFieldsValidator" class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.microdata.validators.AltFieldListsMicrodataValidator">
+        <constructor-arg value="false"/>
+        <constructor-arg>
+            <list>
+                <value>acceptedAnswer</value>
+                <value>suggestedAnswer</value>
+            </list>
+        </constructor-arg>
+    </bean>
+
+    <bean id="questionValidatorWrapper"
+          class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.microdata.validators.SchemaOrgTypeCheckingMicrodataValidatorWrapper">
+        <constructor-arg type="java.lang.String" value="Question"/>
+        <constructor-arg>
+            <list>
+                <!--<ref bean="recipeValidator"/>-->
+                <bean class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.microdata.validators.PrefixWrapperMicrodataValidator">
+                    <constructor-arg ref="questionMustBeFieldsValidator"/>
+                    <constructor-arg value="question_condition"/>
+                </bean>
+                <bean class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.microdata.validators.PrefixWrapperMicrodataValidator">
+                    <constructor-arg ref="questionAltFieldsValidator"/>
+                    <constructor-arg value="question_condition"/>
+                </bean>
+            </list>
+        </constructor-arg>
+    </bean>
+
+
+
+    <!-- Product with Offer validators end -->
+
+    <bean id="unknownMicrodataValidator" class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.microdata.validators.UnknownTypeMicrodataValidator">
+        <constructor-arg>
+            <list>
+                <value>http://schema.org/</value>
+                <value>http://data-vocabulary.org/</value>
+                <value>http://webmaster.yandex.ru/vocabularies/</value>
+                <value>orphans</value>
+                <value>http://purl.org/goodrelations/v1</value>
+                <value>https://schema.org/</value>
+                <value>https://data-vocabulary.org/</value>
+                <value>https://webmaster.yandex.ru/vocabularies/</value>
+                <value>https://purl.org/goodrelations/v1</value>
+                <value>http://www.schema.org/</value>
+                <value>https://www.schema.org/</value>
+            </list>
+        </constructor-arg>
+    </bean>
+
+    <bean id="parseErrorsMicrodataValidator" class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.microdata.validators.ParseErrorsMicrodataValidator"/>
+
+    <bean name="microdataValidators" class="java.util.LinkedList">
+        <constructor-arg>
+            <list value-type="ru.yandex.webmaster3.core.semantic.semantic_document_parser.microdata.validators.MicrodataValidator">
+                <ref bean="orgValidatorWrapper"/>
+                <ref bean="placeValidatorWrapper"/>
+                <ref bean="schoolArtValidatorWrapper"/>
+                <ref bean="creativeWorkValidatorWrapper"/>
+                <ref bean="imgObjValidatorWrapper"/>
+                <ref bean="videoValidatorWrapper"/>
+                <ref bean="microdataGoodRelationsValidator"/>
+                <ref bean="broadcastValidatorWrapper"/>
+                <ref bean="musicVideoValidatorWrapper"/>
+                <ref bean="tvSeriesValidatorWrapper"/>
+                <ref bean="tvShowValidatorWrapper"/>
+                <ref bean="movieValidatorWrapper"/>
+                <ref bean="recipeValidatorWrapper"/>
+                <ref bean="termDefValidatorWrapper"/>
+                <ref bean="encArticleValidatorWrapper"/>
+                <ref bean="unknownMicrodataValidator"/>
+                <ref bean="reviewValidatorWrapper"/>
+                <ref bean="schemaOrgValidator"/>
+                <ref bean="dataVocabValidator"/>
+                <ref bean="parseErrorsMicrodataValidator"/>
+                <ref bean="productValidatorWrapper"/>
+                <ref bean="chordsValidatorWrapper"/>
+                <ref bean="softwareApplicationValidatorWrapper"/>
+                <ref bean="questionValidatorWrapper"/>
+            </list>
+        </constructor-arg>
+    </bean>
+
+
+    <bean id="microdataValidator" class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.validators.MicrodataCardsValidator">
+        <property name="microdataValidators" ref="microdataValidators"/>
+    </bean>
+
+    <bean id="microdataAggredateValidator" class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.microdata.validators.AggregateMicrodataValidator">
+        <constructor-arg ref="microdataValidators"/>
+    </bean>
+
+    <bean id="microdataDeepValidator" class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.microdata.validators.DFSVisitorMicrodataValidatorWrapper">
+        <property name="validator" ref="microdataAggredateValidator"/>
+    </bean>
+
+    <!-- OGP validators -->
+
+    <bean id="ogpBasicClassmap" factory-method="getOgpClassMap" class="ru.yandex.webmaster3.core.semantic.schema_org_information_extractor.RDFsSchemaUtils">
+        <constructor-arg value="og-rdfs.html"/>
+        <constructor-arg value="http://ogp.me/ns#"/>
+        <constructor-arg value="ns"/>
+    </bean>
+
+
+    <bean id="ogpValidator" class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.ogp.exception.EmptyFieldsValidator">
+        <constructor-arg>
+            <list value-type="java.lang.String">
+                <value>title</value>
+                <value>video</value>
+                <value>video:type</value>
+                <value>image</value>
+            </list>
+        </constructor-arg>
+    </bean>
+
+    <!-- OGP validators end -->
+    <bean id="rdfaVideoValidator" class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.rdfa.validator.OGPVideoRDFaValidator">
+        <constructor-arg>
+            <util:map>
+                <entry key="http://ogp.me/ns#video:type" value="og:video:type"/>
+                <entry key="http://ogp.me/ns#title" value="og:title"/>
+                <entry key="http://ogp.me/ns#url" value="og:url"/>
+                <entry key="http://ogp.me/ns#video" value="og:video"/>
+                <entry key="http://ogp.me/ns#image" value="og:image"/>
+                <entry key="http://ogp.me/ns#description" value="og:description"/>
+                <entry key="http://webmaster.yandex.ru/vocabularies/ovs:upload_date" value="ya:ovs:upload_date"/>
+                <entry key="http://webmaster.yandex.ru/vocabularies/ovs:adult" value="ya:ovs:adult"/>
+                <entry key="http://ogp.me/ns/video#duration" value="video:duration"/>
+                <entry key="http://ogp.me/ns#type" value="og:type"/>
+            </util:map>
+        </constructor-arg>
+        <constructor-arg>
+            <list value-type="java.lang.String">
+                <value>video.movie</value>
+                <value>video.episode</value>
+                <value>video.tv_show</value>
+                <value>ya:ovs:broadcast</value>
+                <value>ya:ovs:music</value>
+                <value>video.other</value>
+            </list>
+        </constructor-arg>
+    </bean>
+
+    <bean id="rdfaOgpFieldsValidator" class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.rdfa.validator.OGPFieldsRDFaValidator">
+        <constructor-arg>
+            <list value-type="java.lang.String">
+                <value>title</value>
+                <value>type</value>
+                <value>url</value>
+                <value>image</value>
+            </list>
+        </constructor-arg>
+    </bean>
+
+    <bean id="rdfaOgpValidator" class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.rdfa.validator.NameSpaceValidator">
+
+        <constructor-arg ref="ogpBasicClassmap"/>
+        <constructor-arg value="http://ogp.me/ns#"/>
+
+    </bean>
+    <!-- good relations BEGIN-->
+    <bean id="goodRelationsBasicClassmap" factory-method="getSchemaClassMap"
+          class="ru.yandex.webmaster3.core.semantic.schema_org_information_extractor.RDFsSchemaUtils">
+        <constructor-arg value="good-relations-rdfa.html"/>
+    </bean>
+    <bean id="rdfaGoodRelationsValidator" class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.microdata.validators.GoodRelationsValidator">
+        <constructor-arg>
+            <ref bean="goodRelationsBasicClassmap"/>
+        </constructor-arg>
+        <property name="vocab" value="purl.org/goodrelations/v1"/>
+    </bean>
+
+    <!-- good relations END -->
+
+    <!-- Dublin Core validator -->
+
+    <bean id="dublinCoreBasicClassmap" factory-method="getDublinClassMap"
+          class="ru.yandex.webmaster3.core.semantic.schema_org_information_extractor.RDFsSchemaUtils">
+        <constructor-arg value="dublincore-rdfa.html"/>
+        <constructor-arg value="http://purl.org/dc"/>
+        <constructor-arg value="dc"/>
+    </bean>
+    <bean id="rdfaDublinCoreValidator" class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.rdfa.validator.NameSpaceValidator">
+        <constructor-arg>
+            <ref bean="dublinCoreBasicClassmap"/>
+        </constructor-arg>
+        <constructor-arg value="http://purl.org/dc"/>
+    </bean>
+
+
+    <!-- microformat validator -->
+
+    <bean id="notOrgHCardValidator" class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.microformats.validators.OrgHCardValidator"/>
+    <bean id="rootHProductValidator" class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.microformats.validators.RootHProductValidator"/>
+    <bean id="datetimeValidator" class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.microformats.validators.DatetimeValidator"/>
+
+
+
+    <!-- microformat validator -->
+
+    <bean id="cardsValidator" class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.validators.AggregateCardsValidator">
+        <property name="cardsValidators">
+            <ref bean="microdataValidator"/>
+        </property>
+    </bean>
+    <bean id="rdfaSchemaValidator" class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.rdfa.validator.SchemaValidator">
+        <constructor-arg>
+            <ref bean="yandexedSchemaClassMap"/>
+        </constructor-arg>
+        <property name="vocab" value="schema.org"/>
+    </bean>
+
+    <bean name="allOgpValidators" class="java.util.LinkedList">
+        <constructor-arg>
+            <list value-type="ru.yandex.webmaster3.core.semantic.semantic_document_parser.ogp.exception.EmptyFieldsValidator">
+                <ref bean="ogpValidator"/>
+            </list>
+        </constructor-arg>
+    </bean>
+
+    <bean name="allMfValidators" class="java.util.LinkedList">
+        <constructor-arg>
+            <list value-type="ru.yandex.webmaster3.core.semantic.semantic_document_parser.microformats.validators.MicroformatValidator">
+                <!--<ref bean="notOrgHCardValidator"/>-->
+                <bean class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.microformats.validators.PrefixWrapperMFValidator">
+                    <constructor-arg ref="notOrgHCardValidator"/>
+                    <constructor-arg value="hCard_condition"/>
+                </bean>
+                <bean class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.microformats.validators.PrefixWrapperMFValidator">
+                    <constructor-arg ref="rootHProductValidator"/>
+                    <constructor-arg value="hProduct_condition"/>
+                </bean>
+
+                <!--<ref bean="rootHProductValidator"/>-->
+
+                <ref bean="datetimeValidator"/>
+            </list>
+        </constructor-arg>
+    </bean>
+
+    <bean name="allRdfaValidators" class="java.util.LinkedList">
+        <constructor-arg>
+            <list value-type="ru.yandex.webmaster3.core.semantic.semantic_document_parser.rdfa.validator.RDFaValidator">
+                <!--<bean class="ru.yandex.semantic.exceptions.PrefixExceptionWrapper">-->
+                    <!--<constructor-arg ref="questionMustBeFieldsValidator"/>-->
+                    <!--<constructor-arg value="question_condition"/>-->
+                <!--</bean>-->
+                <ref bean="rdfaVideoValidator"/>
+                <ref bean="rdfaOgpValidator"/>
+                <!-- TODO: fix ogpNamespace validator -->
+                <ref bean="rdfaOgpFieldsValidator"/>
+                <ref bean="rdfaSchemaValidator"/>
+                <ref bean="rdfaGoodRelationsValidator"/>
+                <ref bean="rdfaDublinCoreValidator"/>
+                <ref bean="jsonldTypesValidator"/>
+            </list>
+        </constructor-arg>
+    </bean>
+
+    <bean name="batchMicrodataValidator" class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.microdata.validators.IslandsBatchMicrodataValidator"/>
+
+    <bean name="jsonldTypesValidator" class="ru.yandex.webmaster3.core.semantic.semantic_document_parser.rdfa.validator.JSONLDTypeRDFaValidator"/>
+
+
+</beans>

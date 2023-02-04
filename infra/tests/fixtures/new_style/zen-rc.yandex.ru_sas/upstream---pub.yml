@@ -1,0 +1,31 @@
+l7_upstream_macro:
+  version: 0.0.1
+  id: pub
+  matcher:
+    uri_re: '/((media-api/.+)|(editor-api/.+)|(media-api-video/.+)|media)'
+  headers:
+    - create: {target: X-Forwarded-Proto, value: https}
+    - create: {target: Host, value: default.publishers.zeta.kaizen.yandex.ru}
+    - create: {target: X-Forwarded-Zen-Host, func: host}
+    - create: {target: X-Zen-Original-Host, func: host}
+    - create: {target: X-Original-Host, func: host}
+    - append: {target: X-Forwarded-For, func: realip}
+    - append: {target: Zen-Forwarded-For, func: realip}
+  monitoring:
+    uuid: to-pub
+  flat_scheme:
+    balancer:
+      compat:
+        method: RR
+      fast_attempts: 2
+      attempts: 1
+      keepalive_count: 0
+      connect_timeout: 40ms
+      backend_timeout: 300s
+      do_not_retry_http_responses: true
+      max_reattempts_share: 0.2
+    backend_ids:
+      - pub-l3
+    on_error:
+      rst: true
+

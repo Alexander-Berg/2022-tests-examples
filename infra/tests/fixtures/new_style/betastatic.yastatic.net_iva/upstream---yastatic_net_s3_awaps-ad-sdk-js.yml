@@ -1,0 +1,135 @@
+---
+regexp_path_section:
+  pattern: '/awaps-ad-sdk-js/(.*)?'
+  modules:
+    - rewrite:
+        actions:
+          - regexp: '^(/.*)?/v-[^/a-zA-Z]+/(.*)(\\?.*)?$'
+            rewrite: '%1/%2%3'
+    - report:
+        uuid: 'yastatic_net_s3_awaps-ad-sdk-js'
+        ranges: 'default'
+    - shared:
+        uuid: yastatic_net_s3_awaps-ad-sdk-js
+    - response_headers:
+        create:
+            Cache-Control: 'public, max-age=3600'
+            Strict-Transport-Security: 'max-age=43200000; includeSubDomains;'
+            Access-Control-Allow-Origin: '*'
+            Timing-Allow-Origin: '*'
+        create_func:
+            Expires: 'time:+3600s'
+    - headers:
+        create:
+            'Host': 'playerweb.s3.yandex.net'
+            'PCODE': 'testing'
+            #'PCODE': !f get_str_env_var("AWACS_PCODE")
+    - regexp:
+        sections:
+            1percent:
+                matcher:
+                    match_fsm:
+                        header:
+                            name: 'PCODE'
+                            value: '1percent'
+                modules:
+                - rewrite:
+                    actions:
+                    - regexp: '/awaps-ad-sdk-js/1_0/(.*)'
+                      rewrite: '/adsdkjs-loaders/1percent/%1'
+                - shared:
+                    uuid: yastatic_net_s3_awaps-ad-sdk-js_percent
+                - regexp:
+                    sections:
+                        br_section:
+                            matcher:
+                                match_fsm:
+                                    header:
+                                        name: 'accept-encoding'
+                                        value: '(.*,\\s*|)br(\\s*;\\s*q\\s*=\\s*(1|0\\.0*[1-9]).*|\\s*,.*|)'
+                            modules:
+                            - rewrite:
+                                actions:
+                                - regexp: '([^\\?]+)(.*)'
+                                  rewrite: '%1.br'
+                            - response_headers:
+                                create:
+                                    Content-Encoding: br
+                            - shared:
+                                uuid: 'yastatic_net_s3_awaps-ad-sdk-js_common'
+                        gzip_section:
+                            matcher:
+                                match_fsm:
+                                    header:
+                                        name: 'accept-encoding'
+                                        value: '(.*,\\s*|)gzip(\\s*;\\s*q\\s*=\\s*(1|0\\.0*[1-9]).*|\\s*,.*|)'
+                            modules:
+                            - rewrite:
+                                actions:
+                                - regexp: '([^\\?]+)(.*)'
+                                  rewrite: '%1.gz'
+                            - response_headers:
+                                create:
+                                    Content-Encoding: gzip
+                            - shared:
+                                uuid: 'yastatic_net_s3_awaps-ad-sdk-js_common'
+                        default:
+                            matcher: {}
+                            modules:
+                                - shared:
+                                    uuid: 'yastatic_net_s3_awaps-ad-sdk-js_common'
+                                - headers:
+                                    delete:
+                                        'authorization|accept-encoding'
+                                - response_headers:
+                                    delete: 'content-encoding'
+                                - shared:
+                                    uuid: 'yastatic_s3_cached_shared'
+            5percent:
+                matcher:
+                    match_fsm:
+                        header:
+                            name: 'PCODE'
+                            value: '5percent'
+                modules:
+                - rewrite:
+                    actions:
+                    - regexp: '/awaps-ad-sdk-js/1_0/(.*)'
+                      rewrite: '/adsdkjs-loaders/5percent/%1'
+                - shared:
+                    uuid: yastatic_net_s3_awaps-ad-sdk-js_percent
+            20percent:
+                matcher:
+                    match_fsm:
+                        header:
+                            name: 'PCODE'
+                            value: '20percent'
+                modules:
+                - rewrite:
+                    actions:
+                    - regexp: '/awaps-ad-sdk-js/1_0/(.*)'
+                      rewrite: '/adsdkjs-loaders/20percent/%1'
+                - shared:
+                    uuid: yastatic_net_s3_awaps-ad-sdk-js_percent
+            testing:
+                matcher:
+                    match_fsm:
+                        header:
+                            name: 'PCODE'
+                            value: 'testing'
+                modules:
+                - rewrite:
+                    actions:
+                    - regexp: '/awaps-ad-sdk-js/1_0/(.*)'
+                      rewrite: '/adsdkjs-loaders/testing/%1'
+                - shared:
+                    uuid: yastatic_net_s3_awaps-ad-sdk-js_percent
+            default:
+                matcher: {}
+                modules:
+                - rewrite:
+                    actions:
+                    - regexp: '/awaps-ad-sdk-js/1_0/(.*)'
+                      rewrite: '/adsdkjs-loaders/100percent/%1'
+                - shared:
+                    uuid: yastatic_net_s3_awaps-ad-sdk-js_percent

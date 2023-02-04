@@ -1,0 +1,157 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Создание собственного балуна на мультимаршруте
+
+Description:
+Создаем собственные макет балуна для мультимаршрута.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+smoke
+
+Estimated time: 
+120000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан Москвы.
+  На спане отображаются маршрутные метки "A" - метро Арбатская и "B" - метро Смоленская.
+  Между метками фиолетовая нитка маршрута, также могут быть альтернативные(серые нитки).
+    
+Step:
+  Action:
+  Клик в основную нитку маршрута.
+
+  Expectation:
+  В месте клика на нитке открывается балун со скругленными углами, розовым фоном, заголовком: "Маршрут на автомобиле", телом: "Расстояние: "значение" км,  Время в пути: "значение" мин.(без учета пробок)".
+
+Step:
+  Action:
+  Клик в альтернативную линию маршрута.
+
+  Expectation:
+  Альтернативная нитка открашивается в фиолтеовый цвет(основной), основная окрашивается в альтернативный (серый),
+  В месте клика открывается балун со скругленными углами, розовым фоном, заголовком: "Маршрут на автомобиле", телом: "Расстояние: "значение" км; Время в пути: "значение" (без учета пробок)".
+
+Step:
+  Action:
+  Клик во вторую альтернативную нитку маршрута(при наличии).
+
+  Expectation:
+  Альтернативная нитка открашивается в фиолетовый (основной), предыдущая основная окрашивается в альтернативный (серый),
+  В месте клика открывается балун со скругленными углами, розовым фоном, заголовком: "Маршрут на автомобиле", телом: "Расстояние: "значение" км; Время в пути: "значение" мин.(без учета пробок)".
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <link href="https://yandex.st/bootstrap/2.3.2/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://yandex.st/jquery/2.2.3/jquery.min.js" type="text/javascript"></script>
+    <script src="../../../helper.js"></script>
+    <style>
+        .my-balloon {
+            display: inline-block;
+            padding: 4px 10px;
+            height: 75px;
+            position: relative;
+            bottom: 80px;
+            left: -10px;
+            width: 150px;
+            font-size: 11px;
+            line-height: 15px;
+            color: #333333;
+            text-align: left;
+            vertical-align: middle;
+            background-color: #FFF0F5;
+            border: 1px solid #CDB7B5;
+            border-radius: 20px;
+            font-family: Arial;
+        }
+    </style>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            //ymaps = ym;
+            var myMap = new ymaps.Map('map', {
+                        center: [55.752625, 37.59810],
+                        zoom: 14,
+                        controls: []
+                    }, {
+                        backgroundVisible: false
+                    }),
+                    /**
+                     * Создание собственного макета с помощью фабрики макетов.
+                     * @see https://api.yandex.ru/maps/doc/jsapi/2.1/ref/reference/templateLayoutFactory.xml
+                     */
+                    balloonLayout = ymaps.templateLayoutFactory.createClass(
+                            "<div class='my-balloon'>" +
+                            '<a class="close" href="#">&times;</a>' +
+                            "<b>Маршрут {% if properties.type == 'driving' %}" +
+                            "на автомобиле<br/>" +
+                            "{% else %}" +
+                            "на общественном транспорте" +
+                            "{% endif %}</b><br />" +
+                            "Расстояние: " +
+                            "<i>{{ properties.distance.text }}</i>,<br />" +
+                            "Время в пути: " +
+                            "<i>{{ properties.duration.text }} (без учета пробок) </i>" +
+                            "</div>", {
+
+                                build: function () {
+                                    this.constructor.superclass.build.call(this);
+                                    this._$element = $('.my-balloon', this.getParentElement());
+                                    this._$element.find('.close')
+                                            .on('click', $.proxy(this.onCloseClick, this));
+                                },
+
+                                onCloseClick: function (e) {
+                                    e.preventDefault();
+                                    this.events.fire('userclose');
+                                }
+                            }
+                    ),
+                    /**
+                     * Создание мультимаршрута.
+                     * @see https://api.yandex.ru/maps/doc/jsapi/2.1/ref/reference/multiRouter.MultiRoute.xml
+                     */
+                    multiRoute = new ymaps.multiRouter.MultiRoute({
+                        referencePoints: [
+                            "метро Арбатская",
+                            "метро Смоленская"
+                        ],
+                        params: {
+                            // avoidTrafficJams: true,
+                            //routingMode: 'masstransit'
+                        }
+                    }, {
+                        /**
+                         * Макет геообъекта.
+                         * @see https://api.yandex.ru/maps/doc/jsapi/2.1/ref/reference/GeoObject.xml#param-options
+                         */
+                        balloonLayout: balloonLayout,
+                        // Отключаем режим панели для балуна.
+                        balloonPanelMaxMapArea: 0
+                    });
+            addGrid(myMap);
+            var log = new Log();
+            log.info("Test case: Задание собственного макета балуна");
+
+            myMap.geoObjects.add(multiRoute);
+        }
+    </script>
+</head>
+<body>
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

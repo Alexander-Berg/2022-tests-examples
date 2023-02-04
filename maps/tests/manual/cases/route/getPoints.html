@@ -1,0 +1,159 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Маршрут: получение сегментов маршрута
+
+Description:
+Проверка метода получение сегментов маршрута.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components:
+route
+
+Estimated time:
+120000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно, со спаном Центральной России, в контейнере дефолтный набор контролов.
+  Сверху имеется кнопка "route". 
+
+Step:
+  Action:
+  Выполнить клик в кнопку "route". 
+
+  Expectation:
+  Происходит смена спана карты на спан Восточной Европы.
+  На спане красная маршрутная нитка, на карте в СПб иконка "дом", Гомеле иконка "школа", Калининграде - "финиш". 
+
+Step:
+  Action:
+  Выполнить клик в иконку дома и финиша, клик в маршрутную линию на участках маршрута. 
+
+  Expectation:
+  При клике на иконки открывается балун с содержимым - городом.
+  При клике на участки маршрута открывается балун сегмента маршрута с обозначением участка, расстоянием и временем.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "route". 
+
+  Expectation:
+  Происходит смена спана карты на спан Центральной России.
+  На спане зеленая маршрутная нитка, имеются метки "1"-Москва, "2" - Тула, "Игрушка шар" - Калуга. 
+
+Step:
+  Action:
+  Выполнить клик в метки на маршруте, клик в маршрутную линию на участках маршрута. 
+
+  Expectation:
+  При клике на иконки открывается балун с содержимым - городом, по клику в метку в Калуге балун не открывается.
+  При клике на участки маршрута открывается балун сегмента маршрута с обозначением участка, расстоянием и временем.
+-->
+<html>
+<head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            var map = myMap = new ym.Map('map', {
+                        center: [55.00718809437818, 38.094514924687026],
+                        zoom: 7
+                    }),
+                    route,
+                    log = new Log(),
+                    zoom = new ym.control.ZoomControl,
+                    button1 = new ym.control.Button({data: {content: 'route'}}, {selectOnClick: true});
+
+            button1.events
+                    .add("select", function (e) {
+                        route = new ymaps.route([
+                            'питер',
+                            { type: 'viaPoint', point: 'львов' },
+                            { type: 'viaPoint', point: 'гомель' },
+                            'калининград'
+
+                        ], {
+                            mapStateAutoApply: true
+                        }).then(function (route) {
+                                    route.getPaths().options.set({
+                                        strokeColor: '#FF0000',
+                                        opacity: 1
+                                    });
+                                    route.getWayPoints().get(0).options.set({
+                                        iconLayout: 'default#image',
+                                        iconImageHref: 'https://png-1.findicons.com/files/icons/1580/devine_icons_part_2/32/home.png',
+                                        iconImageSize: [32, 32],
+                                        iconImageOffset: [-16, -16]
+                                    });
+                                    route.getWayPoints().get(1).options.set({
+                                        iconLayout: 'default#image',
+                                        iconImageHref: 'https://png-1.findicons.com/files/icons/2482/icons8_ever_growing_set_of_windows_8_metro_style_icons/26/finish_flag.png',
+                                        iconImageSize: [26, 26],
+                                        iconImageOffset: [-13, -13]
+                                    });
+                                    route.getViaPoints().get(0).options.set({
+                                        visible: false
+                                    });
+                                    route.getViaPoints().get(1).options.set({
+                                        iconLayout: 'default#image',
+                                        iconImageHref: 'https://png-2.findicons.com/files/icons/2711/free_icons_for_windows8_metro/32/school.png',
+                                        iconImageSize: [26, 26],
+                                        iconImageOffset: [-13, -13]
+                                    });
+                                    map.geoObjects.add(route);
+                                });
+                    })
+                    .add('deselect', function () {
+                        route = new ymaps.route([
+                            'москва',
+                            'тула',
+                            { type: 'viaPoint', point: 'калуга' },
+                            { type: 'wayPoint', point: [54.59766481046268, 39.615647888182124] }
+                        ], {
+                            mapStateAutoApply: true
+                        }).then(function (route) {
+                                    route.getPaths().options.set({
+                                        strokeColor: '00FF00',
+                                        opacity: 0.5
+                                    });
+                                    route.getWayPoints().options.set({
+                                        preset: 'islands#darkgreenCircleIcon',
+                                        iconOpacity: 0.5
+                                    });
+                                    route.getWayPoints().get(2).options.set({
+                                        visible: false
+                                    });
+                                    route.getViaPoints().options.set({
+                                        iconLayout: 'default#image',
+                                        iconImageHref: 'https://png-2.findicons.com/files/icons/232/christmas_xp/24/christmas_ball_1.png',
+                                        iconImageSize: [24, 24],
+                                        iconImageOffset: [-12, -12],
+                                        iconOpacity: 0.5
+                                    });
+                                    map.geoObjects.add(route);
+                                });
+                    });
+
+            map.controls
+                    .add(zoom)
+                    .add(button1);
+            addGrid(map);
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

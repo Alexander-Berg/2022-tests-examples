@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<!--
+Title:
+Контрол пробок: собственный контрол пробок
+
+Description:
+Проверка собственного контрола пробок.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+regress
+
+Estimated time:
+90000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась корректно.
+  На карте контрол "Show".
+  
+Step:
+  Action:
+  Выполнить клик в контрол "Show".
+
+  Expectation:
+  Появляются разноцветные линии пробок. 
+  Появляются три кнопки: "hide", "now", "usually".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "usually".
+
+  Expectation:
+  Пробочные линии перерисовываются на карте.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "now".
+
+  Expectation:
+  Пробочные линии перерисовываются на карте, показывая текущие пробки.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "hide".
+
+  Expectation:
+  Пробочные линии пропадают, на карте остается только кнопка "show".
+-->
+<html>
+<head>
+    <title>API 2.0</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <link rel="stylesheet" href="trafficButtonLayout.css"/>
+    <script src="//yandex.st/jquery/1.9.1/jquery.min.js" type="text/javascript"></script>
+    <script src="../helper.js"></script>
+    <script type=text/javascript>
+        Api('init');
+        function init(ymaps) {
+            var myMap = new ymaps.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 10,
+                behaviors: ['default', 'scrollZoom']
+            });
+            var MyTrafficControlLayout = ymaps.templateLayoutFactory.createClass("<div id='traffic'>" +
+                    "<div id='shown'>[if state.shown]hide[else]show[endif]</div>" +
+                    "[if state.shown]" +
+                    "<div id='now'>now</div>" +
+                    "<div id='usually'>usually</div>" +
+                    "[endif]" +
+                    "</div>", {
+                build: function () {
+                    // Вызываем родительский метод.
+                    MyTrafficControlLayout.superclass.build.call(this);
+                    // Запоминаем функции-обработчики, для которых закреплен контекст,
+                    // чтобы потом от них отписаться.
+                    this.actualCallback = ymaps.util.bind(this.setActualProvider, this);
+                    this.archiveCallback = ymaps.util.bind(this.setArchiveProvider, this);
+                    this.shownCallback = ymaps.util.bind(this.checkShown, this);
+                    // Подписываемся на клики на элементах панели.
+                    $('#shown').bind('click', this.shownCallback);
+                    $('#now').bind('click', this.actualCallback);
+                    $('#usually').bind('click', this.archiveCallback);
+                },
+                clear: function () {
+                    // Отписываемся от событий на элементах панели.
+                    $('#shown').unbind('click', this.shownCallback);
+                    $('#now').unbind('click', this.actualCallback);
+                    $('#usually').unbind('click', this.archiveCallback);
+                    // Вызываем родительский метод.
+                    MyTrafficControlLayout.superclass.clear.call(this);
+                },
+                setActualProvider: function () {
+                    // Для смены провайдера инициируем событие, описанное в ITrafficControlLayout.
+                    this.events.fire('providerkeychange', {newProviderKey: 'traffic#actual'});
+                },
+                setArchiveProvider: function () {
+                    // Для смены провайдера инициируем событие, описанное в ITrafficControlLayout.
+                    this.events.fire('providerkeychange', {newProviderKey: 'traffic#archive'});
+                },
+                checkShown: function () {
+                    // Проверяем состояние элемента управления,
+                    // и в зависимости от результата генерируем одно из событий
+                    // интерфейса ITrafficControlLayout.
+                    if (this.getData().state.get('shown')) {
+                        this.events.fire('hide');
+                    } else {
+                        this.events.fire('show');
+                    }
+                }
+            });
+            var trafficControl = new ymaps.control.TrafficControl({}, {layout: MyTrafficControlLayout});
+            myMap.controls.add(trafficControl);
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+<p><a href="https://tech.yandex.ru/maps/archive/doc/jsapi/2.0/ref/reference/control.TrafficControl-docpage/" target="_blank">Docs</a></p>
+</body>
+</html>

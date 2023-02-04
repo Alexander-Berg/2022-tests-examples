@@ -1,0 +1,461 @@
+# vim: ft=yaml
+ml:
+    preprocess_classes:
+        - '__import__("usercode.aggr").aggr.Preprocessor()'
+
+usercode:
+  files:
+      aggr.py: |
+
+        try:
+            from yabs.tabtools import *
+            from yabs.tabutils import TemporaryTableWithMeta
+            from yabs.tabutils import copyTablesWithMeta
+            from yabs.vwlib.mappers import VWApplyMapper
+            from yabs.ml.dump import fetch_all, list_dumps, fetch_dump
+
+            # dbg
+            from yabs.logconfig import get_properties
+
+            import os
+            import math
+            import collections
+            import datetime
+
+        except ImportError:
+            print "failed to import stuff"
+
+        class MyReducer(BasicReducer):
+
+            def deduceOutputFormat(self):
+                return self._output_format
+
+            def setFormat(self, format):
+                self._format = format.clone()
+                self._output_format = format.clone()
+
+                features = []
+
+                for key in ("O", "OSt", "OP"): #, "B", "BSt", "BP"):
+                    for val in ("Clicks", "D120", "LClicks", "PrGMG", "LnDur"):
+                        for name in ("Cnt", "Rate", "Ratio"):
+                            if key in ("O", "B") and name == "Ratio":
+                                continue
+                            if val == "Clicks" and name in ("Rate", "Ratio"):
+                                continue
+                            features.append("F%s_%s_%s" % (key, val, name))
+
+                #print features
+                #"FO_Clicks_Cnt","FO_D120_Cnt","FO_D120_Rate","FO_LClicks_Cnt","FO_LClicks_Rate","FO_PrGMG_Cnt","FO_PrGMG_Rate","FO_LnDur_Cnt","FO_LnDur_Rate","FOSt_Clicks_Cnt","FOSt_D120_Cnt","FOSt_D120_Rate","FOSt_D120_Ratio","FOSt_LClicks_Cnt","FOSt_LClicks_Rate","FOSt_PrGMG_Cnt","FOSt_PrGMG_Rate","FOSt_PrGMG_Ratio","FOSt_LnDur_Cnt","FOSt_LnDur_Rate","FOSt_LnDur_Ratio","FOP_Clicks_Cnt","FOP_D120_Cnt","FOP_D120_Rate","FOP_D120_Ratio","FOP_LClicks_Cnt","FOP_LClicks_Rate","FOP_PrGMG_Cnt","FOP_PrGMG_Rate","FOP_PrGMG_Ratio","FOP_LnDur_Cnt","FOP_LnDur_Rate","FOP_LnDur_Ratio"
+
+                for f in features:
+                    self._output_format.addField(f, float)
+
+            def merge(self, st1, st2):
+                for k2 in st2:
+                    st1[k2] = st1.get(k2, 0.) + st2[k2]
+
+            def __call__(self, k, recs):
+                stat = [{},{}]
+                queue = collections.deque([])
+                delay = 20*60
+
+                ts = 0;
+
+                for r in recs:
+                    if r.EventTime < ts:
+                        raise Exceptio("%s: %s < %s" % (k, r.EventTime, ts))
+                    ts = r.EventTime
+
+                    data = {}
+                    data["Clicks"] = 1.
+                    data["D120"] = 1. if r.MaxDuration > 120 else 0.
+                    data["LClicks"] = 1. if r.MaxDuration >= 30 or r.MaxDepth >= 2 else 0.
+                    data["LnDur"] = math.log(r.MaxDuration + 30) - math.log(30)
+                    data["PrGMG"] = r.PrGoodMultiGoal
+
+                    st = {}
+                    st["EventTime"] = r.EventTime
+                    # cross apply stats
+                    st["X"] = 1 - r.HitLogID % 2
+                    for v in data:
+                        st[v] = data[v]
+                        st["%s,St=%s" % (v, r.SelectType)] = data[v]
+                        st["%s,P=%s" % (v, r.PageID)] = data[v]
+
+                    queue.append(st)
+
+                    while len(queue) > 0 and queue[0]["EventTime"] < r.EventTime - delay:
+                        item = queue.popleft()
+                        self.merge(stat[item["X"]], item)
+
+                    for name in ("Cnt", "Rate", "Ratio"):
+                        for key in ("O", "OSt", "OP"): #, "B", "BSt", "BP"):
+                            for val in ("Clicks", "D120", "LClicks", "PrGMG", "LnDur"):
+                                if key in ("O", "B") and name == "Ratio":
+                                    continue
+                                if val == "Clicks" and name in ("Rate", "Ratio"):
+                                    continue
+
+                                x = -1.
+                                if name == "Rate":
+                                    #TODO: priors?!
+                                    x = (r["F%s_%s_%s" % (key, val, "Cnt")] + 1.0) / (r["F%s_%s_%s" % (key, "Clicks", "Cnt")] + 2.0)
+                                elif name == "Ratio":
+                                    x = (r["F%s_%s_%s" % (key, val, "Rate")]) / (r["F%s_%s_%s" % ("O", val, "Rate")])
+                                else:
+                                    k = val
+                                    if key == "OSt":
+                                        k += ",St=%s" % r.SelectType
+                                    if key == "OP":
+                                        k += ",P=%s" % r.PageID
+
+                                    if k in stat[r.HitLogID % 2]:
+                                        x = stat[r.HitLogID % 2][k]
+                                    else:
+                                        x = 0.
+
+                                r["F%s_%s_%s" % (key, val, name)] = x
+
+                    # only last week
+                    #if datetime.datetime.fromtimestamp(r.EventTime + 60*60*24*7) > task.last_log_date:
+                    yield r
+
+
+        def get_vw_spiral_mappers(task_id, target_field, only_forward=True):
+            def time_stamp(d):
+                #!!! model YYYYMMDD uses full YYYYMMDD log with all YYYYMMDDHH events. But datetime(YYYYMMDD) is the beginning od the day
+                # thus +24!
+                shift = datetime.timedelta(hours=24+{task.data.lm_delay})
+                dt = datetime.datetime.strptime(d.date, '%Y%m%d') + shift
+                time_stamp = int(dt.strftime("%s"))
+                return time_stamp
+
+            model_folder = "{task.path.tmp_dir}"
+            last_log_date = datetime.datetime.strptime("{task.last_log_date}", "%Y-%m-%d")
+            end_date = (last_log_date + datetime.timedelta(days=1)).strftime("%Y%m%d")
+            start_date = (last_log_date - datetime.timedelta(days={task.days}+4)).strftime("%Y%m%d")
+            dumps = list_dumps(task_id, only_dates=False)
+
+            mappers = []
+            prev_d = None
+            for d in dumps:
+                if start_date <= d.date and d.date < end_date:
+                    model_path = os.path.join(model_folder, task_id, d.date)
+                    fetch_dump(os.path.join(task_id, d.date), model_path, sources=d.sources)
+                    if prev_d:
+                        grepper = Grep('r.EventTime >= %d and r.EventTime < %d' % (time_stamp(d), time_stamp(prev_d)))
+                    else:
+                        grepper = Grep('r.EventTime >= %d' % (time_stamp(d)))
+
+                    mappers.append([grepper, VWApplyMapper(target_field, model_path=model_path)])
+                    prev_d = d
+
+            if not only_forward and prev_d:
+                model_path = os.path.join(model_folder, task_id, prev_d.date)
+                grepper = Grep('r.EventTime < %d' % (time_stamp(prev_d)))
+                mappers.append([grepper, VWApplyMapper(target_field, model_path=model_path)])
+
+            return Tee(mappers, max_records=10000)
+
+        class Preprocessor(object):
+          def __call__(self, src_tables, dst_table):
+
+              with TemporaryTableWithMeta() as tmp_src, TemporaryTableWithMeta() as tmp_stat:
+                  #copyTablesWithMeta(src_tables, tmp_src.name)
+
+                  mr_do_map(
+                      [
+                          Grep("r.YabarEventTime or r.HasCounter"),
+                          Mapper("r.Weight = 0.5", add_fields=[("Weight", float)]),
+                      ],
+                      src_tables,
+                      [tmp_src.name],
+                  )
+                  print "QQQ1: ", get_properties(tmp_src.name, check=True)["records"]
+
+                  {task.data.prereduce}
+                  print "QQQ2: ", get_properties(tmp_src.name, check=True)["records"]
+
+                  mr_do_map(
+                      [
+                          {task.data.premappers}
+
+                          Grep("r.{task.data.target} is not None"), #??
+                          Grep("r.DomainID is not None"), #??
+                          Mapper("r.DayID = int(r.EventTime / 86400)", add_fields=[("DayID", int)]),
+
+                          Mapper("""
+                              if r.ContextType == 3:
+                                  r.TargetPhraseID = r.OrigPhraseID
+                              if r.TargetPhraseID == 0:
+                                  r.TargetPhraseID = r.PhraseID
+                          """),
+                          Mapper("r.DBPh_Q = str(r.DomainID) + ' ' + str(r.BannerID) + ' ' + str(r.TargetPhraseID)",
+                              add_fields=[("DBPh_Q", str)]),
+                          Mapper("r.DGPh_Q = str(r.DomainID) + ' ' + str(r.GroupBannerID) + ' ' + str(r.TargetPhraseID)",
+                              add_fields=[("DGPh_Q", str)]),
+                          Mapper("r.ODGPh_Q = str(r.OrderID) + ' ' + str(r.DomainID) + ' ' + str(r.GroupBannerID) + ' ' + str(r.TargetPhraseID)",
+                              add_fields=[("ODGPh_Q", str)]),
+                          Mapper("r.ODGPhX_Q = str(r.OrderID) + ' ' + str(r.DomainID) + ' ' + str(r.GroupBannerID) + ' ' + str(r.TargetPhraseID) + ' ' + str(r.HitLogID % 2)",
+                              add_fields=[("ODGPhX_Q", str)]),
+                          Mapper("r.TDGPh_Q = str(r.DayID) + ' ' + str(r.DomainID) + ' ' + str(r.GroupBannerID) + ' ' + str(r.TargetPhraseID)",
+                              add_fields=[("TDGPh_Q", str)]),
+                          Mapper("r.DO_Q = str(r.DomainID) + ' ' + str(r.OrderID)",
+                              add_fields=[("DO_Q", str)]),
+                          Mapper("r.I_Q = '1'",
+                              add_fields=[("I_Q", str)]),
+
+
+                          Mapper("r.{task.data.key}_QID = 0x7FFFFFFF & hash(r.{task.data.key}_Q)", add_fields=[("{task.data.key}_QID", int)]),
+
+                      ],
+                      [tmp_src.name],
+                      [tmp_src.name],
+                  )
+                  print "QQQ2.5: ", get_properties(tmp_src.name, check=True)["records"]
+
+                  #FIXME: multiple Tee in mr_do_map give UB on cluster :-\
+                  mr_do_map(
+                      [
+                          # treat conversions as clicks too!
+                          Tee([
+                              [],
+                              [
+                                  Grep("r.{task.data.target}"),
+                                  Mapper("r.{task.data.target} = 0"),
+                              ],
+                          ]),
+
+                          Cut(keys=["DomainID"], format_id='z%s'),
+                      ],
+                      [tmp_src.name],
+                      [tmp_src.name],
+                  )
+                  print "QQQ3: ", get_properties(tmp_src.name, check=True)["records"]
+
+                  {task.data.prejoin}
+                  print "QQQ4: ", get_properties(tmp_src.name, check=True)["records"]
+
+                  mr_do_aggregate(
+                      aggregator=StatAggregator(
+                          reducers=[
+                              Sum("Conv_Weight", "{task.data.key}_Conv"),
+                              Sum("Weight", "{task.data.key}_Total"),
+                              Count("{task.data.key}_Samples"),
+                          ],
+                          keys=["{task.data.key}_Q"],
+                      ),
+
+                      premap=[
+                          Mapper("r.Conv_Weight = float(r.{task.data.target}) * r.Weight"),
+                      ],
+                      postmap=[
+                          Grep("r.{task.data.key}_Conv > {task.data.conv_threshold}"),
+                          Grep("r.{task.data.key}_Samples > {task.data.samples_threshold}"),
+                          Mapper("r.{task.data.key}_APC = float(r.{task.data.key}_Conv) / r.{task.data.key}_Total"),
+                          Grep("r.{task.data.key}_APC > {task.data.apc_min} and r.{task.data.key}_APC < {task.data.apc_max}"),
+                          Cut(keys=["{task.data.key}_Q"], format_id='a%s'),
+                      ],
+                      src_tables = [tmp_src.name],
+                      dst_tables = [tmp_stat.name],
+                  )
+
+                  reweight_map = Mapper("""
+                      import math
+                      n = float(r.{task.data.key}_Total)
+                      c = float(r.{task.data.key}_Conv)
+                      r.ConvReweight = (n - c) / c
+                      r.ConvLn = int(math.log(c))
+                  """, add_fields=[("ConvLn", int), ("ConvReweight", float)])
+
+                  if "{task.data.key}_Q" == "I_Q":
+                      mr_do_map(
+                          [
+                              MapJoin(tmp_stat.name, keys=["{task.data.key}_Q"], joinType='inner'),
+                              reweight_map,
+                          ],
+                          src_tables=[tmp_src.name],
+                          dst_tables=[tmp_src.name],
+                      )
+                  else:
+                      mr_do_join(
+                          Join(tmp_src.name, tmp_stat.name, joinType="inner", keys=["{task.data.key}_Q"]),
+                          [tmp_src.name],
+                          postmap=[
+                              reweight_map
+                          ],
+                      )
+                  print "QQQ5: ", get_properties(tmp_src.name, check=True)["records"]
+
+                  mr_do_aggregate(
+                      aggregator=StatAggregator(
+                          reducers=[
+                              Sum("Weight", "D_Count"),
+                          ],
+                          keys=["DomainID"],
+                      ),
+                      postmap=[Cut(format_id='a%s')],
+                      src_tables=[tmp_src.name],
+                      dst_tables=[tmp_stat.name],
+                  )
+                  mr_do_join(
+                      Join(tmp_src.name, tmp_stat.name, joinType="inner", keys=["DomainID"]),
+                      dst_tables=[tmp_src.name],
+                  )
+                  print "QQQ6: ", get_properties(tmp_src.name, check=True)["records"]
+
+                  mr_do_map(
+                      [
+                          Mapper("""
+                              import math
+                              if {task.data.domain_weights} > 0.:
+                                  r.Weight /= math.pow(r.D_Count, {task.data.domain_weights})
+                          """),
+
+                          {task.data.postmappers}
+                      ],
+                      src_tables = [tmp_src.name],
+                      dst_tables = [dst_table],
+                  )
+                  print "QQQ7: ", get_properties(dst_table, check=True)["records"]
+
+              return [dst_table]
+---
+
+calc:
+    exec: |
+        from yabs.tabtools import Mapper, Grep
+        from yabs.vwlib.mappers import VWVivisectionApplyMapper, VWApplyMapper
+        from yabs.matrixnet import Matrixnet
+        from yabs.matrixnet.factor import F14Factors, F15Factors
+        from yabs.matrixnet.lmfactor import SERPFactors,RSYAFactors
+        from yabs.ml.dump import fetch_latest
+        from usercode.aggr import get_vw_spiral_mappers
+        import yabs.matrixnet.factor
+        {task.data.fetch_mx_current}
+
+        # FIXME: shoutpva@:
+        #bad_fields = [
+        #    'RelevFeatNavmx',
+        #    'RelevFeatWminone',
+        #    'RelevFeatGeov',
+        #    'RelevFeatIssoft',
+        #    'RelevFeatQr2r',
+        #    'RelevFeatCm2',
+        #    'RelevFeatSyq',
+        #    'RelevFeatIshum',
+        #    'RelevFeatIssite',
+        #]
+        #fix_fields_mapper = Mapper('''
+        #    for field in self.bad_fields:
+        #        setattr(r, field, 0.0)
+        #''', add_fields=[(field, float) for field in bad_fields])
+        #fix_fields_mapper.bad_fields = bad_fields
+
+
+    begin: |
+        import random
+        import math
+        random.seed(502001)
+
+    mappers: |
+        [
+
+            Mapper("r.Random = int(random.random() * 1000000)", add_fields=[("Random", int)]),
+            Grep("r.{task.data.split_key} % 10 in {task.data.test_folds} or r.{task.data.split_key} % 10 in {task.data.train_folds}"),
+            Mapper("r.Split = 0 if r.{task.data.split_key} % 10 in {task.data.train_folds} else 1", add_fields=[("Split", int)]),
+
+            {task.data.mappers}
+
+            Mapper("if r.{task.data.target}: r.Weight *= {task.data.reweight_expr}"),
+        ]
+
+max_launch_count: 30
+
+#conf_override:
+#  mapreducelib:
+#    options:
+#      memory_limit: 16000
+
+conf_override:
+  mapreducelib:
+    options:
+      yt_spec:
+        mapper:
+          memory_limit: 20000000000
+        reducer:
+          memory_limit: 20000000000
+
+  ml:
+    quality_eval:
+      slice_metrics:
+        logistic:
+          - [shows, '%.6f']
+          - [ctr, '%.6f']
+          - [ll_max, '%.6f']
+          - [ll_p, '%.6f']
+          - [roc_auc, '%.6f']
+          - [w_hitwise_auc, '%.6f']
+
+ml:
+
+  slices:
+    context_type:
+      slice_keys: [ContextType]
+    has_counter:
+      slice_keys: [HasCounter]
+    select_type:
+      slice_keys: [SelectType]
+    conv_ln:
+      slice_keys: [ConvLn]
+    device_type:
+      slice_keys: [DeviceType]
+
+  split_learn_test_by: Split
+  learn_fields:
+    target:
+      name: "{task.data.target}"
+    id:
+      name: "{task.data.qid}"
+    weight:
+      name: Weight
+
+#remote_call:
+#    preprocess:
+#        cpu_idle_timeout: 288000 # 80 hours
+
+data:
+    # v6: grep has bar or metrics!
+    pp_version: "v6"
+    lm_delay: 16
+    prepare_params: "k{task.data.key}_t{task.data.target}_dw{task.data.domain_weights}_ct{task.data.conv_threshold}_{task.data.pp_version}"
+    split_key: DomainID
+    key: DGPh
+    reweight_key: ConvReweight
+    reweight_expr: "r.{task.data.reweight_key}"
+    target: IsGoodGoalConversion
+    qid: "{task.data.key}_QID"
+    apc_min: 0.005
+    apc_max: 0.3
+    train_folds: "[0,2,4,6,8]"
+    test_folds: "list(set(range(10)) - set({task.data.train_folds}))"
+    mappers: ""
+    premappers: ""
+    postmappers: ""
+    domain_weights: 0.
+    conv_threshold: 0.
+    samples_threshold: 0.
+    GrepPages: []
+    prejoin: ""
+    prereduce: ""
+    fetch_mx_current: ""
+
+validation:
+  enabled:
+    false
+
+
+testing:
+  allowed:
+    false

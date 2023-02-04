@@ -1,0 +1,190 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Геообъект: опция автопан в режиме рисования
+
+Description:
+Проверка опции автопан в режиме рисования.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+geoobject
+
+Estimated time:
+120000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан Московской области, на спане ряд объектов: синяя метка, синяя линия и многоугольник.
+  Сверху слева кнопки "polyline is drawn", "polygon is drawn", справа кнопка "autoPan off"(кнопка активна - окрашена желтым).
+  Под контейнером с картой появляется строка: "useAutoPanInDrawing => false".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "polyline is drawn". 
+
+  Expectation:
+  На объекте линии появляются метки редактирования, к курсору прилипает пунктирная линия рисования.
+
+Step:
+  Action:
+  Переместить курсор с линией рисования к границам контейнера с картой. 
+
+  Expectation:
+  Спан карты не перемещается.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "polygon is drawn". 
+
+  Expectation:
+  На объекте многоугольнике появляются метки редактирования, к курсору прилипают пунктирные линии рисования от вершин многоугольника.
+  Метки редактирования на линии не пропадают.
+
+Step:
+  Action:
+  Переместить курсор с линиями рисования к границам контейнера с картой. 
+
+  Expectation:
+  Спан карты не перемещается.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "autoPan off". 
+
+  Expectation:
+  Спан карты и объекты без изменений, под контейнером с картой появляется строка: "useAutoPanInDrawing => true".
+
+Step:
+  Action:
+  Выполнить два клика в кнопку "polyline is drawn". 
+
+  Expectation:
+  Спан карты без изменений, к курсору прилипает пунктирная линия рисования от вершины объекта линии.
+
+Step:
+  Action:
+  Переместить курсор с линией рисования к границам контейнера с картой. 
+
+  Expectation:
+  Спан карты перемещается в сторону перемещения курсора.
+
+Step:
+  Action:
+  Выполнить два клика в кнопку "polygon is drawn". 
+
+  Expectation:
+  Спан карты без изменений, к курсору прилипают пунктирные линии рисования от вершин многоугольника.
+  Метки редактирования на линии не пропадают.
+
+Step:
+  Action:
+  Переместить курсор с линиями рисования к границам контейнера с картой. 
+
+  Expectation:
+  Спан карты перемещается в сторону перемещения курсора.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../geoCS.js"></script>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            var map = new ymaps.Map("map", {
+                center: [55.90,37.60],
+                zoom: 10,
+                controls: []
+            },
+            {
+                buttonMaxWidth: 99999,
+                avoidFractionalZoom: false
+            }),
+            polylineButton = new ymaps.control.Button({data: {content: 'polyline is drawn'}, options: {selectOnClick: true}}),
+            polygonButton = new ymaps.control.Button({data: {content: 'polygon is drawn'}, options: {selectOnClick: true}}),
+            useAutoPanButton = new ymaps.control.Button({data: {content: 'autoPan off'}, options: {selectOnClick: true}}),
+            collection = new ymaps.GeoObjectCollection();
+
+            geoCSSource(ymaps, map, this);
+            addGrid(map);
+
+            __log__('Check useAutoPanInDrawing option');
+
+            collection
+                .add(polyline)
+                .add(polygon)
+                .add(placemark);
+
+            polylineButton.events
+                    .add('select', function () {
+                        polyline.editor.startDrawing();
+                    })
+                    .add('deselect', function () {
+                        polyline.editor.stopDrawing();
+                    });
+
+            polygonButton.events
+                    .add('select', function () {
+                        polygon.editor.startDrawing();
+                    })
+                    .add('deselect', function () {
+                        polygon.editor.stopDrawing();
+                    });
+
+            useAutoPanButton.events
+                    .add('select', function () {
+                        __log__('useAutoPanInDrawing => false');
+                        polyline.editor.options.set('useAutoPanInDrawing', false);
+                        polygon.editor.options.set('useAutoPanInDrawing', false);
+                    })
+                    .add('deselect', function () {
+                        __log__('useAutoPanInDrawing => true');
+                        polyline.editor.options.set('useAutoPanInDrawing', true);
+                        polygon.editor.options.set('useAutoPanInDrawing', true);
+                    });
+
+            // Check autoPan when balloon has opening
+            placemark.properties.set('balloonContent', [
+                'Цвела кувшинка на Руси!',
+                'В пруду, где дремлют караси,',
+                'Купался ты. И вдруг она',
+                'Всплыла, как будто бы со дна.',
+
+                'И ты спросил ее во тьме:',
+                '-"Цветок! В своем ли ты уме!',
+                'А если я тебя сорву?"',
+                '"Сорви. Не бойся. Оживу!"',
+
+                'Кувшинке трудно - до вершин.',
+                'Кувшинке хочется в кувшин,',
+                'Хотя бы очень небольшой,',
+                'Но с человеческой душой.]);'
+            ].join('<br/>'));
+
+            useAutoPanButton.state.set('selected', true);
+            map.geoObjects.add(collection);
+            map.controls
+                .add(polygonButton)
+                .add(polylineButton)
+                .add(useAutoPanButton, { float: 'right'});
+        }
+
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

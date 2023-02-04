@@ -1,0 +1,124 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Геообъект: программно включаем режим рисования коллекции объектов
+
+Description:
+Проверка программного включения режима рисования у коллекции объектов.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+geoobject
+
+Estimated time:
+30000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан Московской области, на ряд объектов: зеленая метка, синяя линия и многоугольник.
+  Спустя 4 секунды на линии и многоугольнике появляются метки редактирования. 
+  Спустя еще 2 секунды нижняя метка линии и метка верхнего правого угла прямоугольной части многоульника становятся серыми.
+  Через секунду метки редактирования пропадают с объектов. (после цикл повторяется).
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+
+            var map = new ymaps.Map("map", {
+                center: [55.72, 37.54],
+                zoom: 10,
+                controls: []
+            });
+
+            var placemark = new ymaps.Placemark([55.71574031323344, 37.29753265380539], {}, {
+                preset: 'islands#greenIcon',
+                openBalloonOnClick: false,
+                openHintOnHover: false,
+                editorDrawOver: true});
+
+            map.geoObjects.add(placemark);
+
+            var polyline = new ymaps.GeoObject({
+                geometry: {
+                    type: "LineString",
+                    coordinates: [
+                        [55.790716316844474, 37.50037536621043],
+                        [55.680690559796844, 37.442572021483656],
+                        [55.788698241203036, 37.38720397949171]
+                    ]
+                }
+            });
+            //polyline.options.set("editorHideGuideLinesOnVertexHover", false);
+            map.geoObjects.add(polyline);
+
+            var polygon = new ymaps.GeoObject({
+                geometry: {
+                    type: "Polygon",
+                    coordinates: [
+                        [
+                            [55.787092634473694, 37.667663574218096],
+                            [55.68797724922255, 37.666976928710035],
+                            [55.68754896639797, 37.57658996581947],
+                            [55.78474860376539, 37.57684020996037],
+                            [55.787092634473694, 37.667663574218096]
+                        ],
+                        [
+                            [55.78709263446105, 37.71984863281182],
+                            [55.68797724922255, 37.666976928710035],
+                            [55.68599735621169, 37.78258361816322],
+                            [55.78709263446105, 37.71984863281182]
+                        ]
+                    ]
+                },
+                properties: {
+                    hintContent: "polygon hint",
+                    balloonContent: "polygon balloon"
+                }
+            });
+            map.geoObjects.add(polygon);
+            setInterval(function(){
+                placemark.editor.startDrawing();
+                polyline.editor.startDrawing();
+                polygon.editor.startDrawing();
+                setTimeout(function(){
+                    polyline.editor.getView().then(function (view) {
+                        var path = view;
+                        var vertexs = path.getVertexViews();
+                        vertexs[1].disable(); });
+                    polygon.editor.getView().then(function (view) {
+                        var path = view.getPathViews?view.getPathViews()[0]:view;
+                        var vertexs = path.getVertexViews();
+                        vertexs[0].disable(); });
+                    setTimeout(function(){
+
+                        polygon.editor.stopEditing();
+                        polyline.editor.stopEditing();
+                        placemark.editor.stopEditing();
+                    },1000)
+
+                }, 2000)
+            }, 4000)
+        }
+
+
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

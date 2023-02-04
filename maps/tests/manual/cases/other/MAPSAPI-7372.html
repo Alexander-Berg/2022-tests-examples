@@ -1,0 +1,215 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Результаты промисов и события в инфо-объектах при повторных действиях
+
+Description:
+Результаты промисов и события в инфо-объектах при повторных действиях. 
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+Обязателен для проверки на IE-8
+
+Components: 
+map
+
+Estimated time:
+90000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно со спаном Москвы, в центре спана метка, сверху справа прямоугольник.
+  В контейнере дефолтный набор контролов, снизу слева кнопки "move", "zoom", "clear".
+  Под контейнером с картой строкa "avoidFractionalZoom: true".
+  
+Step:
+  Action:
+  Навести курсор на метку коллекции, зажать ЛКМ, выполнить драг метки.
+
+  Expectation:
+  Захват и драг метки корректные, карта не зависает, метка корректно перемещается.
+
+Step:
+  Action:
+  Навести курсор на метку коллекции, зажать ЛКМ, выполнить драг метки.
+
+  Expectation:
+  Захват и драг метки корректные, карта не зависает, метка корректно перемещается.
+  Под контейнером с картой появляются события карты и события метки.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "clear"(стереть содержимое под контейнером). 
+  Клик в кнопку "move", затем повторно выполнить драг метки, затем драг прямоугольника.
+
+  Expectation:
+  Захват и драг метки и прямоугольника корректные, карта не зависает, метка и прямоугольник корректно перемещаются.
+  Под контейнером с картой появляются события карты и события метки и прямоугольника.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "move", затем в кнопку "clear"(стереть содержимое под контейнером). 
+  Клик в кнопку "zoom", затем повторно выполнить драг метки, затем драг прямоугольника.
+
+  Expectation:
+  По клику в кнопку "zoom" под контейнером появляется строка: "avoidFractionalZoom: false". 
+  Захват и драг метки и прямоугольника корректные, карта не зависает, метка и прямоугольник корректно перемещаются.
+  Под контейнером с картой появляются события карты и события метки и прямоугольника.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 10,
+                behaviors: ['default', 'scrollZoom']
+            });
+
+            addGrid(map);
+            var log = new Log();
+            log.info('avoidFractionalZoom: ' + map.options.get('avoidFractionalZoom'));
+
+            var clearButton = new ymaps.control.Button('clear');
+            clearButton.events.add('click', function () {
+                log.clear();
+            });
+
+            var fractionalZoomButton = new ymaps.control.Button('zoom');
+            fractionalZoomButton.events
+                    .add('select', function () {
+                        map.options.set('avoidFractionalZoom', false);
+                        log.info('avoidFractionalZoom: ' + map.options.get('avoidFractionalZoom'));
+                    })
+                    .add('deselect', function () {
+                        map.options.set('avoidFractionalZoom', true);
+                        log.info('avoidFractionalZoom: ' + map.options.get('avoidFractionalZoom'));
+                    });
+
+            map.controls
+                    .add(new ymaps.control.RouteEditor(), {position: {top: 50, left: 10}})
+                    .add(fractionalZoomButton, {position: {bottom: 65, left: 10}})
+                    .add(clearButton, {position: {bottom: 35, left: 10}});
+
+            var placemark = new ymaps.Placemark([55.72725771214265, 37.640390506634006], {balloonContent: 'balloon'},
+                    {draggable: true});
+
+            var rectangle = new ymaps.Rectangle([
+                [55.973805634187, 37.81389007567776],
+                [55.87510965298843, 37.95396575927215]
+            ], {hintContent: 'hint'}, {draggable: true});
+
+            var circle = new ymaps.Circle([
+                [55.9238145091058, 38.097131347654376],
+                5000
+            ], {hintContent: 'hint'}, {
+                draggable: true});
+
+            var polyline = new ymaps.Polyline([
+                [55.97596807270264, 37.49213562011659],
+                [55.86646804437069, 37.43433227538992],
+                [55.97395964586614, 37.37896423339792]
+            ], {hintContent: 'hint'}, {strokeWidth: 3, draggable: true});
+
+            var polygon = new ymaps.Polygon([
+                [
+                    [55.97698207150061, 37.571533203124304],
+                    [55.977780948987515, 37.66869354247962],
+                    [55.876808118310706, 37.66697692871001],
+                    [55.87638191482625, 37.565603637694494],
+                    [55.97698207150061, 37.571533203124304]
+                ],
+                [
+                    [55.97544201439153, 37.71984863281182],
+                    [55.876808118310706, 37.66697692871001],
+                    [55.8748378377763, 37.78258361816322],
+                    [55.97544201439153, 37.71984863281182]
+                ]
+            ], {hintContent: 'hint'}, {draggable: true});
+
+            map.geoObjects
+                    .add(placemark)
+                    .add(rectangle);
+
+            var domevents = ['click', 'contextmenu', 'dblclick', 'beforemouseenter', 'mousedown', 'mouseenter',
+                'mouseleave', 'mouseup', 'multitouchend', 'multitouchstart', 'wheel'];
+
+            var callback = function (e) {
+                log.info('map event: ' + e.get('type'));
+                console.log('map event: ' + e.get('type'));
+            };
+
+            var callback2 = function (e) {
+                log.info('placemark event: ' + e.get('type'));
+                console.log('placemark event: ' + e.get('type'));
+            };
+
+            var callback3 = function (e) {
+                log.info('control event: ' + e.get('type'));
+                console.log('control event: ' + e.get('type'));
+            };
+
+            var callback4 = function (e) {
+                log.info('circle event: ' + e.get('type'));
+                console.log('circle event: ' + e.get('type'));
+            };
+
+            var callback5 = function (e) {
+                log.info('polygon event: ' + e.get('type'));
+                console.log('polygon event: ' + e.get('type'));
+            };
+
+            var callback6 = function (e) {
+                log.info('rectangle event: ' + e.get('type'));
+                console.log('rectangle event: ' + e.get('type'));
+            };
+
+            var callback7 = function (e) {
+                log.info('polyline event: ' + e.get('type'));
+                console.log('polyline event: ' + e.get('type'));
+            };
+
+            placemark.events.add(domevents, callback2);
+            map.events.add(domevents, callback);
+            map.controls.events.add(domevents, callback3);
+            rectangle.events.add(domevents, callback6);
+            circle.events.add(domevents, callback4);
+            polygon.events.add(domevents, callback5);
+            polyline.events.add(domevents, callback7);
+
+            var moveevents = ['mousemove'];
+            var moveButton = new ymaps.control.Button({data: {content: 'move'}, options: {selectOnClick: true}});
+            moveButton.events
+                    .add('select', function () {
+                        log.info('Waiting for move events...');
+                        map.events.add(moveevents, callback);
+                        placemark.events.add(moveevents, callback2);
+                        rectangle.events.add(moveevents, callback6);
+                    })
+                    .add('deselect', function () {
+                        log.info('Move events will be ignored.');
+                        map.events.remove(moveevents, callback);
+                        placemark.events.remove(moveevents, callback2);
+                        rectangle.events.remove(moveevents, callback6);
+                    });
+            map.controls.add(moveButton, {position: {bottom: 95, left: 10}})
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

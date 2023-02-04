@@ -1,0 +1,105 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Util: прямоугольная область, охватывающая все переданные точки
+
+Description:
+Проверка вычисления минимальной прямоугольной области, в которую попадают все переданные точки.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components:
+util
+
+Estimated time:
+120000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть страницу и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно со спаном материков Евразии и Северная Америка.
+  Сверху кнопка "clear".
+
+Step:
+  Action:
+  Выполнить клик в центр спана с левой стороны контейнера, затем клик в центр спана у правой стороны. 
+
+  Expectation:
+  При каждом клике на спане карты появляется синяя метка коллекции, под контейнером строки "points; bounds" с координатами точки и области.
+  После второго клика на спане появляется область синего прямоугольника с вершинами - метками.
+
+Step:
+  Action:
+  Выполнить клик в центр спана сверху контейнера. 
+
+  Expectation:
+  При клике сверху спана карты появляется синяя метка коллекции, под контейнером строки "points; bounds" с координатами точки и области.
+  Область прямоугольника растягивается для захвата выставленной метки.
+  
+Step:
+  Action:
+  Выполнить клик в центр спана снизу контейнера. 
+
+  Expectation:
+  При клике снизу спана карты появляется синяя метка коллекции, под контейнером строки "points; bounds" с координатами точки и области.
+  Область прямоугольника растягивается для захвата выставленной метки.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            //ymaps = ym;
+            var myMap = new ymaps.Map("map", {
+                center: [50, -179],
+                zoom: 3,
+                controls: []
+            }, {
+                geoObjectInteractivityModel: 'default#silent'
+            });
+            __log__('При создании точек должен появиться bounds охватывающий их');
+            var projection = myMap.options.get('projection'),
+                    clearBtn = new ymaps.control.Button('clear'),
+                    coords = [],
+                    rect;
+            myMap.controls.add(clearBtn);
+
+            clearBtn.events.add('click', function (e) {
+                if (rect) {
+                    myMap.geoObjects.removeAll();
+                }
+                coords = [];
+            });
+
+            myMap.events.add('click', function (e) {
+                coords.push(e.get('coords'));
+                if (rect) {
+                    myMap.geoObjects.remove(rect);
+                }
+                var bounds = ymaps.util.bounds.fromPoints(coords, projection);
+                rect = new ymaps.Rectangle(bounds);
+                myMap.geoObjects.add(rect).add(new ymaps.Placemark(e.get('coords')));
+                __log__('points: ' + JSON.stringify(coords));
+                __log__('bounds: ' + JSON.stringify(bounds));
+                __log__('------------');
+            });
+
+            addGrid(myMap);
+
+        }
+    </script>
+</head>
+<body>
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

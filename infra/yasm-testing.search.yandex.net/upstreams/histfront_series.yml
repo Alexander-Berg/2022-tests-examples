@@ -1,0 +1,43 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - alovtsyus
+      groups: []
+labels:
+  order: '10010000'
+---
+regexp_section:
+  matcher:
+    match_and:
+        - match_fsm:
+            uri: '/hist/series/?.*'
+        - match_fsm:
+            host: yasm-prestable.yandex-team.ru
+  modules:
+    - report:
+        ranges: default
+        uuid: histfront,hist-series
+    - rewrite:
+        actions:
+          - regexp: '/hist/'
+            rewrite: '/'
+    - h100: {}
+    - balancer2:
+        attempts: 3
+        weighted2: {}
+        attempts_rate_limiter:
+          limit: 0.5
+        generated_proxy_backends:
+          proxy_options:
+            backend_timeout: 60s
+            connect_timeout: 70ms
+            keepalive_count: 2
+            fail_on_5xx: false
+          include_backends:
+            type: BY_ID
+            ids: [histfront-prestable]
+        on_error:
+          errordocument:
+            status: 504
+            content: "prestable histfront unavailable"

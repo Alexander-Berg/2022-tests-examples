@@ -1,0 +1,161 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Инертный драг, балун, удаление карты 
+
+Description:
+Проверяем поведение инертного драга, балуна с автопаном и контрола удаления карты.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components:
+behavior
+
+Estimated time:
+180000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась.
+  На карте спан Центрального федерального округа(города Москва, Тула, Рязань, Калуга).
+  Сверху имеются кнопки "destroy", "openBall...", "inertia". 
+  
+Step:
+  Action:
+  Зажав на спане карты ЛКМ выполнить инертный драг карты и переместить спан.
+ 
+  Expectation:
+  Захват и перемещение спана карты корректное: карта не мигает, не пропадает.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "openBall...".
+
+  Expectation:
+  Спан карты перемещается, при этом в районе Зеленограда открывается балун с текстом: "text".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "inertia".
+
+  Expectation:
+  Кнопка становится активной - окрашена в желтый.
+  Под контейнером с картой появляется текст: "Waiting for events inertia...".
+
+Step:
+  Action:
+  Зажав на спане карты ЛКМ выполнить инертный драг карты и переместить спан.
+ 
+  Expectation:
+  Захват и перемещение спана карты корректное: карта не мигает, не пропадает.
+  Под контейнером с картой появляется текст отображаюзий координаты старта драга, завершения события, и текущего центра карты: 
+  inertiastart = (координаты)
+  inertiaend = (координаты)
+  (координаты)
+
+Step:
+  Action:
+  Зажав на спане карты ЛКМ выполнить статичный драг карты и переместить спан.
+ 
+  Expectation:
+  Захват и перемещение спана карты корректное: карта не мигает, не пропадает.
+  Под контейнером с картой не появляется текста.
+
+Step:
+  Action:
+  Зажав на спане карты ЛКМ выполнить инертный драг карты и переместить спан.
+ 
+  Expectation:
+  Захват и перемещение спана карты корректное: карта не мигает, не пропадает.
+  Под контейнером с картой появляется текст отображаюзий координаты старта драга, завершения события, и текущего центра карты: 
+  inertiastart = (координаты)
+  inertiaend = (координаты)
+  (координаты)
+
+Step:
+  Action:
+  Выполнить клик в кнопку "destroy".
+
+  Expectation:
+  Карта пропадает из контейнера.
+-->
+<html>
+<head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            var map = myMap = new ym.Map('map', {
+                center: [55.00718809437818, 38.094514924687026],
+                zoom: 7,
+                controls: ['fullscreenControl']
+            });
+            var balloon,
+                    contentLayout = ymaps.templateLayoutFactory.createClass('$[balloonContent]text'),
+                    options = { contentLayout: contentLayout, closeButton: false, shadow: false };
+            window.balloon = balloon = new ymaps.Balloon(myMap);
+            balloon.options.set(options).setParent(myMap.options);
+
+            // Change autoPan duration to 800ms
+            balloon.options.set('autoPanDuration', 800);
+            //map.behaviors.get('drag').options.set('inertia', false);
+            //map.behaviors.get('drag').options.set('inertiaDuration', 5000);
+            var callback = function (e) {
+                //__log__(e);
+                if(e.get('type') == 'inertiastart'){
+                    __log__('inertiastart = ' + e.get('targetGlobalPixelCenter'))
+                } else {
+                    __log__('inertiaend = ' + e.get('globalPixelCenter'));
+                    setTimeout(function(){
+                        __log__(map.getGlobalPixelCenter())
+                    }, 0)
+                }
+            };
+
+            var inertiaevents = ['inertiastart', 'inertiaend'];
+
+            var inertiaButton = new ymaps.control.Button({data: {content: 'inertia'}, options: {selectOnClick: true}});
+
+            inertiaButton.events
+                    .add('deselect', function () {
+                        __log__('Events inertia will be ignored.');
+                        map.behaviors.get('drag').remove(inertiaevents, callback);
+                    })
+                    .add('select', function () {
+                        __log__('Waiting for events inertia...');
+                        map.behaviors.get('drag').events.add(inertiaevents, callback);
+                    });
+            map.controls.add(inertiaButton);
+
+            var positionButton = new ymaps.control.Button({data: {content: 'openBalloon'}, options: {selectOnClick: false}});
+            positionButton.events.add('click', function () {
+
+                balloon.open([56, 37], true);
+            });
+            map.controls.add(positionButton);
+
+            var destroyButton = new ymaps.control.Button({data: {content: 'destroy'}, options: {selectOnClick: false}});
+            destroyButton.events.add('click', function () {
+
+                setTimeout(function(){
+                    map.destroy();
+                }, 1000)
+            });
+            map.controls.add(destroyButton);
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

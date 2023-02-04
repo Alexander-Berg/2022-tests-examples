@@ -1,0 +1,177 @@
+
+# template part of cacus.yaml
+mongo_max_pool_size: 4
+
+storage_template: &storage_template
+  type: MDSStorage
+  write_url: "http://storage-int.mdst.yandex.net:1111"
+  read_url: "http://storage-int.mdst.yandex.net"
+  torrent_url: "http://rbtorrent__v012.apefront.tst12.ape.yandex.net/announce"
+  connect_timeout: 5
+  read_timeout: 120
+  temp_dir: /tmp
+
+logging:
+  level: INFO
+  destinations:
+    console: True
+    syslog: False       # or syslog facility (daemon, user etc)
+    file: True
+    file_pattern: /home/warwish/logs/current-cacus-{action_name}.log
+
+metadb_template:
+  cacusdb_template: &cacusdb_template
+    type: replicaset
+    host: 127.0.0.1
+    port: 27017
+    replicaset: dist-prod
+
+  reposdb_template: &reposdb_template
+    type: replicaset
+    host: 127.0.0.1
+    port: 27017
+    replicaset: dist-prod
+
+  monitordb_template: &monitordb_template
+    type: replicaset
+    host: 127.0.0.1
+    port: 27017
+    replicaset: dist-prod
+
+  histdb_template: &histdb_template
+    type: replicaset
+    host: 127.0.0.1
+    port: 27017
+    replicaset: dist-prod
+    policy:
+      max_age: 600
+
+distributed_locks:
+  zk_port: 2181
+  zk_prefix: test
+  supress_zk_log: True
+  zk_nodes:
+    - 127.0.0.1
+
+daemon_params: &daemon_params
+  daemonize: True
+  user: loadbase
+  group: loadbase
+  siginterrupt_flag: True
+  heartbeat_dead_time: 1861
+
+repo_daemon:
+  <<: *daemon_params
+  port: 1488
+  cacus_fqdn: "http://distng-test.yandex.net"
+  worker_threads: 10
+  worker_processes: 8
+
+duploader_daemon:
+  <<: *daemon_params
+  incoming_wait_timeout: 1800
+  incoming_dir_template: "/opt/repo/{}/mini-dinstall/incoming"
+  repo_root_template: "/opt/repo/{}"
+  stats_file_path: '/run/nginx/unistat/duploader_daemon.json'
+
+indexer_daemon:
+  <<: *daemon_params
+  repos_status_cache_time: 20
+  index_freq: 60
+  thread_start_freq: 60
+  repos_per_host: 20
+  processes_per_host: 5
+  indexer_lock_timeout: 1200
+  stats_push_url: 'http://[::1]:9090/metrics'
+
+sources_daemon:
+  <<: *daemon_params
+  stats_file_path: '/run/nginx/unistat/sources_daemon.json'
+
+gpg_daemon:
+  <<: *daemon_params
+  stats_file_path: '/run/nginx/unistat/gpg_daemon.json'
+
+stats_daemon:
+  <<: *daemon_params
+  listen_ports:
+    - 9090
+    - 80
+
+zk_stats_daemon:
+  <<: *daemon_params
+  stats_push_url: 'http://[::1]:9090/metrics'
+
+mongo_stats_daemon:
+  <<: *daemon_params
+  stats_push_url: 'http://[::1]:9090/metrics'
+
+# make sure daemon is started under correct GPG environment
+# to find all trusted and signing keys (see gpg(1) for more info)
+gpg_template: &gpg_template
+  signer: opensource@yandex-team.ru
+  read_url: "https://staff-api.test.yandex-team.ru/v3/persons"
+  read_params:
+    _fields: 'gpg_keys,login'
+    official.is_dismissed: 'false'
+    _sort: 'login'
+    _query: 'not gpg_keys==size(0)'
+  cookieless: True
+  mapping:
+    gpg-yabs: "yabs-hardy"
+    gpg-passport: "passport"
+    gpg-jetsyle: "fromjetstyle"
+    gpg-bm: "bm-common"
+    gpg-awaps: "awaps-hardy"
+  groups:
+    read_url: "https://staff-api.test.yandex-team.ru/v3/groupmembership"
+    read_params:
+      _fields: 'person.login'
+      group.url:
+      _sort: 'person.login'
+      group.type: 'wiki'
+
+notifications:
+  smtp_host: 'outbound-relay.yandex.net'
+  mail_from: 'dist@yandex-team.ru'
+  notify_on_reject: True
+  notify_on_success: False
+  repos:
+    cacus:
+      upload:
+        rcpt:
+          - user@domain.tld
+
+# secret part of cacus.yaml
+
+storage:
+  <<: *storage_template
+  auth_header: {"Authorization": "<token>"}
+
+metadb:
+  cacusdb:
+    <<: *cacusdb_template
+    db: cacus
+    username: cacus
+    password: cacus
+  reposdb:
+    <<: *reposdb_template
+    db: repos
+    username: repos
+    password: repos
+  monitordb:
+    <<: *monitordb_template
+    db: admin
+    username: monitor
+    password: monitor
+  histdb:
+    <<: *histdb_template
+    db: cacus_history
+    username: history
+    password: history
+
+
+gpg:
+  <<: *gpg_template
+  token: "<token>"
+

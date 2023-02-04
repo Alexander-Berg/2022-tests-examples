@@ -1,0 +1,51 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - fexion
+      groups: []
+labels:
+  order: '00000040'
+---
+regexp_section:
+  matcher:
+    match_and:
+      - match_fsm:
+          header:
+            name: X-Yandex-Use-Report-Images-Beta
+            value: '1'
+      - match_or:
+          - match_fsm:
+              uri: '/(images|gorsel)(/.*)?'
+          - match_fsm:
+              host: '.*(images|gorsel)(\\..*)?\\.yandex\\..*'
+          - match_and:
+              - match_fsm:
+                  uri: '/(search/xml|xmlsearch)(.*)?'
+              - match_fsm:
+                  cgi: 'type=(pictures|cbir|cbirlike|picturedups)'
+                  surround: true
+  modules:
+    - antirobot_macro:
+        version: 0.0.2
+    - report:
+        uuid: imagessearch
+        ranges: default
+    - exp_getter_macro:
+        service_name: images
+        testing_mode: {}
+        _version: 3
+    - stats_eater: {}
+    - balancer2:
+        attempts: 2
+        connection_attempts: 3
+        attempts_rate_limiter:
+          limit: 0.2 
+        weighted2: {}
+        generated_proxy_backends:
+          proxy_options:
+            backend_timeout: 15s
+          instances:
+            - weight: 1
+              host: nbahob-report-dev.sas.yp-c.yandex.net
+              port: 80

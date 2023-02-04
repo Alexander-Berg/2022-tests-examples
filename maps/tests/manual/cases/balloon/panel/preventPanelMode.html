@@ -1,0 +1,120 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Установка опции панели балуна
+
+Description:
+Проверка смены опции панели балуна.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components:
+balloon
+
+Estimated time:
+60000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан Москвы.
+  На спане карты открыт пустой балун без содержимого.
+  Сверху имеются кнопки "panel/balloon", "open balloon".
+
+Step:
+  Action:
+  Выполнить два клика в кнопку "open balloon". 
+
+  Expectation:
+  Пропадает открытый на карте балун.
+
+Step:
+  Action:
+  Клик в кнопку "panel/balloon". 
+  Клик в кнопку "open balloon".
+
+  Expectation:
+  Кнопки "panel/balloon", "open balloon" окрашены желтым.
+  Под контейнером с картой появляется текст: "panelMaxMapArea: Infinity".
+  Происходит небольшое смещение спана карты, снизу карты открывается собственный панель балуна, без содержимого.
+
+Step:
+  Action:
+  Клик в кнопку "panel/balloon".
+
+  Expectation:
+  Панель балуна снизу пропадает.
+  В центре спана карты появляется балун без содержимого.
+  Под контейнером с картой появляется текст: "panelMaxMapArea: 0".
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var myMap = new ym.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 10,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+
+            log.info('preventPanelMode option was replaced by special panelMaxMapArea values: ' +
+                    '0 (balloon) and Infinity (panel)');
+
+            var balloon,
+                    pos = myMap.getCenter(),
+                    options = {panelMaxMapArea: 0};
+            window.balloon = balloon = new ymaps.Balloon(myMap);
+            balloon.options.set(options).setParent(myMap.options);
+            balloon.open(pos);
+
+            var preventButton = new ymaps.control.Button({data: {content: 'panel/balloon'}, options: {selectOnClick: true, maxWidth: 150}});
+            var openButton = new ymaps.control.Button({data: {content: 'open balloon'}, options: {selectOnClick: true, maxWidth: 120}});
+
+            // Change panelMaxMapArea option. Infinity value - panel mode, zero value - balloon mode.
+            preventButton.events
+                    .add('select', function () {
+                        balloon.options.set('panelMaxMapArea', Infinity);
+                        log.info('panelMaxMapArea: ' + balloon.options.get('panelMaxMapArea'))
+                    })
+                    .add('deselect', function () {
+                        balloon.options.set('panelMaxMapArea', 0);
+                        log.info('panelMaxMapArea: ' + balloon.options.get('panelMaxMapArea'))
+                    });
+
+            // Open balloon in the center of the map, and close balloon, if button deselected
+            openButton.events
+                    .add('select', function () {
+                        balloon.open(pos);
+                    })
+                    .add('deselect', function () {
+                        balloon.close();
+                    });
+
+            myMap.controls
+                    .add(openButton)
+                    .add(preventButton);
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 480px; width: 320px;"></div>
+</body>
+</html>

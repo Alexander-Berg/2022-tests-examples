@@ -1,0 +1,68 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - nanny-robot
+      groups: []
+labels:
+  order: '99999999'
+---
+regexp_section:
+  matcher: {}
+  modules:
+    - pinger:
+        ping_request_data: 'GET /robots.txt HTTP/1.1\r\nHost: sport.yandex-team.ru\r\n\r\n'
+        admin_request_uri: '/robots.txt'
+        admin_error_replier:
+          modules:
+            - errordocument:
+                status: 503
+    - report: {ranges: default, uuid: requests_news_sport_api_test}
+    - antirobot_macro: {}
+    - regexp:
+        sections:
+            deny_nopublic:
+                matcher:
+                    match_and:
+                        - match_not:
+                            match_fsm:
+                                url: "/public.*"
+                        - match_not:
+                            match_fsm:
+                                header:
+                                    name: X-Yandex-Internal-Request
+                                    value: "1"
+                modules:
+                    - errordocument:
+                        status: 403
+            default:
+                matcher: {}
+                modules:
+                    - balancer2:
+                        attempts: 2
+                        attempts_file: './controls/admin.attempts'
+                        by_name_policy:
+                            name: !f suffix_with_dc('api')
+                            unique_policy: {}
+                        rr: {weights_file: ./controls/traffic_control.weights}
+                        backends:
+                            - weight: 1
+                              name: api_test
+                              modules:
+                                - balancer2:
+                                    attempts: !f count_backends()
+                                    weighted2: {}
+                                    timeout_policy:
+                                        timeout: 1000ms
+                                    unique_policy: {}
+                                    generated_proxy_backends:
+                                        proxy_options:
+                                            backend_timeout: 500ms
+                                            connect_timeout: 50ms
+                                        include_backends:
+                                            type: BY_ID
+                                            ids: [sport_api_test]
+                        on_error:
+                            modules:
+                                - errordocument:
+                                    status: 500

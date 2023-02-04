@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<!--
+Title:
+Геообъект: метод балуна объекта
+
+Description:
+Проверка работы метода балуна геообъектов.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+regress
+
+Estimated time:
+90000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан Московской области.
+  На спане карты два ряда объектов: метка, линия, многоугольник, прямоугольник, круг. Верхний ряд синего цвета, нижний - зеленого.
+
+Step:
+  Action:
+  Открыть инструменты разработчика командами: Windows: Ctrl + Shift + I если у вас MacOS: ⌥ + ⌘ + I, вкладку Console.
+  Навести курсор на синюю метку коллекции в верхнем ряду.
+   
+  Expectation:
+  При наведении курсора на метку, метка пропадает, на месте метки открывается балун с содержимым: "balloon content" и кнопкой закрытия.
+  В консоли появляются строки событий: balloon opened.
+
+Step:
+  Action:
+  Последовательно навести курсор на все объекты на спане карты.
+   
+  Expectation:
+  При наведении на объект курсор меняется на палец, на объекте открывается балун с содержимым: "balloon content" и кнопкой закрытия.
+  Предыдущий балун на объекте закрывается, в консоли при закрытии балуна появляется строка: balloon closed, при открытии balloon opened.
+-->
+<html>
+<head>
+    <title>API 2.0</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <script src="../helper.js"></script>
+    <script src="geoCS.js"></script>
+    <script type=text/javascript>
+        Api('init');
+        function init(ymaps) {
+            
+            var myMap = new ymaps.Map('map', {
+                center: [55.73259667357658, 37.70153663432529],
+                zoom: 9,
+                behaviors: ['default', 'scrollZoom']
+            });
+            geoCSSource(ymaps, myMap, this);
+            var collection = new ymaps.GeoObjectCollection();
+            collection
+                    .add(geoObjectPlacemark)
+                    .add(geoObjectPolyline)
+                    .add(geoObjectPolygon)
+                    .add(geoObjectRectangle)
+                    .add(geoObjectCircle)
+                    .add(placemark)
+                    .add(polyline)
+                    .add(polygon)
+                    .add(rectangle)
+                    .add(circle);
+            myMap.geoObjects.add(collection);
+            collection.each(function (obj) {
+                obj.properties.set('iconContent', 'A');
+                obj.properties.set('hintContent', 'hint');
+                obj.properties.set('balloonContent', 'balloon content');
+                obj.events.add('mouseenter', function () {
+                    obj.balloon.open();
+                    if (obj.balloon.isOpen()) {
+                        console.log('balloon opened')
+                    } else console.log('balloon closed')
+                });
+                obj.events.add('mouseleave', function () {
+                    obj.balloon.close();
+                    if (obj.balloon.isOpen()) {
+                        console.log('balloon opened')
+                    } else console.log('balloon closed')
+                });
+            });
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+<p><a href="https://tech.yandex.ru/maps/archive/doc/jsapi/2.0/ref/reference/GeoObjectCollection-docpage/" target="_blank">Docs</a></p>
+</body>
+</html>

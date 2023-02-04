@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<!--
+Title:
+Геокод: поиск результатов в заданной области
+
+Description:
+Проверка опции поиска результатов в заданной области.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+regress
+
+Estimated time:
+90000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан восточной Европы, в центре спана в районе Москвы имеется синяя прямоугольная область с метками, имеется метка коллекции в СПб.
+  Сверху слева имеется кнопка "strictBounds".
+  
+Step:
+  Action:
+  Выполнить клик в кнопку "strictBounds".
+
+  Expectation:
+  По клику в прямоугольной области в районе Москвы появляются зеленые метки.
+-->
+<html>
+<head>
+    <title>API 2.0</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <script src="../helper.js"></script>
+    <script type=text/javascript>
+        Api('init');
+        function init(ymaps) {
+            var myMap = new ymaps.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 4,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+            var bounds = new ymaps.Rectangle([
+                [55.76067754421678, 35.70451507567861],
+                [54.258169575039965, 38.33024749755289]
+            ]);
+            myMap.geoObjects.add(bounds);
+            var myGeocoder1 = ymaps.geocode("комсомола", {
+                boundedBy: [
+                    [55.76067754421678, 35.70451507567861],
+                    [54.258169575039965, 38.33024749755289]
+                ],
+                strictBounds: false
+            });
+            myGeocoder1.then(
+                    function (res) {
+                        var collection = res.geoObjects;
+                        myMap.geoObjects.add(collection);
+                        console.log('bounded results list: ');
+                        collection.each(function (obj) {
+                            console.log(obj.properties.get('balloonContentBody'))
+                        })
+                    },
+                    function (err) {
+                        console.log(err)
+                    }
+            );
+            var strictBoundsButton = new ymaps.control.Button({data: {content: 'strictBounds'}}, {selectOnClick: false});
+            strictBoundsButton.events.add('click', function () {
+                ymaps.geocode("комсомола", {
+                    boundedBy: [
+                        [55.76067754421678, 35.70451507567861],
+                        [54.258169575039965, 38.33024749755289]
+                    ],
+                    strictBounds: true
+                }).then(
+                        function (res) {
+                            var collection = res.geoObjects;
+                            collection.each(function (obj) {
+                                obj.options.set('preset', 'twirl#greenIcon')
+                            });
+                            myMap.geoObjects.add(collection);
+                            console.log('strictly bounded results list: ');
+                            collection.each(function (obj) {
+                                console.log(obj.properties.get('balloonContentBody'))
+                            })
+                        },
+                        function (err) {
+                            console.log(err)
+                        })
+            });
+            myMap.controls.add(strictBoundsButton)
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+<p><a href="https://tech.yandex.ru/maps/archive/doc/jsapi/2.0/ref/reference/geocode-docpage/" target="_blank">Docs</a></p>
+</body>
+</html>

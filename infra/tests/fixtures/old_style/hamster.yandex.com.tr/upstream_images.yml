@@ -1,0 +1,59 @@
+---
+regexp_section:
+  matcher:
+    match_or:
+      - match_fsm:
+          uri: '/(images|gorsel)(/.*)?'
+      - match_fsm:
+          host: '.*(images|gorsel)(\\..*)?\\.yandex\\..*'
+      - match_and:
+          - match_fsm:
+              uri: '/(search/xml|xmlsearch)(.*)?'
+          - match_fsm:
+              cgi: 'type=(pictures|cbir|cbirlike|picturedups)'
+              surround: true
+  modules:
+    - icookie:
+        use_default_keys: true
+        force_equal_to_yandexuid: false
+        domains: [".yandex.ru", ".yandex.tr"]
+        scheme_bitmask: 0
+    - antirobot_macro:
+        gencfg_groups:
+          - name: MSK_ANTIROBOT_ANTIROBOT_PRESTABLE
+            version: tags/stable-92-r105
+          - name: MSK_ANTIROBOT_ANTIROBOT
+            version: tags/stable-92-r105
+    - geobase_macro:
+        version: 0.0.3
+    - exp_getter_macro:
+        service_name: images
+        testing_mode: {}
+    - report:
+        uuid: imagessearch
+        ranges: default
+    - request_replier:
+        rate_file: './controls/request_replier_images.ratefile'
+        sink:
+          balancer2:
+            attempts: 5
+            weighted2: {}
+            generated_proxy_backends:
+              proxy_options:
+                backend_timeout: 10s
+                connect_timeout: 150ms
+              instances:
+                - weight: 1
+                  host: sinkadm.priemka.yandex.ru
+                  port: 80
+    - stats_eater: {}
+    - balancer2:
+        attempts: 5
+        weighted2: {}
+        generated_proxy_backends:
+          proxy_options:
+            backend_timeout: 10s
+            connect_timeout: 150ms
+          gencfg_groups:
+            - name: MSK_IMGS_NMETA_HAMSTER
+              version: tags/stable-94-r129

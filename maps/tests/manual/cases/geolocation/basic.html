@@ -1,0 +1,94 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Геолокация: базовая проверка
+
+Description:
+Базовая проверка работы геолокации.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+Перед проведением теста необходимо настроить браузер для запроса геоданных. В Google Chrome в настройках "Конфиденциальность и безопастность" в блоке "Геоданные" выставить флаг "Спрашивать разрешение на доступ".
+При этом в списке разрешенных адресов вкладки "Геоданные" в подблоках "Разрешить" и "Блокировать" не должно быть URL адресов ...yandex.ru...Если URL адреса "yandex.ru" имеются удалите их, для корректного прохождения теста и появления запроса на определение местоположения.
+
+Components: 
+geolocation
+
+Estimated time:
+90000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан Европейской части России.
+  При открытии появляется диалоговое окно о разрешении доступа к данным о вашем местоположении, с кнопками "разрешить", "блокировать". 
+  (конфигурация кнопок и диалогового окна может варьироваться в зависимости от браузера).
+  
+Step:
+  Action:
+  Клик в кнопку "Разрешить" в диалоговом окне браузера.
+
+  Expectation:
+  Спан карты может изменится, на спане карты появляется красный круглый ПИН "Я".
+  Под контейнером с картой появляется блок вида: "accuracy: 4646(положительное число); position: 59.8540288,30.408704(координаты точки на карте)".
+  Блок promise status, после которого две строки "Ок".
+
+Step:
+  Action:
+  Выполнить клик в красный круглый ПИН "Я".
+
+  Expectation:
+  Метка геолокации пропадает, на ее месте появляется балун с данными топонима, вида: "Санкт-Петербург; Россия".
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 4,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+
+            log.info('geoObject fields: ');
+            log.info('На карту добавляется геообъект геолокации с балуном, выводятся значения accuracy, position и значения промисов');
+
+            var geolocation = ymaps.geolocation.get();
+            geolocation.then(function (res) {
+                console.log(res.geoObjects);
+                log.info('accuracy: ' + res.geoObjects.accuracy);
+                log.info('position: ' + res.geoObjects.position);
+                log.info('');
+                map.geoObjects.add(res.geoObjects);
+            });
+
+            geolocation.always(function () {
+                log.info('promise status ');
+                validateValue(geolocation.isFulfilled(), true);
+                validateValue(geolocation.isRejected(), false);
+            });
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

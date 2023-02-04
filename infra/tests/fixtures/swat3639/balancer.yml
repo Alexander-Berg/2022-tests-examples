@@ -1,0 +1,77 @@
+---
+instance_macro:
+  maxconn: 4000
+  buffer: 1048576
+  log_dir: /place/db/www/logs/
+  dns_ttl: !f get_random_timedelta(300, 360, 's')
+  sections:
+    admin:
+      ips: [127.0.0.1, '::1']
+      ports:
+        - !f get_port_var('admin_port')
+      modules:
+        - http: {}
+        - admin: {}
+    stats_storage:
+      ips: [127.0.0.4]
+      ports: [8180]
+      modules:
+        - report:
+            uuid: 'service_total'
+            ranges: 'default'
+            just_storage: true
+        - errorlog:
+            log: !f get_log_path("test", get_int_var("test"))
+        - http: {}
+        - errordocument:
+            status: 204
+    section_1:
+      ips: ['2a02:6b8:0:3400::1:16', '2a02:6b8:0:3400::1:17']
+      ports: [!f 'get_port_var("port")', !f 'get_port_var("port", 8)']
+      local_ips: [local_v4_addr, local_v6_addr]
+      local_ports: [!f get_int_var("local_port")]
+      stats_attr: 'https'
+      extended_http_macro:
+        report_uuid: 'https'
+        enable_ssl: true
+        enable_http2: true
+        ssl_sni_contexts:
+          hamster.yandex.tld:
+            servername_regexp: default
+            ca: 'InternalYandexCA'
+            secrets_log: 'hamster_secrets'
+        modules:
+          - regexp:
+              sections:
+                yandex:
+                  matcher:
+                    match_fsm:
+                      host: '(.*\\.)?(xn----7sbhgfw0a0bcg8l1a\\.xn--p1ai|xn--80aefebu0a0bbh8l\\.xn--p1ai|xn--d1acpjx3f\\.xn--p1ai|2yandex\\.ru|jandeks\\.com\\.tr|jandex\\.com\\.tr|kremlyandex\\.ru|video-yandex\\.ru|videoyandex\\.ru|wwwyandex\\.ru|xyyandex\\.net|ya-plus-plus\\.ru|ya-plusplus\\.ru|ya\\.nu|ya\\.rs|ya\\.ru|ya\\.tel|ya\\.tm|yanclex\\.ru|yandeks\\.com|yandeks\\.com\\.tr|yandes\\.ru|yandesk\\.com|yandesk\\.org|yandesk\\.ru|yandex-plus-plus\\.ru|yandex-plusplus\\.ru|yandex-rambler\\.ru|yandex-video\\.ru|yandex\\.asia|yandex\\.az|yandex\\.biz\\.tr|yandex\\.by|yandex\\.co\\.il|yandex\\.co\\.no|yandex\\.com|yandex\\.com\\.de|yandex\\.com\\.kz|yandex\\.com\\.ru|yandex\\.com\\.tr|yandex\\.com\\.ua|yandex\\.de|yandex\\.dk|yandex\\.do|yandex\\.ee|yandex\\.es|yandex\\.ie|yandex\\.in|yandex\\.info\\.tr|yandex\\.it|yandex\\.jobs|yandex\\.jp\\.net|yandex\\.kg|yandex\\.kz|yandex\\.lt|yandex\\.lu|yandex\\.lv|yandex\\.md|yandex\\.mobi|yandex\\.mx|yandex\\.name|yandex\\.net|yandex\\.net\\.ru|yandex\\.no|yandex\\.nu|yandex\\.org|yandex\\.pl|yandex\\.pt|yandex\\.qa|yandex\\.ro|yandex\\.rs|yandex\\.ru|yandex\\.sk|yandex\\.st|yandex\\.sx|yandex\\.tj|yandex\\.tm|yandex\\.ua|yandex\\.uz|yandex\\.web\\.tr|yandex\\.xxx|yandexbox\\.ru|yandexmedia\\.ru|yandexplusplus\\.ru|yandexvideo\\.ru|yandfex\\.ru|yandx\\.ru|yaplusplus\\.ru|yandex\\.com\\.ge|yandex\\.fr|yandex\\.az|yandex\\.uz|yandex\\.com\\.am|yandex\\.co\\.il|yandex\\.kg|yandex\\.lt|yandex\\.lv|yandex\\.md|yandex\\.tj|yandex\\.tm|yandex\\.ee)(:\\d+|\\.)?'
+                  modules:
+                    - hasher:
+                        mode: subnet
+                        subnet_v4_mask: 32
+                        subnet_v6_mask: 128
+                    - headers:
+                        create:
+                          X-Yandex-HTTPS: yes
+                        create_func:
+                          X-Start-Time: starttime
+                          X-Req-Id: reqid
+                          X-Forwarded-For-Y: realip
+                          X-Source-Port-Y: realport
+                          X-Yandex-RandomUID: yuid
+                    - response_headers:
+                        delete: 'Strict-Transport-Security|X-Yandex-Report-Type'
+                        create_weak:
+                          X-XSS-Protection: '1; mode=block'
+                          X-Content-Type-Options: 'nosniff'
+                    - rpcrewrite_macro:
+                        enable_on_rpc_error: true
+                    - errordocument: {status: 200}
+                default:
+                  matcher: {}
+                  modules:
+                    - errordocument:
+                        status: 406
+                        force_conn_close: true

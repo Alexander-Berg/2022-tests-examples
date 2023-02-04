@@ -1,0 +1,78 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - nanny-robot
+      groups: []
+config_transport:
+  nanny_static_file:
+    service_id: rtc_balancer_vh-testing_yandex_net_vla
+---
+instance_macro:
+  workers: !f get_workers()
+  maxconn: 5000
+  sections:
+    admin:
+      ips: [127.0.0.1, '::1']
+      ports:
+        - !f get_port_var('port')
+      modules:
+        - http: {}
+        - admin: {}
+    stats_storage:
+      ips: [127.0.0.4]
+      ports:
+        - !f get_port_var('port')
+      modules:
+        - report:
+            uuid: 'service_total'
+            ranges: 'default'
+            just_storage: true
+        - http: {}
+        - errordocument:
+            status: 204
+    https_section:
+      ips: ['*']
+      ports:
+        - 443
+      extended_http_macro:
+        report_uuid: 'https'
+        enable_ssl: true
+        ssl_sni_contexts:
+          vh-testing.yandex.net:
+            servername_regexp: default
+        modules:
+          - headers:
+              create_func:
+                X-Start-Time: starttime
+                X-Req-Id: reqid
+                X-Forwarded-For-Y: realip
+                X-Source-Port-Y: realport
+          - geobase_macro:
+              attempts: 1
+              proxy_options:
+                connect_timeout: '50ms'
+                backend_timeout: '50ms'
+              instances:
+                - weight: 1
+                  host: sas1-2698.search.yandex.net
+                  port: 35253
+          - shared:
+              uuid: upstreams
+    http_section:
+      ips: ['*']
+      ports:
+        - 4444
+        - !f get_port_var('port')
+      extended_http_macro:
+        report_uuid: 'http'
+        modules:
+          - shared:
+              uuid: upstreams
+          - regexp:
+              include_upstreams:
+                filter:
+                  any: true
+                order:
+                  label:
+                    name: order

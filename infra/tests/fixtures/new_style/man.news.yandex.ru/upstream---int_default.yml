@@ -1,0 +1,90 @@
+---
+regexp_section:
+  matcher: {}
+  modules:
+    - report:
+        uuid: news
+        ranges: default
+    - geobase_macro: {}
+    - regexp:
+        sections:
+          she_exp:
+            matcher:
+              match_and:
+                - match_fsm:
+                    host: '(www\\.)?(m\\.)?yandex\\.(az|by|co\\.il|com|com\\.am|com\\.ge|com\\.ua|ee|fr|kg|kz|lt|lv|md|ru|tj|tm|uz|ua)'
+                - match_fsm:
+                    uri: '/mirror.*'
+            modules:
+              - shared:
+                  uuid: without-exp
+          default:
+            matcher: {}
+            modules:
+              - shared:
+                  uuid: without-exp
+              - request_replier:
+                  sink:
+                    balancer2:
+                      attempts: 3
+                      connection_attempts: 3
+                      attempts_rate_limiter:
+                        limit: 0.2 
+                      weighted2: {}
+                      retry_policy:
+                        unique_policy: {}
+                      generated_proxy_backends:
+                        proxy_options: {}
+                        instances:
+                          - weight: 1
+                            host: 'news.sinkadm.priemka.yandex.ru'
+                            port: 80
+              - regexp:
+                  sections:
+                    bad_methods:
+                      matcher:
+                        match_not:
+                          match_fsm:
+                            match: '(POST|GET) .*'
+                      modules:
+                        - errordocument:
+                            status: 405
+                    tkva_exp:
+                      matcher:
+                        match_fsm:
+                          header:
+                            name: X-Yandex-ExpBoxes
+                            value: '(155613|.*;155613),.*'
+                      modules:
+                        - shared:
+                            uuid: rev_tkva
+                    default:
+                      matcher: {}
+                      modules:
+                        - balancer2:
+                            attempts: 1
+                            rr: {weights_file: ./controls/traffic_control.weights}
+                            backends:
+                              - weight: 1
+                                name: revtkva_off
+                                modules:
+                                  - shared:
+                                      uuid: normal-report-req
+                              - weight: -1
+                                name: revtkva_on
+                                modules:
+                                  - shared:
+                                      uuid: rev_tkva
+                                  - balancer2:
+                                      rr: {}
+                                      attempts: 1
+                                      backends:
+                                        - weight: 1
+                                          name: default
+                                          modules:
+                                            - shared:
+                                                uuid: tkva_balancer
+                                      on_error:
+                                        modules:
+                                          - errordocument:
+                                              status: 404

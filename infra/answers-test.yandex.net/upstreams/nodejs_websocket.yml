@@ -1,0 +1,44 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - semyonmo
+      groups: []
+labels:
+  order: 00008351
+---
+regexp_section:
+  matcher: 
+    match_fsm:
+      uri: '(/q)?(/znatoki)?/ws/(.*)?'
+  modules:
+  - rewrite:
+      actions:
+        - regexp: '(/q)?(/znatoki)?/ws/(.*)?'
+          rewrite: '/%3'
+  - report: {ranges: default, uuid: requests_websocket_nodejs}
+  - balancer2:
+      attempts: 2
+      fast_attempts: 3
+      fast_503: true
+      attempts_rate_limiter:
+        limit: 0.5
+      rr: {}
+      generated_proxy_backends:
+        proxy_options:
+          allow_connection_upgrade: true
+          connect_timeout: 1000ms
+          switched_backend_timeout: 60s
+          backend_timeout: 60s
+          backend_read_timeout: 600s
+          backend_write_timeout: 600s
+          client_read_timeout: 600s
+          client_write_timeout: 600s
+        include_backends:
+          type: BY_ID
+          ids: [answers_nodejs_websocket]
+      on_error:
+        modules:
+        - errordocument:
+            status: 504
+            content: 'Service unavailable!'

@@ -1,0 +1,72 @@
+auth:
+  staff:
+    owners:
+      logins: []
+      groups: []
+labels:
+  order: '10000000'
+---
+regexp_section:
+  matcher:
+    match_and:
+      - match_fsm:
+          host: pr-2165349\\.trip\\.test\\.yandex-team\\.ru
+  modules:
+    - headers:
+        create:
+          Host: trip-beta.s3.mds.yandex.net
+    - response_headers:
+        create:
+          Content-Security-Policy-Report-Only: "default-src 'none'; base-uri 'none';
+            script-src 'self' 'report-sample' yastatic.net yandex.ru
+            api-maps.yandex.ru yandex.net frontend-test.s3.mds.yandex.net
+            chat.s3.yandex.net https://cdn.jsdelivr.net https://mc.yandex.ru
+            https://core-renderer-tiles.maps.yandex.net
+            'sha256-3JPUiPFJTGuej0PNjxaFtwr4H6tKMiR3Jsl3nPBy42c='
+            'sha256-XbnjXGCETQfJbjQcbab1j0LftQB8gt0UM1mtNP5R/xU='
+            'sha256-0K9GyrL5MflxJ/Gp0ctTHxkrQ2KP03KIOumB439hhnw='
+            'sha256-7TCgpeERwrdEUsUFrQPZ9LaPEFuRMfokQpWCFAC8zxA='
+            'sha256-XvJoi4VcrYbwrgJ8Poz6p8gy+GVKthoW+d0jvPeeEmA='
+            'sha256-Sd2GpS6KazusbdmnAmrBwfw4IMyvtIvGm852ENq/Vuc='
+            'sha256-w8sdxHnkFRIWzG0oxWGxacQOlu3WnLZ6Aj/rm+ZLBQg='
+            'sha256-14kQX4yrHqPY8Ixd7CISA+cLTqogc5ZtPOSHXJ1MI/g='
+            'sha256-ZJsI6afzYUpyN38KuRg10QdzztcAqJA3LPd6+89YpdM='
+            'sha256-I7dbadKWSgk8wvHH5gpKpkH2eLpg1lApfqDc0h8BsN8='
+            'sha256-ZSm6WnHXizVbaB2vAltheftA6y16GNYD37g9X9bjF5c='
+            'sha256-HOAVK8secEJ8xMRZArkIdgacEcVQD4TSIpThEhXcKyE='
+            'sha256-zcpqVrKCgsHSz4FjgNusOZYvjyL5Fdz36Zgw83lKLDs='
+            'sha256-QAj9SgqS0tkqFXsMg6gbHzN3KfNnrPW0N0FCdMzN3MI='
+            'sha256-CCW8p9OOje+Wa1H8xCoWAYu3LzCkPnMTEoszMAGPRsg='; style-src
+            'self' 'unsafe-inline' 'report-sample' yastatic.net
+            https://cdn.jsdelivr.net; img-src data: *; connect-src 'self'
+            https://yandex.ru https://bell.yandex-team.ru mc.yandex.ru
+            backend.messenger.yandex-team.ru search.yandex-team.ru; frame-src
+            https://forms.yandex-team.ru https://gnc.yandex-team.ru/
+            https://q.yandex-team.ru/; object-src 'none'; font-src
+            https://yastatic.net; report-uri
+            https://csp.yandex.net/csp?from=trip&project=trip;"
+    - rewrite:
+        actions:
+          - split: path
+            regexp: ^/(.+)
+            rewrite: /pr-2165349/%1
+          - split: path
+            regexp: ^/(.+/)?([^.]+)?$
+            rewrite: /pr-2165349/index.html
+    - balancer2:
+        attempts: 1
+        rr: {}
+        generated_proxy_backends:
+          proxy_options:
+            connect_timeout: 70ms
+            backend_timeout: 10s
+            fail_on_5xx: false
+          instances:
+            - host: trip-beta.s3.mds.yandex.net
+              port: 80
+              weight: 1
+        on_error:
+          modules:
+            - errordocument:
+                status: 504
+                content: Service unavailable

@@ -1,0 +1,44 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - karas-pv
+      - nanny-robot
+      - robot-geosearch
+      groups: []
+labels:
+  order: '10000000'
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      url: /business/stable/0((/|\\?).+)?
+  modules:
+  - rewrite:
+      actions:
+      - regexp: /business/stable/0(/)?(.*)?
+        rewrite: /%2
+        split: url
+  - stats_eater: {}
+  - balancer2:
+      attempts: 2
+      attempts_rate_limiter:
+        limit: 0.2
+      connection_attempts: 3
+      dynamic:
+        max_pessimized_share: 0.5
+      generated_proxy_backends:
+        include_backends:
+          ids:
+          - business_stable_0
+          type: BY_ID
+        proxy_options:
+          backend_timeout: 10s
+          connect_timeout: 100ms
+          fail_on_5xx: false
+          keepalive_count: 10
+      return_last_5xx: true
+      status_code_blacklist:
+      - '502'
+      - '503'
+      unique_policy: {}

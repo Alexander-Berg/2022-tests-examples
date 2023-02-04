@@ -1,0 +1,50 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - velom
+      groups: []
+labels:
+  order: '001330'
+---
+regexp_section:
+  matcher:
+    match_or:
+        - match_fsm:
+            host: 'test\\.api\\.appmetrica\\.metrika\\.yandex\\.net'
+        - match_fsm:
+            host: 'api-appmetrica\\.metrika-test\\.haze\\.yandex\\.ru'
+  modules:
+    - headers:
+        create:
+            X-Yandex-Metrika-Request-Source: api
+    - report:
+        uuid: "mobmetd-testing"
+        ranges: "default"
+    - headers_hasher:
+        header_name: "Authorization"
+        surround: false
+        randomize_empty_match: true
+    - balancer2:
+        attempts: 2
+        attempts_rate_limiter:
+          limit: 0.15
+        connection_attempts: !f count_backends()
+        status_code_blacklist : ["5xx"]
+        return_last_5xx: true
+        retry_non_idempotent: false
+        unique_policy: {}
+        rendezvous_hashing:
+            request: 'GET /ping HTTP/1.1\nHost: test.api.appmetrica.metrika.net\nUser-agent: l7-balancer\n\n'
+            delay: 10s
+        generated_proxy_backends:
+          proxy_options:
+            backend_timeout: 240s
+            connect_timeout: 100ms
+          include_backends:
+            type: BY_ID
+            ids: [mobmetd-testing-backend]
+        on_error:
+          errordocument:
+            status: 504
+            content: "Service unavailable"

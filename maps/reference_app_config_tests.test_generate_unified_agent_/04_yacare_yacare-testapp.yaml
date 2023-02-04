@@ -1,0 +1,27 @@
+storages:
+  - name: yacare-testapp
+    plugin: fs
+    config:
+      directory: /var/log/yandex/unified_agent/storages/yacare-testapp
+      max_partition_size: {{(logs.get("yacare_testapp", {}).maxsize or logs.get("yacare_app", {}).maxsize or "10G") | replace("G", "gb") | replace("M", "mb")}}
+      data_retention:
+        by_size: max
+        by_age: {{logs.get("yacare_testapp", {}).rotate or "7"}}d
+channels:
+  - name: yacare-testapp
+    channel:
+      pipe:
+        - filter:
+            plugin: assign
+            config:
+              message:
+                - _payload: "[{_timestamp:%Y-%m-%d %H:%M:%S}] {_priority}: {_payload}"
+        - filter:
+            plugin: compress
+            config:
+              codec: zstd
+              compression_quality: 3
+        - storage_ref:
+            name: yacare-testapp
+      output:
+        plugin: dev_null

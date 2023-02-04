@@ -1,0 +1,43 @@
+{
+    "solomon": {
+        "project_id": "maps-analytics",
+        "alerts": [
+            {
+                "id": "tools-duty-failure",
+                "projectId": "maps-analytics",
+                "name": "YT quota for test in hahn",
+                "channels": [
+                    {
+                        "id": "MapsAnalyticsMonitorings",
+                        "config": {
+                            "notifyAboutStatuses": [
+                                "ALARM",
+                                "ERROR",
+                                "NO_DATA",
+                                "OK",
+                                "WARN"
+                            ],
+                            "repeatDelaySecs": 0
+                        }
+                    }
+                ],
+                "type": {
+                    "expression": {
+                        "program": "let ALERT_THRESHOLD = 1;\n let alert_threshold_str =  to_fixed(ALERT_THRESHOLD * 100, 0);\n\n\n// disk space\nlet disk_space_used = avg({project='yt', account='test', cluster='hahn', service='accounts', medium='default', sensor='disk_space_in_gb'});\n let disk_space_limit = avg({project='yt', account='test', cluster='hahn', service = 'accounts', medium='default',  sensor='disk_space_limit_in_gb'});\n let disk_usage = disk_space_used/disk_space_limit;\n let disk_usage_str = to_fixed(disk_usage * 100, 0);\n let is_disk_alert = disk_usage > ALERT_THRESHOLD;\n\n\n// chunks\n let chunks_used = avg({project=\"yt\", account=\"test\", cluster=\"hahn\", service=\"accounts\", sensor=\"chunk_count\"});\n let chunks_limit = avg({project=\"yt\", account=\"test\", cluster=\"hahn\", service=\"accounts\", sensor=\"chunk_count_limit\"});\n let chunks_usage = chunks_used/chunks_limit;\n let chunks_usage_str = to_fixed(chunks_usage * 100, 0);\n let is_chunks_alert = chunks_usage > ALERT_THRESHOLD;\n\n\n// nodes\n let nodes_used = avg({project=\"yt\", account=\"test\", cluster=\"hahn\", service=\"accounts\", sensor=\"node_count\"});\n let nodes_limit = avg({project=\"yt\", account=\"test\", cluster=\"hahn\", service=\"accounts\", sensor=\"node_count_limit\"});\n let nodes_usage = nodes_used/nodes_limit;\n let nodes_usage_str = to_fixed(nodes_usage * 100, 0);\n let is_nodes_alert = nodes_usage > ALERT_THRESHOLD;\n\n\nalarm_if(is_disk_alert);\n alarm_if(is_chunks_alert);\n alarm_if(is_nodes_alert);",
+                        "checkExpression": ""
+                    }
+                },
+                "annotations": {
+                    "solomon_dashboard_id": "test",
+                    "description": "{{#expression.is_disk_alert}}YT disk quota usage ({{expression.disk_usage_str}}%) is exceeded threshold limit {{expression.alert_threshold_str}}%.{{/expression.is_disk_alert}}{{#expression.is_chunks_alert}} YT chunks count usage ({{expression.chunks_usage_str}}%) is exceeded threshold limit {{expression.alert_threshold_str}}%.{{/expression.is_chunks_alert}}{{#expression.is_nodes_alert}} YT nodes count usage ({{expression.nodes_usage_str}}%) is exceeded threshold limit {{expression.alert_threshold_str}}%.{{/expression.is_nodes_alert}}",
+                    "juggler_host": "maps-analytics",
+                    "juggler_service": "test_hahn_yt-quota-exceeded"
+                },
+                "windowSecs": 300,
+                "delaySecs": 0,
+                "resolvedEmptyPolicy": "RESOLVED_EMPTY_DEFAULT",
+                "noPointsPolicy": "NO_POINTS_DEFAULT"
+            }
+        ]
+    }
+}

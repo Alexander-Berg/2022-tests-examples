@@ -1,0 +1,75 @@
+alerts:
+  - filter:
+      service_name: .*postgres-mdb-master-disk-limit
+    body:
+      warn: 80
+      crit: 90
+
+  - filter:
+      service_name: .*mongodb-mdb-master-disk-limit
+    body:
+      warn: 80
+      crit: 90
+
+  - filter:
+      service_name: .*postgres-mdb-cluster-cpu-(limit|wait)
+    body:
+      disable: true
+
+  - filter:
+      service_name: .*mongodb-mdb-cluster-cpu-(limit|wait)
+    body:
+      disable: true
+
+  # Stable Garden server CRIT alerts
+  - filter:
+      staging: stable
+      service_name: ((?!-(check_latest_build_status|check_build_limits)).)*
+    body:
+      notifications:
+        - type: service_duty
+
+  # Other Garden server alerts
+  - filter:
+      service_name: ((?!-(check_latest_build_status|check_build_limits)).)*
+    body:
+      notifications:
+        - type: startrek
+          status: [WARN, CRIT]
+          queue: DATAPRODDUTY
+          components: [garden]
+          assignee: alexbobkov
+        - type: telegram
+          login: [maps-garden-dev-chat]
+          status: [WARN, CRIT]
+
+  # Alerts for all modules
+  - filter:
+      service_name: .*-(check_latest_build_status|check_build_limits)
+    body:
+      notifications:
+        - type: telegram
+          login: [maps-garden-module-monitorings]
+          status: [WARN, CRIT]
+
+  # Most important modules should be under service duty
+  - filter:
+      staging: stable
+      service_name: ymapsdf-check_latest_build_status
+    body:
+      notifications:
+        - type: service_duty
+
+  # Not very important module alerts
+  - filter:
+      service_name: (altay|ymapsdf|ymapsdf_release_yt|ymapsdf_src)-.*
+    body:
+      notifications:
+        - type: startrek
+          status: [WARN, CRIT]
+          queue: DATAPRODDUTY
+          components: [garden]
+          assignee: alexbobkov
+        - type: telegram
+          login: [maps-garden-dev-chat]
+          status: [WARN, CRIT]

@@ -1,0 +1,39 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - m-smirnov
+      groups: []
+labels:
+  order: '50000001'
+config_mode: easy2
+---
+l7_upstream_macro:
+  version: 0.0.2
+  id: l7test_yandex_tld_blog_ya-profi-news
+  matcher:
+    path_re: '/blog/ya-profi-news(/)?(.*)?'
+  rewrite:
+    - {target: PATH, pattern: { re: '/blog(/)?(.*)?' }, replacement: '/%2' }
+  headers:
+    - create: {target: Host, keep_existing: false, value: 'meduza-old-test.common.yandex.ru'}
+  monitoring:
+    uuid: l7test_yandex_tld_blog_ya-profi-news
+  flat_scheme:
+    balancer:
+      compat:
+        method: RR
+      attempts: 1
+      max_reattempts_share: 0.15
+      fast_attempts: 2
+      use_https_to_endpoints: {}
+      do_not_retry_http_responses: true
+      retry_non_idempotent: false
+      connect_timeout: 100ms
+      backend_timeout: 5s
+    backend_ids:
+      - ya-profi-news
+    on_error:
+      static:
+        status: 504
+        content: 'Service unavailable'

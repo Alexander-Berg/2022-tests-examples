@@ -1,0 +1,177 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Кластер: добавление новых и невидимых объектов.
+
+Description:
+Проверка работы кластеризации при добавлении новых и невидимых объектов на карту.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+clusterer
+
+Estimated time:
+120000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан материковой части Евразии.
+  На спане карты в районе местоположения Санкт-Петербурга красная кластерная метка со значением кластеризации "200".
+  Сверху имеются кнопки "add invi...", "visible".
+
+Step:
+  Action:
+  Выполнить призум скролом мыши на 5 значений к спану Санкт-Петербурга.
+
+  Expectation:
+  Происходит корректный призум карты, кластерная метка распадается на кластерные метки, метки коллекций(синие метки и зеленые метки с надписью "Point").
+
+Step:
+  Action:
+  Выполнить клик в кнопку "visible".
+
+  Expectation:
+  Со спана карты пропадает некоторое количество синих меток и зеленых меток коллекций.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "visible".
+
+  Expectation:
+  На спане карты появлятются пропашие на прошлом шаге метки коллекций.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "add invi...".
+
+  Expectation:
+  На спане карты появляются новые кластерные метки.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "add invi...".
+
+  Expectation:
+  Со спана карты пропадают некоторые кластерные метки, появившиеся на предыдущем шаге.  
+
+Step:
+  Action:
+  Выполнить отзум карты скролом мыши на 5 значений.
+
+  Expectation:
+  Происходит корректный отзум карты, кластерная метка кластеризуются в более крупные, метки коллекций кластеризуются и пропадают с карты.
+  На спане карты остается одна кластерная метка со значением "200".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "add invi...".
+
+  Expectation:
+  Значение в кластерной метке меняется на "300".
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            var myMap = new ymaps.Map('map', {
+                center: [59.96343157514998, 30.317977733422868],
+                zoom: 7,
+                // Добавим к стандартным поведениям карты зум колесом мыши.
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+
+            log.info('Invisible and new objects must be included to iconContent');
+
+            var clusterer = new ymaps.Clusterer({preset: 'islands#redClusterIcons', disableClickZoom: true});
+            var i = 0;
+            var placemarksNumber = 200;
+            var bounds = myMap.getBounds();
+            var newPlacemarks = createGeoObjects(placemarksNumber, bounds);
+            var invisiblePlacemarks = createGeoObjects(100, bounds);
+
+            clusterer.add(newPlacemarks);
+            myMap.geoObjects.add(clusterer);
+
+
+            var clusterSizeButton = new ymaps.control.Button({data: {content: 'visible'}, options: {selectOnClick: true}});
+            var addInvisibleButton = new ymaps.control.Button({data: {content: 'add invisible'}, options: {selectOnClick: true}});
+
+            clusterSizeButton.events
+                    .add('select', function () {
+                        for (var i = 0; i < 100; i++) {
+                            newPlacemarks[i].options.set('visible', false)
+                        }
+
+                    })
+                    .add('deselect', function () {
+                        for (var i = 0; i < 100; i++) {
+                            newPlacemarks[i].options.set('visible', true)
+                        }
+                    });
+
+            addInvisibleButton.events
+                    .add('select', function () {
+                        for (var i = 0; i < invisiblePlacemarks.length; i++) {
+                            invisiblePlacemarks[i].options.set('visible', false)
+                        }
+                        clusterer.add(invisiblePlacemarks);
+
+                    })
+                    .add('deselect', function () {
+                        clusterer.remove(invisiblePlacemarks);
+                    });
+
+            myMap.controls
+                    .add(clusterSizeButton, {top: 5, left: 5})
+                    .add(addInvisibleButton, {top: 35, left: 5});
+
+            myMap.setZoom(3);
+
+            function createGeoObjects(number, bounds) {
+                var placemarks = [];
+                // Создаем нужное количество меток
+                for (var i = 0; i < number; i++) {
+                    // Генерируем координаты метки случайным образом.
+                    coordinates = getRandomCoordinates(bounds);
+                    // Создаем метку со случайными координатами.
+                    if (Math.random() > 0.5) {
+                        myPlacemark = new ymaps.Placemark(coordinates, {
+                            balloonContent: i, hintContent: i, clusterCaption: i}, {});
+                    } else {
+                        myPlacemark = new ymaps.Placemark(coordinates, {
+                            balloonContent: i, hintContent: i, iconContent: 'point', clusterCaption: 'point ' + i}, {preset: 'islands#greenStretchyIcon'});
+                    }
+                    placemarks.push(myPlacemark);
+                }
+                return placemarks;
+            }
+
+            function getRandomCoordinates(bounds) {
+                var size = [bounds[1][0] - bounds[0][0], bounds[1][1] - bounds[0][1]];
+                return [Math.random() * size[0] + bounds[0][0], Math.random() * size[1] + bounds[0][1]];
+            }
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

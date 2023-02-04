@@ -1,0 +1,50 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - woodie
+      groups: []
+labels:
+  order: '10000000'
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      uri: '/zrx/(.*)'
+  modules:
+    - report: {uuid: zrx, ranges: default}
+    - rewrite:
+        actions:          
+        - regexp: '/zrx/player/(.*)\\.json(\\?(.*))?'
+          rewrite: '/vh/oauth?handler=public/player/%1.json&synchronous_scheme=1&%3'
+       
+    - exp_getter_macro:
+        service_name: vh
+        testing_mode: {}
+        _version: 3
+    - balancer2:
+        attempts: 2
+        rr: {}
+        backends:
+          - weight: 1
+            name: zrx
+            modules:
+              - report: {uuid: zrx, ranges: default}
+              - balancer2:
+                  attempts: 3
+                  attempts_rate_limiter:
+                    limit: 0.25
+                  rr: {}
+                  timeout_policy:
+                    timeout: 5s
+                    unique_policy: {}
+                  generated_proxy_backends:
+                    proxy_options:
+                      backend_timeout: 2s
+                      connect_timeout: 50ms
+                      status_code_blacklist: ["408"]
+                      keepalive_count: 1
+                    include_backends:
+                      type: BY_ID
+                      ids:
+                        - man_vh_http_adapter_testing

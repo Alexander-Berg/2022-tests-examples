@@ -1,0 +1,173 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Контрол: позиционирование маршрутной панели
+
+Description:
+Проверка позиционирования маршрутной панели.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+control
+
+Estimated time:
+120000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась корректно. 
+  На карте спан Москвы.
+  На спане отображается построенный маршрут(фиолетовая нитка, метки "1", "2", красная метка "А").
+  В контейнере 4 маршрутных панели: сверху в левом углу, в правом углу, снизу слева и справа с отступом снизу.
+  Курсор в виде пальца с прилипшей меткой "А", инпут маршрутной панели слева внизу активен.
+
+Step:
+  Action:
+  Выполнить клик в спан карты.
+
+  Expectation:
+  На спане карты в месте клика появляется красная метка "A" с адресом.
+  Адрес метки автоматически появляется в инпуте точки "A" в маршрутной панели слева внизу.
+  К курсору в виде руки с пальцем прилипает синяя метка "B".
+
+Step:
+  Action:
+  Выполнить клик в спан карты на удалении от точки "A".
+
+  Expectation:
+  На спане карты в месте клика появляется синяя метка "B" с адресом.
+  Адрес метки автоматически появляется в инпуте точки "B" в маршрутной панели слева внизу.
+  Между метками "А" и "B" появляется фиолетовая маршрутная линия(основная) и серые линии(альтернативные).
+  Спан может призумится(сместиться) к области маршрута.
+-->
+<html>
+<head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <script src="//yandex.st/jquery/1.6.4/jquery.min.js" type="text/javascript"></script>
+    <script src="../../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            var myMap = new ym.Map('map', {
+                        center: [55.73259667357658, 37.70153663432529],
+                        zoom: 9,
+                        behaviors: ['default', 'scrollZoom'],
+                        controls: []
+                    }),
+            // Признак начала редактирования маршрута.
+                    startEditing = false,
+                    button = $('#editor'),
+                    /**
+                     * Создание мультимаршрута.
+                     * @see https://api.yandex.ru/maps/doc/jsapi/2.1/ref/reference/multiRouter.MultiRoute.xml
+                     */
+                    multiRoute = new ymaps.multiRouter.MultiRoute({
+                        referencePoints: ["Москва", "Тверь"]
+                    }, {
+                        // Тип промежуточных точек, которые могут быть добавлены при редактировании.
+                        editorMidPointsType: "via",
+                        // В режиме добавления новых путевых точек запрещаем ставить точки поверх объектов карты.
+                        editorDrawOver: false
+                    }),
+                    buttonEditor = new ymaps.control.Button({
+                        data: {
+                            content: "Режим редактирования"
+                        },
+                        options: {
+                            maxWidth: 300
+                        }
+                    });
+            var log = new Log();
+
+            buttonEditor.events.add("select", function () {
+                /**
+                 * Включение режима редактирования.
+                 * В качестве опций может быть передан объет с полями:
+                 * addWayPoints - разрешает добавление новых путевых точек при клике на карту. Значение по умолчанию: false.
+                 * dragWayPoints - разрешает перетаскивание уже существующих путевых точек. Значение по умолчанию: true.
+                 * removeWayPoints - разрешает удаление путевых точек при двойном клике по ним. Значение по умолчанию: false.
+                 * dragViaPoints - разрешает перетаскивание уже существующих транзитных точек. Значение по умолчанию: true.
+                 * removeViaPoints - разрешает удаление транзитных точек при двойном клике по ним. Значение по умолчанию: true.
+                 * addMidPoints - разрешает добавление промежуточных транзитных или путевых точек посредством перетаскивания маркера, появляющегося при наведении курсора мыши на активный маршрут. Тип добавляемых точек задается опцией midPointsType. Значение по умолчанию: true
+                 * @see https://api.yandex.ru/maps/doc/jsapi/2.1/ref/reference/multiRouter.MultiRoute.xml#editor
+                 */
+                multiRoute.editor.start({
+                    addWayPoints: true,
+                    removeWayPoints: true
+                });
+
+                multiRoute.options.set('editorDrawOver', true);
+            });
+            buttonEditor.events.add("deselect", function () {
+                // Выключение режима редактирования.
+                multiRoute.editor.stop();
+            });
+
+            myMap.geoObjects.add(multiRoute);
+            myMap.controls.add(buttonEditor);
+
+            addGrid(myMap);
+
+            var route1 = new ymaps.control.RoutePanel({options: {float: 'none',position: {top: 5, left: 65}}});
+            var route2 = new ymaps.control.RoutePanel({data: {title: 'route2'}, options: {float: 'none'}});
+            var route3 = new ymaps.control.RoutePanel({data: {title: 'route3'}, options: {float: 'none'}});
+            var route4 = new ymaps.control.RoutePanel({data: {title: 'route4'}, options: {float: 'none'}});
+
+            myMap.controls
+                    .add(route1, {position: {right: 0}})
+                    .add(route2, {position: {bottom: 40, right: 0}})
+                    .add(route3, {position: {left: 0}})
+                    .add(route4, {position: {bottom: 40, left: 0}});
+
+            log.info('1 - top: 5, left: 65');
+            log.info('2 - bottom: 35, right: 35');
+            log.info('3 - top: 65, left: 65, bottom: 35, right: 35');
+            log.info('4 - top: 95');
+            ymaps.route([
+                'Москва, метро Смоленская',
+                {
+                    // Метро Арбатская - транзитная точка (проезжать через эту точку,
+                    // но не останавливаться в ней).
+                    type: 'viaPoint',
+                    point: 'Москва, метро Арбатская'
+                },
+                // Метро "Третьяковская".
+                [55.74062, 37.62561]
+            ], {
+                // Автоматически позиционировать карту.
+                mapStateAutoApply: true
+            }).then(function (route) {
+                myMap.geoObjects.add(route);
+                button.click(function () {
+                    if (startEditing = !startEditing) {
+                        // Включаем редактор.
+                        route.editor.start({ addWayPoints: true });
+                        button.val('Отключить редактор маршрута');
+                    } else {
+                        // Выключаем редактор.
+                        route.editor.stop();
+                        button.val('Включить редактор маршрута');
+                    }
+                });
+                route.options.set('editorDrawOver', false);
+            }, function (error) {
+                alert("Возникла ошибка: " + error.message);
+            });
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+<input type="button" value="Включить редактор маршрута" id="editor" name="start"/>
+</body>
+</html>

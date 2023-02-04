@@ -1,0 +1,96 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - yaskevich
+      - ftdebugger
+      - next0
+      groups:
+      - yandex_mnt_sa_runtime_cross
+      - svc_podborki
+labels:
+  order: '10000000'
+---
+regexp_section:
+  matcher: {}
+  modules:
+  - shared:
+      uuid: nodejs
+  - icookie:
+      use_default_keys: true
+      force_generate_from_searchapp_uuid: true
+      enable_parse_searchapp_uuid: false
+      domains: [".yandex.ru", ".yandex.by", ".yandex.com", ".yandex.com.tr", ".yandex.kz", ".yandex.ua", ".yandex.uz"]
+  - report: {ranges: default, uuid: nodejs}
+  - hasher:
+      mode: text
+  - regexp:
+      sections:
+        post_method:
+          matcher:
+            match_fsm: {match: POST.*}
+          modules:
+          - balancer2:
+              attempts: 1
+              hashing:
+                delay: 30s
+                request: 'GET /version.json HTTP/1.1\nHost: collections.test.yandex.ru\n\n'
+              timeout_policy:
+                timeout: 1s
+                active_policy:
+                  unique_policy: {}
+              generated_proxy_backends:
+                proxy_options:
+                  backend_timeout: 10s
+                  connect_timeout: 100ms
+                  keepalive_count: 1
+                include_backends:
+                  type: BY_ID
+                  ids: [pdb_nodejs_test]
+              on_error:
+                modules:
+                - errordocument: {content: 'OK', status: 200}
+        default:
+          matcher: {}
+          modules:
+          - balancer2:
+              attempts_rate_limiter:
+                limit: 0.1
+                coeff: 0.99
+              attempts: 3
+              hashing:
+                delay: 30s
+                request: 'GET /version.json HTTP/1.1\nHost: collections.test.yandex.ru\n\n'
+              active_policy:
+                unique_policy: {}
+              generated_proxy_backends:
+                proxy_options:
+                  backend_timeout: 3s
+                  connect_timeout: 100ms
+                  keepalive_count: 1
+                include_backends:
+                  type: BY_ID
+                  ids: [pdb_nodejs_test]
+              on_error:
+                modules:
+                - balancer2:
+                    attempts_rate_limiter:
+                      limit: 0.1
+                      coeff: 0.99
+                    attempts: 3
+                    hashing:
+                      delay: 1s
+                      request: 'GET /status HTTP/1.1\nHost: collections.test.yandex.ru\n\n'
+                    active_policy:
+                      unique_policy: {}
+                    generated_proxy_backends:
+                      proxy_options:
+                        backend_timeout: 1s
+                        connect_timeout: 100ms
+                        keepalive_count: 1
+                      include_backends:
+                        type: BY_ID
+                        ids: [pdb_nodejs_offline_test]
+                    on_error:
+                      modules:
+                      - errordocument: {content: Gateway Timeout, status: 504}

@@ -1,0 +1,71 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - yamamont
+      groups: []
+labels:
+  order: '10000000'
+config_mode: easy2
+---
+l7_upstream_macro:
+  version: 0.0.1
+  id: s3_haier
+  matcher:
+      path_re: (/laboratory_mediaservices/kinopoisk/data|/xiaomi/feed/sport|/haier/feed/(catalog|sport)|/tcl/feed/catalog|/apple/feed/(availability|catalog|without-validation))(.*)?
+  rewrite:
+    - target: PATH
+      pattern:
+        re: /laboratory_mediaservices/kinopoisk/data
+      replacement: /feed/production/haier/catalog.json
+    - target: PATH
+      pattern:
+        re: /haier/feed/catalog(.*)?
+      replacement: /feed/production/haier/catalog.json
+    - target: PATH
+      pattern:
+        re: /haier/feed/sport(.*)?
+      replacement: /feed/production/haier/haier_sport_feed.json
+    - target: PATH
+      pattern:
+        re: /xiaomi/feed/sport(.*)?
+      replacement: /ott/feed/production/xiaomi/xiaomi_sport_feed.json
+    - target: PATH
+      pattern:
+        re: /tcl/feed/catalog/links(.*)?
+      replacement: /feed/production/tcl/catalog/links.txt
+    - target: PATH
+      pattern:
+        re: /tcl/feed/catalog/feed(.*)?
+      replacement: /feed/production/tcl/catalog/feed%1.json
+    - target: PATH
+      pattern:
+        re: /apple/feed/availability(.*)?
+      replacement: /ott/feed/production/apple/availability.xml
+    - target: PATH
+      pattern:
+        re: /apple/feed/catalog(.*)?
+      replacement: /ott/feed/production/apple/catalog.xml
+    - target: PATH
+      pattern:
+        re: /apple/feed/without-validation(.*)?
+      replacement: /ott/feed/production/apple/catalog_without_validation.xml
+  headers:
+    - rewrite: {target: Host, pattern: { re: '.*' }, replacement: "ott.s3.mds.yandex.net"}
+  flat_scheme:
+    balancer:
+      attempts: 2
+      fast_attempts: 2
+      max_reattempts_share: 0.15
+      max_pessimized_endpoints_share: 0.5
+      retry_http_responses:
+        on_last_failed_retry: PROXY_RESPONSE_AS_IS
+        codes: [5xx]
+      backend_timeout: 60s
+      connect_timeout: 60ms
+      keepalive_count: 128
+    backend_ids: [ott.s3.mds.yandex.net]
+    on_error:
+      static:
+        status: 504
+        content: "Service unavailable"

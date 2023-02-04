@@ -1,0 +1,105 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - elakov
+      groups: []
+labels:
+  order: '10000000'
+---
+regexp_section:
+  matcher:
+    match_or:
+      - match_fsm:
+          host: 'test\\.media\\.metri(k|c)a\\.yandex\\.(ru|ua|by|kz|com|com.tr)'
+      - match_fsm:
+          host: 'mediametrika\\.crowdtest\\.(metri(k|c)a\\.)?yandex\\.(ru|ua|by|kz|com|com.tr)'
+  modules:
+    - regexp:
+        sections:
+          promo:
+            matcher:
+              match_fsm:
+                uri: '/(about|kpi|segmentation)'
+            modules:
+              - headers:
+                  create:
+                    Host: yandex.ru
+              - rewrite:
+                  actions:
+                  - regexp: '/about'
+                    rewrite: '/promo/metrica/media/index'
+                  - regexp: '/kpi'
+                    rewrite: '/promo/metrica/media/postview'
+                  - regexp: '/segmentation'
+                    rewrite: '/promo/metrica/media/integration'
+              - balancer2:
+                  attempts: 2
+                  attempts_rate_limiter:
+                    limit: 0.15
+                  generated_proxy_backends:
+                    proxy_options:
+                      backend_timeout: 5s
+                      keepalive_count: 1
+                    instances:
+                      - weight: 1
+                        host: 'lp-constructor-internal-balancer.stable.qloud-b.yandex.net'
+                        port: 80
+                  on_error:
+                    modules:
+                      - errordocument: {content: Gateway Timeout, status: 504}
+                  rr: {}
+                  unique_policy: {}
+          default:
+            matcher: {}
+            modules:     
+              - balancer2:
+                  attempts: !f count_backends()
+                  rr: { weights_file: ./controls/traffic_control.weights }
+                  backends:
+                    - weight: 1
+                      name: bygeo_sas
+                      modules:
+                        - balancer2:
+                            attempts: 1
+                            connection_attempts: 2
+                            dynamic:
+                              max_pessimized_share: 0.2
+                              active:
+                                weight_normalization_coeff: 1
+                                delay: "1s"
+                                request: 'GET /healthchecks/liveness HTTP/1.1\nHost: test.media.metrika.yandex.ru\nUser-agent: l7-balancer\n\n'
+                            generated_proxy_backends:
+                              proxy_options:
+                                backend_timeout: 120s
+                                connect_timeout: 70ms
+                                keepalive_count: 0
+                                fail_on_5xx: false
+                              include_backends:
+                                type: BY_ID
+                                ids: [mediametrika-sas]
+                    - weight: 1
+                      name: bygeo_vla
+                      modules:
+                        - balancer2:
+                            attempts: 1
+                            connection_attempts: 2
+                            dynamic:
+                              max_pessimized_share: 0.2
+                              active:
+                                weight_normalization_coeff: 1
+                                delay: "1s"
+                                request: 'GET /healthchecks/liveness HTTP/1.1\nHost: test.media.metrika.yandex.ru\nUser-agent: l7-balancer\n\n'
+                            generated_proxy_backends:
+                              proxy_options:
+                                backend_timeout: 120s
+                                connect_timeout: 70ms
+                                keepalive_count: 0
+                                fail_on_5xx: false
+                              include_backends:
+                                type: BY_ID
+                                ids: [mediametrika-vla]
+                  on_error:
+                    errordocument:
+                      status: 504
+                      content: "Service unavailable"

@@ -1,0 +1,235 @@
+<!doctype html>
+<html style='height:100%;width:100%;'>
+<head>
+    <title>html5 camp</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <meta name="viewport" content="initial-scale=1.0; user-scalable=0"/>
+
+    <script src='http://api-maps.yandex.ru/2.0/?lang=ru-RU&mode=debug&load=graphics.generator.simplify,graphics.render.detect.all,graphics.render.factory,graphics.Path'></script>
+
+</head>
+<body style='margin:0;padding:0;background-image: url(http://www.egraphic.ru/images/digital-art/120/1.jpg);background-size: 60% 70%'>
+<script>
+
+var renderTech = 'canvas';
+
+function placeShape (div, shape, absolutePosition) {
+    var pane = shape.createPane();
+    div.appendChild(pane.holder());
+    pane.addShape(shape);
+    pane.flush();
+    if (!absolutePosition) {
+        pane.holder().style.position = 'static';
+    }
+    return pane.holder();
+}
+
+function getMedian (scores) {
+    scores = scores.slice(0).sort(function (a, b) {
+        return a - b;
+    });
+    var size = scores.length;
+    var result = {
+        min: scores[0],
+        max: scores[size - 1]
+    }
+    if (size % 2 == 0) {
+        result.median = (scores[size / 2 - 1] + scores[size / 2]) / 2;
+    } else {
+        result.median = scores[size / 2];
+    }
+    result.delta = (result.median - result.min) * 0.13;
+    return result;
+}
+
+function getAverageValue (scores) {
+    var median = getMedian(scores),
+            min = median.median - median.delta,
+            max = median.median + median.delta,
+            cnt = 0,
+            sum = 0,
+            hits = 0;
+    for (var i = 0, l = scores.length; i < l; ++i) {
+        var value = scores[i];
+        if (value >= min && value <= max) {
+            sum += value;
+            cnt++;
+            hits++;
+        }
+    }
+    //if (hits/size>0.3) - ряд сходится
+    return {
+        avg: sum / cnt,
+        quantil: hits / scores.length
+    }
+}
+
+function timeTest (fn, start, end, step) {
+    var results = [];
+    for (var i = start; i < end; i += step) {
+        var times = [];
+        var ts0 = +(new Date());
+        for (var j = 0; j < 20; ++j) {
+            var ts = +(new Date());
+            var index = fn(i);
+
+            var te = +(new Date());
+            times.push(te - ts);
+            if (te - ts0 > 100) {
+                break;
+            }
+        }
+        var tm = getAverageValue(times);
+        results.push([i, tm]);
+    }
+    return results;
+}
+
+
+function renderCountLine (cnt, passes, R) {
+    function genCountLine () {
+        var step = 2 * Math.PI / cnt;
+        var verticles = [];
+        for (var i = 0; i < passes * Math.PI * 2; i += step) {
+            verticles.push([Math.cos(i) * R + R, Math.sin(i) * R + R]);
+        }
+        return verticles;
+    }
+
+    var data = genCountLine();
+    var poly = ymaps.graphics.render.factory.create('line', renderTech);
+    poly.line([ymaps.graphics.Path.fromArray(data)]);
+
+    poly.setBounds([
+        [0, 0],
+        [R * 2, R * 2]
+    ]);
+    poly.setAttributes({
+        strokeColor: '#F44',
+        strokeWidth: 2
+    });
+    return {
+        poly: poly,
+        line: data
+    };
+}
+
+function renderLine (div, line) {
+    var poly = ymaps.graphics.render.factory.create('line', renderTech);
+    poly.line([ymaps.graphics.Path.fromArray(line)]);
+
+    poly.setBounds([
+        [0, 0],
+        [1400, 400]
+    ]);
+    poly.setAttributes({
+        strokeColor: '#F44',
+        strokeWidth: 2
+    });
+    return placeShape(div, poly);
+}
+
+function renderStroke () {
+    var poly = ymaps.graphics.render.factory.create('line', renderTech);
+    poly.line([ymaps.graphics.Path.fromArray([
+        [300, 300],
+        [300, 50],
+        [200, 90],
+        [200, 130],
+        [300, 150],
+        [200, 300]
+    ])]);
+
+    poly.setBounds([
+        [0, 0],
+        [400, 400]
+    ]);
+    poly.setAttributes({
+        strokeColor: '#F44',
+        strokeStyle: '2,2',
+        strokeWidth: 8
+    });
+    return poly;
+}
+
+function genPolygon () {
+    return [ymaps.graphics.Path.fromArray([
+        [300, 300],
+        [300, 50],
+        [200, 90],
+        [200, 130],
+        [300, 150],
+        [200, 300]
+    ])]
+}
+
+function renderPolygon (options) {
+    var poly = ymaps.graphics.render.factory.create('polygon-filled', renderTech);
+    poly.polygon(genPolygon());
+
+    poly.setBounds([
+        [0, 0],
+        [400, 400]
+    ]);
+    poly.setAttributes(options);
+    return poly;
+}
+
+
+ymaps.ready(function () {
+    var body = document.body;
+    var tmp;
+
+    /*
+
+    for (var i = 0; i < 200; ++i) {
+        var pl = renderCountLine(10, 1, 800);
+        var node = placeShape(body, pl.poly, true);
+    }
+
+    return;
+    renderLine(body, timeTest(function (i) {
+        // var pl=renderCountLine(3.14123,i,200);
+        var pl = renderCountLine(10 * i, 1, 200);
+        var node = placeShape(body, pl.poly);
+        tmp += body.offsetLeft;
+        node.parentNode.removeChild(node);
+        return pl.line.length;
+    }, 1, 300, 5));
+
+    */
+
+    /**/
+    placeShape(body, renderStroke());
+
+    placeShape(body, renderPolygon({
+        strokeColor: '#4F4',
+        fillColor: false,
+        strokeWidth: 14
+    }));
+    placeShape(body, renderPolygon({
+        strokeColor: '#f449',
+        fillColor: '#000',
+        strokeWidth: 18
+    }));
+    placeShape(body, renderPolygon({
+        strokeColor: '#f44',
+        fillColor: '#000',
+        strokeWidth: 18,
+        opacity: 0.5
+    }));
+
+    /**/
+
+    placeShape(body, renderPolygon({
+        strokeColor: '#4f4',
+        fillImageHref: 'http://arttower.ru/wiki/images/thumb/5/53/CYGM_pattern.svg/400px-CYGM_pattern.svg.png',
+        fillMethod:'stretch',
+        strokeWidth: 8
+    }));
+
+
+});
+</script>
+</body>
+</html>

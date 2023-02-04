@@ -1,0 +1,146 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Менеджер объектов: множество объектов 
+
+Description:
+Проверка кластеризации и балуна - карусели при множестве объектов. 
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+objectManager
+
+Estimated time:
+90000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно со спаном Ленинградской области.
+  На спане метки кластеров со значениями кластеризации.
+
+Step:
+  Action:
+  Выполнить клик в кластерную метку со значением кластеризации более 1000. 
+
+  Expectation:
+  Спан карты смещается для открытия балуна метки.
+  Вместо кластерной метки открывается балун, в балуне заголовок и содержимое с номером метки, в футере балуна номера меток голубым цветом, справа после 9 многоточие.
+  Слева и справа стрелки смены балунов меток кластера.
+
+Step:
+  Action:
+  Выполнять клик в многоточие в футере справа от цифры 9, до цифры меток превыщающей 1000. 
+
+  Expectation:
+  При каждом клике в многоточие список в футере корректно перемещается на 10 меток, цифры в футере отображаются корректно.
+  Заголовок и содержимое балуна также меняется по клику в многоточие.
+
+Step:
+  Action:
+  Закрыть балун кластера. 
+
+  Expectation:
+  Балун закрылся, кластерная метка со значением кластеризации снова появляется на спане карты.
+
+Step:
+  Action:
+  Выполнить отзум спана карты на несколько значений. 
+
+  Expectation:
+  Происходит корректный отзум: карта и метки не мигают цветами, карта не пропадает.
+  Метки кластеров кластеризуются в одну метку со значением кластеризации 50000.
+
+Step:
+  Action:
+  Выполнить клик в кластерную метку. 
+
+  Expectation:
+  Спан карты смещается для открытия балуна метки.
+  Вместо кластерной метки открывается балун, в балуне заголовок и содержимое с номером метки, в футере балуна номера меток голубым цветом, многоточие.
+  Слева и справа стрелки смены балунов меток кластера.
+  Номера меток в футере корректно отображаются.
+
+Step:
+  Action:
+  Выполнить 10 кликов в стрелку переключения балунов меток справа. 
+
+  Expectation:
+  При каждом клике в стрелку в списке в футере происходит корректное перемещение на 1 метку, цифры в футере отображаются корректно.
+  Заголовок и содержимое балуна также меняется по клику в стрелку.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var map = myMap = new ymaps.Map('map', {
+                center: [59.96343157514998, 30.317977733422868],
+                zoom: 7,
+                // Добавим к стандартным поведениям карты зум колесом мыши.
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+            __log__("Номера должны адекватно выглядеть в футере балуна карусели");
+            var objectManager = new ym.ObjectManager({clusterize: true,
+                clusterBalloonContentLayout: 'cluster#balloonCarousel', gridSize: 256, clusterDisableClickZoom: true});
+            var placemarksNumber = 50000;
+            var bounds = map.getBounds();
+            var newPlacemarks = createGeoObjects(placemarksNumber, bounds);
+
+            objectManager.objects.add(newPlacemarks);
+            map.geoObjects.add(objectManager);
+
+            function createGeoObjects(number, bounds) {
+                var placemarks = [];
+                // Создаем нужное количество меток
+                for (var i = 0; i < number; i++) {
+                    // Генерируем координаты метки случайным образом.
+                    var coordinates = getRandomCoordinates(bounds);
+                    // Создаем метку со случайными координатами.
+                    var myPlacemark = {
+                        "type": "Feature",
+                        "id": i,
+                        "geometry": {
+                            "type": "Point",
+                            "coordinates": coordinates
+                        },
+                        "properties": {
+                            "balloonContent": i,
+                            "clusterCaption": i,
+                            "hintContent": i
+                        }
+                    };
+                    placemarks.push(myPlacemark);
+                }
+                return placemarks;
+            }
+
+            function getRandomCoordinates(bounds) {
+                var size = [bounds[1][0] - bounds[0][0], bounds[1][1] - bounds[0][1]];
+                return [Math.random() * size[0] + bounds[0][0], Math.random() * size[1] + bounds[0][1]];
+            }
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

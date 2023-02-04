@@ -1,0 +1,74 @@
+<!DOCTYPE HTML>
+<!--(skip)(description)
+
+-->
+<!--(version)
+
+-->
+<!--(commands)
+
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var center = [56, 34];
+
+            var map = myMap = new ymaps.Map('map', {
+                center: center,
+                zoom: 4,
+                type: 'yandex#map',
+                controls: ['fullscreenControl']
+            });
+            __log__("Запусти сервер remoteNonPointObject.js");
+            // создаем экземпляр класса RemoteObjectManager
+            var remoteObjectManager = new ymaps.RemoteObjectManager('https://alexa.maps.dev.yandex.ru:4781/?bbox=%b', {
+                splitRequests: true,
+                paddingTemplate: 'managerResponse_bbox_%b',
+                clusterDisableClickZoom: true
+            });
+            map.geoObjects.add(remoteObjectManager);
+
+            addGrid(myMap);
+            var log = new Log();
+
+            remoteObjectManager.objects.balloon.events.add(['open', 'close', 'userclose', 'autopanbegin', 'autopanend'], function (e) {
+                __log__(e.get('type') + ", target: " + e.get('target'));
+                console.log(e.get('target'))
+            });
+            var balloonButton = new ymaps.control.Button({data: {content: 'openBalloonOnClick'}, options: {
+                selectOnClick: true,
+                maxWidth: 160
+            }});
+
+            balloonButton.events
+                    .add('deselect', function () {
+                        remoteObjectManager.clusters.options.set('openBalloonOnClick', true);
+                        remoteObjectManager.objects.options.set('openBalloonOnClick', true);
+                        log.info('OpenBalloonOnClickGeoObject: ' + remoteObjectManager.clusters.options.get('openBalloonOnClick'));
+                        log.info('OpenBalloonOnClickCluster: ' + remoteObjectManager.objects.options.get('openBalloonOnClick'));
+                    })
+                    .add('select', function () {
+                        remoteObjectManager.clusters.options.set('openBalloonOnClick', false);
+                        remoteObjectManager.objects.options.set('openBalloonOnClick', false);
+                        log.info('OpenBalloonOnClickGeoObject: ' + remoteObjectManager.clusters.options.get('openBalloonOnClick'));
+                        log.info('OpenBalloonOnClickCluster: ' + remoteObjectManager.objects.options.get('openBalloonOnClick'));
+                    });
+
+            map.controls.add(balloonButton);
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

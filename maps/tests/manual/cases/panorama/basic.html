@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<!--
+Title:
+Панорама: базовая проверка
+
+Description:
+Базовая проверка панорамы.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+panorama
+
+Estimated time:
+120000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть страницу и элементы на ней. 
+
+  Expectation:
+  На странице появляется панорама ВДНХ.
+  На панораме имеются контролы зума, контрол сворачивания/разворачивания, кнопка закрытия, кнопки перемещения на панораме.
+  Сверху слева имеется выпадающий список смены разрешений.
+
+Step:
+  Action:
+  Повращать панорамное изображение, выполнить клик в метку перемещения на панораме. 
+
+  Expectation:
+  Вращение панорамы корректное, панорама не пропадает, не мигает цветами.
+  По клику в метку перемещения происходит смена отображаемой панорамы.
+
+Step:
+  Action:
+  Выполнить клик в выпадающий список смены разрешений, последовательно применить значения от svga до cga. 
+
+  Expectation:
+  При смене значений разрешений меняется размер контейнера с панорамой, отображение панорамы корректное.
+  Контролы и кнопки корректно располагаются на панораме, не пропадают на накладываются друг на друга.
+-->
+<html>
+<head>
+    <title>ymaps.panorama.* Test Stand</title>
+    <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <style>
+        html, body {
+            width: 100%;
+            height: 100%;
+            padding: 0;
+            margin: 0;
+        }
+
+        .wrapper {
+            position: relative;
+        }
+
+        .full, #panoPlayer {
+            width: 100%;
+            height: 100%;
+        }
+
+        #size {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+        }
+
+        #state {
+            position: absolute;
+            top: 25px;
+            left: 10px;
+        }
+
+        .svga {width: 800px; height: 600px;}
+        .vga  {width: 640px; height: 480px;}
+        .qvga {width: 320px; height: 240px;}
+        .cga  {width: 320px; height: 200px;}
+    </style>
+    <script src="../../helper.js"></script>
+    <script>
+        Api('init', 'panorama.createPlayer', '', '', 'release');
+
+        function init(ymaps) {
+            function onCreate(player) {
+                var wrapper = document.querySelector('.wrapper'),
+                        sizeControl = document.querySelector('#size'),
+                        stateGauge = document.querySelector('#state'),
+                        currentSize = sizeControl.value;
+
+                function toFixed2(x) {
+                    return x.toFixed(2);
+                }
+
+                function setState() {
+                    var dir = player.getDirection().map(toFixed2),
+                            spn = player.getSpan().map(toFixed2);
+                    stateGauge.firstChild.data = 'dir: ' + dir + '; spn: ' + spn;
+                }
+
+                player.events
+                        .add(['directionchange', 'spanchange'], setState);
+
+                sizeControl.addEventListener(
+                        'change',
+                        function () {
+                            var newSize = sizeControl.value;
+                            wrapper.className = wrapper.className.replace(currentSize, '');
+                            wrapper.className += newSize;
+                            currentSize = newSize;
+                        }
+                );
+
+                console.log(player);
+            }
+
+            function onError(err) {
+                console.error(err);
+            }
+
+            var promise = ymaps.ready(['panorama.createPlayer'])
+                    .then(function () {
+                        return ymaps.panorama.createPlayer(
+                                'panoPlayer',
+                                [55.834039, 37.623359],
+                                {
+                                    direction: [0, 0],
+                                    renderer: location.search.slice(1) || 'gl'
+                                }
+                        );
+                    })
+                    .done(onCreate, onError);
+        }
+    </script>
+</head>
+<body>
+<div class="wrapper full">
+    <div id="panoPlayer"></div>
+    <select id="size" value="full">
+        <option>full</option>
+        <option>svga</option>
+        <option>vga</option>
+        <option>qvga</option>
+        <option>cga</option>
+    </select>
+    <pre id="state">undefined</pre>
+</div>
+</body>
+</html>

@@ -1,0 +1,103 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Мультимаршрут-ОТ: маркеры сегментов маршрута
+
+Description:
+Проверка маркеров сегментов маршрута. 
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+multiRouter
+
+Estimated time:
+120000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  При загрузке первоначально загружается карта со спаном Москвы, затем спан меняется на спан СПб, появляется программно строящийся маршруты из 4 точек.
+  В контейнере контрол фулскрин, сверху кнопка "getSeg...".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "getSeg...".
+
+  Expectation:
+  Спан карты без изменений.
+  Под контейнером с картой появляется блок "segment markers: [object Object]", а также блок с типом маркера, координатами точки, типом геометри, вида:  "walk/transport/transfer; координаты; Point".
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 10,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+
+            var multiRoute = new ymaps.multiRouter.MultiRoute({
+                referencePoints: ['питер, мебельная 35', 'питер, невский 124', 'питер, степана разина 8',
+                    'питер, бухарестская 120'],
+                params: {
+                    routingMode: 'masstransit'
+                }
+            }, {
+                boundsAutoApply: true,
+                wayPointDraggable: true
+            });
+            map.geoObjects.add(multiRoute);
+
+            var routes, paths, segments;
+
+            setTimeout(function() {
+                routes = multiRoute.getRoutes();
+                console.log(routes);
+                paths = routes.get(0).getPaths();
+                console.log(paths);
+            }, 1000);
+
+            var getSegmentMarkersButton = new ymaps.control.Button('getSegmentMarkers');
+            getSegmentMarkersButton.events.add('click', function() {
+                log.info('segment markers: ');
+                var markers = paths.get(2).getSegmentMarkers();
+                log.info(markers);
+                console.log(markers);
+                markers.each(function(obj){
+                    console.log(obj);
+                    console.log(obj.model);
+                    log.info(obj.properties.get('type'));
+                    log.info(obj.geometry.getCoordinates());
+                    log.info(obj.geometry.getType())
+                })
+            });
+
+            map.controls
+                    .add(getSegmentMarkersButton)
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

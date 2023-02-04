@@ -1,0 +1,150 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Активная область: подгрузка данных слоя после удаления
+
+Description:
+Проверка подгрузки данных слоя после удаления.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+hotspot
+
+Estimated time:
+180000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+  
+  Expectation:
+  Карта отобразилась корректно. 
+  На карте спан Москвы с включенным слоем пробок с показом дорожных событий, сверху кнопки "actiontic...", "wheel", "click", "actionend", "boundsc...". 
+  
+Step:
+  Action:
+  Выполнить клик в кнопку "actiontic...".
+  Зажав на спане карты ЛКМ, выполнить драг карты.
+
+  Expectation:
+  С началом драга слой пробок пропадает, под контейнером с картой появляются строки "actiontickcomplete", по окончанию драга слой пробок загружается на карте.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "actiontic...", затем клик в кнопку "wheel".
+  Выполнить отзум карты на несколько значений.
+
+  Expectation:
+  С началом отзума слой пробок пропадает, под контейнером с картой появляются строки "wheel", по окончанию отзума слой пробок загружается на карте.
+  
+Step:
+  Action:
+  Выполнить клик в кнопку "wheel", затем клик в кнопку "click".
+  Выполнить в спан карты.
+
+  Expectation:
+  По клику слой пробок пропадает, под контейнером с картой появляется строка "click", после чего слой пробок загружается на карте.
+  
+Step:
+  Action:
+  Выполнить клик в кнопку "click", затем клик в кнопку "actionend".
+  Зажав на спане карты ЛКМ, выполнить драг карты.
+
+  Expectation:
+  По окончанию драга слой пробок пропадает, под контейнером с картой появляются строки "actionend", после чего слой пробок загружается на карте.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "actionend", затем клик в кнопку "boundsc...".
+  Зажав на спане карты ЛКМ, выполнить драг карты переместить спан в другой город.
+
+  Expectation:
+  По окончанию перемещения спана слой пробок пропадает, под контейнером с картой появляется строка "boundschange", после чего слой пробок загружается на карте.
+-->
+<html>
+<head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            var myMap = new ymaps.Map('map', {
+                center: [55.709243, 37.500737],
+                zoom: 9,
+                controls: []
+            });
+
+            addGrid(myMap);
+            var test1Button = new ymaps.control.Button({data: {content: 'boundschange'}, options: {selectOnClick: true}});
+            var test2Button = new ymaps.control.Button({data: {content: 'actionend'}, options: {selectOnClick: true}});
+            var test3Button = new ymaps.control.Button({data: {content: 'click'}, options: {selectOnClick: true}});
+            var test4Button = new ymaps.control.Button({data: {content: 'wheel'}, options: {selectOnClick: true}});
+            var test5Button = new ymaps.control.Button({data: {content: 'actiontickcomplete'}, options: {selectOnClick: true}});
+
+            var callback = function (e) {
+                actualProvider.setMap(null);
+                log.info(e.get('type'));
+                setTimeout(function () {
+                    actualProvider.setMap(myMap)
+                }, 1000);
+            }
+            var log = new Log();
+            var actualProvider = new ymaps.traffic.provider.Actual({}, {infoLayerShown: true});
+            actualProvider.setMap(myMap);
+            test1Button.events.add('select', function () {
+                myMap.events.add('boundschange', callback);
+            })
+                    .add('deselect', function () {
+                        myMap.events.remove('boundschange', callback);
+                    });
+
+            test2Button.events.add('select', function () {
+                myMap.events.add('actionend', callback);
+            })
+                    .add('deselect', function () {
+                        myMap.events.remove('actionend', callback);
+                    });
+
+            test3Button.events.add('select', function () {
+                myMap.events.add('click', callback);
+            })
+                    .add('deselect', function () {
+                        myMap.events.remove('click', callback);
+                    });
+
+            test4Button.events.add('select', function () {
+                myMap.events.add('wheel', callback);
+            })
+                    .add('deselect', function () {
+                        myMap.events.remove('wheel', callback);
+                    });
+
+            test5Button.events.add('select', function () {
+                myMap.events.add('actiontickcomplete', callback);
+            })
+                    .add('deselect', function () {
+                        myMap.events.remove('actiontickcomplete', callback);
+                    });
+            setInterval(function () {
+                log.info('timestamp ' + actualProvider.state.get('timestamp'))
+            }, 30000)
+            myMap.controls.add(test1Button)
+                    .add(test2Button)
+                    .add(test3Button)
+                    .add(test4Button)
+                    .add(test5Button);
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px; padding: 20px;"></div>
+</body>
+</html>

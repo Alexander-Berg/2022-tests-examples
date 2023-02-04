@@ -1,0 +1,95 @@
+openapi: 3.0.0
+
+info:
+  title: Interface required for Keyserv integration
+  version: 0.0.1
+
+servers:
+  - url: http://core-keyserv.testing.maps.n.yandex.ru
+    description: Testing service
+  - url: http://core-keyserv.maps.yandex.net
+    description: Production service
+
+paths:
+  /2.x/:
+    parameters:
+      - in: query
+        name: action
+        required: True
+        schema:
+          type: string
+          enum: [findKeysByComment]
+          default: findKeysByComment
+        allowEmptyValue: false
+      - in: query
+        name: comment
+        required: True
+        schema:
+          type: string
+          default: ''
+        allowEmptyValue: True
+    get:
+      operationId: find_keys_by_comment
+      description: Searches keys with comments matching `%{comment}%` SQL pattern
+      tags: [keyserv]
+      responses:
+        '200':
+          description: Returns matched keys
+          content:
+            application/xml:
+              schema:
+                $ref: "#/components/schemas/keylist"
+
+components:
+  schemas:
+    stopitem:
+      type: object
+      xml:
+         name: stop
+      required: [blocked, description, modified]
+      properties:
+        blocked:
+          type: integer
+          enum: [0, 1]
+        description:
+          type: string
+        modified:
+          type: string       
+    stoplist:
+      type: array
+      xml:
+        wrapped: true
+      items:
+        $ref: '#/components/schemas/stopitem'
+    restrictions:
+      type: object
+      additionalProperties:
+        type: string
+    keystate:
+      type: object
+      xml:
+        name: keystate
+      properties:
+        valid:
+          type: boolean
+        broken:
+          type: boolean
+        key:
+          type: string
+          pattern: '[A-Za-z0-9+/=]+'  
+        issued:
+          type: integer
+        uri:
+          type: string
+        note:
+          type: string
+        stoplist:
+          $ref: "#/components/schemas/stoplist"
+        restrictions:
+          $ref: "#/components/schemas/restrictions"
+    keylist:
+      type: array
+      xml:
+        wrapped: true
+      items:
+        $ref: '#/components/schemas/keystate'

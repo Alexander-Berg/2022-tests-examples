@@ -1,0 +1,146 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - smalukav
+      groups: []
+labels:
+  order: '10000004'
+---
+regexp_section:
+  matcher:
+    match_fsm:
+        uri: '/suggest-exprt(/.*)?'
+  modules:
+    - report:
+        uuid: suggest_exprt
+        ranges: default
+    - hasher:
+        mode: subnet
+        subnet_v4_mask: 32
+        subnet_v6_mask: 128
+        take_ip_from: X-Forwarded-For-Y
+    - balancer2:
+        attempts: 1
+        rr: {}
+        by_name_policy:
+          name: !f get_geo('bygeo_', 'random')
+          unique_policy: {}
+        backends:
+          - weight: 1
+            name: bygeo_man
+            modules:
+              - stats_eater: {}
+              - balancer2:
+                  attempts: 2
+                  attempts_rate_limiter:
+                    limit: 0.25
+                  active_policy:
+                    skip_attempts: !f count_backends()
+                    unique_policy: {}
+                  hashing:
+                    delay: 10s
+                    request: 'GET /suggest-ping HTTP/1.1\nHost: suggest.yandex.net\n\n'
+                  generated_proxy_backends:
+                    proxy_options:
+                      backend_timeout: 150ms
+                      connect_timeout: 60ms
+                    include_backends:
+                      type: BY_ID
+                      ids: [suggest_exprt_man]
+                  on_error:
+                    balancer2:
+                      attempts: 2
+                      attempts_rate_limiter:
+                        limit: 0.25
+                      active_policy:
+                        skip_attempts: !f count_backends()
+                        unique_policy: {}
+                      hashing:
+                        delay: 10s
+                        request: 'GET /suggest-ping HTTP/1.1\nHost: suggest.yandex.net\n\n'
+                      generated_proxy_backends:
+                        proxy_options:
+                          backend_timeout: 200ms
+                          connect_timeout: 60ms
+                        include_backends:
+                          type: BY_ID
+                          ids: [suggest_exprt_vla]
+          - weight: 1
+            name: bygeo_sas
+            modules:
+              - stats_eater: {}
+              - balancer2:
+                  attempts: 2
+                  attempts_rate_limiter:
+                    limit: 0.25
+                  active_policy:
+                    skip_attempts: !f count_backends()
+                    unique_policy: {}
+                  hashing:
+                    delay: 10s
+                    request: 'GET /suggest-ping HTTP/1.1\nHost: suggest.yandex.net\n\n'
+                  generated_proxy_backends:
+                    proxy_options:
+                      backend_timeout: 150ms
+                      connect_timeout: 60ms
+                    include_backends:
+                      type: BY_ID
+                      ids: [suggest_exprt_sas]
+                  on_error:
+                    balancer2:
+                      attempts: 2
+                      attempts_rate_limiter:
+                        limit: 0.25
+                      active_policy:
+                        skip_attempts: !f count_backends()
+                        unique_policy: {}
+                      hashing:
+                        delay: 10s
+                        request: 'GET /suggest-ping HTTP/1.1\nHost: suggest.yandex.net\n\n'
+                      generated_proxy_backends:
+                        proxy_options:
+                          backend_timeout: 220ms
+                          connect_timeout: 60ms
+                        include_backends:
+                          type: BY_ID
+                          ids: [suggest_exprt_man]
+          - weight: 1
+            name: bygeo_vla
+            modules:
+              - stats_eater: {}
+              - balancer2:
+                  attempts: 2
+                  attempts_rate_limiter:
+                    limit: 0.25
+                  active_policy:
+                    skip_attempts: !f count_backends()
+                    unique_policy: {}
+                  hashing:
+                    delay: 10s
+                    request: 'GET /suggest-ping HTTP/1.1\nHost: suggest.yandex.net\n\n'
+                  generated_proxy_backends:
+                    proxy_options:
+                      backend_timeout: 150ms
+                      connect_timeout: 60ms
+                    include_backends:
+                      type: BY_ID
+                      ids: [suggest_exprt_vla]
+                  on_error:
+                    balancer2:
+                      attempts: 2
+                      attempts_rate_limiter:
+                        limit: 0.25
+                      active_policy:
+                        skip_attempts: !f count_backends()
+                        unique_policy: {}
+                      hashing:
+                        delay: 10s
+                        request: 'GET /suggest-ping HTTP/1.1\nHost: suggest.yandex.net\n\n'
+                      generated_proxy_backends:
+                        proxy_options:
+                          backend_timeout: 220ms
+                          connect_timeout: 60ms
+                        include_backends:
+                          type: BY_ID
+                          ids: [suggest_exprt_man]

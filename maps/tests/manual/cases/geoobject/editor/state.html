@@ -1,0 +1,205 @@
+<!DOCTYPE HTML>
+<!--(skip)(description)
+geoObject.editor: state
+-->
+<!--(version)
+2.1
+-->
+<!--(commands)
+click(6);
+sleep(4000);
+test();
+click(239);
+click(4);
+sleep(4000);
+test();
+click(239);
+click(2);
+sleep(4000);
+test();
+click(239);
+click(222);
+test();
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script src="../geoCS.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym; // hack
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.73259667357658, 37.70153663432529],
+                zoom: 9,
+                behaviors: ['default', 'scrollZoom'],
+                controls: []
+            });
+
+            geoCSSource(ym, myMap, this);
+            addGrid(myMap);
+            var log = new Log();
+
+            __log__('Test button calls startEditing(), stopEditing(), stardDrawing(), stopDrawing() with 1s interval');
+            __log__('start*2 button calls startEditing(), startEditing(), stopEditing() with 1s interval');
+            __log__('stop*2 button calls startEditing(), stopEditing(), stopEditing() with 1s interval');
+            __log__('start+stop button calls startEditing() and stopEditing() simultaneously');
+
+            var collection = new ymaps.GeoObjectCollection();
+            collection
+                    .add(geoObjectPlacemark)
+                    .add(geoObjectPolyline)
+                    .add(geoObjectPolygon)
+                    .add(placemark)
+                    .add(polyline)
+                    .add(polygon);
+
+            myMap.geoObjects.add(collection);
+
+            collection.each(function (obj) {
+                obj.events.add('editorstatechange', function (e) {
+                    __log__(obj.options.get('id') + ': ' + e.get('type'))
+                });
+
+                obj.editor.state.events.add('change', function () {
+                    __log__('------------- state changed: ------------');
+                    for (var key in obj.editor.state.getAll()) {
+                        __log__(key + ' -> ' + obj.editor.state.get(key));
+                    }
+
+                });
+            });
+
+            var editorButton = new ymaps.control.Button({data: {content: 'editor'}, options: {selectOnClick: true}});
+            var placemarkButton = new ymaps.control.Button({data: {content: 'point'}, options: {selectOnClick: true}});
+            var polylineButton = new ymaps.control.Button({data: {content: 'line'}, options: {selectOnClick: true}});
+            var polygonButton = new ymaps.control.Button({data: {content: 'polygon'}, options: {selectOnClick: true}});
+            var doubleStartButton = new ymaps.control.Button({data: {content: 'start*2'}, options: {selectOnClick: false}});
+            var doubleStopButton = new ymaps.control.Button({data: {content: 'stop*2'}, options: {selectOnClick: false}});
+            var testButton = new ymaps.control.Button({data: {content: 'test'}, options: {selectOnClick: false}});
+            var clearButton = new ymaps.control.Button({data: {content: 'clear'}, options: {selectOnClick: false}});
+            var cancelButton = new ymaps.control.Button({data: {content: 'start+stop'}, options: {selectOnClick: false}});
+
+            editorButton.events
+                    .add('select', function () {
+                        polyline.editor.startEditing();
+                        geoObjectPolyline.editor.startEditing();
+                        polygon.editor.startEditing();
+                        geoObjectPolygon.editor.startEditing();
+                        placemark.editor.startEditing();
+                        geoObjectPlacemark.editor.startEditing();
+                    })
+                    .add('deselect', function () {
+                        polyline.editor.stopEditing();
+                        geoObjectPolyline.editor.stopEditing();
+                        polygon.editor.stopEditing();
+                        geoObjectPolygon.editor.stopEditing();
+                        placemark.editor.stopEditing();
+                        geoObjectPlacemark.editor.stopEditing();
+                    });
+
+            placemarkButton.events
+                    .add('select', function () {
+                        placemark.editor.startDrawing();
+                    })
+                    .add('deselect', function () {
+                        placemark.editor.stopDrawing();
+                    });
+
+            polylineButton.events
+                    .add('select', function () {
+                        polyline.editor.startDrawing();
+                    })
+                    .add('deselect', function () {
+                        polyline.editor.stopDrawing();
+                    });
+
+            polygonButton.events
+                    .add('select', function () {
+                        polygon.editor.startDrawing();
+                    })
+                    .add('deselect', function () {
+                        polygon.editor.stopDrawing();
+                    });
+
+            doubleStartButton.events.add('click', function (e) {
+                polyline.editor.startEditing();
+                __log__('');
+                setTimeout(function () {
+                    polyline.editor.startEditing();
+                    __log__('');
+                }, 1000);
+                setTimeout(function () {
+                    polyline.editor.stopEditing();
+                    __log__('');
+                }, 2000);
+            });
+
+            doubleStopButton.events.add('click', function (e) {
+                polygon.editor.startEditing();
+                __log__('');
+                setTimeout(function () {
+                    polygon.editor.stopEditing();
+                    __log__('');
+                }, 1000);
+                setTimeout(function () {
+                    polygon.editor.stopEditing();
+                    __log__('');
+                }, 2000);
+            });
+
+            testButton.events.add('click', function (e) {
+                placemark.editor.startEditing();
+                __log__('');
+                setTimeout(function () {
+                    placemark.editor.stopEditing();
+                    __log__('');
+                }, 1000);
+                setTimeout(function () {
+                    placemark.editor.startDrawing();
+                    __log__('');
+                }, 2000);
+                setTimeout(function () {
+                    placemark.editor.stopDrawing();
+                    __log__('');
+                }, 3000);
+            });
+
+            clearButton.events.add('click', function () {
+                log.clear();
+            });
+
+            cancelButton.events
+                    .add('click', function () {
+                        polyline.editor.startEditing().then(function (e) {
+                            this.info('start');
+                        }, function (err) {
+                            this.info('start error: ' + err)
+                        }, log);
+                        polyline.editor.stopEditing();
+                        __log__('stop')
+                    });
+
+            myMap.controls
+                    .add(editorButton, {float: 'right'})
+                    .add(placemarkButton, {float: 'right'})
+                    .add(polygonButton, {float: 'right'})
+                    .add(polylineButton, {float: 'right'})
+                    .add(doubleStartButton)
+                    .add(doubleStopButton)
+                    .add(testButton)
+                    .add(clearButton, {float: 'none', position: {bottom: 35, right: 15}})
+                    .add(cancelButton, {float: 'none', position: {bottom: 65, right: 15}});
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

@@ -1,0 +1,46 @@
+daemon off;
+worker_processes 1;
+pid nginx.pid;
+events {{
+    worker_connections 1024;
+}}
+
+error_log error.log info;
+
+{confroot_includes}
+
+http {{
+    init_by_lua_file init.lua;
+    log_format unittest_format "$http_host $request $status $bytes_sent";
+    client_body_temp_path client-body-temp;
+    fastcgi_temp_path fastcgi-temp;
+    proxy_temp_path proxy-temp;
+    scgi_temp_path scgi-temp;
+    uwsgi_temp_path uwsgi-temp;
+
+    server {{
+        error_log error.log info;
+        access_log access.log unittest_format;
+
+        listen {port};
+        listen [::]:{port};
+        server_name unittest-server;
+
+        location = /unittest-ping {{
+            return 200;
+        }}
+
+        # See maps/mobile/server/proxy/config/common/environment.*
+        include {environment};
+
+        include locations.conf;
+
+        {variables}
+    }}
+
+    include servers.conf;
+
+    include upstreams.conf;
+
+    include static-vars/*.conf;
+}}

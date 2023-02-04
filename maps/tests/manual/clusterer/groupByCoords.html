@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<!--
+Title:
+Кластер: группировка кластеров из геобъектов с одинаковыми координатами
+
+Description:
+Проверка работы опции группировки кластера только из геобъектов с одинаковыми координатами.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+regress
+
+Estimated time:
+90000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан Санкт-Петербурга и Ленинградской области.
+  Сверху имеются кнопки "add objects", "add objects with same coordinates", "groupByCoordinates, "clusterer".
+
+Step:
+  Action:
+  Клик в кнопку "clusterer".
+
+  Expectation:
+  На карте появляются две метки коллекций.
+
+Step:
+  Action:
+  Выполнить два клика в кнопку "groupByCoordinates".
+
+  Expectation:
+  После второго клика на карте появляется метка кластера со значением "2".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "groupByCoordinates".
+  Выполнить клик в кнопку "add objects with same coordinates".
+
+  Expectation:
+  После клика в кнопку "groupByCoordinates", на спане карты кластер меняется на две метки коллекций.
+  После клика в кнопку "add objects with same coordinates" на спане карты появляется две кластерные метки со знанением "2".
+
+Step:
+  Action:
+  Выполнить два клика в контрол отзума "-", затем клик в кнопку "add objects".
+
+  Expectation:
+  Отзум спан карты корректный, метки кластеров без изменений.
+  По клику в "add objects" слева на спане появляются 6 меток коллекций(две группы по 3 метки).
+
+Step:
+  Action:
+  Выполнить клик в кнопку "add objects with same coordinates".
+
+  Expectation:
+  Значение в кластерных метках сменилось с "2" на "3".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "add objects".
+
+  Expectation:
+  Слева на спане вместо меток коллекций, появляются 3 группы кластеров со значением кластеризации "2".
+-->
+<html>
+<head>
+    <title>API 2.0</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <script src="../helper.js"></script>
+    <script type=text/javascript>
+        Api('init');
+        function init(ymaps) {
+            var myMap = new ymaps.Map('map', {
+                        center: [59.936807874528924, 30.37978130712598],
+                        zoom: 8,
+                        behaviors: ['default', 'scrollZoom']
+                    }),
+                    clusterer = new ymaps.Clusterer({
+                        groupByCoordinates: true,
+                        gridSize: 256
+                    });
+            var addPointsButton = new ymaps.control.Button({data: {content: 'add objects'}}, {selectOnClick: false});
+            var addSameCoordsButton = new ymaps.control.Button({data: {content: 'add objects with same coordinates'}}, {selectOnClick: false});
+            var optionButton = new ymaps.control.Button({data: {content: 'groupByCoordinates'}}, {selectOnClick: true});
+            var clusterButton = new ymaps.control.Button({data: {content: 'clusterer'}}, {selectOnClick: false});
+            clusterer.add(new ymaps.Placemark([59.761842778554374, 30.354173278803078], {clusterCaption: 'placemark', balloonContent: 'placemark'}, {}));
+            clusterer.add(new ymaps.Placemark([59.76461372494131, 30.42009124755539], {clusterCaption: 'placemark', balloonContent: 'placemark'}, {}));
+            
+            addPointsButton.events.add('click', function () {
+                clusterer.add(new ymaps.Placemark([59.80338273980143, 32.035569763180483], {clusterCaption: 'placemark', balloonContent: 'placemark'}, {}));
+                clusterer.add(new ymaps.Placemark([59.92769160782265, 32.72770843505527], {clusterCaption: 'placemark', balloonContent: 'placemark'}, {}));
+                clusterer.add(new ymaps.Placemark([59.875262501024146, 32.749681091305206], {clusterCaption: 'placemark', balloonContent: 'placemark'}, {}));
+                clusterer.add(new ymaps.Placemark([59.89182803339186, 32.683763122554957], {clusterCaption: 'placemark', balloonContent: 'placemark'}, {}));
+                clusterer.add(new ymaps.Placemark([59.77015492248828, 32.194871520992113], {clusterCaption: 'placemark', balloonContent: 'placemark'}, {}));
+                clusterer.add(new ymaps.Placemark([59.75075669172969, 32.057542419429556], {clusterCaption: 'placemark', balloonContent: 'placemark'}, {}));
+            });
+            addSameCoordsButton.events.add('click', function () {
+                clusterer.add(new ymaps.Placemark([59.761842778554374, 30.354173278803078], {clusterCaption: 'placemark', balloonContent: 'placemark'}));
+                clusterer.add(new ymaps.Placemark([59.76461372494131, 30.42009124755539], {clusterCaption: 'placemark', balloonContent: 'placemark'}));
+            });
+            optionButton.events.add('select', function () {
+                clusterer.options.set('groupByCoordinates', true)
+            })
+                    .add('deselect', function () {
+                        clusterer.options.set('groupByCoordinates', false)
+                    });
+            clusterButton.events
+                    .add('click', function () {
+                        myMap.geoObjects.add(clusterer);
+                    });
+            myMap.controls
+                    .add(new ymaps.control.ZoomControl)
+                    .add(addPointsButton)
+                    .add(addSameCoordsButton)
+                    .add(optionButton)
+                    .add(clusterButton);
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+<p><a href="https://tech.yandex.ru/maps/archive/doc/jsapi/2.0/ref/reference/Clusterer-docpage/" target="_blank">Docs</a></p>
+</body>
+</html>

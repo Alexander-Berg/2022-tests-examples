@@ -1,0 +1,30 @@
+l7_upstream_macro:
+  version: 0.0.1
+  id: captcha
+  matcher:
+    uri_re: '/(captcha.+|showcaptcha|checkcaptcha)'
+  headers:
+    - create: {target: X-Host-Y, func: host}
+    - create: {target: X-Forwarded-For-Y, func: realip}
+    - create: {target: X-TLS-Cipher-Y, func: ja3}
+    - create: {target: X-Real-IP, func: realip}
+    - create: {target: X-Antirobot-Service-Y, value: zen}
+    - create: {target: X-Yandex-HTTPS, value: yes}
+  monitoring:
+    uuid: to-captcha
+  flat_scheme:
+    balancer:
+      compat:
+        method: RR
+      fast_attempts: 2
+      attempts: 1
+      keepalive_count: 0
+      connect_timeout: 40ms
+      backend_timeout: 60s
+      do_not_retry_http_responses: true
+      max_reattempts_share: 0.2
+    backend_ids:
+      - antirobot-l3
+    on_error:
+      rst: true
+

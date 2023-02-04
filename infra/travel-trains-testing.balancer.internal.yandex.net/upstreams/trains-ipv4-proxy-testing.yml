@@ -1,0 +1,44 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - ganintsev
+      groups:
+      - svc_trainbus_development
+labels:
+  order: '10000000'
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      host: '.*'
+  modules:
+              - report:   
+                  uuid: testing-trains-ipv4-proxy-deploy                        
+                  ranges: default
+              - balancer2:
+                  attempts: 1
+                  fast_attempts: 1
+                  attempts_rate_limiter:
+                    limit: 0.3
+                  retry_policy:  # Strange workaround to make return_last_5xx working. From L7 support chat
+                    unique_policy: {}
+                  return_last_5xx: true        
+                  status_code_blacklist: ['502', '504']
+                  dynamic:
+                    max_pessimized_share: 0.2
+                    active:
+                      use_backend_weight: false
+                      weight_normalization_coeff: 1
+                      delay: '5s'
+                      request: 'GET /ping HTTP/1.1\nUser-agent: l7-balancer-health_check\nHost: testing.ipv4-proxy.internal.rasp.yandex.net\n\n'
+                  generated_proxy_backends:
+                    proxy_options:
+                      backend_timeout: 300s
+                      connect_timeout: 1s
+                      keepalive_count: 3
+                      fail_on_5xx: false
+                    include_backends:
+                      type: BY_ID
+                      ids: [trains-ipv4-proxy-testing.backend]
+              

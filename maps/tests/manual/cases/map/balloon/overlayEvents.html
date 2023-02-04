@@ -1,0 +1,159 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Карта: балун слушающий события
+
+Description:
+Проверка прослушивания событий и текстового отображения под блоком с картой.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+map
+
+Estimated time:
+180000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан Москвы, сверху слева кнопка "clear".
+  (кнопка "clear" чистит лог под контейнером с картой, выполнять клик в "clear" после каждого шага)
+    
+Step:
+  Action:
+  Навести курсор на спан карты, вывести курсор за пределы контейнера. 
+
+  Expectation:
+  При наведении курсора на карту под контейнером появляется событие: map event: mouseenter.
+  При выведении курсора за пределы контейнера появляется событие: map event: mouseleave.
+
+Step:
+  Action:
+  Выполнить клик в спан карты. 
+ 
+  Expectation:
+  В месте клика открывается пустой балун.
+  Под контейнером с картой события с приставкой map отображают события клика, также появляется событие открытия балуна "balloon event: open".
+
+Step:
+  Action:
+  Навести курсор на балун, вывести курсор за пределы балуна.
+ 
+  Expectation:
+  При наведении курсора на балун появляется событие: "map event: mouseleave", также появляются события "overlay event: mouseenter".
+  При выведении курсора появляется событие: "overlay event: mouseleave", также появляется событие "map event: mouseenter".
+
+Step:
+  Action:
+  Выполнить клик по области открытого балуна. 
+ 
+  Expectation:
+  Под контейнером с картой появлятеся событие клика с приставкой "overlay event".
+
+Step:
+  Action:
+  Выполнить клик ПКМ по области открытого балуна. 
+ 
+  Expectation:
+  Под контейнером с картой появлятеся событие клика ПКМ(mousedown, mouseup, contextmenu) с приставкой "overlay event".
+
+Step:
+  Action:
+  Выполнить даблклик по области открытого балуна. 
+ 
+  Expectation:
+  Под контейнером с картой появлятеся событие даблклика (mousedown, mouseup, click, dblclick) с приставкой "overlay event".
+
+Step:
+  Action:
+  Навести курсор на область балуна и выполнить скрол колесом мыши(в одну и в другую сторону). 
+ 
+  Expectation:
+  Под контейнером с картой появлятеся событие скрола(wheel) с приставкой "overlay event".
+
+Step:
+  Action:
+  Выполнить наведение/выведение курсора, клик/даблклик, скрол на балуне и спане карты при помощи тачпада(либо продублировать шаг со скролом мыши или ЛКМ). 
+ 
+  Expectation:
+  При наведении курсора на балун - overlay event mouseenter.
+  При выведении курсора за пределы балуна - overlay event mouseleave.
+  При клике в балун - overlay event:mousedown; mouseup; click.
+  При даблклике - overlay event: mousedown; mouseup; click; mousedown; mouseup; click; dblclick. 
+  При пинчзуме (или скроле колесом мыши) - overlay event wheel.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym; // hack
+
+            var myMap = new ym.Map('map', {
+                center: [55.73259667357658, 37.70153663432529],
+                zoom: 9,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+            var callback = function (e) {
+                log.info('map event: ' + e.get('type'));
+            };
+
+            var events1 = ['open', 'close'];
+            var callback1 = function (e) {
+                log.info('balloon event: ' + e.get('type'));
+            };
+
+            var callback2 = function (e) {
+                log.info('overlay event: ' + e.get('type'));
+            };
+            var domevents = ['click', 'contextmenu', 'dblclick', 'mousedown', 'mouseenter', 'mouseleave', 'mouseup', 'multitouchend',
+                'multitouchstart', 'wheel'];
+
+            myMap.options.set({
+                openHintOnHover: false,
+                openBalloonOnClick: false
+            });
+
+            myMap.events.add(domevents, callback);
+            myMap.balloon.events.add(events1, callback1);
+
+            myMap.events.add('click', function (e) {
+                var position = e.get('coords');
+
+                myMap.balloon.open(position).then(function () {
+                    myMap.balloon.getOverlay().then(function (obj) {
+                        obj.events.add(domevents, callback2)
+                    });
+                });
+
+            });
+
+            var clearButton = new ymaps.control.Button('clear');
+            clearButton.events.add('click', function () {
+                log.clear();
+            });
+            myMap.controls.add(clearButton);
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

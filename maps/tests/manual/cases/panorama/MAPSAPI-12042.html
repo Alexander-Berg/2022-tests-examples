@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<!--
+Title:
+Панорама: схлопывание инсепшен блока на панорамах
+
+Description:
+Проверка схлопывания инсепшен блока на панорамах.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+panorama
+
+Estimated time:
+90000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть страницу и элементы на ней. 
+
+  Expectation:
+  На странице отображается 2 небольших контейнера с наземной и воздушной панорамой центра СПб.
+  На панорамах имеются контролы масштабирования "+/-", контрол разворачивания панорамы, контрол закрытия панорамного плеера - крестик, на наземной панораме имеются стрелки перехода к следующей панораме.
+  Слева в наземной панораме круглая инсепшен кнопка с ПИНом Яндекс.Карт.
+  Под контейнером строки с результатами работы опций панорамы, сообщений с ошибками быть не должно.
+
+Step:
+  Action:
+  Выполнить клик в кнопку разворачивания наземной панорамы.
+  
+  Expectation:
+  Наземная панорама разворачивается на всю ширину страницы, кнопка инсепшена растягивается с подписью "Открыть в Яндекс.Картах".
+
+Step:
+  Action:
+  Выполнить клик в кнопку сворачивания наземной панорамы.
+  
+  Expectation:
+  Наземная панорама свернулась в первоначальный размер, кнопка инсепшен уменьшилась, подпись из кнопки пропала.
+
+Step:
+  Action:
+  Выполнить клик в кнопку разворачивания воздушной панорамы.
+  
+  Expectation:
+  Воздушная панорама разворачивается на всю ширину страницы, кнопка инсепшен не появляется.
+
+Step:
+  Action:
+  Выполнить клик в кнопку сворачивания воздушной панорамы.
+  
+  Expectation:
+  Воздушная панорама свернулась в первоначальный размер, кнопка инсепшен имеется только в контейнере с наземной панорамой.
+-->
+<html lang="ru">
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <style>
+        html, body {
+            width: 512px;
+            height: 512px;
+        }
+        .player {
+            width: 200px;
+            height: 50%;
+        }
+    </style>
+    <!--<script src="https://api-maps.tst.c.maps.yandex.ru/2.1-dev/?lang=ru_RU" type="text/javascript"></script>-->
+    <script src="../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init', 'package.full');
+
+        //        ymaps.ready(function(ymaps) {
+        function init(ymaps) {
+            __log__("Test case: Создание панорамы с использованием panorama.locate и panorama.createPlayer");
+
+            // Для начала проверим, поддерживает ли плеер браузер пользователя.
+            if (!ymaps.panorama.isSupported()) {
+                __log__("Панорамы не поддерживаются");
+                // Если нет, то просто ничего не будем делать.
+                return;
+            }
+
+            __log__("panorama.locate: Поиск панорам");
+            // Ищем панораму в переданной точке.
+            ymaps.panorama.locate([55.733685, 37.588264]).done(
+                    function (panoramas) {
+                        __log__("panorama.locate: Поиск завершился");
+                        // Убеждаемся, что найдена хотя бы одна панорама.
+                        if (panoramas.length > 0) {
+                            __log__("panorama.locate: Найдена панорама");
+                            // Создаем плеер с одной из полученных панорам.
+                            var player = new ymaps.panorama.Player(
+                                    'player1',
+                                    // Панорамы в ответе отсортированы по расстоянию
+                                    // от переданной в panorama.locate точки. Выбираем первую,
+                                    // она будет ближайшей.
+                                    panoramas[0],
+                                    // Зададим направление взгляда, отличное от значения
+                                    // по умолчанию.
+                                    { direction: [256, 16],
+                                      suppressMapOpenBlock: false,
+                                      copyrightLogoVisible: false,
+                                      copyrightVisible: false }
+                            );
+                        }
+                    },
+                    function (error) {
+                        __logFail__("panorama.locate: Ошибка поиска панорам", error.message);
+                        // Если что-то пошло не так, сообщим об этом пользователю.
+                        alert(error.message);
+                    }
+            );
+
+            // Для добавления панорамы на страницу также можно воспользоваться
+            // методом panorama.createPlayer. Этот метод ищет ближайщую панораму и
+            // в случае успеха создает плеер с найденной панорамой.
+            __log__("panorama.createPlayer: Поиск воздушной панорамы");
+            ymaps.panorama.createPlayer(
+                    'player2',
+                    [59.938557, 30.316198],
+                    // Ищем воздушную панораму.
+                    { layer: 'yandex#airPanorama' }
+            ).done(
+                    function (player) {
+                        __log__("panorama.createPlayer: Создана воздушная панорама");
+                        // player – это ссылка на экземпляр плеера.
+                    }, function (error) {
+                        __logFail__("panorama.createPlayer: Ошибка поиска", error.message);
+                        // Если что-то пошло не так, сообщим об этом пользователю.
+                        alert(error.message);
+                    });
+//        });
+        }
+    </script>
+</head>
+<body>
+<div id="player1" class="player"></div>
+<div id="player2" class="player"></div>
+</body>
+</html>

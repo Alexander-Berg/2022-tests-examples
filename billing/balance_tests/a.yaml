@@ -1,0 +1,71 @@
+service: balance
+title: Balance Tests for Hermione
+
+ci:
+  secret: sec-01cxdxmrq8vjxcenzs6s601pej
+  runtime:
+    sandbox:
+      owner: BILLING-CI
+      notifications:
+        - statuses:
+          - TIMEOUT
+          - EXPIRED
+          - FAILURE
+          - EXCEPTION
+          - NO_RES
+          transport: telegram
+          recipients: BILLING-CI
+  actions:
+    release-testing:
+      title: Frontend. Balance Tests for Hermione
+      flow: release-testing
+      flow-vars:
+        chat_id: '-650459846' # чат BILLING-CI
+      triggers:
+        - on: commit # Запускаем flow при вливании изменений
+          into:
+            - trunk
+          filters:
+            - sub-paths: [ 'balance/**', 'btestlib/**', 'simpleapi/**', 'cashmachines/**', 'temp/**' ]
+  flows:
+    release-testing:
+      title: Build & Deploy to Testing
+      jobs:
+        build-docker:
+          title: Build docker
+          task: common/arcadia/ya_package_2
+          stage: build
+          input:
+            custom_version: "${context.version_info.full}"
+            docker_token_vault_name: ROBOT_BILLING_CI_DOCKER_OAUTH
+            docker_image_repository: balance
+            docker_push_image: true
+            docker_user: robot-billing-ci
+            packages: billing/balance_tests/pkg.json
+            package_type: docker
+            resource_type: YA_PACKAGE
+        deploy-to-testing:
+          needs: build-docker
+          title: Deploy to testing
+          task: common/deploy/create_release
+          stage: testing
+          input:
+            config:
+              stage_id: hermione-rpc-stage
+              patches:
+                - docker:
+                    docker_image_ref:
+                      deploy_unit_id: hermione-rpc-du
+                      box_id: hermione-rpc-box
+                    image_name: "balance/balance-tests:${context.version_info.full}"
+        notify-deployed:
+          title: Notify balance-tests deployed
+          needs: deploy-to-testing
+          task: projects/taxi/jns/send_telegram_message # https://a.yandex-team.ru/arcadia/ci/registry/projects/taxi/jns/README.md?rev=r9621367#projects/taxi/jns/send_telegram_message
+          input:
+            config:
+              chat_id: ${flow-vars.chat_id}
+              dont_throw_on_error: true
+              message: |
+                Выкладка balance-tests:${context.version_info.full} в testing завершена
+                [Arcadia CI flow](${context.ci_url})

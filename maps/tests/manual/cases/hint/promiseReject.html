@@ -1,0 +1,113 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Хинт: отклонение обещаний при вызове метода destroy
+
+Description:
+Проверка отклонения обещаний при вызове метода destroy.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+hint
+
+Estimated time:
+60000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+  
+  Expectation:
+  Карта отобразилась корректно. 
+  На карте спан Москвы, сверху справа контрол фулскрин. 
+  При загрузке карты под контейнером появляется блок: "open + destroy: hint destroyed; resolved: true, fulfilled: false, rejected: true".
+  Через пол секунды после загрузки под контейнером появляется блок: "close + destroy: event: open, overlay: [object Object], isOpen: true; hint destroyed; resolved: true, fulfilled: false, rejected: true".
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var myMap = new ym.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 10,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+
+            var hint1,
+                    pos = myMap.getCenter(),
+                    contentLayout = ymaps.templateLayoutFactory.createClass('$[hintContent]hint'),
+                    data = { a: 'b' },
+                    options = { contentLayout: contentLayout, closeTimeout: 300 };
+            window.hint = hint1 = new ymaps.Hint(myMap);
+            hint1.options.set(options).setParent(myMap.options);
+
+            hint1.events.add(['open', 'close'], function (e) {
+                __log__('event: ' + e.get('type') + ', overlay: ' + hint1.getOverlaySync().getMap() + ', isOpen: ' + hint1.isOpen());
+            });
+
+            hint1.events.add(['beforedestroy', 'destroy'], function () {
+                __log__(e.get('type'))
+            });
+
+            __log__('open + destroy:');
+
+            var promise = hint1.open(pos);
+            hint1.destroy();
+            __log__('hint destroyed');
+            promise.always(function () {
+                __log__('resolved: ' + promise.isResolved() + ', fulfilled: ' + promise.isFulfilled() + ', ' +
+                        'rejected: ' + promise.isRejected());
+
+
+            });
+
+            setTimeout(function () {
+                __log__('');
+                __log__('close + destroy:');
+                var hint2;
+                window.hint = hint2 = new ymaps.Hint(myMap);
+                hint2.options.set(options).setParent(myMap.options);
+
+                hint2.events.add(['open', 'close'], function (e) {
+                    __log__('event: ' + e.get('type') + ', overlay: ' + hint2.getOverlaySync().getMap() + ', isOpen: ' + hint2.isOpen());
+                });
+
+                hint2.events.add(['beforedestroy', 'destroy'], function () {
+                    __log__(e.get('type'))
+                });
+
+                hint2.open(pos).then(function () {
+                    var promise = hint2.close();
+                    hint2.destroy();
+                    __log__('hint destroyed');
+                    promise.always(function () {
+                        __log__('resolved: ' + promise.isResolved() + ', fulfilled: ' + promise.isFulfilled() + ', ' +
+                                'rejected: ' + promise.isRejected());
+                    });
+
+                });
+            }, 500)
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

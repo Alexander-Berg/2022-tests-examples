@@ -1,0 +1,62 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - robot-maps-sandbox
+      groups:
+      - svc_vops_maps
+      - svc_maps-core-common-balancer
+labels:
+  balancer_deployer_commit_id: '9754591'
+  balancer_deployer_sign: 179e90ec96c664def082e9ced5d798d7
+  order: '10000000'
+---
+regexp_section:
+  matcher:
+    match_and:
+      - match_fsm:
+          cgi: '.*experimental_datatesting=1.*'
+      - match_fsm:
+          host: 'core-personalized-poi-renderer\\.common\\.testing\\.maps\\.yandex\\.net'
+  modules:
+    - report:
+        uuid: 'core-personalized-poi-renderer_common_testing_maps_yandex_net'
+        ranges: default
+    - report:
+        uuid: 'core-personalized-poi-renderer_common_testing_maps_yandex_net_datatesting'
+        ranges: default
+    - threshold:
+        lo_bytes: 734003
+        hi_bytes: 838860
+        pass_timeout: 10s
+        recv_timeout: 1s
+    - headers:
+        append_func:
+          X-Forwarded-For: realip
+        create_func_weak:
+          X-Real-IP: realip
+          X-Source-Port-Y: realport
+        create:
+          Host: 'core-personalized-poi-renderer.common.testing.maps.yandex.net'
+          X-Ya-Backend-Timeout-Ms: '1000'
+    - balancer2:
+        attempts: 3
+        active:
+          steady: true
+          delay: '10s'
+          request: 'GET /ping HTTP/1.1\nHost: core-personalized-poi-renderer.common.testing.maps.yandex.net\r\n\r\n'
+        attempts_rate_limiter:
+          limit: 0.34
+        generated_proxy_backends:
+          proxy_options:
+            connect_timeout: 70ms
+            backend_timeout: 1000ms
+            keepalive_count: 100
+            fail_on_5xx: true
+          include_backends:
+            type: BY_ID
+            ids: [maps_core_personalized_poi_renderer_datatesting_sas,maps_core_personalized_poi_renderer_datatesting_vla]
+        on_error:
+          errordocument:
+            status: 504
+            content: "Service unavailable"

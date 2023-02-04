@@ -1,0 +1,77 @@
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      url: '/ping'
+  modules:
+    - balancer2:
+        rr: {
+          weights_file: './controls/slb_check.weights'
+        }
+        attempts: 1
+        backends:
+          - weight: 1
+            name: to_upstream
+            modules:
+              - balancer2:
+                  attempts: 1
+                  rr: {}
+                  by_name_policy:
+                    name: !f get_geo("bygeo_", "random")
+                    unique_policy: {}
+                  backends:
+                    - weight: 1
+                      name: bygeo_man
+                      modules:
+                        - balancer2:
+                            attempts: 3
+                            connection_attempts: !f count_backends()
+                            rr: {}
+                            generated_proxy_backends:
+                              proxy_options:
+                                backend_timeout: 300ms
+                                connect_timeout: 100ms
+                              include_backends:
+                                type: BY_ID
+                                ids:
+                                  - asr_desktop_general_man
+                                  - asr_dialogmaps_man
+                                  - asr_quasar_general_man
+                    - weight: 1
+                      name: bygeo_sas
+                      modules:
+                        - balancer2:
+                            attempts: 3
+                            connection_attempts: !f count_backends()
+                            rr: {}
+                            generated_proxy_backends:
+                              proxy_options:
+                                backend_timeout: 300ms
+                                connect_timeout: 100ms
+                              include_backends:
+                                type: BY_ID
+                                ids:
+                                  - asr_desktop_general_sas
+                                  - asr_dialogmaps_sas
+                                  - asr_quasar_general_sas
+                    - weight: 1
+                      name: bygeo_vla
+                      modules:
+                        - balancer2:
+                            attempts: 3
+                            connection_attempts: !f count_backends()
+                            rr: {}
+                            generated_proxy_backends:
+                              proxy_options:
+                                backend_timeout: 300ms
+                                connect_timeout: 100ms
+                              include_backends:
+                                type: BY_ID
+                                ids:
+                                  - asr_desktop_general_vla
+                                  - asr_dialogmaps_vla
+                                  - asr_quasar_general_vla
+          - weight: -1
+            name: switch_off
+            errordocument:
+              status: 503

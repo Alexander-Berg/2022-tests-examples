@@ -1,0 +1,85 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - nanny-robot
+      groups: []
+labels:
+  order: '99999999'
+---
+regexp_section:
+  matcher: {}
+  modules:
+    - threshold:
+        lo_bytes: 12288000
+        hi_bytes: 16384000
+        pass_timeout: 10s
+        recv_timeout: 1s
+    - balancer2:
+        attempts: 1
+        rr: {weights_file: ./controls/traffic_control.weights}
+        by_name_policy:
+          name: !f get_geo("bygeo_", "random")
+          unique_policy: {}
+        backends:
+          - weight: 1
+            name: bygeo_sas
+            modules:
+              - balancer2:
+                  attempts: 3
+                  watermark_policy:
+                    lo: 0.1
+                    hi: 0.1
+                    simple_policy: {}
+                  rr: {}
+                  generated_proxy_backends:
+                    proxy_options:
+                      backend_timeout: 1s
+                      connect_timeout: 70ms
+                      keepalive_count: 100
+                      fail_on_5xx: true
+                    include_backends:
+                      type: BY_ID
+                      ids: [lstorage_sas]
+          - weight: 1
+            name: bygeo_vla
+            modules:
+              - balancer2:
+                  attempts: 3
+                  watermark_policy:
+                    lo: 0.1
+                    hi: 0.1
+                    simple_policy: {}
+                  rr: {}
+                  generated_proxy_backends:
+                    proxy_options:
+                      backend_timeout: 1s
+                      connect_timeout: 70ms
+                      keepalive_count: 100
+                      fail_on_5xx: true
+                    include_backends:
+                      type: BY_ID
+                      ids: [lstorage_vla]
+          - weight: 1
+            name: bygeo_msk
+            modules:
+              - balancer2:
+                  attempts: 3
+                  watermark_policy:
+                    lo: 0.1
+                    hi: 0.1
+                    simple_policy: {}
+                  rr: {}
+                  generated_proxy_backends:
+                    proxy_options:
+                      backend_timeout: 1s
+                      connect_timeout: 70ms
+                      keepalive_count: 100
+                      fail_on_5xx: true
+                    include_backends:
+                      type: BY_ID
+                      ids: [lstorage_msk]
+        on_error:
+          errordocument:
+            status: 504
+            content: "Service unavailable"

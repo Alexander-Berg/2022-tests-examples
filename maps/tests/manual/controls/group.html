@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<!--
+Title:
+Контрол: программное взаимодействие с группой контролов
+
+Description:
+Проверка программной установки опций группе контролов.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+regress
+
+Estimated time:
+120000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась корректно.
+  В контейнере сверху неактивный контрол "a", контрол драга, неактивный контрол магнифайера(лупа), контрол линейки, контрол "b".
+  За группой контролов имеется белая полоска.
+
+Step:
+  Action:
+  Выполнить клик в контрол "a", контрол лупы.
+  Открыть инструменты разработчика командами Windows: Ctrl + Shift + I если у вас MacOS: ⌥ + ⌘ + I, вкладку Console.
+
+  Expectation:
+  Контрол "a", контрол лупы неактивны, не реагируют на клик.
+  Во вкладке консоли две пары строк: "length: 3; get length: 3".
+-->
+<html>
+<head>
+    <title>API 2.0</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <script src="../helper.js"></script>
+    <script type="text/javascript">
+        Api('init');
+        function init(ymaps) {
+            var myMap = new ymaps.Map('map', {
+                center: [34.8006, -37.5181],
+                zoom: 5
+            });
+            
+            var button = new ymaps.control.Button("b"),
+                    
+                    group = new ymaps.control.Group({
+                        items: [
+                            new ymaps.control.Button({ data: { content: 'group 1' } }),
+                            button
+                        ]
+                    }),
+                    controls = group.getAll();
+            group.add("mapTools");
+            group.add(new ymaps.control.Button("bug"));
+            controls.push(group.get("mapTools"));
+            group.remove("mapTools");
+            group.add("mapTools");
+            group.removeAll();
+            group.add(controls[0]);
+            group.add(controls[1]);
+            group.add(controls[2]);
+            // пробегаемся по всем элементам группы
+            group.each(function (e) {
+                if (e.length) { // если это маптулз, то отрубаем лупу
+                    e.getDefaultGroup().get('magnifier').disable();
+                }
+            });
+            // ищем кнопку с текстом group 1 и меняем ей текст
+            group.filter(function (e) {
+                return e.data && e.data.get('content') == 'group 1';
+            })[0].data.set("content", "a");
+            // отключаем кнопку, получив ее по индексу
+            group.get(group.indexOf(controls[0])).disable();
+            console.log("length: " + group.length());
+            if (group.getLength) {
+                console.log("get length: " + group.getLength());
+            }
+            group.remove(controls[1]);
+            group.add(controls[1]);
+            group.add(controls[1]);
+            console.log("length: " + group.length());
+            if (group.getLength) {
+                console.log("get length: " + group.getLength());
+            }
+            myMap.controls.add(group);
+            group.getContainer().style.backgroundColor = "#FFFFFF";
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;">
+</div>
+<p><a href="https://tech.yandex.ru/maps/archive/doc/jsapi/2.0/ref/reference/control.Group-docpage/" target="_blank">Docs</a></p>
+</body>
+</html>

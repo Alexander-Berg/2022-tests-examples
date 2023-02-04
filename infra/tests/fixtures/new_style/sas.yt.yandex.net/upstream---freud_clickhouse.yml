@@ -1,0 +1,43 @@
+---
+# clickhouse_proxy
+regexp_section:
+  matcher:
+    match_fsm:
+      host: 'clickhouse\\.\\w+\\.yt\\.yandex(\\.net|-team\\.ru)(:\\d+)?'
+  modules:
+    - report:
+        uuid: clickhouse_proxy
+        ranges: default
+        events:
+          stats: report  
+    - headers:
+        create_func_weak:
+          X-Forwarded-For: 'realip'
+          X-Scheme: 'scheme'
+          X-Source-Port: 'realport'
+    - balancer2:
+        attempts: 1
+        timeout_policy:
+          timeout: 3600s
+          unique_policy: {}
+        weighted2:
+          min_weight: 0.05
+          max_weight: 5.0
+          plus_diff_per_sec: 0.05
+          minus_diff_per_sec: 0.05
+          history_time: 3600s
+          feedback_time: 30s
+          slow_reply_time: 1s
+        generated_proxy_backends:
+          proxy_options:
+            backend_timeout: 3600s
+            connect_timeout: 1s
+            keepalive_count: 16
+            fail_on_5xx: false
+          include_backends:
+            type: BY_ID
+            ids: [clickhouse_proxy]
+        on_error:
+          errordocument:
+            content: 'Service unavailable'
+            status: 504

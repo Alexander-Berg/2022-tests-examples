@@ -1,0 +1,204 @@
+# Этот конфиг можно взять за основу для своего
+
+version: 9
+
+# Настройки для сгенерированных Juggler-проверок
+# Если настройки флаподава вам подходят (скорее всего, это так), тут можно оставить только неймспейс
+juggler_checks_defaults:
+  # Неймспейс, к которому будут привязаны Juggler-проверки
+  namespace: tools
+  # Настройки флаподава по умолчанию
+  flaps:
+    stable: 120
+    critical: 300
+    boost: 0
+
+# Список статусов или переходов статуса
+# в ответ на которые будет отправляться уведомление (не влияет на звонки)
+# По умолчанию - при любой смене статуса
+juggler_notify_statuses:
+  - from: WARN
+    to: CRIT
+  - from: OK
+    to: CRIT
+
+# Общие настройки для всех алертсетов
+settings_defaults:
+  notifications: []  # Кому отправлять уведомления (потом можно переопределить)
+  abc: isearch  # Имя ABC-сервиса, к которому будут привязаны алерты
+
+# Мониторинги на компонент в Qloud
+qloud:
+  # Пишем полные имена своих компонентов
+  apps:
+    # * означает "любое приложение"
+    tools.intrasearch.testing.abovemeta: backend
+    tools.intrasearch.testing.api: backend
+    tools.intrasearch.testing.celery: celery
+
+  alertsets:
+    common:
+      alerts:
+        cpu_load:
+          description: CPU usage, %
+          signal: '%cpu_perc'  # Процент потребления CPU
+          warn: 75
+          crit: 85
+        mem_usage:
+          description: RAM usage, %
+          signal: '%mem_perc'  # Процент потребления памяти
+          warn: 75
+          crit: 85
+        max_mem_usage:
+          description: Max RAM usage, %
+          signal: '%max_mem_perc'  # Процент потребления памяти (максимальный по инстансам)
+          warn: 70
+          crit: 80
+        max_disk_usage:
+          signal: '%max_disk_perc'  # Процент потребления диска (максимальный по инстансам)
+          warn: 80
+          crit: 90
+    backend:
+      extends: common
+      alerts:
+        http_5xx:
+          signal: '%5xx_perc'  # Процент пятисоток
+          warn: 0.5
+          crit: 2
+          disaster: true
+        http_4xx:
+          signal: '%4xx_perc'  # Процент четырехсоток
+          warn: 20
+          crit: 30
+        net_usage:
+          signal: '%net_perc'  # Процент потребления сети
+          warn: 85
+          crit: 95
+        error_logs:
+          signal: '%logs_level_err_perc'  # Процент ERROR-сообщений в логах
+          warn: 10
+          crit: 20
+
+        # Можем измерить минимальный процент пятисоток за последние 5 минут
+        http_5xx_min:
+          signal: '%5xx_perc'
+          crit: 1
+          window:
+            size: 5m
+            aggregate: min
+    celery:
+      extends: common
+      alerts:
+        ephemeral_disk_usage:
+          signal: 'unistat-auto_disk_ephemeral_usage_perc_axxx'  # Процент потребления диска (максимальный по инстансам)
+          warn: 80
+          crit: 90
+        redis_mem_usage_max:
+          signal: 'unistat-redis_celery_mem_usage_max'  # Процент памяти redis (максимальный по инстансам)
+          warn: 70
+          crit: 85
+
+# Мониторинги на базу в MDB
+mdb:
+  # Пишем тип и полный идентификатор базы данных
+  databases:
+    postgresql:isearch.isearch.isearch-test01: common-pg
+    mongodb:tools.tools.isearch_test_mongodb_cluster: common-mongo
+
+  alertsets:
+    # Общие для всех типов БД метрики
+    common:
+      alerts:
+        cpu_load:
+          signal: '%cpu_perc'  # Процент потребления CPU
+          warn: 75
+          crit: 85
+          tier: master
+        max_cpu_load:
+          signal: '%max_cpu_perc'  # Процент потребления CPU (максимальный по инстансам)
+          warn: 70
+          crit: 80
+        net_usage:
+          signal: '%net_perc'  # Процент потребления сети
+          warn: 85
+          crit: 95
+          tier: master
+        cpu_wait:
+          signal: '%cpu_wait'  # Время ожидания процессов в очереди
+          warn: 2
+          crit: 3
+          tier: master
+        mem_usage:
+          signal: '%mem_anon_perc'  # Процент потребления памяти (anon)
+          warn: 75
+          crit: 85
+          tier: master
+        max_mem_usage:
+          signal: '%max_mem_anon_perc'  # Максимальный процент потребления памяти (anon)
+          warn: 70
+          crit: 80
+        used_space:
+          signal: '%used_space_perc'  # Процент занятого места на диске
+          warn: 70
+          crit: 85
+          tier: master
+        replication_lag:
+          signal: '%replica_lag_avg'  # Среднее отставание реплик от мастера
+          warn: 3
+          crit: 5
+
+    # Специфичные для PostgreSQL метрики
+    common-pg:
+      extends: common
+      alerts:
+        statement_avg_time:
+          signal: '%statm_avg'  # Среднее время выполнения стейтментов (мс)
+          warn: 100
+          crit: 200
+        transaction_avg_time:
+          signal: '%trans_avg'  # Среднее время выполнения транзакций (мс)
+          warn: 200
+          crit: 300
+
+    # Специфичные для MongoDB метрики
+    common-mongo:
+      extends: common
+      alerts:
+        connections_usage:
+          signal: '%conn_perc'  # Процент количества установленных соединений относительно количества доступных
+          warn: 70
+          crit: 90
+
+    # Специфичные для ClickHouse метрики
+    common-clickhouse:
+      extends: common
+      alerts:
+        query_avg_time:
+          signal: '%query_avg'  # Среднее время выполнения запроса (мс)
+          warn: 200
+          crit: 300
+        zk_query_avg_time:
+          signal: '%zk_query_avg'  # Среднее время выполнения запроса в ZooKeeper (мс)
+          warn: 40
+          crit: 60
+        zk_used_space:
+          signal: '%zk_used_space_perc'  # Процент занятого места на диске в ZooKeeper
+          warn: 70
+          crit: 85
+
+    # Специфичные для Redis метрики
+    common-redis:
+      extends: common
+      alerts:
+        connected_clients:
+          signal: '%connected_clients'  # Количество клиентских подключений
+          warn: 40
+          crit: 60
+        ops_per_sec:
+          signal: '%ops_per_sec'  # Количество обработанных команд в секунду
+          warn: 40
+          crit: 60
+        miss_rate:
+          signal: '%miss_rate'  # Процент неудачных поисков ключей в главном словаре
+          warn: 70
+          crit: 80

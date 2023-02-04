@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<!--
+Title:
+Контрол зум: собственный макет контрола 
+
+Description:
+Проверка установки собственного макета контролу зума.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+control
+
+Estimated time:
+90000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан Москвы, в контейнере контрол зума в виде кнопок "+" "-".
+  Сверху слева имеются кнопки "setShape", "getShape".
+  
+Step:
+  Action:
+  Выполнить 5 кликов в кнопку призума "+".
+
+  Expectation:
+  Происходит корректный призум спана карты: карта не пропадает, не мигает.
+
+Step:
+  Action:
+  Выполнить 5 кликов в кнопку отзума "-".
+
+  Expectation:
+  Происходит корректный отзум спана карты: карта не пропадает, не мигает.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "getShape".
+
+  Expectation:
+  Спан карты и контролы "+/-" без изменений.
+  Под контейнером с картой появляется текст: "zoomControl: null".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "setShape".
+
+  Expectation:
+  Спан карты и контролы "+/-" без изменений.
+  Под контейнером с картой появляется текст: "Реализовать setShape".  
+-->
+<html>
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <link href="https://yandex.st/bootstrap/2.2.2/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://yandex.st/jquery/1.8.0/jquery.min.js" type="text/javascript"></script>
+    <script src="../../../helper.js"></script>
+    <style>
+        html, body, #map {
+            width: 100%;
+            height: 100%;
+            padding: 0;
+            margin: 0;
+        }
+    </style>
+
+    <script type="text/javascript">
+        Api('init');
+
+        function init(ymaps) {
+            var myMap = ym = new ymaps.Map('map', {
+                        center: [55.751574, 37.573856],
+                        zoom: 9,
+                        controls: []
+                    }),
+                    log = new Log();
+            addGrid(myMap);
+
+            log.info('zoomControl changes style on click. Expected shape - null');
+            // Создадим пользовательский макет ползунка масштаба.
+            var ZoomLayout = ymaps.templateLayoutFactory.createClass("<div>" +
+                            "<div id='zoom-in' class='btn'><i class='icon-plus'></i></div><br>" +
+                            "<div id='zoom-out' class='btn'><i class='icon-minus'></i></div>" +
+                            "</div>" +
+                            "", {
+
+                        // Переопределяем методы макета, чтобы выполнять дополнительные действия
+                        // при построении и очистке макета.
+                        build: function () {
+                            // Вызываем родительский метод build.
+                            ZoomLayout.superclass.build.call(this);
+
+                            // Привязываем функции-обработчики к контексту и сохраняем ссылки
+                            // на них, чтобы потом отписаться от событий.
+                            this.zoomInCallback = ymaps.util.bind(this.zoomIn, this);
+                            this.zoomOutCallback = ymaps.util.bind(this.zoomOut, this);
+
+                            // Начинаем слушать клики на кнопках макета.
+                            $('#zoom-in').bind('click', this.zoomInCallback);
+                            $('#zoom-out').bind('click', this.zoomOutCallback);
+                        },
+
+                        clear: function () {
+                            // Снимаем обработчики кликов.
+                            $('#zoom-in').unbind('click', this.zoomInCallback);
+                            $('#zoom-out').unbind('click', this.zoomOutCallback);
+
+                            // Вызываем родительский метод clear.
+                            ZoomLayout.superclass.clear.call(this);
+                        },
+
+                        zoomIn: function () {
+                            var map = this.getData().control.getMap();
+                            // Генерируем событие, в ответ на которое
+                            // элемент управления изменит коэффициент масштабирования карты.
+                            this.events.fire('zoomchange', {
+                                oldZoom: map.getZoom(),
+                                newZoom: map.getZoom() + 1
+                            });
+                        },
+
+                        zoomOut: function () {
+                            var map = this.getData().control.getMap();
+                            this.events.fire('zoomchange', {
+                                oldZoom: map.getZoom(),
+                                newZoom: map.getZoom() - 1
+                            });
+                        }
+                    }),
+                    zoomControl = new ymaps.control.ZoomControl({ options: { layout: ZoomLayout } });
+            myMap.controls
+                    .add(zoomControl);
+
+
+            var getShapeButton = new ymaps.control.Button({data: {content: 'getShape'}, options: {selectOnClick: false}});
+            getShapeButton.events.add('click', function () {
+                zoomControl.getLayout().then(function (layout) {
+                    var shape = layout.getShape();
+                    if (shape) {
+                        log.info('zoomControl: ' + shape + ', type: ' + shape.getType() + ', bounds: '
+                                + shape.getBounds());
+                        console.log(shape)
+                    } else {
+                        log.info('zoomControl: null');
+                        console.log(shape)
+                    }
+                });
+            });
+
+            var setShapeButton = new ymaps.control.Button({data: {content: 'setShape'}, options: {selectOnClick: false}});
+            setShapeButton.events.add('click', function () {
+                log.info('Реализовать setShape');
+            });
+
+            myMap.controls
+                    .add(getShapeButton)
+                    .add(setShapeButton);
+        }
+    </script>
+</head>
+<body>
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+
+</html>

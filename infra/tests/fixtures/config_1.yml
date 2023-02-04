@@ -1,0 +1,81 @@
+---
+main:
+  enable_reuse_port: true
+  addrs:
+    - ip: 127.0.0.4
+      port: 16020
+    - ip: 127.0.0.1
+      port: 16020
+    - ip: ::1
+      port: 16020
+  admin_addrs:
+    - ip: 127.0.0.1
+      port: 8000
+  maxconn: 4000
+  workers: 0
+  buffer: 65536
+  dns_ttl: !f get_random_timedelta(30, 40, 's')
+  log: /usr/local/www/logs/current-childs_log-balancer-16020
+  worker_start_delay: 1s
+  worker_start_duration: 30s
+  events:
+    Stats: report
+  ipdispatch:
+    sections:
+      xx:
+        ips:
+          - 127.0.0.4
+          - 127.0.0.1
+          - ::1
+        ports: [16020]
+        stats_attr: http
+        modules:
+          - errorlog:
+              log: /usr/local/www/logs/current-error_log-balancer-16021
+              log_level: ERROR
+          - http:
+              stats_attr: http
+              keepalive: true
+              no_keepalive_file: ./controls/keepalive_disabled
+          - accesslog:
+              log: /usr/local/www/logs/current-access_log-balancer-16021
+          - report:
+              uuid: http
+              refers: service_total
+              ranges: 'default'
+          - hasher:
+              mode: 'subnet'
+              subnet_v4_mask: 32
+              subnet_v6_mask: 128
+          - regexp:
+              sections:
+                main:
+                  matcher:
+                    match_fsm:
+                      uri: /gobabygo(/.*)?
+                      case_insensitive: false
+                      surround: false
+                  modules:
+                    - headers:
+                        create:
+                          Authorization: !f get_str_env_var("TOKEN")
+                        create_func:
+                          X-Real-IP: realip
+                        create_func_weak:
+                          X-Forwarded-For: realip
+                          X-Req-Id: reqid
+                          X-Scheme: scheme
+                          X-Source-Port: realport
+                    - errordocument:
+                        status: 500
+      yy:
+        ips:
+          - 127.0.0.1
+        ports: [8000]
+        stats_attr: http
+        modules:
+          - errorlog:
+              log: /usr/local/www/logs/current-error_log-balancer-16021
+              log_level: ERROR
+          - http: {}
+          - admin: {}

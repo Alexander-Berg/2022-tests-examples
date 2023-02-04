@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<!--
+Title:
+Кластер: опция невидимости объекта в кластеризаторе
+
+Description:
+Проверка опции невидимости объекта в кластеризаторе.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+regress
+
+Estimated time:
+90000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась корректно, на спане 3 метки кластеров со значением кластеризации "3".
+  Сверху имеется кнопка "test".
+
+Step:
+  Action:
+  Выполнить клик в нижнюю метку кластера.
+
+  Expectation:
+  На метке открывается балун со списком из трех меток: "visible3; visible3; invisible3".
+
+Step:
+  Action:
+  Выполнить клик в кнопку закрытия балуна кластера.
+
+  Expectation:
+  Балун закрылся, метка кластера на месте.
+
+Step:
+  Action:
+  Выполнить два клика в кнопку "test".
+
+  Expectation:
+  После второго клика на нижней метке кластера открывается балун со списком из трех меток: "visible3; visible3; visible3".
+-->
+<html>
+<head>
+    <title>API 2.0</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <script src="../helper.js"></script>
+    <script type=text/javascript>
+        Api('init');
+        function init(ymaps) {
+            var myMap = new ymaps.Map('map', {
+                        center: [33.7610, -37.2654],
+                        zoom: 7,
+                        behaviors: ['default', 'scrollZoom']
+                    }),
+                    x = myMap.getCenter()[0], y = myMap.getCenter()[1], i = 0,
+                    clusterer = new ymaps.Clusterer(),
+                    visible = [],
+                    invisible = [],
+                    invisiblePlacemark = new ymaps.Placemark([x + 1, y - 2], {clusterCaption: 'invisible1'}),
+                    visiblePlacemark = new ymaps.Placemark([x + 1, y - 2], {clusterCaption: 'visible1'}, {visible: false}),
+                    button = new ymaps.control.Button('test'); //открываем балун кластера, меняем видимость его геообъектов
+
+            /**
+             * метки добавляем до добавления кластера на карту
+             */
+            visible.push(new ymaps.Placemark([x + 1, y - 2], {clusterCaption: 'visible1'}),
+                    new ymaps.Placemark([x + 1, y - 2], {clusterCaption: 'visible1'}));
+            // устанавливаем опцию до добавления в кластер
+            invisible.push(new ymaps.Placemark([x + 1, y - 2], {clusterCaption: 'invisible1'}, {visible: false}));
+            // объекты добавляем до добавления кластера на карту
+            clusterer.add(visible).add(invisible);
+            clusterer.add(visiblePlacemark).add(invisiblePlacemark);
+            // устанавливаем опцию после добавления в кластер
+            visiblePlacemark.options.set({visible: true});
+            invisiblePlacemark.options.set({visible: false});
+            myMap.geoObjects.add(clusterer);
+            clusterer.options.set({
+                clusterBalloonContentBodyLayout: 'cluster#balloonAccordionContent',
+                clusterBalloonHeight: 85,
+                clusterBalloonWidth: 120,
+                clusterDisableClickZoom: true
+            });
+            /**
+             * метки добавляем после добавления кластера на карту
+             */
+            clusterer = new ymaps.Clusterer({
+                clusterBalloonContentBodyLayout: 'cluster#balloonAccordionContent',
+                clusterBalloonHeight: 85,
+                clusterBalloonWidth: 120,
+                clusterDisableClickZoom: true
+            });
+            myMap.geoObjects.add(clusterer);
+            visible = [];
+            invisible = [];
+            invisiblePlacemark = new ymaps.Placemark([x + 1, y], {clusterCaption: 'invisible2'});
+            visiblePlacemark = new ymaps.Placemark([x + 1, y], {clusterCaption: 'visible2'}, {visible: false});
+            visible.push(new ymaps.Placemark([x + 1, y], {clusterCaption: 'visible2'}),
+                    new ymaps.Placemark([x + 1, y], {clusterCaption: 'visible2'}));
+            // устанавливаем опцию до добавления в кластер
+            invisible.push(new ymaps.Placemark([x + 1, y], {clusterCaption: 'invisible2'}, {visible: false}));
+            // объекты добавляем до добавления кластера на карту
+            clusterer.add(visible).add(invisible);
+            clusterer.add(visiblePlacemark).add(invisiblePlacemark);
+            // устанавливаем опцию после добавления в кластер
+            visiblePlacemark.options.set({visible: true});
+            invisiblePlacemark.options.set({visible: false});
+            /**
+             * метки добавляем в кластер с открым балуном
+             */
+            clusterer = new ymaps.Clusterer({
+                clusterBalloonContentBodyLayout: 'cluster#balloonAccordionContent',
+                clusterBalloonHeight: 85,
+                clusterBalloonWidth: 120,
+                clusterDisableClickZoom: true
+            });
+            visible = [];
+            invisible = [];
+            invisiblePlacemark = new ymaps.Placemark([x - 1, y], {clusterCaption: 'invisible3'});
+            visiblePlacemark = new ymaps.Placemark([x - 1, y], {clusterCaption: 'visible3'}, {visible: false});
+            visible.push(new ymaps.Placemark([x - 1, y], {clusterCaption: 'visible3'}),
+                    new ymaps.Placemark([x - 1, y], {clusterCaption: 'visible3'}));
+            // устанавливаем опцию до добавления в кластер
+            invisible.push(new ymaps.Placemark([x - 1, y], {clusterCaption: 'invisible3'}, {visible: false}));
+            // объекты добавляем до добавления кластера на карту
+            clusterer.add(visible);
+            clusterer.events.once("objectsaddtomap", function (e) {
+                var balloon = e.get('target').getObjectState(visible[0]).cluster.balloon;
+                balloon.events.once('open', function (e) {
+                    // добавляем метки в кластер с открытым балуном
+                    clusterer.add(invisible.concat(visiblePlacemark, invisiblePlacemark));
+                });
+                balloon.open();
+            });
+            myMap.geoObjects.add(clusterer);
+            button.events.add("select", function (e) {
+                clusterer.getObjectState(visible[0]).cluster.balloon.open();
+                // устанавливаем опцию после добавления в кластер
+                visiblePlacemark.options.set({visible: true});
+                invisiblePlacemark.options.set({visible: false});
+            });
+            myMap.controls.add(button);
+            myMap.controls.add(new ymaps.control.ZoomControl());
+            /**
+             * невидимый кластер
+             */
+            var clusterer1 = new ymaps.Clusterer({
+                clusterBalloonContentBodyLayout: 'cluster#balloonAccordionContent',
+                clusterBalloonHeight: 85,
+                clusterBalloonWidth: 120,
+                clusterDisableClickZoom: true
+            });
+            clusterer1.add(new ymaps.Placemark([x - 1, y - 2], {clusterCaption: 'invisible4'}, {visible: false}));
+            clusterer1.add(new ymaps.Placemark([x - 1, y - 2], {clusterCaption: 'invisible4'}, {visible: false}));
+            myMap.geoObjects.add(clusterer1);
+            
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+<p><a href="https://tech.yandex.ru/maps/archive/doc/jsapi/2.0/ref/reference/Clusterer-docpage/" target="_blank">Docs</a></p>
+</body>
+</html>

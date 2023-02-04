@@ -1,0 +1,57 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - am-malyhin
+      - wth-dmitriy
+      - robot-toloka-deploy
+      groups:
+      - svc_tolokamatch_devops
+      - svc_toloka_backend_development
+labels: {}
+config_mode: easy2
+---
+l7_upstream_macro:
+  version: 0.0.1
+  id: toloka-dj_testing-dj_
+  matcher:
+    path_re: /.*
+  headers:
+  - create:
+      target: X-Forwarded-Host
+      func: host
+  - create:
+      target: X-Balancer-Host
+      func: host
+  - create:
+      target: X-Real-IP
+      func: realip
+  - create:
+      target: X-Request-Id
+      keep_existing: true
+      func: reqid
+  by_dc_scheme:
+    dc_balancer:
+      weights_section_id: bygeo
+      method: BY_DC_WEIGHT
+      attempt_all_dcs: true
+    balancer:
+      attempts: 2
+      max_reattempts_share: 0.20000000298023224
+      max_pessimized_endpoints_share: 0.20000000298023224
+      retry_http_responses:
+        codes:
+        - '503'
+        on_last_failed_retry: PROXY_RESPONSE_AS_IS
+      connect_timeout: 100ms
+      backend_timeout: 700ms
+      backend_read_timeout: 400ms
+      backend_write_timeout: 400ms
+    dcs:
+    - name: man
+      backend_ids:
+      - toloka-dj_testing-dj_basesearch_man
+    on_error:
+      static:
+        status: 504
+        content: '{"code":"Service unavailable","message":"Service unavailable"}'

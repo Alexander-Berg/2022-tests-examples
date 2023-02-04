@@ -1,0 +1,139 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - pogodina-eval
+      groups:
+      - yandex_mnt_sa_runtime_cross
+      - svc_answ_development
+config_transport:
+  nanny_static_file:
+    service_id: rtc_balancer_answers-test_yandex_net_yp_man
+    instance_tags:
+      ctype: test
+      itype: balancer
+      prj: answers-test
+---
+instance_macro:
+  version: 0.0.2
+  sd: {}
+  unistat: {}
+  state_directory: /dev/shm/balancer-state
+  log_dir: /place/db/www/logs/
+  workers: !f get_workers()
+  sections:
+    admin:
+      ips: [127.0.0.1, '::1']
+      ports:
+        - !f get_port_var('port')
+      modules:
+        - http: {}
+        - admin: {}
+    stats_storage:
+      ips: [127.0.0.4]
+      ports:
+        - !f get_port_var('port')
+      modules:
+        - report:
+            uuid: "service_total"
+            ranges: "default"
+            just_storage: true
+        - http: {}
+        - errordocument:
+            status: 204
+    http_section:
+      ips: ['*']
+      ports: [80]
+      extended_http_macro:
+        report_uuid: 'http'
+        modules:
+          - regexp:
+              sections:
+                exp_testing:
+                  matcher:
+                    match_fsm:
+                      cgi: "(exp-testing=da|exp_confs=testing)"
+                      surround: true
+                  modules:
+                    - exp_getter_macro:
+                        header_name: X-L7-EXP-Testing
+                        service_name: answers
+                        _version: 3
+                    - shared:
+                        uuid: upstreams
+                default:
+                  matcher: {}
+                  modules:
+                    - exp_getter_macro:
+                        service_name: answers
+                        _version: 3
+                    - shared:
+                        uuid: upstreams
+                    - regexp:
+                        include_upstreams:
+                          filter:
+                            not:
+                              id_prefix: 'feature_'
+                          order:
+                            label:
+                              name: order
+    https_section:
+      ips: ['*']
+      ports: [443]
+      extended_http_macro:
+        report_uuid: 'https'
+        enable_ssl: true
+        ssl_sni_contexts:
+          answers-test.yandex.net:
+            servername_regexp: default
+            cert: !c answers-test.yandex.net
+        modules:
+          - headers:
+              create_func:
+                X-Forwarded-For-Y: realip
+              create_func_weak:
+                X-Req-Id: reqid
+          - regexp:
+              sections:
+                exp_testing:
+                  matcher:
+                    match_fsm:
+                      cgi: "(exp-testing=da|exp_confs=testing)"
+                      surround: true
+                  modules:
+                    - response_headers:
+                        create:
+                          X-Section: 'https:exp_testing'
+                    - exp_getter_macro:
+                        header_name: X-L7-EXP-Testing
+                        service_name: answers
+                        _version: 3
+                    - shared:
+                        uuid: upstreams
+                    - regexp:
+                        include_upstreams:
+                          filter:
+                            not:
+                              id_prefix: 'feature_'
+                          order:
+                            label:
+                              name: order
+                default:
+                  matcher: {}
+                  modules:
+                    - response_headers:
+                        create:
+                          X-Section: 'https:default'
+                    - exp_getter_macro:
+                        service_name: answers
+                        _version: 3
+                    - shared:
+                        uuid: upstreams
+                    - regexp:
+                        include_upstreams:
+                          filter:
+                            not:
+                              id_prefix: 'feature_'
+                          order:
+                            label:
+                              name: order

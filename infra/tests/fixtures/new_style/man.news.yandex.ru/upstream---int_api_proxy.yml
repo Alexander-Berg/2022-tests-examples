@@ -1,0 +1,119 @@
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      uri: '/api/.*'
+  modules:
+    - report:
+        uuid: api
+        ranges: default
+        matcher_map:
+          user_coldness:  {match_fsm: {uri: '.*user_coldness.*' }}
+    - balancer2:
+        attempts: 1
+        rr: {weights_file: ./controls/traffic_control.weights}
+        backends:
+        - weight: 1
+          name: api_on
+          modules:
+            - request_replier:
+                sink:
+                  balancer2:
+                    attempts: 2
+                    attempts_rate_limiter:
+                      limit: 0.2
+                    weighted2: {}
+                    retry_policy:
+                      unique_policy: {}
+                    generated_proxy_backends:
+                      proxy_options: {}
+                      instances:
+                        - weight: 1
+                          host: 'news.sinkadm.priemka.yandex.ru'
+                          port: 80
+            - balancer2:
+                attempts: 2
+                attempts_file: './controls/api.attempts'
+                watermark_policy:
+                  lo: 0.05
+                  hi: 0.1
+                  unique_policy: {}
+                rr: {weights_file: ./controls/traffic_control.weights}
+                backends:
+                - weight: 1
+                  name: news_sas
+                  modules:
+                    - report: {ranges: default, uuid: requests_api_to_sas}
+                    - balancer2:
+                        attempts: !f count_backends()
+                        attempts_rate_limiter:
+                          limit: 0.2
+                        weighted2: {}
+                        timeout_policy:
+                          timeout: 500ms
+                          unique_policy: {}
+                        generated_proxy_backends:
+                          proxy_options:
+                            backend_timeout: 2500ms
+                            connect_timeout: 50ms
+                            status_code_blacklist: ["204"]
+                          include_backends:
+                            type: BY_ID
+                            ids: [production_news_nginx_sas]
+                - weight: 1
+                  name: news_man
+                  modules:
+                    - report: {ranges: default, uuid: requests_api_to_man}
+                    - balancer2:
+                        attempts: !f count_backends()
+                        attempts_rate_limiter:
+                          limit: 0.2
+                        weighted2: {}
+                        timeout_policy:
+                          timeout: 500ms
+                          unique_policy: {}
+                        generated_proxy_backends:
+                          proxy_options:
+                            backend_timeout: 2500ms
+                            connect_timeout: 50ms
+                            status_code_blacklist: ["204"]
+                          include_backends:
+                            type: BY_ID
+                            ids: [production_news_nginx_man]
+                - weight: 1
+                  name: news_vla
+                  modules:
+                    - report: {ranges: default, uuid: requests_api_to_vla}
+                    - balancer2:
+                        attempts: !f count_backends()
+                        attempts_rate_limiter:
+                          limit: 0.2
+                        weighted2: {}
+                        timeout_policy:
+                          timeout: 500ms
+                          unique_policy: {}
+                        generated_proxy_backends:
+                          proxy_options:
+                            backend_timeout: 2500ms
+                            connect_timeout: 50ms
+                            status_code_blacklist: ["204"]
+                          include_backends:
+                            type: BY_ID
+                            ids: [production_news_nginx_vla]
+                - weight: -1
+                  name: news_devnull
+                  modules:
+                    - report:
+                        uuid: requests_api_to_devnull
+                        ranges: 1ms
+                    - errordocument:
+                        status: 204
+        - weight: -1
+          name: api_off
+          modules:
+            - errordocument:
+                status: 503
+        on_error:
+              modules:
+                - errordocument:
+                    status: 500

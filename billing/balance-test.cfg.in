@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Config xmlns:xi="http://www.w3.org/2001/XInclude">
+    <xi:include href="../common_config/dev/environment.cfg.xml"/>
+    <xi:include href="../common_config/dev/paysys-params.cfg.xml"/>
+    <xi:include href="../common_config/dev/host-specific.cfg.xml"/>
+    <xi:include href="../common_config/dev/autodasha.cfg.xml"/>
+    <xi:include href="../common_config/dev/mailer.cfg.xml"/>
+    <xi:include href="../common_config/dev/email-errors.cfg.xml"/>
+    <xi:include href="../common_config/dev/mailing-lists.cfg.xml"/>
+    <xi:include href="../common_config/dev/stat-pages.cfg.xml"/>
+    <xi:include href="../common_config/dev/stager.cfg.xml"/>
+    <xi:include href="../common_config/dev/db-conn-yt.cfg.xml"/>
+    <xi:include href="../common_config/dev/logbroker.cfg.xml"/>
+
+    <MakoPlugin module="butils.application.plugins.mako_helper"/>
+    <InflectorPlugin module="balance.application.plugins.inflector"/>
+
+    <Log level="error">/var/log/yb/balance-test-@USER@.log</Log>
+
+    <PyLog>
+        <Logger name="sqlalchemy.engine">DEBUG</Logger>
+        <Logger name="sqlalchemy.pool">ERROR</Logger>
+        <Logger name="sqlalchemy.orm.unitofwork">ERROR</Logger>
+        <Logger name="xmlrpc.dump">DEBUG</Logger>
+        <Logger name="db.pool">DEBUG</Logger>
+        <LogFormat>%(asctime)s P%(process)s T%(thread)-2.0d %(levelname)-8s %(name)-15s: %(message)s</LogFormat>
+    </PyLog>
+
+    <XReportDir>/tools/muzzle/xreports</XReportDir>
+    <TranslDir module="balance.application.plugins.phrasemanager">/var/www/xs5/balance-tanker/xml</TranslDir>
+
+    <Medium>
+<!--        таймауты добавлены в конфиг только для проверки его парсинга-->
+<!--        т.к. таймауты реализованы через uwsgi harakiri, а uwsgi в юнит-тестах не поднимается,-->
+<!--        то функционал таймаутов в них не проверить-->
+        <Timeouts>
+            <Timeout method="GetDistributionFixed">300</Timeout>
+            <Timeout method="GetDistributionRevenueShare">300</Timeout>
+            <Timeout method="GetDspStat">300</Timeout>
+            <Timeout method="GetPagesStat">300</Timeout>
+            <Timeout method="GetPagesTagsStat">600</Timeout>
+            <Timeout method="CreateInvoice">300</Timeout>
+            <Timeout method="CreateInvoice2">300</Timeout>
+            <Timeout method="EstimateDiscount">300</Timeout>
+            <Timeout method="QueryCatalog">300</Timeout>
+            <Timeout method="GetClientCreditLimits">300</Timeout>
+            <Timeout method="GetRequestChoices">300</Timeout>
+            <Timeout method="GetContractCredits">300</Timeout>
+            <Timeout method="CreateTransferMultiple">300</Timeout>
+            <Timeout method="GetFirmCountryCurrency">300</Timeout>
+            <Timeout method="ProcessCompletions">300</Timeout>
+            <Timeout method="GetCompletionHistory">300</Timeout>
+            <Timeout method="GetPurchasedServiceProducts">10</Timeout>
+            <Timeout method="GetMixedNDSClients">300</Timeout>
+            <Timeout method="GetTaxiBalance">600</Timeout>
+        </Timeouts>
+
+        <HttpListener>
+            <Host>0.0.0.0</Host>
+            <MediumPort>18002</MediumPort>
+            <TakeoutPort>18012</TakeoutPort>
+            <Workers>20</Workers>
+            <Timeout>900</Timeout><!-- based on default timeout from MediumHttpHandler-->
+            <BufferSize>10240</BufferSize>
+            <MaxRequests>500</MaxRequests>
+            <MasterFifo>/tmp/balance-medium.fifo</MasterFifo>
+            <LogTo>/var/log/yb/balance-medium.uwsgi.log</LogTo>
+        </HttpListener>
+    </Medium>
+
+    <TestXmlRpc>
+        <HttpListener>
+            <Host>0.0.0.0</Host>
+            <Port>30702</Port>
+            <Workers>20</Workers>
+            <Timeout>900</Timeout><!-- based on default timeout from MediumHttpHandler-->
+            <BufferSize>10240</BufferSize>
+            <MaxRequests>500</MaxRequests>
+            <MasterFifo>/tmp/balance-test-xmlrpc.fifo</MasterFifo>
+            <LogTo>/var/log/yb/balance-test-xmlrpc.uwsgi.log</LogTo>
+        </HttpListener>
+    </TestXmlRpc>
+
+    <uWSGIMetrics>
+        <CollectMethodMetric>1</CollectMethodMetric>
+        <Interval>15</Interval>
+        <Project>balance</Project>
+        <Service>medium</Service>
+        <Port>10050</Port>
+    </uWSGIMetrics>
+
+    <DbBackend id="balance" type="oracle">
+        <Host>@BALANCE_DB@</Host>
+        <User>bo</User>
+        <Scheme>bo</Scheme>
+        <Pass>balalancing</Pass>
+    </DbBackend>
+
+    <DbBackend id="balance_ro" type="oracle">
+        <Host>@BALANCE_DB@</Host>
+        <User>bo</User>
+        <Scheme>bo</Scheme>
+        <Pass>balalancing</Pass>
+    </DbBackend>
+
+    <DbBackend id="meta" type="oracle">
+        <Host>@BALANCE_DB@</Host>
+        <User>bo</User>
+        <Scheme>bo</Scheme>
+        <Pass>balalancing</Pass>
+    </DbBackend>
+
+    <DbBackend id="balance_meta" type="oracle">
+        <Host>@BALANCE_DB@</Host>
+        <User>meta</User>
+        <Scheme>bo</Scheme>
+        <Pass>bo_pwd</Pass>
+    </DbBackend>
+
+    <PoolSize>20</PoolSize>
+
+</Config>

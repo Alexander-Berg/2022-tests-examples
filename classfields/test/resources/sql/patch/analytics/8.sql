@@ -1,0 +1,2 @@
+ALTER TABLE `all_tasks`
+ADD COLUMN `send_after` TIMESTAMP(6) NULL DEFAULT NULL;

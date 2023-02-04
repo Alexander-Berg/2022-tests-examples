@@ -1,0 +1,163 @@
+<!DOCTYPE HTML>
+<!--(skip)(description)
+multiRouter: basic test
+-->
+<!--(version)
+2.1.7
+-->
+<!--(commands)
+sleep(1000);
+test();
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            //TODO: написать комментарии и тест
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 10,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+
+            var events = ['geometrychange', 'update', 'mapchange', 'optionschange', 'overlaychange', 'parentchange', 'propertieschange'];
+            var domevents = ['click', 'contextmenu', 'dblclick', 'mousedown', 'mouseenter', 'mouseleave', 'mouseup', 'multitouchend',
+                'multitouchstart', 'wheel'];
+
+            var placemark1 = new ymaps.Placemark([55.71574031323344,37.29753265380539]);
+            var placemark2 = new ymaps.Placemark([55.912150224943986,37.29753265380539]);
+            var placemark3 = new ymaps.Placemark([56.16,37.29753265380539]);
+            var placemark4 = new ymaps.Placemark([56.36,37.29753265380539]);
+
+            // строим маршрут
+            var multiRoute = new ymaps.multiRouter.MultiRoute({
+                referencePoints: [placemark1.geometry, placemark2.geometry, placemark3.geometry, placemark4.geometry],
+                params: {
+                    viaIndexes: [1]
+                }
+            }, {
+                boundsAutoApply: true,
+                wayPointDraggable: true,
+                preset: "islands#multiRouterSmall"
+            });
+            map.geoObjects.add(multiRoute);
+
+            // создаем кнопку подписки на события активного маршрута
+            var eventsButton = new ymaps.control.Button('route');
+            eventsButton.events.add('click', function() {
+                // подписываемся на события активного маршрута
+                multiRoute.getActiveRoute().events.add(events, function(e) {
+                    console.log('route: ' + e.get('type') + ', target: ' + e.get('target') + ', currentTarget: ' + e.get('currentTarget'));
+                    console.log(e.get('currentTarget'))
+                });
+                // получаем пути активного маршрута
+                var paths = multiRoute.getActiveRoute().getPaths();
+                var i = 0;
+                paths.each(function(path) {
+                    // подписываемся на события путей активного маршрута
+                    path.events.add(events, function(e) {
+                        console.log('path: ' + e.get('type') + ', target: ' + e.get('target') + ', currentTarget: ' + e.get('currentTarget'));
+                        console.log(e.get('currentTarget'))
+                    });
+                    // получаем сегменты путей активного маршрута
+                    var segments = path.getSegments();
+                    segments.each(function(segment) {
+                        // подписываемся на события сегментов путей активного маршрута
+                        segment.events.add(events, function(e) {
+                            console.log('segment: ' + e.get('type') + ', target: ' + e.get('target') + ', currentTarget: ' + e.get('currentTarget'));
+                            console.log(e.get('currentTarget'))
+                        });
+                    });
+                });
+            });
+
+            // создаем кнопку подписки на события путевых точек
+            var wayButton = new ymaps.control.Button('way');
+            wayButton.events.add('click', function() {
+                // получаем массив путевых точек
+                var ways = multiRoute.getWayPoints();
+                var i = 0;
+                // подписываемся на события всех путевых точек маршрута
+                ways.each(function(point) {
+                    point.events.add(events, function(e) {
+                        console.log('point: ' + e.get('type') + ', target: ' + e.get('target') + ', currentTarget: ' + e.get('currentTarget'));
+                        console.log(e.get('currentTarget'))
+                    });
+                });
+            });
+
+            var domEventsButton = new ymaps.control.Button('dom');
+            domEventsButton.events.add('click', function() {
+                multiRoute.getActiveRoute().events.add(domevents, function(e) {
+                    __log__('route: ' + e.get('type') + ', target: ' + e.get('target') + ', currentTarget: ' + e.get('currentTarget'));
+                    console.log(e.get('currentTarget'))
+                });
+                var paths = multiRoute.getActiveRoute().getPaths();
+                var i = 0;
+                paths.each(function(path) {
+                    path.events.add(domevents, function(e) {
+                        console.log('path: ' + e.get('type') + ', target: ' + e.get('target') + ', currentTarget: ' + e.get('currentTarget'));
+                        console.log(e.get('currentTarget'))
+                    });
+                    var segments = path.getSegments();
+                    segments.each(function(segment) {
+                        segment.events.add(domevents, function(e) {
+                            console.log('segment: ' + e.get('type') + ', target: ' + e.get('target') + ', currentTarget: ' + e.get('currentTarget'));
+                            console.log(e.get('currentTarget'))
+                        });
+                    });
+                });
+            });
+
+            var wayDomButton = new ymaps.control.Button('wayDom');
+            wayDomButton.events.add('click', function() {
+                var ways = multiRoute.getWayPoints();
+                var i = 0;
+                ways.each(function(point) {
+                    point.events.add(domevents, function(e) {
+                        console.log('point: ' + e.get('type') + ', target: ' + e.get('target') + ', currentTarget: ' + e.get('currentTarget'));
+                        console.log(e.get('currentTarget'))
+                    });
+                });
+            });
+
+            var clearButton = new ymaps.control.Button('clear');
+            clearButton.events.add('click', function() {
+                log.clear();
+            });
+
+            map.controls
+                    .add(eventsButton).add(wayButton).add(domEventsButton).add(wayDomButton)
+                    .add(clearButton, {float: 'none', position:{bottom: 35, right: 10}});
+
+            // функция генерации рандомного цвета (меток)
+            function getRandomColor () {
+                return [
+                    '#',
+                    (55 + Math.round(Math.random() * 200)).toString(16),
+                    (55 + Math.round(Math.random() * 200)).toString(16),
+                    (55 + Math.round(Math.random() * 200)).toString(16)
+                ].join('')
+            }
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

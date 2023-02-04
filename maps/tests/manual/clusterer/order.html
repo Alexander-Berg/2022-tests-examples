@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<!--
+Title:
+Кластер: опция порядка меток в кластере
+
+Description:
+Проверка опции порядка меток в кластере.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+regress
+
+Estimated time:
+120000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась корректно, на спане множество меток кластеров, зеленые и желтые метки коллекций.
+
+Step:
+  Action:
+  Выполнить клик в метку кластера.
+
+  Expectation:
+  Спан карты может сместиться, на метке кластера открывается балун с двумя колонками.
+  В левой колонке список меток: сначала идут метки вида "23 point", за ними метки вида "point 156".
+  Метки располагаются в порядке увеличения первого числа, то есть вначале буду метки первого десятка/первой сотни, затем метки второго десятка/сотни.
+
+Step:
+  Action:
+  Выполнить отзум с помощью скрола мыши на 5 значений.
+
+  Expectation:
+  Балун кластера закрывается, происходит корректный отзум спана.
+  Во время отзума метки коллекций и метки кластеров кластеризуются в один кластер со значением "200".
+
+Step:
+  Action:
+  Выполнить клик в метку кластера.
+
+  Expectation:
+  Спан карты может сместиться, на метке кластера открывается балун с двумя колонками.
+  В левой колонке список меток: сначала идут метки вида "1 point", за ними метки вида "point 156".
+  Метки располагаются в порядке увеличения первого числа, то есть вначале буду метки первого десятка/первой сотни, затем метки второго десятка/сотни.
+-->
+<html>
+<head>
+    <title>API 2.0</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <script src="../helper.js"></script>
+    <script type=text/javascript>
+        Api('init');
+        function init(ymaps) {
+            var myMap = new ymaps.Map('map', {
+                center: [59.96343157514998, 30.317977733422868],
+                zoom: 7,
+                // Добавим к стандартным поведениям карты зум колесом мыши.
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+            
+            var clusterer = new ymaps.Clusterer({
+                preset: 'twirl#redClusterIcons',
+                disableClickZoom: true,
+                showInAlphabeticalOrder: true
+            });
+            
+            var i = 0;
+            myMap.geoObjects.add(clusterer);
+            var placemarksNumber = 200,
+                    bounds = myMap.getBounds();
+            console.log('Placemarks added.');
+            var newPlacemarks = createGeoObjects(placemarksNumber, bounds);
+            clusterer.add(newPlacemarks);
+            /*var alphabeticalButton = new ymaps.control.Button({data: {content: 'order'}, options: {selectOnClick: true}});
+             alphabeticalButton.events
+             .add('select', function () {
+             clusterer.options.set('showInAlphabeticalOrder', true);
+             console.log(clusterer.options.get('showInAlphabeticalOrder'))
+             })
+             .add('deselect', function () {
+             clusterer.options.set('showInAlphabeticalOrder', false);
+             console.log(clusterer.options.get('showInAlphabeticalOrder'))
+             });             myMap.controls
+             .add(alphabeticalButton, {top: 5, left: 5})*/
+            function createGeoObjects(number, bounds) {
+                var placemarks = [];
+                // Создаем нужное количество меток
+                for (var i = 0; i < number; i++) {
+                    // Генерируем координаты метки случайным образом.
+                    coordinates = getRandomCoordinates(bounds);
+                    // Создаем метку со случайными координатами.
+                    if (Math.random() < 0.5) {
+                        myPlacemark = new ymaps.Placemark(coordinates, {
+                            balloonContent: i, hintContent: i, iconContent: i,
+                            clusterCaption: i + ' point'}, {preset: 'twirl#yellowStretchyIcon'});
+                    } else {
+                        myPlacemark = new ymaps.Placemark(coordinates, {
+                            balloonContent: 'point ' + i, hintContent: i, iconContent: 'point',
+                            clusterCaption: 'point ' + i}, {preset: 'twirl#greenStretchyIcon'});
+                    }
+                    placemarks.push(myPlacemark);
+                }
+                return placemarks;
+            }
+            function getRandomCoordinates(bounds) {
+                var size = [bounds[1][0] - bounds[0][0], bounds[1][1] - bounds[0][1]];
+                return [Math.random() * size[0] + bounds[0][0], Math.random() * size[1] + bounds[0][1]];
+            }        
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+<p><a href="https://tech.yandex.ru/maps/archive/doc/jsapi/2.0/ref/reference/Clusterer-docpage/" target="_blank">Docs</a></p>
+</body>
+</html>

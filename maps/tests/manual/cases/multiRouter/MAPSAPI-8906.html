@@ -1,0 +1,221 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Мультимаршрут: getBounds карты при добавлении мультимаршрута
+
+Description:
+Проверка работы метода getBounds карты при добавлении мультимаршрута. 
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+multiRouter
+
+Estimated time:
+120000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно со слоем - спутниковый снимок.
+  Сверху в контейнере кнопки "Первый маршрут", "Второй маршрут", "Третий маршрут", "bounds".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "Первый маршрут".
+
+  Expectation:
+  Происходит смена спана, на спане появляется мультимаршрут ОТ из 3 точек.
+  
+Step:
+  Action:
+  Выполнить клик в кнопку "Второй маршрут".
+
+  Expectation:
+  Происходит смена спана, на спане появляется мультимаршрут авто из 2 точек.
+
+Step:
+  Action:
+  Выполнить быстрый клик в "Первый маршрут" после появления маршрута клик во "Второй маршрут".
+
+  Expectation:
+  При клике спан карты корректно меняется, на спанах появляются маршруты из шагов 1 и 2, карта отображается корректно.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "Третий маршрут".
+
+  Expectation:
+  Со спана карты пропадает маршрут, спан карты не меняется.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "bounds".
+
+  Expectation:
+  Происходит смена спана на спан СПб, на карте мультимаршрут ОТ, имеются метик общественного транспорта, альтернативные нитки.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            // если несколько раз переключиться с маршрута на маршрут,
+            // карта начинает выставлять неправильные координаты
+            __log__('если несколько раз переключиться с маршрута на маршрут,');
+            __log__('карта начинает выставлять неправильные координаты');
+
+            var map = myMap = new ymaps.Map('map', {
+                        center: [55.739625, 37.54120],
+                        zoom: 7,
+                        type: "yandex#satellite",
+                        controls: [],
+                        behaviors: ['default']
+                    }),
+
+                    multiRoute1 = new ymaps.multiRouter.MultiRoute({
+                        referencePoints: ["метро Киевская", "метро Охотный ряд", "метро Площадь Революции", "Москва, улица Льва Толстого"],
+                        params: {
+                            viaIndexes: [1],
+                            routingMode: 'masstransit'
+                        }
+                    }, {
+                        boundsAutoApply: true,
+                        viaPointIconRadius: 10,
+                        pinIconRadius: 5,
+                        wayPointStartIconColor: "#80C257",
+                        wayPointFinishIconColor: "#8470FF",
+                        wayPointIconColor: "black",
+                        routeStrokeWidth: 2,
+                        routeActiveStrokeWidth: 6,
+                        routeStrokeColor: "000088",
+                        routeActiveStrokeColor: "#FF4500",
+                        pinIconFillColor: "#BFEFFF",
+                        viaPointIconFillColor: "#FFD39B",
+                        transportMarkerIconColor: "#FFE4E1"
+                    }),
+                    multiRoute2 = new ymaps.multiRouter.MultiRoute({
+                        referencePoints: ["Москва, улица Лобачевского", "Москва, метро Академическая"]
+                    }, {
+                        boundsAutoApply: true,
+                        preset: "islands#multiRouterBig",
+                        routeStrokeWidth: 2,
+                        routeActiveStrokeWidth: 4,
+                        routeStrokeColor: "000088",
+                        routeActiveStrokeColor: "ff0011"
+                    }),
+
+                    multiRoute3 = new ymaps.multiRouter.MultiRoute({
+                        referencePoints: ["комендантский 30к1", "пискареский пр 2к2"],
+                        params: {
+                            routingMode: 'masstransit'
+                        }
+                    }, {
+                        boundsAutoApply: false,
+                        preset: "islands#multiRouterBig",
+                        routeStrokeWidth: 2,
+                        routeActiveStrokeWidth: 4,
+                        routeStrokeColor: "000088",
+                        routeActiveStrokeColor: "ff0011"
+                    }),
+
+                    buttonRoute1 = new ymaps.control.Button({
+                        data: {
+                            content: "Первый маршрут"
+                        },
+                        options: {
+                            maxWidth: 300
+                        }
+                    }),
+                    buttonRoute2 = new ymaps.control.Button({
+                        data: {
+                            content: "Второй маршрут"
+                        },
+                        options: {
+                            maxWidth: 300
+                        }
+                    }),
+                    buttonRoute3 = new ymaps.control.Button({
+                        data: {
+                            content: "Третий маршрут"
+                        },
+                        options: {
+                            maxWidth: 300
+                        }
+                    }),
+                    buttonBounds = new ymaps.control.Button({
+                        data: {
+                            content: "bounds"
+                        },
+                        options: {
+                            maxWidth: 300
+                        }
+                    });
+
+            myMap.controls
+                    .add(buttonBounds)
+                    .add(buttonRoute3)
+                    .add(buttonRoute2)
+                    .add(buttonRoute1);
+
+            buttonRoute1.events.add('select', function () {
+                if (multiRoute2.getMap() || multiRoute3.getMap()) {
+                    buttonRoute2.deselect();
+                    buttonRoute3.deselect();
+                }
+                myMap.geoObjects.add(multiRoute1);
+            });
+
+            buttonRoute2.events.add('select', function () {
+                if (multiRoute1.getMap() || multiRoute3.getMap()) {
+                    buttonRoute1.deselect();
+                    buttonRoute3.deselect();
+                }
+                myMap.geoObjects.add(multiRoute2);
+            });
+
+            buttonRoute3.events.add('select', function () {
+                if (multiRoute1.getMap() || multiRoute2.getMap()) {
+                    buttonRoute1.deselect();
+                    buttonRoute2.deselect();
+                }
+                myMap.geoObjects.add(multiRoute3);
+            });
+
+            buttonRoute1.events.add('deselect', function () {
+                myMap.geoObjects.remove(multiRoute1);
+            });
+
+            buttonRoute2.events.add('deselect', function () {
+                myMap.geoObjects.remove(multiRoute2);
+            });
+
+            buttonRoute3.events.add('deselect', function () {
+                myMap.geoObjects.remove(multiRoute3);
+            });
+
+            buttonBounds.events.add('click', function () {
+                map.setBounds(multiRoute3.getBounds());
+            });
+
+            addGrid(map);
+            var log = new Log();
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

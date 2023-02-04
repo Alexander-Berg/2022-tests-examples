@@ -1,0 +1,45 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - pbk-vitaliy
+      groups: []
+labels:
+  order: '00001001'
+config_mode: easy2
+---
+l7_upstream_macro:
+  version: 0.0.1
+  id: zen-z-testing
+  matcher:
+      host_re: '(.*\.)?z-testing(\.yd)?\.kaizen\.yandex-team\.ru(:.*)?'
+  headers:
+    - append: {target: X-Forwarded-For, func: realip}
+    - create: {target: X-Real-IP, func: realip, keep_existing: true}
+  monitoring:
+    uuid: zen-z-testing
+  by_dc_scheme:
+    dc_balancer:
+      weights_section_id: bygeo
+      method: LOCAL_THEN_BY_DC_WEIGHT
+      attempts: 2
+    balancer:
+      attempts: 2
+      max_reattempts_share: 0.15
+      max_pessimized_endpoints_share: 0.2
+      fast_attempts: 2
+      do_not_retry_http_responses: true
+      retry_non_idempotent: false
+      connect_timeout: 70ms
+      backend_timeout: 10s
+    dcs:
+      - name: sas
+        backend_ids:
+          - zen-z-testing.z_sas
+      - name: vla
+        backend_ids:
+          - zen-z-testing.z_vla
+    on_error:
+      static:
+        status: 504
+        content: 'Service unavailable'

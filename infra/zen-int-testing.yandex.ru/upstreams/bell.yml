@@ -1,0 +1,80 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - ihramtsov
+      groups: []
+labels:
+  order: 099
+---
+#{ "order": "099" }
+regexp_section:
+  matcher:
+    match_or:
+      - match_fsm:
+          uri: '/api/bell.*'
+  modules:
+    - report:
+        uuid: 'to-bell'
+        ranges: 'default'
+    - balancer2:
+        rr: {}
+        attempts: 1
+        connection_attempts: 2
+        by_name_policy:
+          name: !f get_geo("bell_", "random")
+          allow_zero_weights: false
+          unique_policy: {}
+        backends:
+          - weight: 1
+            name: bell_sas
+            modules:
+              - report:
+                  uuid: 'to-bell-sas'
+                  ranges: 'default'
+              - balancer2:
+                  rr: {}
+                  attempts: 1
+                  connection_attempts: 2
+                  retry_policy:
+                    unique_policy: {}
+                  return_last_5xx: true
+                  status_code_blacklist: ["503"]
+                  generated_proxy_backends:
+                    proxy_options:
+                      resolve_timeout: '10ms'
+                      connect_timeout: '70ms'
+                      backend_timeout: '2s'
+                      keepalive_count: 0
+                      need_resolve: false
+                      fail_on_5xx: false
+                      buffering: false
+                    include_backends:
+                      type: BY_ID
+                      ids: [bell-sas, bell-vla]
+          - weight: 1
+            name: bell_vla
+            modules:
+              - report:
+                  uuid: 'to-bell-vla'
+                  ranges: 'default'
+              - balancer2:
+                  rr: {}
+                  attempts: 1
+                  connection_attempts: 2
+                  retry_policy:
+                    unique_policy: {}
+                  return_last_5xx: true
+                  status_code_blacklist: ["503"]
+                  generated_proxy_backends:
+                    proxy_options:
+                      resolve_timeout: '10ms'
+                      connect_timeout: '70ms'
+                      backend_timeout: '2s'
+                      keepalive_count: 0
+                      need_resolve: false
+                      fail_on_5xx: false
+                      buffering: false
+                    include_backends:
+                      type: BY_ID
+                      ids: [bell-sas, bell-vla]

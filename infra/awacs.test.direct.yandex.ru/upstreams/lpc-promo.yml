@@ -1,0 +1,48 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - fomasha
+      groups: []
+labels:
+  order: '10000000'
+---
+regexp_section:
+  matcher:
+    match_fsm:
+        uri: '/(promo|constructor)/.*'
+  modules:
+    - report:
+        uuid: promo
+        ranges: default
+    - headers:
+        create_func:
+          X-Forwarded-For-Y: realip
+          X-Real-IP: realip
+    - rewrite:
+        actions:
+          - regexp: '.*\\.yandex\\.(.*)$'
+            header_name: 'Host'
+            rewrite: 'direct.yandex.%1'
+    - balancer2:
+        rr: {}
+        attempts: 2
+        attempts_rate_limiter:
+          limit: 0.15
+        connection_attempts: 3
+        return_last_5xx: true
+        status_code_blacklist : ["5xx"]
+        generated_proxy_backends:
+          proxy_options:
+            connect_timeout: 100ms
+            backend_timeout: 300s
+            fail_on_5xx: false
+          instances:
+            - host: lpc-internal.yandex.net
+              port: 80
+              weight: 1
+        on_error:
+          modules:
+          - errordocument: 
+              status: 504
+              content: 'Service unavailable'

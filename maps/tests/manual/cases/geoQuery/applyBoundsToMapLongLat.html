@@ -1,0 +1,148 @@
+<!doctype html>
+<!--
+Title:
+Гео запрос: метод установки видимой области карты со всеми объектами выборки(longlat)
+
+Description:
+Проверка метода установки видимой области карты со всеми объектами выборки(longlat).
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+geoQuery
+
+Estimated time:
+180000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+  
+  Expectation:
+  Карта отобразилась корректно.
+  При загрузке в контейнере сначала появляется спан Москвы, затем происходит смена спана на спан Российских городов, при этом в районе Санкт-Петербурга имеется метка коллекции, в районе Москвы множество мето и объектов.
+  Сверху слева кнопки "bounds", "geodesic".
+
+Step:
+  Action:
+  Скролом мыши выполнить призум спана карты к области метки в Санкт-Петербурге. 
+  
+  Expectation:
+  Происходит корректный призум спана карты, метка не пропадает, не мигает цветами.
+  
+Step:
+  Action:
+  Выполнить клик кнопку "bounds". 
+  
+  Expectation:
+  Происходит смена спана с отзумом на первоначальный спан Российских городов с меткой в СПб и метками и объектами в Москве.
+
+Step:
+  Action:
+  Скролом мыши выполнить призум спана карты к области меток и объектов в Москве. 
+  
+  Expectation:
+  Происходит корректный призум спана карты, на спане множество меток, полупрозрачных синих прямоугольников и кругов, синих линий разной толщины.
+
+Step:
+  Action:
+  Выполнить клик кнопку "geodesic". 
+  
+  Expectation:
+  Объекты прямоугольников и кругов промигивают и остаются на спане карты.
+  Под контейнером с картой появляется строка: "geodesic mode enabled.".
+
+Step:
+  Action:
+  Выполнить клик кнопку "bounds". 
+  
+  Expectation:
+  Происходит смена спана с отзумом на первоначальный спан Российских городов с меткой в СПб и метками и объектами в Москве.
+
+Step:
+  Action:
+  Зажав ЛКМ на спане карты переместить спан, так чтобы в области видимости отсуствовали метки коллекций, объекты. 
+  
+  Expectation:
+  Происходит корректный драг карты: карта не пропадает, не мигает цветами.
+
+Step:
+  Action:
+  Выполнить клик кнопку "geodesic". 
+  
+  Expectation:
+  Спан карты без изменений.
+  Под контейнером с картой появляется строка: "geodesic mode disabled.".
+
+Step:
+  Action:
+  Выполнить клик кнопку "bounds". 
+  
+  Expectation:
+  Происходит смена спана на первоначальный спан Российских городов с меткой в СПб и метками и объектами в Москве.
+-->
+<html>
+<head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../helper.js"></script>
+    <script src="../../js/wgs84MercatorSource.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+        function init(ymaps) {
+
+            var myMap = new ymaps.Map('map', {
+                center: [55.5541584321358, 37.93061981201168],
+                zoom: 9,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            wgs84MercatorSource(ymaps, myMap, this);
+            addGrid(myMap);
+            var log = new Log();
+
+            log.info('GeoQueryResult applyBoundsToMap(): all geoQueryResult items must be shown on the map');
+            log.info('Parameters: #2.1.*//ru-RU//longlat');
+
+            // add objects and applies new bounds to myMap
+            var result = ymaps.geoQuery(geoQueryResult).then(function () {
+                result.addToMap(myMap);
+                result.applyBoundsToMap(myMap);
+            });
+
+            // geodesic button sets 'true' value to geodesic option of objects
+            var geodesicButton = new ymaps.control.Button({data: {content: 'geodesic'}}, {selectOnClick: true});
+            var applyBoundsButton = new ymaps.control.Button({data: {content: 'bounds'}}, {selectOnClick: false});
+
+            geodesicButton.events
+                    .add('select', function () {
+                        result.setOptions('geodesic', true);
+                        log.info('geodesic mode enabled.');
+                    })
+                    .add('deselect', function () {
+                        result.setOptions('geodesic', false);
+                        log.info('geodesic mode disabled.');
+                    });
+            // (for geodesic option check) applyBoundsButton applies new bounds to myMap
+            applyBoundsButton.events
+                    .add('click', function () {
+                        result.setOptions('visible', true);
+                        result.applyBoundsToMap(myMap);
+                    });
+
+            myMap.controls
+                    .add(geodesicButton, {right: 425, top: 5})
+                    .add(applyBoundsButton, {right: 5, top: 5});
+        }
+
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

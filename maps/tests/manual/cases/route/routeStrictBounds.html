@@ -1,0 +1,130 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Маршрут: поиск объектов внутри области, заданной boundedBy 
+
+Description:
+Проверка опции поиска объектов внутри области, заданной boundedBy.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components:
+route
+
+Estimated time:
+120000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта загрузилась корректно со спаном Центральной России, на спане имеется прямоугольная полупрозрачная синяя область.
+  Сверху кнопка "strict bo...".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "strict bo...".
+
+  Expectation:
+  Cпан карты немного смещается, внутри выделенной области появляется маршрут из 3 меток и транзитной точки.
+  Маршрутная нитка - фиолетовая.
+
+Step:
+  Action:
+  Выполнить клик в метку "1", "2", "3" маршрута.
+
+  Expectation:
+  В месте меток "1", "2", "3" открывается балун с содержимым, в виде полного топонима адреса(1-Люберцы, 2- пос. Городок, 3-Калуга).
+
+Step:
+  Action:
+  Выполнить клик в кнопку "strict bo...".
+
+  Expectation:
+  Происходи отзум и смена спана карты.
+  На спане появляется новая метка "2" и зеленая нитка маршрута(метка и часть маршрута за пределами выделенной области).
+
+Step:
+  Action:
+  Выполнить клик в новую метку "2" маршрута.
+
+  Expectation:
+  В месте метки "2" открывается балун с содержимым, в виде полного топонима адреса(Беларусь, Витебская область, Городокский район, Городок).
+-->
+<html>
+<head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            var map = myMap = new ym.Map('map', {
+                        center: [55.13956907632481, 36.8915119949995],
+                        zoom: 8
+                    }),
+                    log = new Log(),
+                    zoom = new ym.control.ZoomControl,
+                    button1 = new ym.control.Button({data: {content: 'strict bounds'}}, {selectOnClick: true});
+
+            button1.events
+                    .add("select", function (e) {
+                        var route = new ymaps.route([
+                            'люберцы',
+                            'городок',
+                            { type: 'viaPoint', point: 'серпухов' },
+                            { type: 'wayPoint', point: 'калуга' }
+                        ], {
+                            mapStateAutoApply: true,
+                            boundedBy: [
+                                [55.76067754421678, 35.70451507567861],
+                                [54.258169575039965, 38.33024749755289]
+                            ],
+                            strictBounds: true
+                        }).then(function (route) {
+                                    map.geoObjects.add(route);
+                                });
+                    })
+                    .add('deselect', function () {
+                        var route = new ymaps.route([
+                            'люберцы',
+                            'городок',
+                            { type: 'viaPoint', point: 'серпухов' },
+                            { type: 'wayPoint', point: 'калуга' }
+                        ], {
+                            mapStateAutoApply: true,
+                            boundedBy: [
+                                [55.76067754421678, 35.70451507567861],
+                                [54.258169575039965, 38.33024749755289]
+                            ],
+                            strictBounds: false
+                        }).then(function (route) {
+                                    route.getPaths().options.set({
+                                        strokeColor: '00FF00',
+                                        opacity: 0.9
+                                    });
+                                    map.geoObjects.add(route);
+                                });
+                    });
+
+            map.controls
+                    .add(zoom)
+                    .add(button1);
+            addGrid(map);
+            map.geoObjects.add(new ymaps.Rectangle([
+                [55.76067754421678, 35.70451507567861],
+                [54.258169575039965, 38.33024749755289]
+            ]))
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

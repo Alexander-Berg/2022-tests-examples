@@ -1,0 +1,110 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Геокод: отображение меток результатов запросов
+
+Description:
+Проверка отображения меток запросов геокодера.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+geocode
+
+Estimated time:
+180000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан восточной части России, на спане имеются метки коллекции зеленого и голубого цвета.
+  Под контейнером результаты запросов геокодеру "комсомола"(голубые метки на спане карты), "ленина"(зеленые метки).
+  
+Step:
+  Action:
+  С помощью скрол-колеса мыши выполнить плавный призум(с просмотром результата призума на каждом значении зума) спана к метке коллекции в Санкт-Петербурге.
+
+  Expectation:
+  Призум спана карты корректный, карта и метка не пропадают, не меняют цвет, нет странных визуальных эффектов.
+
+Step:
+  Action:
+  Выполнить максимальный отзум спана карты с помощью скрола мыши. 
+
+  Expectation:
+  Происходит корректный отзум карты, карта не пропадает, не мигает цветами, нет странных визуальных эффектов.
+
+Step:
+  Action:
+  Выполнить максимальный призум магнифайером спана к метке коллекции в Краснодаре.
+
+  Expectation:
+  Выделение области магнифайером корректная, область выделяется, после отпускания клавиши мыши происходит корректный призум.
+  Метка с результатом поиска не пропадает со спана карты.
+-->
+<html>
+<head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            var myMap = new ym.Map('map', {
+                center: [55.73259667357658, 37.70153663432529],
+                zoom: 5,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['searchControl']
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+
+            var myGeocoder1 = ymaps.geocode("комсомола");
+            myGeocoder1.then(
+                    function (res) {
+                        var collection = res.geoObjects;
+                        myMap.geoObjects.add(collection);
+                        log.info('"комсомола" results list: ');
+                        collection.each(function (obj) {
+                            log.info(obj.properties.get('balloonContent'))
+                        })
+                    },
+                    function (err) {
+                        log.info(err)
+                    }
+            );
+
+            var myGeocoder2 = ymaps.geocode("ленина");
+            myGeocoder2.then(
+                    function (res) {
+                        var collection = res.geoObjects;
+                        collection.each(function (obj) {
+                            obj.options.set('preset', 'islands#greenIcon')
+                        });
+                        myMap.geoObjects.add(collection);
+                        log.info('"ленина" results list: ');
+                        collection.each(function (obj) {
+                            log.info(obj.properties.get('balloonContent'))
+                        })
+                    },
+                    function (err) {
+                        log.info(err)
+                    }
+            );
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

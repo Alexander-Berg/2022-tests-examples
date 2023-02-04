@@ -1,0 +1,43 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - fyodor
+      groups:
+      - svc_yandexsprav_development
+labels:
+  order: '10000000'
+---
+regexp_section:
+  matcher:
+    match_and:
+    - match_fsm:
+        match: POST.*
+    - match_fsm:
+        uri: /v1/companies(/search)?
+  modules:
+    - report:
+        uuid: api
+        ranges: default
+    - balancer2:
+        attempts: 3
+        watermark_policy:
+          lo: 0.1
+          hi: 0.1
+          unique_policy: {}
+        weighted2: {}
+        generated_proxy_backends:
+          proxy_options:
+            backend_timeout: 10s
+            connect_timeout: 70ms
+            keepalive_count: 0
+            fail_on_5xx: true
+          include_backends:
+            type: BY_ID
+            ids: [public-api-testing-deploy]
+        attempts_rate_limiter:
+          limit: 2
+        on_error:
+          errordocument:
+            status: 504
+            content: "Service unavailable"

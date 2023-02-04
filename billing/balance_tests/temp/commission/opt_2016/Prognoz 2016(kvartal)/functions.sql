@@ -1,0 +1,64 @@
+--drop function xxx_calc_base_q;
+
+--  create function xxx_calc_base_q(p_amt              in number,
+--                         p_ag_amt           in number,
+--                         p_ag_amt_prev      in number,
+--                         p_ag_amt_fm_prev   in number)
+--      return number parallel_enable
+--    as
+--        l_grow  number;
+--        l_pct   number;
+--    begin
+--        if p_ag_amt_fm_prev = 0 then
+--            return 0;
+--        end if;
+--        l_grow := (p_ag_amt/p_ag_amt_prev - 1)*100;
+--        if      l_grow >= 20 then l_pct := 3;
+--        elsif   l_grow >= 10 then l_pct := 2;
+--        elsif   l_grow >=  5 then l_pct := 1;
+--        else                      l_pct := 0;
+--        end if;
+--
+--        return p_amt*l_pct/100;
+--    end xxx_calc_base_q;
+
+--    -- BALANCE-22499
+--    --  вартальное дл€ профов
+--    create function xxx_calc_prof_q(p_amt   in number,
+--                         p_ag_amt           in number,
+--                         p_ag_amt_prev      in number,
+--                         p_ag_amt_fm_prev   in number)
+--      return number parallel_enable
+--    as
+--    begin
+--        return xxx_calc_base_q(p_amt, p_ag_amt, p_ag_amt_prev, p_ag_amt_fm_prev);
+--    end xxx_calc_prof_q;
+----
+----    -- BALANCE-22507
+----    --  вартальное дл€ маркета
+--    create function xxx_calc_market_q(p_amt              in number,
+--                           p_ag_amt           in number,
+--                           p_ag_amt_prev      in number,
+--                           p_ag_amt_fm_prev   in number)
+--      return number parallel_enable
+--    as
+--        l_grow  number;
+--        l_pct   number;
+--    begin
+--        if p_ag_amt_fm_prev = 0 then
+--            return 0;
+--        end if;
+--        l_grow := (p_ag_amt/p_ag_amt_prev - 1)*100;
+--        if      l_grow >= 50 then l_pct := 4;
+--        elsif   l_grow >= 40 then l_pct := 3.5;
+--        elsif   l_grow >= 30 then l_pct := 3;
+--        elsif   l_grow >= 25 then l_pct := 2.5;
+--        elsif   l_grow >= 20 then l_pct := 2;
+--        elsif   l_grow >= 15 then l_pct := 1.5;
+--        elsif   l_grow >= 10 then l_pct := 1;
+--        elsif   l_grow >=  5 then l_pct := 0.5;
+--        else                      l_pct := 0;
+--        end if;
+--
+--        return p_amt*l_pct/100;
+--    end xxx_calc_market_q;

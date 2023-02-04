@@ -1,0 +1,63 @@
+---
+instance_macro:
+  workers: !f get_workers()
+  sections:
+    admin:
+      ips: [127.0.0.1, '::1']
+      ports:
+        - !f get_port_var('port')
+      modules:
+        - http: {}
+        - admin: {}
+    stats_storage:
+      ips: [127.0.0.4]
+      ports:
+        - !f get_port_var('port')
+      modules:
+        - report:
+            uuid: 'service_total'
+            ranges: 'default'
+            just_storage: true
+        - http: {}
+        - errordocument:
+            status: 204
+    http_section:
+      ips: ['*']
+      ports:
+        - 80
+        - !f get_port_var('port')
+      extended_http_macro:
+        report_uuid: 'http'
+        modules:
+          - regexp:
+              include_upstreams:
+                filter:
+                  id_prefix_in:
+                    - 'http_'
+                    - 'slbping'
+                    - 'awacs-balancer-health-check'
+                order:
+                  label:
+                    name: order
+    https_section:
+      ips: ['*']
+      ports:
+        - 443
+      extended_http_macro:
+        report_uuid: 'https'
+        enable_ssl: true
+        ssl_sni_contexts:
+          catalogapi.site.yandex.net:
+            servername_regexp: default
+            cert: !c catalogapi.site.yandex.net
+        modules:
+          - regexp:
+              include_upstreams:
+                filter:
+                  id_prefix_in:
+                    - 'https_'
+                    - 'slbping'
+                    - 'awacs-balancer-health-check'
+                order:
+                  label:
+                    name: order

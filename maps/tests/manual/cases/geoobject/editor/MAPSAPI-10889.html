@@ -1,0 +1,118 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Геообъект: порядок включения/выключения режимов рисования
+
+Description:
+Проверка порядка включения/выключения режимов рисования.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+geoobject
+
+Estimated time:
+90000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан Московской области, на спане два ряда объектов: линия, многоугольник, прямоугольник, круг(верхний ряд синего цвета, нижний - зеленого).
+  Сверху имеются кнопка "START".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "START", затем в течении последующих 4 секунд выполнять клики в спан карты ЛКМ.
+
+  Expectation:
+  По клику в кнопку старт происходит поочередно включение(выключение) режима рисования в порядке: синяя линия, синий многоугольник, зеленый многоугольник, зеленая линия.
+  По окончанию цикла режим рисования остается включен у зеленой линии к курсору прилипает пунктирная линия от метки вершины линии.
+  По клику на спане должны оставаться метки вершин, рисоваться линии или области многоугольников.
+  Под контейнером с картой поочередно появляются строки сначала включения, затем выключения режима рисования: drawingstart, drawingstop.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <script src="../../../helper.js"></script>
+    <script src="../geoCS.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym; // hack
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.73259667357658, 37.70153663432529],
+                zoom: 9,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            geoCSSource(ym, myMap, this);
+            addGrid(myMap);
+            var log = new Log();
+
+            __log__('быстро кликать по карте');
+
+            myMap.geoObjects
+                    .add(geoObjectPolyline)
+                    .add(geoObjectPolygon)
+                    .add(geoObjectRectangle)
+                    .add(geoObjectRectangle)
+                    .add(geoObjectCircle)
+                    .add(polyline)
+                    .add(polygon)
+                    .add(rectangle)
+                    .add(circle);
+
+            polyline.editor.options.set('drawOver', false);
+            geoObjectPolyline.editor.options.set('drawOver', false);
+            polygon.editor.options.set('drawOver', false);
+            geoObjectPolygon.editor.options.set('drawOver', false);
+            placemark.editor.options.set('drawOver', false);
+            geoObjectPlacemark.editor.options.set('drawOver', false);
+
+            polyline.editor.events.add(['drawingstart', 'drawingstop'], function (e) {
+                __log__(e.get('type'));
+            });
+
+            polygon.editor.events.add(['drawingstart', 'drawingstop'], function (e) {
+                __log__(e.get('type'));
+            });
+
+            geoObjectPolygon.editor.events.add(['drawingstart', 'drawingstop'], function (e) {
+                __log__(e.get('type'));
+            });
+
+            geoObjectPolyline.editor.events.add(['drawingstart', 'drawingstop'], function (e) {
+                __log__(e.get('type'));
+            });
+
+            var actionButton = new ymaps.control.Button({data: {content: 'START'}, options: {selectOnClick: false}});
+            actionButton.events.add('click', function () {
+            polyline.editor.startDrawing();
+            setTimeout(function() {
+                polygon.editor.startDrawing();
+                setTimeout(function() {
+                    geoObjectPolygon.editor.startDrawing();
+                    setTimeout(function() {
+                        geoObjectPolyline.editor.startDrawing();
+                    }, 1500)
+                }, 1000)
+            }, 1000)
+            });
+            myMap.controls.add(actionButton);
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

@@ -1,0 +1,152 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Макет: рамка балуна
+
+Description:
+Проверка применения макета к рамке балуна.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+layout
+
+Estimated time:
+120000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+  
+  Expectation:
+  Карта отобразилась корректно. 
+  На карте спан Москвы, в центре спана открыт балун с содержимым "some text", у балуна отсутсвует рамка. 
+  Сверху слева в контейнере кнопки "3/5", "1/0", под контейнером с картой строка: "event: open, overlay: [object Object], isOpen: true, target: [object Object]".  
+
+Step:
+  Action:
+  Выполнить клик в кнопку "1/0".
+  
+  Expectation:
+  У балуна появляется тонкая черная рамка.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "1/0".
+  
+  Expectation:
+  Рамка балуна пропадает.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "3/5".
+  
+  Expectation:
+  У балуна появляется черная рамка(линия толще).
+
+Step:
+  Action:
+  Выполнить клик в кнопку "3/5".
+  
+  Expectation:
+  Черная линия рамки балуна увеличивается.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "1/0".
+  
+  Expectation:
+  Рамка балуна становится тонкой черной линией.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "1/0".
+  
+  Expectation:
+  Рамка балуна пропадает.  
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <style>
+        #counter {
+            background-color: #FFFFFF;
+            border-style: solid;
+            border-color: black;
+            height: 100px;
+            width: 150px;
+            margin: -80px;
+            padding: 20px;
+        }
+    </style>
+    <script src="../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 10,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+
+            var LayoutClass = ymaps.templateLayoutFactory.createClass(
+                    '<div id="counter" style="border-width: {{ options.border|default:0 }}px">' +
+                            '$[options.text]' +
+                            '</div>'
+            );
+
+            var balloon,
+                    pos = map.getCenter(),
+                    options = { layout: LayoutClass, preventPanelMode: true, text: 'some text' };
+
+            window.balloon = balloon = new ymaps.Balloon(map);
+            balloon.options.set(options).setParent(map.options);
+
+            balloon.events.add(['open', 'close', 'userclose'], function (e) {
+                log.info('event: ' + e.get('type') + ', overlay: ' + balloon.getOverlaySync().getMap() +
+                        ', isOpen: ' + balloon.isOpen() + ', target: ' + e.get('target'));
+                console.log(e.get('target'))
+            });
+
+            balloon.open(pos);
+
+            var borderButton = new ymaps.control.Button('1/0');
+            var superBorderButton = new ymaps.control.Button('3/5');
+
+            borderButton.events
+                    .add('select', function() {
+                        balloon.options.set('border', 1);
+                    })
+                    .add('deselect', function() {
+                        balloon.options.unset('border');
+                    });
+
+            superBorderButton.events
+                    .add('select', function() {
+                        balloon.options.set('border', 3);
+                    })
+                    .add('deselect', function() {
+                        balloon.options.set('border', 5);
+                    });
+
+            map.controls.add(borderButton);
+            map.controls.add(superBorderButton)
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

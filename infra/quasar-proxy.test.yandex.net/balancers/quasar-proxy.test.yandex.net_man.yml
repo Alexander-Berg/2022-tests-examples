@@ -1,0 +1,64 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - nanny-robot
+      groups: []
+config_transport:
+  nanny_static_file:
+    service_id: rtc_balancer_quasar-proxy_test_yandex_net_man
+    instance_tags:
+      ctype: prod
+      itype: balancer
+      prj: quasar-proxy
+---
+instance_macro:
+  sd: {}
+  unistat: {}
+  workers: !f get_workers()
+  tcp_listen_queue: 128
+  maxconn: 5000
+  sections:
+    admin:
+      ips: [127.0.0.1, '::1']
+      ports:
+        - !f get_port_var('port')
+      modules:
+        - http: {}
+        - admin: {}
+    http_section:
+      ips: ['*']
+      ports:
+        - 80
+        - !f get_port_var('port')
+      extended_http_macro:
+        modules:
+          - regexp:
+              include_upstreams:
+                filter:
+                  any: true
+                order:
+                  label:
+                    name: order
+    https_section:
+      ips: ['*']
+      ports:
+        - 443
+      extended_http_macro:
+        enable_ssl: true
+        ssl_sni_contexts:
+          quasar-proxy.test.yandex.net:
+            servername_regexp: default
+            cert: !c quasar-proxy.test.yandex.net
+        modules:
+          - response_headers:
+              create_weak:
+                Access-Control-Allow-Origin: 'https://frontend.vh.yandex.ru'
+          - regexp:
+              include_upstreams:
+                filter:
+                  any: true
+                order:
+                  label:
+                    name: order
+

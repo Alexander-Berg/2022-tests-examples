@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<!--
+Title:
+Собственный макет кластеризации геообъектов
+
+Description:
+Кластеризация геообъектов с собственным макетом.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+clusterer
+
+Estimated time:
+120000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан центральной России, с отображением меток коллекций и меток кластеров с цифрами.
+ 
+Step:
+  Action:
+  Навести курсор на метку коллекции и выполнить клик ЛКМ.
+
+  Expectation:
+  При наведении на метку курсор - палец. 
+  При клике происходит смещение спана, на месте метки открывается балун.
+  В балуне заголовок: "Заголовок метки № (номер)", тело: "Информация о метке № (номер)", кнопка закрытия балуна.
+
+Step:
+  Action:
+  Выполнить максимальный отзум карты скролом мыши.
+
+  Expectation:
+  Происходит корректный отзум карты: карта не мигает, не пропадает.
+  При отзуме метки коллекций и метки кластеров кластеризуются и на последнем значении зума на спане карты кластерная метка с цифрой "100". 
+
+Step:
+  Action:
+  Выполнить клик в кластерную метку.
+
+  Expectation:
+  Происходит смещение спана, для открытия балуна кластера.
+  Вместо кластерной метки на спане балун со списком меток (Заголовок метки №1, Заголовок метки №2, ....), скрол полоса, кнопка закрытия балуна.
+
+Step:
+  Action:
+  Навести курсор на метку в списке и выполнить клик ЛКМ.
+
+  Expectation:
+  При наведении курсора имеется ховер эффект, текст метки голубой, исчезает подчеркивание текста.  
+  При клике на странице выпадает диалоговое окно с текстом: "Информация о метке №(номер метки)", и кнопкой "Ок"("Закрыть", "Close" в зависимости от браузера).
+-->
+<html xmlns="http://www.w3.org/1999/xhtml">
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+    <script src="https://yandex.st/jquery/1.9.0/jquery.min.js" type="text/javascript"></script>
+
+    <script src="../../../helper.js"></script>
+    <style>
+        .list {
+            list-style: none outside;
+            margin: 0;
+            padding: 0;
+        }
+
+        .list li {
+            padding-bottom: 10px;
+        }
+
+        .list a {
+            color: #207697;
+        }
+
+        .list a:hover {
+            color: #28B8F0;
+            text-decoration: none;
+        }
+    </style>
+    <script type="text/javascript">
+        Api('init');
+        function init(ymaps) {
+            ymaps = ym; // hack
+            var mapCenter = [55.755381, 37.619044],
+                    map = new ymaps.Map('map', {
+                        center: mapCenter,
+                        zoom: 10,
+                        controls: []
+                    }),
+                    placemarks = [];
+            // Создаем собственный макет с информацией о выбранном геообъекте.
+            var customBalloonContentLayout = ymaps.templateLayoutFactory.createClass([
+                '<ul class=list>',
+                // Выводим в цикле список всех геообъектов.
+                '{% for geoObject in properties.geoObjects %}',
+                '<li><a href=# data-placemarkid="{{ geoObject.properties.placemarkId }}" class="list_item">{{ geoObject.properties.balloonContentHeader|raw }}</a></li>',
+                '{% endfor %}',
+                '</ul>'
+            ].join(''));
+
+
+            jQuery(document).on("click", "a.list_item", function () {
+                // Определяем по какой метке произошло событие.
+                var selectedPlacemark = placemarks[jQuery(this).data().placemarkid];
+                alert(selectedPlacemark.properties.get('balloonContentBody'));
+            });
+
+            var clusterer = new ymaps.Clusterer({
+                clusterDisableClickZoom: true,
+                clusterOpenBalloonOnClick: true,
+                // Устанавливаем режим открытия балуна.
+                // В данном примере балун никогда не бдует открываться в режиме панели.
+                clusterBalloonPanelMaxMapArea: 0,
+                // По умолчанию опции балуна balloonMaxWidth и balloonMaxHeight не установлены для кластеризатора,
+                // так как все стандартные макеты имеют определенные размеры.
+                clusterBalloonMaxHeight: 200,
+                // Устанавливаем собственный макет контента балуна.
+                clusterBalloonContentLayout: customBalloonContentLayout
+            });
+
+            // Заполняем кластер геообъектами со случайными позициями.
+            for (var i = 0, l = 100; i < l; i++) {
+                var placemark = new ymaps.Placemark(getRandomPosition(), {
+                    // Устаналиваем данные, которые будут отображаться в балуне.
+                    balloonContentHeader: 'Заголовок метки №' + (i + 1),
+                    balloonContentBody: 'Информация о метке №' + (i + 1),
+                    placemarkId: i
+                });
+                placemarks.push(placemark);
+            }
+
+            clusterer.add(placemarks);
+            map.geoObjects.add(clusterer);
+
+
+            function getRandomPosition() {
+                return [
+                            mapCenter[0] + (Math.random() * 0.3 - 0.15),
+                            mapCenter[1] + (Math.random() * 0.5 - 0.25)
+                ];
+            }
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

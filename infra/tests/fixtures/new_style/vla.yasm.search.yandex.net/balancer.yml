@@ -1,0 +1,74 @@
+---
+instance_macro:
+  buffer: 3145728
+  workers: !f get_workers()
+  sections:
+    admin:
+      ips: [127.0.0.1, '::1']
+      ports: [15260]
+      modules:
+        - http: {}
+        - admin: {}
+    stats_storage:
+      ips: [127.0.0.4]
+      ports: [15260]
+      modules:
+        - report:
+            uuid: 'service_total'
+            ranges: 'default'
+            just_storage: true
+        - http: {}
+        - errordocument:
+            status: 204
+    https_section:
+      ips: ['2a02:6b8:0:3400::2:12', '141.8.146.12']
+      ports: [443]
+      local_ips: [local_v4_addr, local_v6_addr]
+      local_ports: [15261]
+      stats_attr: 'https'
+      extended_http_macro:
+        port: 15261
+        report_uuid: 'https'
+        enable_ssl: true
+        ssl_sni_contexts:
+          s.yasm.yandex-team.ru:
+            servername_regexp: 's\\..*'
+          yasm.yandex-team.ru:
+            servername_regexp: default
+        modules:
+          - shared:
+              uuid: 'modules'
+    http_section:
+      ips: ['2a02:6b8:0:3400::2:12', '141.8.146.12']
+      ports: [80]
+      local_ips: [local_v4_addr, local_v6_addr]
+      local_ports: [15260]
+      stats_attr: 'http'
+      extended_http_macro:
+        port: 15260
+        report_uuid: 'http'
+        modules:
+          - shared:
+              uuid: 'modules'
+          - headers:
+              create_func:
+                X-Start-Time: starttime
+                X-Source-Port-Y: realport
+              create_func_weak:
+                X-Req-Id: reqid
+          - hasher:
+              mode: subnet
+              subnet_v4_mask: 32
+              subnet_v6_mask: 128
+          - threshold:
+              lo_bytes: 4096
+              hi_bytes: 8192
+              pass_timeout: 9s
+              recv_timeout: 1s
+          - regexp:
+              include_upstreams:
+                filter:
+                  any: true
+                order:
+                  label:
+                    name: order

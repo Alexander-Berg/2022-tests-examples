@@ -1,0 +1,69 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - i-sokolov
+      groups: []
+labels:
+  order: '00000100'
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      uri: '/live/player(.*)'
+  modules:
+    - antirobot_macro:
+        version: 0.0.3
+    - geobase_macro: {}
+    - headers:
+        create:
+          X-Yandex-Internal-Request: "1"
+        create_func_weak:
+          X-Forwarded-For: realip
+          X-Scheme: scheme
+          X-Start-Time: starttime
+          X-Req-Id: reqid
+          X-Source-Port: realport
+          X-Source-Port-Y: realport
+          X-Yandex-HTTPS-Info: ssl_handshake_info
+          X-Yandex-TCP-Info: tcp_info
+    - rewrite:
+        actions:
+          - regexp: '/live/player/([^\\.\\?]*\\.json)\\??(.*)'
+            rewrite: '/vh/discrete-player?handler=public/player/%1&%2&synchronous_scheme=1&discrete_scheme=1&srcrwr=UGC_VIDEO:vh-runtime-ugc-test-1.sas.yp-c.yandex.net:6433&srcrwr=UGC_VIDEO:vh-runtime-ugc-test-1.vla.yp-c.yandex.net:6433&srcrwr=TEMPLATER:vh-runtime-ugc-test-1.sas.yp-c.yandex.net:3400&srcrwr=TEMPLATER:vh-runtime-ugc-test-1.vla.yp-c.yandex.net:3400'
+          - regexp: '/live/player/([^?]*)\\??(.*)'
+            rewrite: '/vh/player-html?handler=public/player/%1&%2&synchronous_scheme=1&srcrwr=UGC_VIDEO:vh-runtime-ugc-test-1.sas.yp-c.yandex.net:6433&srcrwr=UGC_VIDEO:vh-runtime-ugc-test-1.vla.yp-c.yandex.net:6433&srcrwr=TEMPLATER:vh-runtime-ugc-test-1.sas.yp-c.yandex.net:3400&srcrwr=TEMPLATER:vh-runtime-ugc-test-1.vla.yp-c.yandex.net:3400&srcrwr=TEMPLATER_JSON:vh-runtime-ugc-test-1.sas.yp-c.yandex.net:3400&srcrwr=TEMPLATER_JSON:vh-runtime-ugc-test-1.vla.yp-c.yandex.net:3400'
+    - exp_getter_macro:
+        _version: 3
+        service_name: vh
+        testing_mode: {}
+    - balancer2:
+        attempts: 2
+        rr: {weights_file: ./controls/traffic_control.weights}
+        backends:
+        - weight: 1
+          name: bygeo_sas
+          modules:
+          - balancer2:
+              attempts: 3
+              attempts_rate_limiter:
+                  limit: 0.5
+              return_last_5xx: true
+              status_code_blacklist: ["5xx"]
+              rr: {}
+              timeout_policy:
+                  timeout: 5s
+                  unique_policy: {}
+              generated_proxy_backends:
+                proxy_options:
+                  backend_timeout: 2500ms
+                  connect_timeout: 50ms
+                  status_code_blacklist: ["408"]
+                  keepalive_count: 1
+                  fail_on_5xx: false
+                include_backends:
+                  type: BY_ID
+                  ids:
+                    - production_vh_http_adapter_sas_new
+                    - production_vh_http_adapter_man_new
+                    - production_vh_http_adapter_vla_new

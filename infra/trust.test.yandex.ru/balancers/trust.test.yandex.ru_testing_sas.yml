@@ -1,0 +1,36 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - a-lexx
+      groups: []
+config_transport:
+  nanny_static_file:
+    service_id: rtc_balancer_trust_test_yandex_ru_testing_sas
+    instance_tags:
+      ctype: testing
+      itype: balancer
+      prj: trust.test.yandex.ru
+mode: EASY_MODE
+---
+l7_macro:
+  version: 0.3.9
+  core:
+    trust_x_forwarded_for_y: true
+    trust_icookie: true
+  http: {}
+  https: {}
+  announce_check_reply:
+    url_re: /ping
+  health_check_reply: {}
+  headers:
+    - create: {target: X-Forwarded-For, keep_existing: true, func: realip}
+    - create: {target: X-Forwarded-Proto, keep_existing: true, func: scheme}
+    - create: {target: X-Real-Ip, keep_existing: true, func: realip}
+    - copy: {source: X-Req-Id, target: X-Request-Id, keep_existing: true}    # Если  X-Request-Id пуст, копируем в него X-Req-Id
+    - create: {target: X-Request-Id, func: reqid, keep_existing: true}       # Если он все еще пуст, генерируем его сами
+    - decrypt_icookie: {}
+  response_headers:
+    - delete: {target_re: X-Powered-By}
+    - create: {target: X-Content-Type-Options, keep_existing: true, value: 'nosniff'}
+  include_domains: {}

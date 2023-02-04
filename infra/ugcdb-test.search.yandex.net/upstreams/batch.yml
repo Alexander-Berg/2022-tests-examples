@@ -1,0 +1,76 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - deep
+      groups:
+      - svc_ugc
+labels:
+  order: '10000000'
+---
+regexp_section:
+  matcher:
+    match_fsm: {path: /v1/batch.*}
+  modules:
+  - balancer2:
+      attempts: 1
+      rr: {weights_file: ./controls/traffic_control.weights}
+      by_name_policy:
+        name: !f get_geo("bygeo_", "random")
+        simple_policy: {}
+      backends:
+        - weight: 1
+          name: bygeo_man
+          modules:
+            - report: {ranges: default, uuid: batch_requests_to_man}
+            - balancer2:
+                attempts: 1
+                simple_policy: {}
+                rr: {}
+                generated_proxy_backends:
+                  proxy_options:
+                    backend_timeout: 2s
+                    connect_timeout: 10ms
+                    keepalive_count: 1
+                    fail_on_5xx: true
+                  include_backends:
+                    type: BY_ID
+                    ids: [ugc_db_backend_test_man]
+        - weight: 1
+          name: bygeo_sas
+          modules:
+            - report: {ranges: default, uuid: batch_requests_to_sas}
+            - balancer2:
+                attempts: 1
+                simple_policy: {}
+                rr: {}
+                generated_proxy_backends:
+                  proxy_options:
+                    backend_timeout: 2s
+                    connect_timeout: 10ms
+                    keepalive_count: 1
+                    fail_on_5xx: true
+                  include_backends:
+                    type: BY_ID
+                    ids: [ugc_db_backend_test_sas]
+        - weight: 1
+          name: bygeo_vla
+          modules:
+            - report: {ranges: default, uuid: batch_requests_to_vla}
+            - balancer2:
+                attempts: 1
+                simple_policy: {}
+                rr: {}
+                generated_proxy_backends:
+                  proxy_options:
+                    backend_timeout: 2s
+                    connect_timeout: 10ms
+                    keepalive_count: 1
+                    fail_on_5xx: true
+                  include_backends:
+                    type: BY_ID
+                    ids: [ugc_db_backend_test_vla]
+      on_error:
+        errordocument:
+          status: 504
+          content: "Service unavailable"

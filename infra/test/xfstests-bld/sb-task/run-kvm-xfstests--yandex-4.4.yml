@@ -1,0 +1,43 @@
+---
+apiVersion: '1'
+kind: Task
+params:
+  type: EXEC_SCRIPT_LXC
+  arch: linux
+  requirements:
+    cores: 24
+    client_tags: SSD
+    disk_space: 268435456000
+  custom_fields:
+    privileged: true
+    script_url: 'arcadia:/arc/trunk/arcadia/infra/kernel/test/xfstests-bld'
+    named_resources:
+      kbuild-env: '823885107'
+      kvm_xfstests_image: '833597721'
+    vault_env:
+      CI_BB_TOKEN: BB_TOKEN
+    command: |
+      set -xe
+      #TODO: remove once metatest_logs_v2 will be created automatically
+      mkdir -p metatest_logs_v2
+      touch metatest_logs_v2/empty.txt
+      docker-load.sh {kbuild-env}
+      docker-load.sh {kvm_xfstests_image}
+      # WORKAROUND for https://st.yandex-team.ru/SANDBOX-6181 
+      test -e /dev/kvm || mknod /dev/kvm c 10 232
+      #Build kernel
+      ./build-kvm-kernel.sh yandex-4.4 https://x-oauth-token:$BB_TOKEN@bb.yandex-team.ru/scm/kernel/linux.git
+      mkdir work
+      
+      cp ART/bzImage work/
+      ./run-kvm-xfstests.sh work -c 4k -g auto -X generic/494
+      find .
+    xunit_report_dir: work/results
+    out_resource_list:
+      - path: ./work/logs
+        type: TASK_CUSTOM_LOGS
+        desc: kvm-xfstest job logs
+        required: True
+
+  description: Build kernel and run xfstests smoke tests
+  priority: SERVICE:HIGH

@@ -1,0 +1,142 @@
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title>Линия со стрелками</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="http://localhost:8080/2.0/?mode=debug&load=package.full,graphics.Path,graphics.generator.stroke,geoObject.OverlayFactory,overlay.Base,geometry.pixel.LineString&lang=ru-RU"
+            type="text/javascript"></script>
+    <script type="text/javascript">
+        ymaps.ready(init);
+
+        function init () {
+            //определим оверлей
+            var ArrowOverlay = function (geometry, data, options) {
+                ArrowOverlay.superclass.constructor.call(this, geometry, data, options);
+                this._lastArrowOffset = 0;
+            };
+
+            //лично я наследуюсь от overlay.Base, но лучше реализовать интефейс, а не использовать закрытые классы
+            ymaps.util.augment(ArrowOverlay, ymaps.overlay.Base, {
+
+                setMap: function (map) {
+                    ArrowOverlay.superclass.setMap.call(this, map);
+                    
+                    //заместо себя создадим графический оверлей и свяжем его с картой
+                    if (map) {
+                        //будем следить за этой опцией, вообще для этого есть option.Monitor, но можно и так
+                        this._listener = this.options.events.group()
+                            .add('change', function () {
+                                if (this._graphicsOverlay) {
+                                    if (this._lastArrowOffset != this.options.get('arrowOffset')) {
+                                        this._lastArrowOffset = this.options.get('arrowOffset');
+                                        this.applyGeometry();
+                                    }
+                                }
+                            }, this);
+                        
+                        this._graphicsOverlay = ymaps.geoObject.overlayFactory.staticGraphics.createOverlay(this.getArrowGeometry(), this._data);
+                        this._graphicsOverlay.options.setParent(this.options);
+                        this._graphicsOverlay.setMap(map);
+                    } else {
+                        this._listener && this._listener.removeAll();
+                        if (this._graphicsOverlay) {
+                            this._graphicsOverlay.setMap(null);
+                            this._graphicsOverlay = null;
+                        }
+                    }
+                },
+
+                getArrowGeometry: function () {
+                    //в данной функции используется закрытые модули graphics.Path и graphics.generator
+                    //на самом деле их использовать очень сильно не рекомендуется
+                    var lineCoordinates = this.getGeometry().getCoordinates(),
+                            strokeWidth = this.options.get('strokeWidth'),
+                            arrowLen = strokeWidth * 10,
+                            arrowWidth = strokeWidth * 2,
+                            dataLine = ymaps.graphics.Path.fromArray(lineCoordinates),
+                            dashes = ymaps.graphics.generator.stroke.dash(dataLine, [arrowLen, arrowLen], this.options.get('arrowOffset', 0)),
+                            lines = ymaps.graphics.Path.toArray(dashes),
+                            result = [];
+                    //мы создали обводку(strokeStyle:[arrowLen,arrowLen] и дополняем ее стрелочками
+                    for (var i = 0, l = lines.length; i < l; ++i) {
+                        var point = lines[i];
+                        //разрыв обводки - конец сегмента
+                        if (!point) {
+                            point = lines[i - 1];
+                            //мы работаем уже в пиксельном мире
+                            //тут тут уже можно заместо координат отдать '0', который трактуется как разрыв
+                            result.push(0);
+                            var lastPoint = lines[i - 2],
+                                    vector = [point[0] - lastPoint[0], point[1] - lastPoint[1]],
+                                    length = Math.sqrt(vector[0] * vector[0] + vector[1] * vector[1]),
+                                    normal = [-arrowWidth * vector[0] / length, -arrowWidth * vector[1] / length],
+                                    arrow1 = [-normal[1], normal[0]],
+                                    arrow2 = [ normal[1], -normal[0]];
+
+                            result.push([point[0] - arrow1[0] + normal[0] * 2, point[1] - arrow1[1] + normal[1] * 2]);
+                            result.push(point);
+                            result.push([point[0] - arrow2[0] + normal[0] * 2, point[1] - arrow2[1] + normal[1] * 2]);
+                            result.push(0);
+                        } else {
+                            result.push(point);
+                        }
+
+                    }
+                    return new ymaps.geometry.pixel.LineString(result, 'nonZero');
+                },
+
+                applyGeometry: function () {
+                    //пробрасываем геометрию
+                    this._graphicsOverlay.setGeometry(this.getArrowGeometry());
+                }
+            });
+
+
+            myMap = new ymaps.Map("map", {
+                center: [0, 0],
+                zoom: 4
+            });
+            window.yMap = myMap;
+
+            //создадим свою фабрику( еще один закрытый класс )
+            var myFactory = new ymaps.geoObject.OverlayFactory();
+            myFactory.add("LineString", ArrowOverlay);
+
+            line = new ymaps.GeoObject({
+                geometry: {
+                    type: 'LineString',
+                    coordinates: [
+                        [0, 0],
+                        [10, 10]
+                    ]
+                }
+            }, {
+                overlayFactory: myFactory,//используем ее
+                strokeWidth: 4,
+                opacity: 0.5
+            });
+            myMap.geoObjects.add(line);
+
+            //включение режима редактирования
+            line.editor.startEditing();
+
+            var arrowOffset = 0;
+
+            setInterval(function () {
+                if (document.getElementById('animate').checked) {
+                    line.options.set('arrowOffset', arrowOffset);
+                    arrowOffset -= 0.5;
+                }
+            }, 10)
+
+        }
+    </script>
+</head>
+
+<body>
+
+<div id="map" style="width:100%;height:400px"></div>
+<input type=checkbox id=animate>animate
+
+</body>
+</html>

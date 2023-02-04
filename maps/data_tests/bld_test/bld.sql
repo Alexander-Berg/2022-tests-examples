@@ -1,0 +1,15 @@
+INSERT INTO {bld_out} (isocode, bld_id, ft_type_id, ft_type_name, cond, height, model3d_mesh, zmin, zmax, geom, selection_id, indoor_covered, tags) VALUES
+('RU', 1, 101, 'urban-residential', '0', 5, null, 13, 21, Spatial::Transform(Spatial::MakeEnvelope(0.01, 0.01, 0.02, 0.02, 4326), 3395),
+  null, true, ['structure', 'building']),
+('RU', 2, 101, 'urban-residential', '0', 5, null, 13, 21, Spatial::Transform(Spatial::MakeEnvelope(0.02, 0.02, 0.03, 0.03, 4326), 3395),
+  null, true, ['structure', 'building']),
+('RU', 3, 101, 'urban-residential', '0', 5, null, 15, 21, Spatial::Transform(Spatial::MakeEnvelope(0.03, 0.03, 0.04, 0.04, 4326), 3395),
+  null, null, ['structure', 'building']),
+('RU', 4, 101, 'urban-residential', '0', 5, null, 15, 21, Spatial::Transform(Spatial::MakeEnvelope(0.04, 0.04, 0.05, 0.05, 4326), 3395),
+  null, null, ['structure', 'building']),
+('RU', 5, 101, 'urban-residential', '0', 5, null, 13, 21, Spatial::Transform(Spatial::MakeEnvelope(0.05, 0.05, 0.06, 0.06, 4326), 3395),
+  2,    true, ['structure', 'building']),
+('RU', 6, 101, 'urban-residential', '0', 5, null, 13, 21, Spatial::Transform(Spatial::MakeEnvelope(0.06, 0.06, 0.07, 0.07, 4326), 3395),
+  13,   true, ['structure', 'building']),
+('RU', 7, 101, 'urban-residential', '0', 5, null, 13, 21, Spatial::Transform(Spatial::MakeEnvelope(0.07, 0.07, 0.08, 0.08, 4326), 3395),
+  13,   true, ['structure', 'building'])

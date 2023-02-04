@@ -1,0 +1,101 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - manokk
+      groups:
+      - svc_mssngrbackend_development
+      - svc_mssngrbackend_administration
+labels:
+  order: '10000000'
+---
+regexp_section:
+    matcher:
+        match_fsm:
+            uri: '/(bot|team|docs)(/.*)?'
+    modules:
+        - report: {ranges: default, uuid: botplatform}
+        - report: {ranges: default, uuid: botplatform_external_api}
+        - threshold:
+            lo_bytes: 307200
+            hi_bytes: 716800
+            pass_timeout: 10s
+            recv_timeout: 1s
+        - stats_eater: {}
+        - balancer2:
+            attempts: 2
+            rr: {weights_file: ./controls/traffic_control.weights}
+            backends:
+                - weight: 1
+                  name: botplatformexternal_man
+                  modules:
+                    - report: {ranges: default, uuid: botplatform_external_api_requests_to_man}
+                    - balancer2:
+                        attempts: 2
+                        connection_attempts: 5
+                        attempts_rate_limiter:
+                            limit: 0.2 
+                        active:
+                            delay: '5s'
+                            request: 'GET /service/ping HTTP/1.1\r\nHost: test.l7.bp.mssngr.yandex.net\r\n\r\n'
+                        generated_proxy_backends:
+                            proxy_options:
+                                backend_timeout: 3000ms
+                                connect_timeout: 50ms
+                                keepalive_count: 5
+                                keepalive_timeout: "60s"
+                                status_code_blacklist_exceptions: ["503"]
+                            include_backends:
+                                type: BY_ID
+                                ids: [testing-mssngr-botplatform-man]
+                - weight: 1
+                  name: botplatformexternal_vla
+                  modules:
+                    - report: {ranges: default, uuid: botplatform_external_api_requests_to_vla}
+                    - balancer2:
+                        attempts: 2
+                        connection_attempts: 5
+                        attempts_rate_limiter:
+                            limit: 0.2 
+                        active:
+                            delay: '5s'
+                            request: 'GET /service/ping HTTP/1.1\r\nHost: test.l7.bp.mssngr.yandex.net\r\n\r\n'
+                        generated_proxy_backends:
+                            proxy_options:
+                                backend_timeout: 3000ms
+                                connect_timeout: 50ms
+                                keepalive_count: 5
+                                keepalive_timeout: "60s"
+                                status_code_blacklist_exceptions: ["503"]
+                            include_backends:
+                                type: BY_ID
+                                ids: [testing-mssngr-botplatform-vla]
+                - weight: 1
+                  name: botplatformexternal_sas
+                  modules:
+                    - report: {ranges: default, uuid: botplatform_external_api_requests_to_sas}
+                    - balancer2:
+                        attempts: 2
+                        connection_attempts: 5
+                        attempts_rate_limiter:
+                            limit: 0.2 
+                        active:
+                            delay: '5s'
+                            request: 'GET /service/ping HTTP/1.1\r\nHost: test.l7.bp.mssngr.yandex.net\r\n\r\n'
+                        generated_proxy_backends:
+                            proxy_options:
+                                backend_timeout: 3000ms
+                                connect_timeout: 50ms
+                                keepalive_count: 5
+                                keepalive_timeout: "60s"
+                                status_code_blacklist_exceptions: ["503"]
+                            include_backends:
+                                type: BY_ID
+                                ids: [testing-mssngr-botplatform-sas]
+                - weight: -1
+                  name: botplatformexternal_devnull
+                  modules:
+                    - report: {ranges: default, uuid: botplatform_requests_to_devnull}
+                    - report: {ranges: default, uuid: botplatform_external_api_requests_to_devnull}
+                    - errordocument:
+                        status: 200

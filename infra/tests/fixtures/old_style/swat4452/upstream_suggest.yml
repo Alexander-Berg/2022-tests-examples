@@ -1,0 +1,46 @@
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      uri: '/(suggest|suggest-mobile).*|/jquery\\.crossframeajax\\.html'
+  modules:
+    - antirobot_macro:
+        gencfg_groups:
+          - name: MSK_ANTIROBOT_ANTIROBOT_PRESTABLE
+            version: tags/stable-92-r105
+          - name: MSK_ANTIROBOT_ANTIROBOT
+            version: tags/stable-92-r105
+    - hasher:
+        mode: subnet
+        take_ip_from: X-Forwarded-For-Y
+        subnet_v4_mask: 32
+        subnet_v6_mask: 128
+    - report:
+        uuid: balancer-suggest
+        ranges: default
+    - stats_eater: {}
+    - balancer2:
+        attempts: 2
+        active:
+          request: 'GET /ping HTTP/1.1\nHost: beta.mobsearch.yandex.ru\n\n'
+          delay: '1s'
+          quorum: !f get_total_weight_percent(33)
+          hysteresis: !f get_total_weight_percent(10)
+        generated_proxy_backends:
+          proxy_options:
+            backend_timeout: 150ms
+            connect_timeout: 30ms
+          gencfg_groups:
+            - name: MSK_WEB_SUGGEST
+              version: tags/stable-91-r41
+        on_error:
+            balancer2:
+              attempts: 2
+              hashing: {}
+              generated_proxy_backends:
+                proxy_options:
+                  backend_timeout: 300ms
+                  connect_timeout: 150ms
+                gencfg_groups:
+                  - name: SAS_WEB_SUGGEST
+                    version: tags/stable-91-r41

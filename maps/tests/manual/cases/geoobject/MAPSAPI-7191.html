@@ -1,0 +1,159 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Геообъект: коллекция принимает массив дочерних объектов
+
+Description:
+Проверка принятия коллекцией массива дочерних объектов.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+geoobject
+
+Estimated time:
+120000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+  
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан Московской области, на спане ряд полупрозрачных объектов зеленого цвета: метка, линия, многоугольник, прямоугольник, круг, и круг красного цвета над зеленым кругом.
+  Сверху слева кнопка "splice".
+  Под контейнером с картой список из 5 геообъектов, разделитель и список из 5 геообъектов и объекта "Circle - circle".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "splice". 
+  
+  Expectation:
+  Со спана карты пропадает зеленый круг, при этом над зеленым прямоугольником появляется красный прямоугольник.
+  Под контейнером с картой появляется список из 4 геообъектов(пропадает геообъект круг), и двух объектов: "Circle - circle ; Rectangle - rectangle".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "splice". 
+  
+  Expectation:
+  Со спана карты пропадает зеленый прямоугольник.
+  Под контейнером с картой появляется список из 3 геообъектов(пропадает геообъект прямоугольник), и двух объектов: "Circle - circle ; Rectangle - rectangle". 
+-->
+<html>
+<head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../helper.js"></script>
+    <script type=text/javascript>
+
+        var log;
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym; // hack
+
+            var myMap = new ym.Map('map', {
+                center: [55.73259667357658, 37.70153663432529],
+                zoom: 9,
+                behaviors: ['default', 'scrollZoom'],
+                controls: []
+            });
+
+            addGrid(myMap);
+            log = new Log();
+
+            log.info('Green objects are in the array.');
+
+            var geoObjectPlacemark = new ymaps.GeoObject({
+                geometry: { type: "Point", coordinates: [55.71574031323344, 37.29753265380539] }, properties: {custom: true}
+            }, {id: 'geoObjectPlacemark', preset: 'islands#greenIcon'});
+
+
+            var geoObjectPolyline = new ymaps.GeoObject({
+                geometry: { type: "LineString", coordinates: [
+                    [55.790716316844474, 37.50037536621043],
+                    [55.680690559796844, 37.442572021483656],
+                    [55.788698241203036, 37.38720397949171]
+                ] }, properties: {custom: false}
+            }, { strokeWidth: 3, id: 'geoObjectPolyline', strokeColor: '#00FF00'});
+
+            var geoObjectCircle = new ymaps.GeoObject({
+                geometry: { type: "Circle", coordinates: [55.73211355439117, 38.097131347654376], radius: 5000 }, properties: {custom: true}
+            }, {id: 'geoObjectCircle', strokeColor: '#00FF00', fillColor: '#00FF00', fillOpacity: 0.5});
+
+            var geoObjectPolygon = new ymaps.GeoObject({
+                geometry: { type: "Polygon", coordinates: [
+                    [
+                        [55.787092634473694, 37.667663574218096],
+                        [55.68797724922255, 37.666976928710035],
+                        [55.68754896639797, 37.57658996581947],
+                        [55.78474860376539, 37.57684020996037],
+                        [55.787092634473694, 37.667663574218096]
+                    ],
+                    [
+                        [55.78709263446105, 37.71984863281182],
+                        [55.68797724922255, 37.666976928710035],
+                        [55.68599735621169, 37.78258361816322],
+                        [55.78709263446105, 37.71984863281182]
+                    ]
+                ] }, properties: {custom: false}
+            }, {id: 'geoObjectPolygon', strokeColor: '#00FF00', fillColor: '#00FF00', fillOpacity: 0.5});
+
+            var geoObjectRectangle = new ymaps.GeoObject({
+                geometry: { type: "Rectangle", coordinates: [
+                    [55.785448262083506, 37.816636657710355],
+                    [55.68782209653647, 37.945726013178486]
+                ] }, properties: {custom: true}
+            }, {id: 'geoObjectRectangle', strokeColor: '#00FF00', fillColor: '#00FF00', fillOpacity: 0.5});
+
+
+            var newcircle = new ymaps.Circle([
+                [55.9238145091058, 38.097131347654376],
+                5000
+            ], {custom: true}, {id: 'circle'});
+
+            var newrectangle = new ymaps.Rectangle([
+                [55.973805634187, 37.81389007567776],
+                [55.87510965298843, 37.95396575927215]
+            ], {custom: true}, {id: 'rectangle'});
+
+            var collection = new ymaps.GeoObjectCollection({
+                children: [geoObjectPlacemark, geoObjectPolygon, geoObjectPolyline, geoObjectCircle, geoObjectRectangle]
+            }, {
+                preset: 'islands#redCircleIcon',
+                strokeColor: '#FF0000',
+                fillColor: '#FF0000',
+                fillOpacity: 0.3
+            });
+            printCollection(collection);
+
+            collection.add(newcircle);
+            myMap.geoObjects.add(collection);
+
+            var spliceButton = new ymaps.control.Button({data: {content: 'splice'}, options: {selectOnClick: false}});
+            spliceButton.events.add('click', function () {
+                collection.splice(3, 1, newrectangle);
+                printCollection(collection);
+            });
+            myMap.controls.add(spliceButton);
+
+            printCollection(collection);
+        }
+
+        function printCollection(collection) {
+            for (var i = 0; i < collection.getLength(); i++) {
+                var element = collection.get(i);
+                log.info(element.geometry.getType() + ' - ' + element.options.get('id'));
+            }
+            log.info('-----------------------')
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

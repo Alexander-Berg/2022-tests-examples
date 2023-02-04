@@ -1,0 +1,135 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Мультимаршрут-ОТ: геокодирование данных маршрутных меток
+
+Description:
+Проверка геокодирования данных маршрутных меток. 
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+multiRouter
+
+Estimated time:
+180000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  При загрузке первоначально загружается карта со спаном Москвы, затем спан зумится на программно строящиеся маршруты(на спане карты один из маршрутов).
+  В контейнере контрол фулскрин, сверху кнопка "reverseGeocoding".
+
+Step:
+  Action:
+  Выполнить отзум спана карты на 2 значения скрол колеса мыши для отображения двух маршрутов.
+
+  Expectation:
+  На спане карты два маршрута на общественном транспорте из 3 точек("A", "B", "C").
+  На маршруте имеются метки общественного транспорта, пешеходные метки.
+  На маршруте слева метка "A" без подписи, на маршруте справа метки "A", "B" без подписей.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "reverseGeocoding".
+
+  Expectation:
+  У маршрутных меток правого маршрута появляются подписи.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "reverseGeocoding".
+  Поочередно навести курсор на метки "A", "B", "C" маршрута, расположенного слева, зажав ЛКМ на метках перенести их на спане карты.
+
+  Expectation:
+  По клику в "reverseGeocoding" подписи меток появившиеся на предыдущем шаге пропадают.
+  Захват и перенос меток корректный, маршрут после выставления меток перестаривается, подпсии у меток отсуствуют.
+  
+Step:
+  Action:
+  Выполнить клик в кнопку "reverseGeocoding".
+
+  Expectation:
+  У маршрутных меток "A", "B", "C" левого маршрута появляются подписи.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 10,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+
+            __log__('reverseGeocoding option');
+
+            var multiRoute1 = new ymaps.multiRouter.MultiRoute({
+                referencePoints: [
+                    [55.7048, 37.6273],
+                    [55.7456, 37.7093],
+                    'москва, шоссейная улица 44с1'
+                ],
+                params: {
+                    reverseGeocoding: false,
+                    routingMode: 'masstransit'
+                }
+            }, {
+                boundsAutoApply: true,
+                wayPointDraggable: true,
+                viaPointDraggable: true
+            });
+
+            var multiRoute2 = new ymaps.multiRouter.MultiRoute({
+                referencePoints: ['москва, улица льва толстого 16', 'москва, площадь европы', 'москва, пресненский вал 21'],
+                params: {
+                    reverseGeocoding: false,
+                    routingMode: 'masstransit'
+                }
+            }, {
+                boundsAutoApply: true,
+                wayPointDraggable: true,
+                viaPointDraggable: true
+            });
+
+            map.geoObjects.add(multiRoute1).add(multiRoute2);
+
+            var reverseButton = new ymaps.control.Button('reverseGeocoding');
+            reverseButton.options.set('maxWidth', 99999);
+            reverseButton.events
+                    .add('select', function () {
+                        multiRoute1.model.setParams({reverseGeocoding: true, routingMode: 'masstransit'});
+                        multiRoute2.model.setParams({reverseGeocoding: true, routingMode: 'masstransit'})
+                    })
+                    .add('deselect', function () {
+                        multiRoute1.model.setParams({reverseGeocoding: false, routingMode: 'masstransit'});
+                        multiRoute2.model.setParams({reverseGeocoding: false, routingMode: 'masstransit'})
+                    });
+
+            map.controls.add(reverseButton)
+
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

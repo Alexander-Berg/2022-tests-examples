@@ -1,0 +1,117 @@
+main:
+    name: garden-server
+    abc_service: maps-core-garden
+    custom_tag: [maps_garden]
+
+    balancer:
+        testing:
+            - instances_count: 1
+              datacenters: ["SAS"]
+              network_macro: _MAPS_CORE_GARDEN_TESTING_RTC_NETS_
+              upstreams:
+                default:
+                  backend_timeout: 60s
+        stable:
+            - instances_count: 1
+              datacenters: ["SAS"]
+              network_macro: _MAPS_CORE_GARDEN_STABLE_RTC_NETS_
+              upstreams:
+                default:
+                  backend_timeout: 60s
+
+deploy_profiles:
+  default:
+    testing:
+      targets: ["testing"]
+      min_time: 6h
+    # Stupid SEDEM forces presence of 'prestable' staging via builtin config
+    prestable:
+      targets: ["prestable"]
+      min_time: 0h
+    stable:
+      targets: ["stable"]
+
+
+resources:
+    testing:
+        mdb:
+            - type: postgres
+              name: testing01
+              cluster_id: mdbeuc5vq9m8pve2hvmn
+
+            - type: postgres
+              name: testing02
+              cluster_id: mdb4a0i7u2v2qffsvn10
+
+            - type: mongodb
+              name: garden_server_testing
+              cluster_id: mdbj0vjs787pnuhr77s2
+
+            - type: mongodb
+              name: perf_analyzer_testing
+              cluster_id: mdbca0ov2tnfdm21omh7
+        geo:
+            SAS:
+                instances: 1
+                CPU: 4
+                RAM: 64G
+                HDD:
+                    logs:
+                        mount: /logs
+                        size: 50G
+                    persistent:
+                        mount: /persistent
+                        size: 100G
+    stable:
+        mdb:
+            - type: postgres
+              name: stable03
+              cluster_id: mdboqviakg1ld7reabai
+
+            - type: postgres
+              name: stable04
+              cluster_id: mdbemcr7466mfh49mpkb
+
+            - type: mongodb
+              name: garden_server_stable
+              cluster_id: mdbgovfcc6lo1thpd2ke
+
+            - type: mongodb
+              name: perf_analyzer_stable
+              cluster_id: mdb4blf236mc94047bkt
+        geo:
+            SAS:
+                instances: 1
+                CPU: 4
+                RAM: 64G
+                HDD:
+                    logs:
+                        mount: /logs
+                        size: 50G
+                    persistent:
+                        mount: /persistent
+                        size: 100G
+
+secrets:
+    testing:
+        # new schema
+        - env: "GARDEN_YAV_LOGIN"
+          key: "login"
+          secret_id: "sec-01d30svgwyjhq471zj21x3h6rd"
+          version: "ver-01e212jrq6bv7na093y6tabacz"
+
+        - env: "GARDEN_YAV_SSH_PRIVATE_KEY"
+          key: "ssh_private_key"
+          secret_id: "sec-01d30svgwyjhq471zj21x3h6rd"
+          version: "ver-01e212jrq6bv7na093y6tabacz"
+    stable:
+        - env: "GARDEN_YAV_LOGIN"
+          key: "login"
+          secret_id: "sec-01d30svgwyjhq471zj21x3h6rd"
+          version: "ver-01e212jrq6bv7na093y6tabacz"
+
+        - env: "GARDEN_YAV_SSH_PRIVATE_KEY"
+          key: "ssh_private_key"
+          secret_id: "sec-01d30svgwyjhq471zj21x3h6rd"
+          version: "ver-01e212jrq6bv7na093y6tabacz"
+

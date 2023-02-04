@@ -1,0 +1,208 @@
+<!doctype html>
+<!--
+Title:
+Контрол: методы и события выпадающего списка
+
+Description:
+Проверка методов и событий контрола выпадающего списка.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+control
+
+Estimated time:
+180000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась корректно. 
+  На карте спан, сверху справа имеется контрол масштабирования контейнера с картой.  
+  На спане 3 контрола выпадающих списков: контрол "развернутый длинный"(развернут), контрол "пустой", контрол "small"(развернут).
+   
+Step:
+  Action:
+  Выполнить клик в спан карты(не в списки).
+
+  Expectation:
+  Открытые списки контролов "развернутый длинный" и "small" свернулись.
+  Под контейнером с картой появился текст: listbox collapse.
+
+Step:
+  Action:
+  Выполнить клик в спан карты(не в списки).
+
+  Expectation:
+  Под контролм "small" открылся выпадающий список со значением "первый".
+  Под контейнером с картой появился текст: listbox expand.
+
+Step:
+  Action:
+  Выполнить клик в значение в списке "первый".
+
+  Expectation:
+  Значение в выпадающем списке при наведении курсора подсвечивается желтым фоном, по клику напротив значения появляется галка.
+  Под контейнером с картой появился текст: listbox click.
+
+Step:
+  Action:
+  Выполнить клик в контрол списка "small".
+
+  Expectation:
+  Cписок свернулся. 
+  Под контейнером с картой появился текст: listbox click; listbox press; listbox collapse.
+
+Step:
+  Action:
+  Выполнить клик в контрол списка "пустой".
+
+  Expectation:
+  В контроле смена стрелки(список развернут но пуст). 
+  Под контейнером с картой появился текст: empty click, empty press, empty expand.
+
+Step:
+  Action:
+  Выполнить клик в контрол списка "пустой".
+
+  Expectation:
+  В контроле смена стрелки(список свернут). 
+  Под контейнером с картой появился текст: empty click, empty press, empty collapse.
+
+Step:
+  Action:
+  Выполнить клик в контрол списка "развернутый длинный".
+
+  Expectation:
+  Под контролм "развернутый длинный" открылся выпадающий список со значением "первый".
+
+Step:
+  Action:
+  Выполнить клик в значение в списке "первый".
+
+  Expectation:
+  Значение в выпадающем списке при наведении курсора подсвечивается желтым фоном, по клику напротив значения появляется галка.
+
+Step:
+  Action:
+  Выполнить клик в спан карты(не в списки).
+
+  Expectation:
+  Список "развернутый длинный свернулся".
+  Под контролм "small" открылся выпадающий список со значением "первый" с галкой напротив значения.
+  Под контейнером с картой появился текст: listbox expand.
+-->
+<html>
+<head>
+    <title>API 2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type="text/javascript">
+        Api('init');
+        function init(ym) {
+            var map = myMap = new ym.Map('map', {
+                        center: [34.8006, -37.5181],
+                        zoom: 5,
+                        controls: ["fullscreenControl"]
+                    }),
+                    log = new Log(),
+                    listBoxItems1 = [
+                        new ym.control.ListBoxItem({
+                            data: {
+                                content: "первый"
+                            },
+                            options: {
+                                selectOnClick: true,
+                                type: 'checkbox'
+                            }
+                        })
+                    ],
+                    listBoxItems2 = [
+                        new ym.control.ListBoxItem({
+                            data: {
+                                content: "первый"
+                            },
+                            options: {
+                                selectOnClick: true,
+                                type: 'checkbox'
+                            }
+                        })
+                    ], i = 0;
+
+            addGrid(map);
+            log.info('Long - expanded (before adding to map)');
+            log.info('Empty - collapsed, collapseOnBlur: false');
+            log.info('Listbox - expanded (after adding to map), collapseOnBlur: false, ' +
+                    'expands and collapses on click on the map');
+
+            var listBox = new ym.control.ListBox({
+                data: {
+                    content: 'small'
+                },
+                items: listBoxItems1,
+                options: {
+                    collapseOnBlur: false
+                }
+            });
+
+            var listBoxEmpty = new ym.control.ListBox({
+                data: {
+                    content: 'пустой'
+                },
+                items: [],
+                options: {
+                    collapseOnBlur: false
+                }
+            });
+
+            var listBoxExpanded = new ym.control.ListBox({
+                data: {
+                    content: 'развернутый длинный'
+                },
+                items: listBoxItems2
+            });
+
+            // methods: expand, collapse, isExpanded
+            log.info('listBox.isExpanded == ' + listBox.isExpanded());
+            listBox.expand();
+            log.info('listBox.isExpanded == ' + listBox.isExpanded());
+            listBox.collapse();
+            log.info('listBox.isExpanded == ' + listBox.isExpanded());
+
+            listBoxExpanded.expand();
+
+            map.controls.add(listBox, { floatIndex: 0 });
+            map.controls.add(listBoxEmpty, { floatIndex: 0 });
+            map.controls.add(listBoxExpanded, { floatIndex: 0 });
+
+            listBox.expand();
+            listBoxEmpty.expand();
+            listBoxEmpty.collapse();
+
+            // events
+            listBox.events.add(['click', 'collapse', 'expand', 'press'], function (e) {
+                log.info('listbox ' + e.get('type'));
+            });
+
+            listBoxEmpty.events.add(['click', 'collapse', 'expand', 'press'], function (e) {
+                log.info('empty ' + e.get('type'));
+            });
+
+            //
+            map.events.add('click', function (e) {
+                listBox.isExpanded() ? listBox.collapse() : listBox.expand();
+            });
+        }
+
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;">
+</div>
+</body>
+</html>

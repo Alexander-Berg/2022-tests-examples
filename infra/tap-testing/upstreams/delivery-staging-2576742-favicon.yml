@@ -1,0 +1,48 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - robot-tap
+      groups: []
+labels:
+  order: '1000'
+---
+regexp_section:
+  matcher:
+    match_and:
+      - match_or:
+          - match_fsm:
+              host: delivery-pr-2576742\\.tap-tst\\.yandex\\.com
+          - match_fsm:
+              host: delivery-pr-2576742\\.tap-tst\\.yandex\\.ru
+      - match_fsm:
+          path: /favicon\\.ico
+  modules:
+    - rewrite:
+        actions:
+          - regexp: '.*'
+            rewrite: '/delivery/pr-2576742/delivery/favicon.ico'
+          - regexp: '.*'
+            header_name: 'Host'
+            rewrite: 'tap-test.s3.mds.yandex.net'
+    - response_headers:
+        create:
+          Cache-Control: public, max-age=2592000
+    - balancer2:
+        disable_attempts_rate_limiter: true
+        attempts: 5
+        simple_policy: {}
+        rr: {}
+        generated_proxy_backends:
+          proxy_options:
+            backend_timeout: 500ms
+            connect_timeout: 50ms
+            fail_on_5xx: true
+          instances:
+            - weight: 1
+              host: 'tap-test.s3.mds.yandex.net'
+              port: 80
+        on_error:
+          errordocument:
+            status: 503
+            content: 'Service unavailable'

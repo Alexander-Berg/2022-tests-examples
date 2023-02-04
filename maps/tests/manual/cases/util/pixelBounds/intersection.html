@@ -1,0 +1,126 @@
+<!DOCTYPE HTML>
+<!--(skip)(description)
+
+-->
+<!--(version)
+
+-->
+<!--(commands)
+
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            //ymaps = ym;
+            var myMap = new ymaps.Map("map", {
+                center: [50, -179],
+                zoom: 3,
+                controls: []
+            }, {
+                geoObjectInteractivityModel: 'default#silent'
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+            log.info("При открытии на карте отображается два пересечения");
+            log.info("Проверить корректную работу fromPoints, getIntersections, areIntersecting, containsBounds, containsPoint");
+
+            var projection = myMap.options.get('projection'),
+                    clearBtn = new ymaps.control.Button('clear'),
+                    coords = [],
+                    testBounds = [];
+            myMap.controls.add(clearBtn);
+
+            clearBtn.events.add('click', clear);
+
+            myMap.events.add('click', function (e) {
+                if (testBounds.length == 2) {
+                    clear();
+                }
+                coords.push(e.get('globalPixels'));
+
+                if (coords.length % 2 == 0) {
+                    var bounds = ymaps.util.pixelBounds.fromPoints(coords.slice(-2), projection);
+                    testBounds.push(bounds);
+                    var rect = new ymaps.Rectangle(ymaps.util.bounds.fromGlobalPixelBounds(bounds, myMap.getZoom(), myMap.options.get('projection')), {}, {
+                        opacity: 0.2
+                    });
+                    myMap.geoObjects.add(rect);
+                }
+
+                myMap.geoObjects.add(new ymaps.Placemark(e.get('coords'), {}, {
+                    preset: (coords.length == 3) ? 'islands#redIcon' : 'islands#blueIcon'
+                }));
+
+                if (testBounds.length == 2) {
+                    var intersections = ymaps.util.pixelBounds.getIntersection(testBounds[0], testBounds[1]);
+                    if (intersections) var rect = new ymaps.Rectangle(ymaps.util.bounds.fromGlobalPixelBounds(intersections, myMap.getZoom(), myMap.options.get('projection')), {}, {
+                        fillColor: "FF0000",
+                        opacity: 0.4
+                    });
+                    myMap.geoObjects.add(rect);
+                    __log__('source bounds: ' + JSON.stringify(testBounds));
+                    __log__('areIntersecting: ' + ymaps.util.pixelBounds.areIntersecting(testBounds[0], testBounds[1]));
+                    __log__('getIntersecting: ' + JSON.stringify(intersections));
+                    __log__('containsBounds: ' + ymaps.util.pixelBounds.containsBounds(testBounds[0], testBounds[1]));
+                    __log__('containsPoint: ' + ymaps.util.pixelBounds.containsPoint(testBounds[0], coords[2]));
+                    __log__(testBounds[0]);
+                    __log__(coords[2]);
+
+                    __log__('------------');
+                }
+            });
+            var rect = new ymaps.Rectangle([
+                [-70, -170],
+                [70, 170]
+            ], {}, {
+                opacity: 0.2,
+                coordRendering: 'boundsPath'
+            });
+            myMap.geoObjects.add(rect);
+
+            var rect1 = new ymaps.Rectangle([
+                [-60, 160],
+                [60, -160]
+            ], {}, {
+                opacity: 0.2,
+                coordRendering: 'boundsPath'
+            });
+            myMap.geoObjects.add(rect1);
+
+            var intersections = ymaps.util.pixelBounds.getIntersection(
+                    ymaps.util.bounds.toGlobalPixelBounds([
+                        [-70, -170],
+                        [70, 170]
+                    ], myMap.getZoom(), myMap.options.get('projection')),
+                    ymaps.util.bounds.toGlobalPixelBounds([
+                        [-60, 160],
+                        [60, -160]
+                    ], myMap.getZoom(), myMap.options.get('projection'))
+            );
+            var rect = new ymaps.Rectangle(ymaps.util.bounds.fromGlobalPixelBounds(intersections, myMap.getZoom(), myMap.options.get('projection')), {}, {
+                fillColor: "FF0000",
+                opacity: 0.4
+            });
+            myMap.geoObjects.add(rect);
+
+            function clear() {
+                myMap.geoObjects.removeAll();
+                coords = [];
+                testBounds = [];
+            }
+        }
+    </script>
+</head>
+<body>
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

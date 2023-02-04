@@ -1,0 +1,44 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - lifus
+      groups: []
+labels:
+  order: '10000000'
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      uri: '/avatars/get-pdb.*'
+  modules:
+    - rewrite:
+        actions:
+          - regexp: '.*'
+            header_name: Host
+            rewrite: 'avatars-int.mds.yandex.net'
+          - regexp: '/avatars/get-pdb-test/(.*)'
+            rewrite: '/get-pdb-test/%1'
+          - regexp: '/avatars/get-pdb-teasers-test/(.*)'
+            rewrite: '/get-pdb-teasers-test/%1'
+          - regexp: '/avatars/get-pdb/(.*)'
+            rewrite: '/get-pdb-test/%1'
+          - regexp: '/avatars/get-pdb-teasers/(.*)'
+            rewrite: '/get-pdb-teasers-test/%1'
+    - balancer2:
+        rr: {}
+        attempts: 2
+        attempts_rate_limiter:
+          limit: 0.1
+          coeff: 0.99
+        generated_proxy_backends:
+          proxy_options:
+            connect_timeout: 100ms
+            backend_timeout: 10s
+          instances:
+            - host: avatars-int.mds.yandex.net
+              port: 80
+              weight: 1
+        on_error:
+          modules:
+          - errordocument: {content: Gateway Timeout, status: 504}

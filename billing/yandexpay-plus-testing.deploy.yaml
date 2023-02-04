@@ -1,0 +1,797 @@
+annotations:
+  stagectl_epoch: 859
+  stagectl_vcs:
+    svn_branch: 645fad8851041d4d22f0ca7ed7600d0b48291da4
+    svn_revision: 9496524
+    svn_tag: ''
+labels:
+  deploy:
+    disabled_clusters:
+    - man
+  deploy_engine: env_controller
+  du_patchers_target_revision:
+    api: 11
+    api-public: 11
+    workers: 11
+  du_sidecar_target_revision:
+    api:
+      logbrokerToolsLayer: 2739742779
+      podBin: 3006211268
+    api-public:
+      logbrokerToolsLayer: 2739742779
+      podBin: 3006211268
+    workers:
+      logbrokerToolsLayer: 2739742779
+      podBin: 3006211268
+  notifications_last_timestamp: 1654185022124056000
+  tags: []
+meta:
+  account_id: abc:service:32444
+  acl:
+  - action: allow
+    permissions:
+    - read
+    - read_secrets
+    - write
+    - create
+    - ssh_access
+    - root_ssh_access
+    subjects:
+    - robot-drug-deploy
+  id: yandexpay-plus-testing
+  inherit_acl: true
+  project_id: yandexpay-plus
+spec:
+  deploy_units:
+    api:
+      endpoint_sets:
+      - port: 443
+      images_for_boxes:
+        api:
+          digest: 'EMPTY:'
+          name: yandex-pay/yandex_pay_plus
+          registry_host: registry.yandex.net
+          tag: '170'
+      logbroker_tools_sandbox_info:
+        revision: 2739742779
+      logrotate_configs:
+        api:
+          run_period_millisecond: 900000
+      multi_cluster_replica_set:
+        replica_set:
+          clusters:
+          - cluster: sas
+            spec:
+              replica_count: 1
+          - cluster: vla
+            spec:
+              replica_count: 1
+          - cluster: man
+            spec:
+              replica_count: 1
+          deployment_strategy:
+            max_unavailable: 2
+          pod_template_spec:
+            spec:
+              disk_volume_requests:
+              - id: infra
+                labels:
+                  used_by_infra: true
+                quota_policy:
+                  bandwidth_guarantee: 10485760
+                  bandwidth_limit: 20971520
+                  capacity: 10737418240
+                storage_class: hdd
+              host_infra:
+                monitoring:
+                  unistats:
+                  - output_format: yasm_json
+                    path: /unistat
+                    port: 8080
+                    workload_id: api
+                  - output_format: yasm_json
+                    path: /unistat
+                    port: 8000
+                    workload_id: api
+              pod_agent_payload:
+                spec:
+                  boxes:
+                  - compute_resources:
+                      vcpu_guarantee: 600
+                      vcpu_limit: 600
+                    env:
+                    - name: YENV_TYPE
+                      value:
+                        literal_env:
+                          value: testing
+                    - name: ENVIRONMENT_TYPE
+                      value:
+                        literal_env:
+                          value: testing
+                    id: api
+                    rootfs: {}
+                    static_resources:
+                    - mount_point: /config/local
+                      resource_ref: ApplicationConfigOverride
+                    - mount_point: /etc/nginx/ssl
+                      resource_ref: YandexPayPlusInternalCaSSLKey
+                    - mount_point: /nginx
+                      resource_ref: NginxBinary
+                    - mount_point: /opt/bin
+                      resource_ref: PgPinger
+                    volumes:
+                    - mode: read_write
+                      mount_point: /ephemeral
+                      volume_ref: ephemeral
+                  - compute_resources:
+                      memory_guarantee: 268435456
+                      memory_limit: 268435456
+                      vcpu_guarantee: 200
+                      vcpu_limit: 200
+                    id: yandex_pay_unified_agent_box
+                    rootfs:
+                      layer_refs:
+                      - bionic-app
+                    static_resources:
+                    - mount_point: /unified_agent_config
+                      resource_ref: UnifiedAgentSettings
+                    - mount_point: /unified_agent_bin
+                      resource_ref: UnifiedAgentBinary
+                    volumes:
+                    - mode: read_write
+                      mount_point: /push-agent/logs
+                      volume_ref: push-agent-logs
+                  mutable_workloads:
+                  - workload_ref: api
+                  - workload_ref: unified_agent_workload
+                  resources:
+                    layers:
+                    - checksum: 'EMPTY:'
+                      id: bionic-app
+                      url: sbr:2527306889
+                    static_resources:
+                    - files:
+                        files:
+                        - file_name: settings.py
+                          secret_data:
+                            alias: yandexpay-plus-settings
+                            decode_base64: true
+                            id: testing
+                      id: ApplicationConfigOverride
+                      verification:
+                        check_period_ms: 180000
+                        checksum: 'EMPTY:'
+                    - id: NginxBinary
+                      url: sbr:2383206246
+                      verification:
+                        check_period_ms: 180000
+                        checksum: MD5:576f025c1f98e1688c4e254f35fdbf50
+                    - id: PgPinger
+                      url: sbr:2007673887
+                      verification:
+                        check_period_ms: 180000
+                        checksum: MD5:1f182d0e04d65b5b21285e80774a2002
+                    - id: UnifiedAgentBinary
+                      url: sbr:2587413773
+                      verification:
+                        check_period_ms: 180000
+                        checksum: MD5:7e33241e2a1b950fea9e7d8ccd995c77
+                    - id: UnifiedAgentSettings
+                      url: sbr:2510704352
+                      verification:
+                        check_period_ms: 180000
+                        checksum: MD5:0d8ebd92cdbdb392ebd5d07e2a93e84e
+                    - files:
+                        files:
+                        - file_name: yandex_pay_plus_bundle.pem
+                          secret_data:
+                            alias: yandexpay-plus-ssl-internal
+                            id: 7F0016A04648D50CAE165A9EF800020016A046_certificate
+                        - file_name: yandex_pay_plus_key.pem
+                          secret_data:
+                            alias: yandexpay-plus-ssl-internal
+                            id: 7F0016A04648D50CAE165A9EF800020016A046_private_key
+                      id: YandexPayPlusInternalCaSSLKey
+                      verification:
+                        check_period_ms: 180000
+                        checksum: 'EMPTY:'
+                  volumes:
+                  - id: ephemeral
+                  - id: push-agent-logs
+                  workloads:
+                  - box_ref: api
+                    id: api
+                    readiness_check:
+                      http_get:
+                        any: true
+                        path: /ping
+                        port: 80
+                        time_limit:
+                          max_execution_time_ms: 1000
+                    transmit_logs: true
+                  - box_ref: yandex_pay_unified_agent_box
+                    destroy_policy:
+                      container:
+                        command_line: /bin/bash -c "/unified_agent_bin/unified_agent
+                          -c /unified_agent_config/config.yml & pid=$!; while true;
+                          do unified_agent_idle=$(curl localhost:22502/check_backlog
+                          2>/dev/null); if [ "$unified_agent_idle" = "IDLE" ]; then
+                          echo "Unified Agent is idle"; break; else echo "Unified
+                          Agent is busy '$unified_agent_idle', waiting..."; sleep
+                          1; fi; done; kill $pid"
+                      max_tries: 3
+                    env:
+                    - name: TVM_SECRET
+                      value:
+                        secret_env:
+                          alias: unified-agent-tvm-secret
+                          id: client_secret
+                    id: unified_agent_workload
+                    liveness_check:
+                      http_get:
+                        any: true
+                        path: /status
+                        port: 22502
+                        time_limit:
+                          initial_delay_ms: 150000
+                          max_execution_time_ms: 15000
+                          max_restart_period_ms: 30000
+                          min_restart_period_ms: 30000
+                    readiness_check:
+                      http_get:
+                        expected_answer: OK
+                        path: /ready
+                        port: 22502
+                        time_limit:
+                          max_execution_time_ms: 15000
+                          max_restart_period_ms: 10000
+                          min_restart_period_ms: 10000
+                    start:
+                      command_line: /unified_agent_bin/unified_agent -c /unified_agent_config/config.yml
+              resource_requests:
+                memory_guarantee: 1342177280
+                memory_limit: 1342177280
+                network_bandwidth_guarantee: 10485760
+                vcpu_guarantee: 800
+                vcpu_limit: 800
+              secret_refs:
+                secret-tvm:
+                  secret_id: sec-01f9v7dq5w4ff1myy2t6b519eq
+                  secret_version: ver-01f9v7dq6aj5jbc3kex7b8nefv
+                unified-agent-tvm-secret:
+                  secret_id: sec-01ex24m3j4pcj3yscvsz2njggx
+                  secret_version: ver-01ex24m3k1neaga73gvwndpwvr
+                yandexpay-plus-settings:
+                  secret_id: sec-01f9v8djbbkkqf27pa5032ns0q
+                  secret_version: ver-01g6n4027tbeh2pwxcd9v69y81
+                yandexpay-plus-ssl-internal:
+                  secret_id: sec-01f9v8xjten2y2956j8pkvrwzw
+                  secret_version: ver-01f9v8xjwfvnt6zzq41jrbat77
+      network_defaults:
+        network_id: _YANDEXPAY_TEST_NETS_
+      patchers_revision: 11
+      pod_agent_sandbox_info:
+        revision: 3006211268
+      revision: 241
+      tvm_config:
+        blackbox_environment: Test
+        client_port: 2
+        clients:
+        - destinations:
+          - alias: blackbox
+            app_id: 224
+          - alias: trust-payments
+            app_id: 2001798
+          - alias: yandexpay-plus
+            app_id: 2029082
+          - alias: gozora
+            app_id: 2023123
+          secret_selector:
+            alias: secret-tvm
+            id: client_secret
+          source:
+            abc_service_id: '32444'
+            alias: self
+            app_id: 2029082
+        mode: enabled
+    api-public:
+      endpoint_sets:
+      - port: 443
+      images_for_boxes:
+        api-public:
+          digest: 'EMPTY:'
+          name: yandex-pay/yandex_pay_plus
+          registry_host: registry.yandex.net
+          tag: '170'
+      logbroker_tools_sandbox_info:
+        revision: 2739742779
+      logrotate_configs:
+        api-public:
+          run_period_millisecond: 900000
+      multi_cluster_replica_set:
+        replica_set:
+          clusters:
+          - cluster: sas
+            spec:
+              replica_count: 1
+          - cluster: vla
+            spec:
+              replica_count: 1
+          - cluster: man
+            spec:
+              replica_count: 1
+          deployment_strategy:
+            max_unavailable: 1
+          pod_template_spec:
+            spec:
+              disk_volume_requests:
+              - id: infra
+                labels:
+                  used_by_infra: true
+                quota_policy:
+                  bandwidth_guarantee: 10485760
+                  bandwidth_limit: 20971520
+                  capacity: 4294967296
+                storage_class: hdd
+              host_infra:
+                monitoring:
+                  unistats:
+                  - output_format: yasm_json
+                    path: /unistat
+                    port: 8080
+                    workload_id: api-public
+                  - output_format: yasm_json
+                    path: /unistat
+                    port: 8000
+                    workload_id: api-public
+              pod_agent_payload:
+                spec:
+                  boxes:
+                  - compute_resources:
+                      vcpu_guarantee: 600
+                      vcpu_limit: 600
+                    env:
+                    - name: YENV_TYPE
+                      value:
+                        literal_env:
+                          value: testing
+                    - name: ENVIRONMENT_TYPE
+                      value:
+                        literal_env:
+                          value: testing
+                    - name: CSRF_TOKEN_KEY
+                      value:
+                        secret_env:
+                          alias: yandexpay-csrf
+                          id: key
+                    id: api-public
+                    rootfs: {}
+                    static_resources:
+                    - mount_point: /config/local
+                      resource_ref: ApplicationConfigOverride
+                    - mount_point: /etc/nginx/ssl
+                      resource_ref: YandexPayPlusInternalCaSSLKey
+                    - mount_point: /nginx
+                      resource_ref: NginxBinary
+                    - mount_point: /opt/bin
+                      resource_ref: PgPinger
+                    volumes:
+                    - mode: read_write
+                      mount_point: /ephemeral
+                      volume_ref: ephemeral
+                  - compute_resources:
+                      memory_guarantee: 268435456
+                      memory_limit: 268435456
+                      vcpu_guarantee: 200
+                      vcpu_limit: 200
+                    id: yandex_pay_unified_agent_box
+                    rootfs:
+                      layer_refs:
+                      - bionic-app
+                    static_resources:
+                    - mount_point: /unified_agent_config
+                      resource_ref: UnifiedAgentSettings
+                    - mount_point: /unified_agent_bin
+                      resource_ref: UnifiedAgentBinary
+                    volumes:
+                    - mode: read_write
+                      mount_point: /push-agent/logs
+                      volume_ref: push-agent-logs
+                  mutable_workloads:
+                  - workload_ref: api-public
+                  - workload_ref: unified_agent_workload
+                  resources:
+                    layers:
+                    - checksum: 'EMPTY:'
+                      id: bionic-app
+                      url: sbr:2527306889
+                    static_resources:
+                    - files:
+                        files:
+                        - file_name: settings.py
+                          secret_data:
+                            alias: yandexpay-plus-settings
+                            decode_base64: true
+                            id: testing
+                      id: ApplicationConfigOverride
+                      verification:
+                        check_period_ms: 180000
+                        checksum: 'EMPTY:'
+                    - id: NginxBinary
+                      url: sbr:2383206246
+                      verification:
+                        check_period_ms: 180000
+                        checksum: MD5:576f025c1f98e1688c4e254f35fdbf50
+                    - id: PgPinger
+                      url: sbr:2007673887
+                      verification:
+                        check_period_ms: 180000
+                        checksum: MD5:1f182d0e04d65b5b21285e80774a2002
+                    - id: UnifiedAgentBinary
+                      url: sbr:2587413773
+                      verification:
+                        check_period_ms: 180000
+                        checksum: MD5:7e33241e2a1b950fea9e7d8ccd995c77
+                    - id: UnifiedAgentSettings
+                      url: sbr:2510704352
+                      verification:
+                        check_period_ms: 180000
+                        checksum: MD5:0d8ebd92cdbdb392ebd5d07e2a93e84e
+                    - files:
+                        files:
+                        - file_name: yandex_pay_plus_bundle.pem
+                          secret_data:
+                            alias: yandexpay-plus-ssl-internal
+                            id: 7F0016A04648D50CAE165A9EF800020016A046_certificate
+                        - file_name: yandex_pay_plus_key.pem
+                          secret_data:
+                            alias: yandexpay-plus-ssl-internal
+                            id: 7F0016A04648D50CAE165A9EF800020016A046_private_key
+                      id: YandexPayPlusInternalCaSSLKey
+                      verification:
+                        check_period_ms: 180000
+                        checksum: 'EMPTY:'
+                  volumes:
+                  - id: ephemeral
+                  - id: push-agent-logs
+                  workloads:
+                  - box_ref: api-public
+                    id: api-public
+                    readiness_check:
+                      http_get:
+                        any: true
+                        path: /ping
+                        port: 80
+                        time_limit:
+                          max_execution_time_ms: 1000
+                    transmit_logs: true
+                  - box_ref: yandex_pay_unified_agent_box
+                    destroy_policy:
+                      container:
+                        command_line: /bin/bash -c "/unified_agent_bin/unified_agent
+                          -c /unified_agent_config/config.yml & pid=$!; while true;
+                          do unified_agent_idle=$(curl localhost:22502/check_backlog
+                          2>/dev/null); if [ "$unified_agent_idle" = "IDLE" ]; then
+                          echo "Unified Agent is idle"; break; else echo "Unified
+                          Agent is busy '$unified_agent_idle', waiting..."; sleep
+                          1; fi; done; kill $pid"
+                      max_tries: 3
+                    env:
+                    - name: TVM_SECRET
+                      value:
+                        secret_env:
+                          alias: unified-agent-tvm-secret
+                          id: client_secret
+                    id: unified_agent_workload
+                    liveness_check:
+                      http_get:
+                        any: true
+                        path: /status
+                        port: 22502
+                        time_limit:
+                          initial_delay_ms: 150000
+                          max_execution_time_ms: 15000
+                          max_restart_period_ms: 30000
+                          min_restart_period_ms: 30000
+                    readiness_check:
+                      http_get:
+                        expected_answer: OK
+                        path: /ready
+                        port: 22502
+                        time_limit:
+                          max_execution_time_ms: 15000
+                          max_restart_period_ms: 10000
+                          min_restart_period_ms: 10000
+                    start:
+                      command_line: /unified_agent_bin/unified_agent -c /unified_agent_config/config.yml
+              resource_requests:
+                memory_guarantee: 1342177280
+                memory_limit: 1342177280
+                network_bandwidth_guarantee: 10485760
+                vcpu_guarantee: 800
+                vcpu_limit: 800
+              secret_refs:
+                secret-tvm:
+                  secret_id: sec-01f9v7dq5w4ff1myy2t6b519eq
+                  secret_version: ver-01f9v7dq6aj5jbc3kex7b8nefv
+                unified-agent-tvm-secret:
+                  secret_id: sec-01ex24m3j4pcj3yscvsz2njggx
+                  secret_version: ver-01ex24m3k1neaga73gvwndpwvr
+                yandexpay-csrf:
+                  secret_id: sec-01esn77489gph0trc8f9swn59q
+                  secret_version: ver-01esww4newk64d6qrj66nrbe1h
+                yandexpay-plus-settings:
+                  secret_id: sec-01f9v8djbbkkqf27pa5032ns0q
+                  secret_version: ver-01g6n4027tbeh2pwxcd9v69y81
+                yandexpay-plus-ssl-internal:
+                  secret_id: sec-01f9v8xjten2y2956j8pkvrwzw
+                  secret_version: ver-01f9v8xjwfvnt6zzq41jrbat77
+      network_defaults:
+        network_id: _YANDEXPAY_TEST_NETS_
+      patchers_revision: 11
+      pod_agent_sandbox_info:
+        revision: 3006211268
+      revision: 141
+      tvm_config:
+        blackbox_environment: Test
+        client_port: 2
+        clients:
+        - destinations:
+          - alias: blackbox
+            app_id: 224
+          - alias: bnpl-saturn
+            app_id: 2028166
+          - alias: gozora
+            app_id: 2023123
+          - alias: passport-addresses
+            app_id: 2029754
+          - alias: yandex-pay
+            app_id: 2024739
+          - alias: antifraud
+            app_id: 2024973
+          - alias: split
+            app_id: 2028624
+          secret_selector:
+            alias: secret-tvm
+            id: client_secret
+          source:
+            abc_service_id: '32444'
+            alias: self
+            app_id: 2029082
+        mode: enabled
+    workers:
+      images_for_boxes:
+        workers:
+          digest: 'EMPTY:'
+          name: yandex-pay/yandex_pay_plus
+          registry_host: registry.yandex.net
+          tag: '170'
+      logbroker_tools_sandbox_info:
+        revision: 2739742779
+      logrotate_configs:
+        workers:
+          run_period_millisecond: 900000
+      multi_cluster_replica_set:
+        replica_set:
+          clusters:
+          - cluster: sas
+            spec:
+              replica_count: 1
+          - cluster: vla
+            spec:
+              replica_count: 1
+          deployment_strategy:
+            max_unavailable: 1
+          pod_template_spec:
+            spec:
+              disk_volume_requests:
+              - id: infra
+                labels:
+                  used_by_infra: true
+                quota_policy:
+                  bandwidth_guarantee: 10485760
+                  bandwidth_limit: 20971520
+                  capacity: 10737418240
+                storage_class: hdd
+              host_infra:
+                monitoring:
+                  unistats:
+                  - output_format: yasm_json
+                    path: /unistat
+                    port: 8080
+                    workload_id: workers
+                  - output_format: yasm_json
+                    path: /unistat
+                    port: 8001
+                    workload_id: workers
+                  - path: /counters/unistat
+                    port: 22501
+                    workload_id: unified_agent_workload
+              pod_agent_payload:
+                spec:
+                  boxes:
+                  - compute_resources:
+                      vcpu_guarantee: 600
+                      vcpu_limit: 600
+                    env:
+                    - name: YENV_TYPE
+                      value:
+                        literal_env:
+                          value: testing
+                    - name: ENVIRONMENT_TYPE
+                      value:
+                        literal_env:
+                          value: testing
+                    - name: SKIP_NGINX
+                      value:
+                        literal_env:
+                          value: 'true'
+                    id: workers
+                    rootfs: {}
+                    static_resources:
+                    - mount_point: /config/local
+                      resource_ref: ApplicationConfigOverride
+                    - mount_point: /opt/bin
+                      resource_ref: PgPinger
+                    volumes:
+                    - mode: read_write
+                      mount_point: /ephemeral
+                      volume_ref: ephemeral
+                  - compute_resources:
+                      memory_guarantee: 268435456
+                      memory_limit: 268435456
+                      vcpu_guarantee: 200
+                      vcpu_limit: 200
+                    id: yandex_pay_unified_agent_box
+                    rootfs:
+                      layer_refs:
+                      - bionic-app
+                    static_resources:
+                    - mount_point: /unified_agent_config
+                      resource_ref: UnifiedAgentSettings
+                    - mount_point: /unified_agent_bin
+                      resource_ref: UnifiedAgentBinary
+                    volumes:
+                    - mode: read_write
+                      mount_point: /push-agent/logs
+                      volume_ref: push-agent-logs
+                  mutable_workloads:
+                  - workload_ref: workers
+                  - workload_ref: unified_agent_workload
+                  resources:
+                    layers:
+                    - checksum: 'EMPTY:'
+                      id: bionic-app
+                      url: sbr:2527306889
+                    static_resources:
+                    - files:
+                        files:
+                        - file_name: settings.py
+                          secret_data:
+                            alias: yandexpay-plus-settings
+                            decode_base64: true
+                            id: testing
+                      id: ApplicationConfigOverride
+                      verification:
+                        check_period_ms: 180000
+                        checksum: 'EMPTY:'
+                    - id: PgPinger
+                      url: sbr:2007673887
+                      verification:
+                        check_period_ms: 180000
+                        checksum: MD5:1f182d0e04d65b5b21285e80774a2002
+                    - id: UnifiedAgentBinary
+                      url: sbr:2587413773
+                      verification:
+                        check_period_ms: 180000
+                        checksum: MD5:7e33241e2a1b950fea9e7d8ccd995c77
+                    - id: UnifiedAgentSettings
+                      url: sbr:2510704352
+                      verification:
+                        check_period_ms: 180000
+                        checksum: 'EMPTY:'
+                  volumes:
+                  - id: ephemeral
+                  - id: push-agent-logs
+                  workloads:
+                  - box_ref: workers
+                    id: workers
+                    readiness_check:
+                      http_get:
+                        any: true
+                        path: /ping
+                        port: 8001
+                        time_limit:
+                          max_execution_time_ms: 1000
+                    transmit_logs: true
+                  - box_ref: yandex_pay_unified_agent_box
+                    destroy_policy:
+                      container:
+                        command_line: /bin/bash -c "/unified_agent_bin/unified_agent
+                          -c /unified_agent_config/config.yml & pid=$!; while true;
+                          do unified_agent_idle=$(curl localhost:22502/check_backlog
+                          2>/dev/null); if [ "$unified_agent_idle" = "IDLE" ]; then
+                          echo "Unified Agent is idle"; break; else echo "Unified
+                          Agent is busy '$unified_agent_idle', waiting..."; sleep
+                          1; fi; done; kill $pid"
+                      max_tries: 3
+                    env:
+                    - name: TVM_SECRET
+                      value:
+                        secret_env:
+                          alias: unified-agent-tvm-secret
+                          id: client_secret
+                    id: unified_agent_workload
+                    liveness_check:
+                      http_get:
+                        any: true
+                        path: /status
+                        port: 22502
+                        time_limit:
+                          initial_delay_ms: 150000
+                          max_execution_time_ms: 15000
+                          max_restart_period_ms: 30000
+                          min_restart_period_ms: 30000
+                    readiness_check:
+                      http_get:
+                        expected_answer: OK
+                        path: /ready
+                        port: 22502
+                        time_limit:
+                          max_execution_time_ms: 15000
+                          max_restart_period_ms: 10000
+                          min_restart_period_ms: 10000
+                    start:
+                      command_line: /unified_agent_bin/unified_agent -c /unified_agent_config/config.yml
+              resource_requests:
+                memory_guarantee: 1342177280
+                memory_limit: 1342177280
+                network_bandwidth_guarantee: 10485760
+                vcpu_guarantee: 800
+                vcpu_limit: 800
+              secret_refs:
+                secret-tvm:
+                  secret_id: sec-01f9v7dq5w4ff1myy2t6b519eq
+                  secret_version: ver-01f9v7dq6aj5jbc3kex7b8nefv
+                unified-agent-tvm-secret:
+                  secret_id: sec-01ex24m3j4pcj3yscvsz2njggx
+                  secret_version: ver-01ex24m3k1neaga73gvwndpwvr
+                yandexpay-plus-settings:
+                  secret_id: sec-01f9v8djbbkkqf27pa5032ns0q
+                  secret_version: ver-01g6n4027tbeh2pwxcd9v69y81
+                yandexpay-plus-ssl-internal:
+                  secret_id: sec-01f9v8xjten2y2956j8pkvrwzw
+                  secret_version: ver-01f9v8xjwfvnt6zzq41jrbat77
+      network_defaults:
+        network_id: _YANDEXPAY_TEST_NETS_
+      patchers_revision: 11
+      pod_agent_sandbox_info:
+        revision: 3006211268
+      revision: 218
+      tvm_config:
+        blackbox_environment: Test
+        client_port: 2
+        clients:
+        - destinations:
+          - alias: blackbox
+            app_id: 224
+          - alias: trust-payments
+            app_id: 2001798
+          - alias: logbroker-lbkx
+            app_id: 2001059
+          - alias: gozora
+            app_id: 2023123
+          - alias: yandex-pay
+            app_id: 2024739
+          secret_selector:
+            alias: secret-tvm
+            id: client_secret
+          source:
+            abc_service_id: '32444'
+            alias: self
+            app_id: 2029082
+        mode: enabled
+  revision: 264
+  revision_info:
+    description: 'CI autocommit: Release: Release flow #151, url: https://a.yandex-team.ru/projects/yandexpay/ci/releases/flow?dir=billing%2Fyandex_pay_plus&id=yandexpay-plus-release&version=151'
+

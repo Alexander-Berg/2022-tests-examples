@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<!--
+Title:
+Контрол поиска: провайдер поиска по коллекции
+
+Description:
+Проверка провайдера поиска по коллекции.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+smoke, regress
+
+Estimated time:
+90000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан Москвы, сверху слева поисковый инпут,  справа кнопка "search". 
+
+Step:
+  Action:
+  Выполнить клик в кнопку "search". 
+
+  Expectation:
+  По клику, в инпуте появляется значение "метка", происходит смена спана на спан с меткой коллекции, под инпутом сниппеты: "Черная метка 1; Черная метка 2; Белая метка 1".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "search". 
+
+  Expectation:
+  По клику, в инпуте появляется значение "2", происходит смена спана на спан с меткой коллекции, под инпутом сниппеты: "Черная метка 2; Белая метка 2".
+-->
+<html>
+<head>
+    <title>API 2.0</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <script src="../helper.js"></script>
+    <script type="text/javascript">
+        Api('init');
+        function init(ymaps) {
+            var myMap = new ymaps.Map('map', {
+                center: [55.7542, 37.6204],
+                zoom: 10});
+            
+            var collection = new ymaps.GeoObjectCollection();
+            collection.add(new ymaps.Placemark([55.7906, 37.4707], {
+                balloonContentBody: 'черная метка 1'
+            }));
+            collection.add(new ymaps.Placemark([55.7937, 37.7234], {
+                balloonContentBody: 'черная метка 2'
+            }));
+            collection.add(new ymaps.Placemark([55.6992, 37.5229], {
+                balloonContentBody: 'белая метка 1'
+            }));
+            collection.add(new ymaps.Placemark([55.7092, 37.7086], {
+                balloonContentBody: 'белая метка 2'
+            }));
+            var search = new ymaps.control.SearchControl({
+                provider: new SearchCollectionProvider(collection)
+            });
+            myMap.controls.add(search, {top: 0, left: 0});
+            var button = new ymaps.control.Button("search");
+            button.events.add('click', function (e) {
+                search.search(e.get('target').isSelected() ? '2' : 'метка')
+            });
+            myMap.controls.add(button, {right: 1});
+        }
+        function SearchCollectionProvider(collection) {
+            this._collection = collection;
+        }
+        SearchCollectionProvider.prototype.geocode = function (request, options) {
+            var promise = new ymaps.util.Promise(),
+                    geoObjects = new ymaps.GeoObjectArray(),
+                    offset = options.skip || 0,
+                    limit = options.results || 10;
+            this._collection.each(function (point) {
+                var prop = point.properties.get('balloonContentBody');
+                if (~prop.toLowerCase().indexOf(request.toLowerCase())) {
+                    geoObjects.add(new ymaps.GeoObject({
+                        geometry: {
+                            type: "Point",
+                            coordinates: point.geometry.getCoordinates()
+                        },
+                        properties: {
+                            name: prop + ' name',
+                            description: prop + ' description',
+                            balloonContentBody: '<p>' + prop + '</p>'
+                        }
+                    }));
+                }
+            });
+            var response = {
+                geoObjects: geoObjects,
+                metaData: {
+                    geocoder: {
+                        request: request,
+                        found: geoObjects.getLength(),
+                        results: limit,
+                        skip: offset
+                    }
+                }
+            };
+            setTimeout(function () {
+                promise.resolve(response);
+            }, 0);
+            return promise;
+        };
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;">
+</div>
+<p><a href="https://tech.yandex.ru/maps/archive/doc/jsapi/2.0/ref/reference/control.SearchControl-docpage/#control.SearchControl__param-options.provider" target="_blank">Docs</a></p>
+</body>
+</html>

@@ -1,0 +1,145 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <style>
+        #map { width: 600px; height: 600px; box-sizing: border-box; overflow: hidden; }
+    </style>
+</head>
+<body>
+<h3>Ломалась графика</h3>
+<div id="map"></div>
+
+<script>
+    var options = {};
+    (function() {
+        options.api = options.api || '//api-maps.yandex.ru/2.1.68/';
+        options.fix = options.fix === 'true';
+        options.debug = options.debug === 'true';
+
+        var s = document.createElement('script');
+        s.src = options.api + '?lang=ru_RU&onload=ymapsReady' + (options.debug ? '&mode=debug' : '');
+        document.head.appendChild(s);
+    })();
+
+    var map, polygon, vow;
+    async function ymapsReady() {
+        try {
+            await init();
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
+    async function init() {
+        vow = ymaps.vow;
+        map = new ymaps.Map('map',
+            { center: [55.023158, 82.942955], zoom: 16, controls: [] },
+            { suppressMapOpenBlock: true, geoObjectRenderType: 'SVG'});
+
+        polygon = new ymaps.GeoObject({
+            geometry: {
+                type: "Polygon",
+                coordinates: [[
+                    [55.02243487457694, 82.941910453609],
+                    [55.023637694193, 82.941910453609],
+                    [55.023637694193, 82.94400871060277],
+                    [55.02243487457694, 82.94400871060277]
+                ]]
+            }
+        }, {
+            fillColor: '#FF0000',
+            strokeColor: '#101312',
+            stroke: false,
+            fillImageHref: 'https://domogis.ru/images/cadastre/cache/5b2c6ba2717f0.png',
+            renderType: 'SVG'
+        });
+
+        map.geoObjects.add(polygon);
+
+        map.action.events.addController({
+            onBeforeEventFiring(events, type) {
+                if (!type.endsWith('defaultaction')) {
+                    console.log(`map.action.events@${type}`);
+                }
+            }
+        });
+
+        await vow.delay(null, 1000);
+        await reproduce();
+    }
+
+    var raf = function(){ new Promise(resolve => requestAnimationFrame(resolve));}
+
+    async function reproduce() {
+        var projection = map.options.get('projection');
+        let action = null;
+
+        var startAction = function(){
+            if (!action) {
+                action = new ymaps.map.action.Continuous();
+                map.action.execute(action);
+            }
+        };
+        var endAction = function(){
+            action.end();
+            action = null;
+        };
+
+        var panTo = async (target) => {
+            startAction();
+
+            var start = map.action.getCurrentState().globalPixelCenter;
+            target = projection.toGlobalPixels(target, map.action.getCurrentState().zoom);
+            console.log(map.action.getCurrentState().zoom);
+
+            for (let step = 0; step < 1; step += 0.1) {
+                action.tick({
+                    globalPixelCenter: [
+                        start[0] + (target[0] - start[0])*step,
+                        start[1] + (target[1] - start[1])*step
+                    ],
+                    zoom: map.getZoom(),
+                    duration: 1
+                });
+
+                await raf();
+            }
+
+            endAction();
+        };
+
+        var zoomTo = async (target) => {
+            startAction();
+
+            for (let step = 0; step < 1; step += 0.1) {
+                var zoom = map.action.getCurrentState().zoom;
+                action.tick({
+                    pixelOffset: [0, 0],
+                    zoom: zoom + (target - zoom)*step,
+                    duration: 0.1
+                });
+
+                await raf();
+            }
+
+            endAction();
+        };
+
+        await panTo([55.01763765200392, 82.94272607277529]);
+        await zoomTo(19);
+    }
+</script>
+<div style="font-family: monospace;">
+    options (in url hash, separated by &):
+    <ul style="list-style-type: circle;">
+        <li>api=URL (default: production/2.1)</li>
+        <li>fix=true|false (default: false)</li>
+        <li>debug=true|false (default: false)</li>
+    </ul>
+</div>
+</body>
+</html>

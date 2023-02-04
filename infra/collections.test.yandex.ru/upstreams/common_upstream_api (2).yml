@@ -1,0 +1,79 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - keepclean
+      - yaskevich
+      - ftdebugger
+      - next0
+      groups:
+      - yandex_mnt_sa_runtime_cross
+      - svc_podborki
+labels:
+  order: '00006000'
+---
+regexp_section:
+  matcher:
+    match_fsm: {uri: '(/collections)?/api(/.*)?'}
+  modules:
+  - rewrite:
+      actions:
+        - regexp: "(/collections)?(/api)(.*)captcha=1(.*)?"
+          rewrite: "%1%3captcha=1%4"
+  - rewrite:
+      actions:
+        - regexp: "(l7test|collections\\\\.test)\\\\.yandex\\\\.(by|ru|kz|com\\\\.tr|com)"
+          header_name: "Host"
+          rewrite: "yandex.%2"
+  - antirobot_macro:
+      include_backends:
+        type: BY_ID
+        ids: [common-antirobot/antirobot_man, common-antirobot/antirobot_sas, common-antirobot/antirobot_vla]
+  - rewrite:
+      actions:
+        - regexp: "(/collections)?(/[^a].*)captcha=1(.*)?"
+          rewrite: "%1/api%2captcha=1%3"
+  - icookie:
+      use_default_keys: true
+      domains: [".yandex.ru", ".yandex.by", ".yandex.com", ".yandex.com.tr", ".yandex.kz", ".yandex.ua"]
+  - report: {ranges: default, uuid: api}
+  - regexp:
+      sections:
+        post_method:
+          matcher:
+            match_fsm: {match: POST.*}
+          modules:
+          - balancer2:
+              attempts: 1
+              weighted2: {}
+              timeout_policy:
+                timeout: 1s
+                unique_policy: {}
+              generated_proxy_backends:
+                proxy_options:
+                  backend_timeout: 4s
+                  connect_timeout: 100ms
+                  keepalive_count: 1
+                include_backends:
+                  type: BY_ID
+                  ids: [pdb_backend_test]
+              on_error:
+                modules:
+                - errordocument: {content: Gateway Timeout, status: 504}
+        default:
+          matcher: {}
+          modules:
+          - balancer2:
+              attempts: 3
+              weighted2: {}
+              generated_proxy_backends:
+                proxy_options:
+                  backend_timeout: 4s
+                  connect_timeout: 100ms
+                  keepalive_count: 1
+                include_backends:
+                  type: BY_ID
+                  ids: [pdb_backend_test]
+              on_error:
+                modules:
+                - errordocument: {content: Gateway Timeout, status: 504}

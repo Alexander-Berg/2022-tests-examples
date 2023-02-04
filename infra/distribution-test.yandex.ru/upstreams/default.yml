@@ -1,0 +1,43 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - petrovmaxim
+      - nanny-robot
+      groups:
+      - svc_idya_development
+labels:
+  order: '99999999'
+config_mode: easy2
+---
+l7_upstream_macro:
+  version: 0.0.2
+  id: default
+  matcher:
+    any: true
+  can_handle_announce_checks: true
+  by_dc_scheme:
+    dc_balancer:
+      method: LOCAL_THEN_BY_DC_WEIGHT
+      attempt_all_dcs: true
+      weights_section_id: 'bygeo'
+    dcs:
+      - name: sas
+        backend_ids: [di_test_sas]
+      - name: vla
+        backend_ids: [di_test_vla]
+      - name: man
+        backend_ids: [di_test_man]
+    balancer:
+      attempts: 2
+      fast_attempts: 2
+      max_reattempts_share: 0.15
+      max_pessimized_endpoints_share: 0.2
+      retry_http_responses:
+        codes: [5xx]
+      backend_timeout: 600s
+      connect_timeout: 70ms
+    on_error:
+      static:
+        status: 504
+        content: "Service unavailable"

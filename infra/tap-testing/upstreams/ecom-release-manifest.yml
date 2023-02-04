@@ -1,0 +1,70 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - nodge
+      groups: []
+labels:
+  order: '1000'
+---
+regexp_section:
+    matcher:
+        match_and:
+            - match_fsm:
+                  host: ecom\\.tap-rc\\.yandex\\.net
+            - match_fsm:
+                  path: /manifest\\.json
+    modules:
+        - report:
+              uuid: 'services'
+              ranges: 'default'
+        - report:
+              uuid: 'ecom-release-total'
+              ranges: 'default'
+        - report:
+              uuid: 'ecom-release-manifest'
+              ranges: 'default'
+        - request_replier:
+              rate: 0.5
+              sink:
+                modules:
+                  - accesslog:
+                      log: /usr/local/www/logs/replier_access.log
+                  - errorlog:
+                      log: /usr/local/www/logs/replier_errors.log
+                  - balancer2:
+                      rr: {}
+                      attempts: 1
+                      generated_proxy_backends:
+                        proxy_options: {}
+                        include_backends:
+                          type: BY_ID
+                          ids: [tap_backend_testing_sas]
+        - rewrite:
+              actions:
+                  - regexp: '.*'
+                    rewrite: '/ecom/v0.6.0/manifest-release.json'
+                  - regexp: '.*'
+                    header_name: 'Host'
+                    rewrite: 'tap.s3.yandex.net'
+        - response_headers:
+              create:
+                  Cache-Control: public, max-age=900
+        - balancer2:
+              disable_attempts_rate_limiter: true
+              attempts: 5
+              simple_policy: {}
+              rr: {}
+              generated_proxy_backends:
+                  proxy_options:
+                      backend_timeout: 500ms
+                      connect_timeout: 50ms
+                      fail_on_5xx: true
+                  instances:
+                      - weight: 1
+                        host: 'tap.s3.yandex.net'
+                        port: 80
+              on_error:
+                  errordocument:
+                      status: 503
+                      content: 'Service unavailable'

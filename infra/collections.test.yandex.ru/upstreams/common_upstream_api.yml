@@ -1,0 +1,1042 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - yaskevich
+      - ftdebugger
+      - next0
+      groups:
+      - yandex_mnt_sa_runtime_cross
+      - svc_podborki
+labels:
+  order: '00006000'
+---
+regexp_section:
+  matcher:
+    match_fsm: {uri: '(/collections)?/api(/.*)?'}
+  modules:
+  - rewrite:
+      actions:
+        - regexp: "(/collections)?(.*)"
+          rewrite: "%2"
+  - rewrite:
+      actions:
+        - regexp: "(/collections)?(/api)(.*)captcha=1(.*)?"
+          rewrite: "%1%3captcha=1%4"
+  - rewrite:
+      actions:
+        - regexp: "(l7test|collections\\\\.test)\\\\.yandex\\\\.(by|ru|kz|com\\\\.tr|com)"
+          header_name: "Host"
+          rewrite: "yandex.%2"
+  - antirobot_macro:
+      version: 0.0.2
+  - icookie:
+      use_default_keys: true
+      force_generate_from_searchapp_uuid: true
+      enable_parse_searchapp_uuid: false
+      domains: [".yandex.ru", ".yandex.by", ".yandex.com", ".yandex.com.tr", ".yandex.kz", ".yandex.ua", ".yandex.uz"]
+  - report: { uuid: api, ranges: default }
+  - regexp:
+      sections:
+        api_boards_get:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/boards' }
+              - match_method: { methods: ["get"] }
+          modules:
+            - report: { uuid: api_boards, ranges: default }
+            - report: { uuid: api_boards_get, ranges: default }
+            - shared: { uuid: collections_default_read }
+            - report: { uuid: api_read, ranges: default }
+            - balancer2:
+                attempts: 1
+                active: 
+                  steady: false
+                  request: 'GET /health/ HTTP/1.1\nHost: collections.yandex.ru\n\n'
+                  delay: 10s 
+                generated_proxy_backends:
+                  proxy_options:
+                    backend_timeout: 15s
+                    connect_timeout: 100ms
+                    keepalive_count: 1
+                  include_backends:
+                    type: BY_ID
+                    ids: [ pdb_backend_test ]
+                on_error:
+                  modules:
+                    - errordocument: { content: Gateway Timeout, status: 504 }
+        api_boards_post:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/boards' }
+              - match_method: { methods: ["post"] }
+          modules:
+            - report: { uuid: api_boards, ranges: default }
+            - report: { uuid: api_boards_post, ranges: default }
+            - shared: { uuid: collections_default_write }
+            - report: { uuid: api_write, ranges: default }
+            - balancer2:
+                attempts: 1
+                active: 
+                  steady: false
+                  request: 'GET /health/ HTTP/1.1\nHost: collections.yandex.ru\n\n'
+                  delay: 10s 
+                generated_proxy_backends:
+                  proxy_options:
+                    backend_timeout: 15s
+                    connect_timeout: 100ms
+                    keepalive_count: 1
+                  include_backends:
+                    type: BY_ID
+                    ids: [ pdb_backend_test ]
+                on_error:
+                  modules:
+                    - errordocument: { content: Gateway Timeout, status: 504 }
+        api_boards_reorder_post:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/boards/reorder' }
+              - match_method: { methods: ["post"] }
+          modules:
+            - report: { uuid: api_boards, ranges: default }
+            - report: { uuid: api_boards_reorder_post, ranges: default }
+            - shared: { uuid: collections_default_write }
+        api_boards_ideas_get:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/boards/ideas' }
+              - match_method: { methods: ["get"] }
+          modules:
+            - report: { uuid: api_boards, ranges: default }
+            - report: { uuid: api_boards_ideas_get, ranges: default }
+            - shared: { uuid: collections_default_read }
+        api_boards_item_1_get:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/boards/[^/]+' }
+              - match_method: { methods: ["get"] }
+          modules:
+            - report: { uuid: api_boards, ranges: default }
+            - report: { uuid: api_boards_item_1, ranges: default }
+            - report: { uuid: api_boards_item_1_get, ranges: default }
+            - shared: { uuid: collections_default_read }
+        api_boards_item_1_patch:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/boards/[^/]+' }
+              - match_method: { methods: ["patch"] }
+          modules:
+            - report: { uuid: api_boards, ranges: default }
+            - report: { uuid: api_boards_item_1, ranges: default }
+            - report: { uuid: api_boards_item_1_patch, ranges: default }
+            - shared: { uuid: collections_default_write }
+        api_boards_item_1_delete:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/boards/[^/]+' }
+              - match_method: { methods: ["delete"] }
+          modules:
+            - report: { uuid: api_boards, ranges: default }
+            - report: { uuid: api_boards_item_1, ranges: default }
+            - report: { uuid: api_boards_item_1_delete, ranges: default }
+            - shared: { uuid: collections_default_write }
+        api_boards_item_1_permissions_get:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/boards/[^/]+/permissions' }
+              - match_method: { methods: ["get"] }
+          modules:
+            - report: { uuid: api_boards, ranges: default }
+            - report: { uuid: api_boards_item_1, ranges: default }
+            - report: { uuid: api_boards_item_1_permissions_get, ranges: default }
+            - shared: { uuid: collections_default_read }
+        api_boards_item_1_fullness_get:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/boards/[^/]+/fullness' }
+              - match_method: { methods: ["get"] }
+          modules:
+            - report: { uuid: api_boards, ranges: default }
+            - report: { uuid: api_boards_item_1, ranges: default }
+            - report: { uuid: api_boards_item_1_fullness_get, ranges: default }
+            - shared: { uuid: collections_default_read }
+        api_boards_item_1_invite_post:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/boards/[^/]+/invite' }
+              - match_method: { methods: ["post"] }
+          modules:
+            - report: { uuid: api_boards, ranges: default }
+            - report: { uuid: api_boards_item_1, ranges: default }
+            - report: { uuid: api_boards_item_1_invite_post, ranges: default }
+            - shared: { uuid: collections_default_write }
+        api_boards_item_2_get:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/boards/[^/]+/[^/]+' }
+              - match_method: { methods: ["get"] }
+          modules:
+            - report: { uuid: api_boards, ranges: default }
+            - report: { uuid: api_boards_item_2, ranges: default }
+            - report: { uuid: api_boards_item_2_get, ranges: default }
+            - shared: { uuid: collections_default_read }
+        api_boards_item_2_patch:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/boards/[^/]+/[^/]+' }
+              - match_method: { methods: ["patch"] }
+          modules:
+            - report: { uuid: api_boards, ranges: default }
+            - report: { uuid: api_boards_item_2, ranges: default }
+            - report: { uuid: api_boards_item_2_patch, ranges: default }
+            - shared: { uuid: collections_default_write }
+        api_boards_item_2_delete:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/boards/[^/]+/[^/]+' }
+              - match_method: { methods: ["delete"] }
+          modules:
+            - report: { uuid: api_boards, ranges: default }
+            - report: { uuid: api_boards_item_2, ranges: default }
+            - report: { uuid: api_boards_item_2_delete, ranges: default }
+            - shared: { uuid: collections_default_write }
+        api_boards_item_2_permissions_get:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/boards/[^/]+/[^/]+/permissions' }
+              - match_method: { methods: ["get"] }
+          modules:
+            - report: { uuid: api_boards, ranges: default }
+            - report: { uuid: api_boards_item_2, ranges: default }
+            - report: { uuid: api_boards_item_2_permissions_get, ranges: default }
+            - shared: { uuid: collections_default_read }
+        api_boards_item_2_fullness_get:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/boards/[^/]+/[^/]+/fullness' }
+              - match_method: { methods: ["get"] }
+          modules:
+            - report: { uuid: api_boards, ranges: default }
+            - report: { uuid: api_boards_item_2, ranges: default }
+            - report: { uuid: api_boards_item_2_fullness_get, ranges: default }
+            - shared: { uuid: collections_default_read }
+        api_boards_item_2_invite_post:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/boards/[^/]+/[^/]+/invite' }
+              - match_method: { methods: ["post"] }
+          modules:
+            - report: { uuid: api_boards, ranges: default }
+            - report: { uuid: api_boards_item_2, ranges: default }
+            - report: { uuid: api_boards_item_2_invite_post, ranges: default }
+            - shared: { uuid: collections_default_read }
+        api_boards_item_2_close_access_post:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/boards/[^/]+/[^/]+/close_access' }
+              - match_method: { methods: ["post"] }
+          modules:
+            - report: { uuid: api_boards, ranges: default }
+            - report: { uuid: api_boards_item_2, ranges: default }
+            - report: { uuid: api_boards_item_2_close_access_post, ranges: default }
+            - shared: { uuid: collections_default_write }
+        api_board_permissions_item_patch:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/board_permissions/[^/]+' }
+              - match_method: { methods: ["patch"] }
+          modules:
+            - report: { uuid: api_board_permissions_item, ranges: default }
+            - report: { uuid: api_board_permissions_item_patch, ranges: default }
+            - shared: { uuid: collections_default_write }
+        api_board_permissions_item_delete:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/board_permissions/[^/]+' }
+              - match_method: { methods: ["delete"] }
+          modules:
+            - report: { uuid: api_board_permissions_item, ranges: default }
+            - report: { uuid: api_board_permissions_item_delete, ranges: default }
+            - shared: { uuid: collections_default_write }
+        api_cards_get:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/cards' }
+              - match_method: { methods: ["get"] }
+          modules:
+            - report: { uuid: api_cards, ranges: default }
+            - report: { uuid: api_cards_get, ranges: default }
+            - shared: { uuid: collections_default_read }
+        api_cards_post:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/cards' }
+              - match_method: { methods: ["post"] }
+          modules:
+            - report: { uuid: api_cards, ranges: default }
+            - report: { uuid: api_cards_post, ranges: default }
+            - shared: { uuid: collections_default_write }
+        api_cards_patch:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/cards' }
+              - match_method: { methods: ["patch"] }
+          modules:
+            - report: { uuid: api_cards, ranges: default }
+            - report: { uuid: api_cards_patch, ranges: default }
+            - shared: { uuid: collections_default_write }
+        api_cards_delete:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/cards' }
+              - match_method: { methods: ["delete"] }
+          modules:
+            - report: { uuid: api_cards, ranges: default }
+            - report: { uuid: api_cards_delete, ranges: default }
+            - shared: { uuid: collections_default_write }
+        api_cards_bulk_post:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/cards/bulk' }
+              - match_method: { methods: ["post"] }
+          modules:
+            - report: { uuid: api_cards, ranges: default }
+            - report: { uuid: api_cards_bulk_post, ranges: default }
+            - shared: { uuid: collections_default_write }
+        api_cards_search_get:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/cards/search' }
+              - match_method: { methods: ["get"] }
+          modules:
+            - report: { uuid: api_cards, ranges: default }
+            - report: { uuid: api_cards_search_get, ranges: default }
+            - shared: { uuid: collections_default_read }
+        api_cards_search_count_get:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/cards/search/count' }
+              - match_method: { methods: ["get"] }
+          modules:
+            - report: { uuid: api_cards, ranges: default }
+            - report: { uuid: api_cards_search_count_get, ranges: default }
+            - shared: { uuid: collections_default_read }
+        api_cards_merchants_get:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/cards/merchants' }
+              - match_method: { methods: ["get"] }
+          modules:
+            - report: { uuid: api_cards, ranges: default }
+            - report: { uuid: api_cards_merchants_get, ranges: default }
+            - shared: { uuid: collections_default_read }
+        api_cards_source_types_get:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/cards/source_types' }
+              - match_method: { methods: ["get"] }
+          modules:
+            - report: { uuid: api_cards, ranges: default }
+            - report: { uuid: api_cards_source_types_get, ranges: default }
+            - shared: { uuid: collections_default_read }
+        api_cards_merge_post:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/cards/merge' }
+              - match_method: { methods: ["post"] }
+          modules:
+            - report: { uuid: api_cards, ranges: default }
+            - report: { uuid: api_cards_merge_post, ranges: default }
+            - shared: { uuid: collections_default_write }
+        api_cards_item_1_get:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/cards/[^/]+' }
+              - match_method: { methods: ["get"] }
+          modules:
+            - report: { uuid: api_cards, ranges: default }
+            - report: { uuid: api_cards_item_1, ranges: default }
+            - report: { uuid: api_cards_item_1_get, ranges: default }
+            - shared: { uuid: collections_default_read }
+        api_cards_item_1_fullfillment_put:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/cards/[^/]+/fulfillment' }
+              - match_method: { methods: ["put"] }
+          modules:
+            - report: { uuid: api_cards, ranges: default }
+            - report: { uuid: api_cards_item_1, ranges: default }
+            - report: { uuid: api_cards_item_1_put, ranges: default }
+            - shared: { uuid: collections_default_write }
+        api_cards_item_1_fullfillment_delete:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/cards/[^/]+/fulfillment' }
+              - match_method: { methods: ["delete"] }
+          modules:
+            - report: { uuid: api_cards, ranges: default }
+            - report: { uuid: api_cards_item_1, ranges: default }
+            - report: { uuid: api_cards_item_1_delete, ranges: default }
+            - shared: { uuid: collections_default_write }
+        api_cards_item_1_shares_post:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/cards/[^/]+/shares' }
+              - match_method: { methods: ["post"] }
+          modules:
+            - report: { uuid: api_cards, ranges: default }
+            - report: { uuid: api_cards_item_1, ranges: default }
+            - report: { uuid: api_cards_item_1_shares_post, ranges: default }
+            - shared: { uuid: collections_default_write }
+        api_cards_item_2_get:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/cards/[^/]+/[^/]+' }
+              - match_method: { methods: ["get"] }
+          modules:
+            - report: { uuid: api_cards, ranges: default }
+            - report: { uuid: api_cards_item_2, ranges: default }
+            - report: { uuid: api_cards_item_2_get, ranges: default }
+            - shared: { uuid: collections_default_read }
+        api_cards_item_2_shares_post:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/cards/[^/]+/[^/]+/shares' }
+              - match_method: { methods: ["post"] }
+          modules:
+            - report: { uuid: api_cards, ranges: default }
+            - report: { uuid: api_cards_item_2, ranges: default }
+            - report: { uuid: api_cards_item_2_shares_post, ranges: default }
+            - shared: { uuid: collections_default_write }
+        api_content_post:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/content' }
+              - match_method: { methods: ["post"] }
+          modules:
+            - report: { uuid: api_content_post, ranges: default }
+            - shared: { uuid: collections_default_write }
+        api_csrf_token_get:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/csrf-token' }
+              - match_method: { methods: ["get"] }
+          modules:
+            - report: { uuid: api_csrf_token_get, ranges: default }
+            - shared: { uuid: collections_default_read }
+        api_complain_post:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/complain' }
+              - match_method: { methods: ["post"] }
+          modules:
+            - report: { uuid: api_complain, ranges: default }
+            - report: { uuid: api_complain_post, ranges: default }
+            - shared: { uuid: collections_default_write }
+        api_complain_item_patch:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/complain/[^/]+' }
+              - match_method: { methods: ["patch"] }
+          modules:
+            - report: { uuid: api_complain, ranges: default }
+            - report: { uuid: api_complain_item_patch, ranges: default }
+            - shared: { uuid: collections_default_write }
+        api_export_post:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/export' }
+              - match_method: { methods: ["post"] }
+          modules:
+            - report: { uuid: api_export, ranges: default }
+            - report: { uuid: api_export_post, ranges: default }
+            - shared: { uuid: collections_default_write }
+        api_export_shared_data_item_get:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/export/shared-data/[^/]+' }
+              - match_method: { methods: ["get"] }
+          modules:
+            - report: { uuid: api_export, ranges: default }
+            - report: { uuid: api_export_shared_data_item_get, ranges: default }
+            - shared: { uuid: collections_default_read }
+        api_export_item_get:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/export/[^/]+' }
+              - match_method: { methods: ["get"] }
+          modules:
+            - report: { uuid: api_export, ranges: default }
+            - report: { uuid: api_export_item_get, ranges: default }
+            - shared: { uuid: collections_default_read }
+        api_favorites_cards_get:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/favorites/cards' }
+              - match_method: { methods: ["get"] }
+          modules:
+            - report: { uuid: api_favorites, ranges: default }
+            - report: { uuid: api_favorites_cards_get, ranges: default }
+            - shared: { uuid: collections_default_read }
+        api_favorites_cards_post:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/favorites/cards' }
+              - match_method: { methods: ["post"] }
+          modules:
+            - report: { uuid: api_favorites, ranges: default }
+            - report: { uuid: api_favorites_cards_post, ranges: default }
+            - shared: { uuid: collections_default_write }
+        api_favorites_cards_delete:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/favorites/cards' }
+              - match_method: { methods: ["delete"] }
+          modules:
+            - report: { uuid: api_favorites, ranges: default }
+            - report: { uuid: api_favorites_cards_delete, ranges: default }
+            - shared: { uuid: collections_default_write }
+        api_favorites_cards_move_post:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/favorites/cards/move' }
+              - match_method: { methods: ["post"] }
+          modules:
+            - report: { uuid: api_favorites, ranges: default }
+            - report: { uuid: api_favorites_cards_move_post, ranges: default }
+            - shared: { uuid: collections_default_write }
+        api_favorites_boards_get:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/favorites/boards' }
+              - match_method: { methods: ["get"] }
+          modules:
+            - report: { uuid: api_favorites, ranges: default }
+            - report: { uuid: api_favorites_boards_get, ranges: default }
+            - shared: { uuid: collections_default_read }
+        api_invite_links_item_get:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/invite_links/[^/]+' }
+              - match_method: { methods: ["get"] }
+          modules:
+            - report: { uuid: api_invite_links, ranges: default }
+            - report: { uuid: api_invite_links_item_get, ranges: default }
+            - shared: { uuid: collections_default_read }
+        api_invite_links_item_put:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/invite_links/[^/]+' }
+              - match_method: { methods: ["put"] }
+          modules:
+            - report: { uuid: api_invite_links, ranges: default }
+            - report: { uuid: api_invite_links_item_put, ranges: default }
+            - shared: { uuid: collections_default_write }
+        api_links_redirect_get:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/links/redirect' }
+              - match_method: { methods: ["get"] }
+          modules:
+            - report: { uuid: api_links_redirect_get, ranges: default }
+            - shared: { uuid: collections_default_read }
+        api_object_answers_queries_suggest_get:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/object_answers/queries/suggest' }
+              - match_method: { methods: ["get"] }
+          modules:
+            - report: { uuid: api_object_answers_queries_suggest_get, ranges: default }
+            - shared: { uuid: collections_default_read }
+        api_pages_parse_post:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/pages/parse' }
+              - match_method: { methods: ["post"] }
+          modules:
+            - report: { uuid: api_pages_parse_post, ranges: default }
+            - shared: { uuid: collections_default_write }
+        api_queries_suggest_get:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/queries/suggest' }
+              - match_method: { methods: ["get"] }
+          modules:
+            - report: { uuid: api_queries_suggest_get, ranges: default }
+            - shared: { uuid: collections_default_read }
+        api_recipes_ingredients_suggest_get:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/recipes/ingredients/suggest' }
+              - match_method: { methods: ["get"] }
+          modules:
+            - report: { uuid: api_recipes_ingredients_suggest_get, ranges: default }
+            - shared: { uuid: collections_default_read }
+        api_recipes_filters_suggest_get:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/recipes/filters/suggest' }
+              - match_method: { methods: ["get"] }
+          modules:
+            - report: { uuid: api_recipes_filters_suggest_get, ranges: default }
+            - shared: { uuid: collections_default_read }
+        api_shared_id_item_post:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/shared_id/[^/]+/[^/]+' }
+              - match_method: { methods: ["post"] }
+          modules:
+            - report: { uuid: api_shared_id, ranges: default }
+            - report: { uuid: api_shared_id_item_post, ranges: default }
+            - shared: { uuid: collections_default_write }
+        api_shared_id_item_delete:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/shared_id/[^/]+/[^/]+' }
+              - match_method: { methods: ["delete"] }
+          modules:
+            - report: { uuid: api_shared_id, ranges: default }
+            - report: { uuid: api_shared_id_item_delete, ranges: default }
+            - shared: { uuid: collections_default_write }
+        api_shared_boards_item_get:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/shared_boards/[^/]+' }
+              - match_method: { methods: ["get"] }
+          modules:
+            - report: { uuid: api_shared_boards_item_get, ranges: default }
+            - shared: { uuid: collections_default_read }
+        api_suggest_get:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/suggest' }
+              - match_method: { methods: ["get"] }
+          modules:
+            - report: { uuid: api_suggest_get, ranges: default }
+            - shared: { uuid: collections_default_read }
+        api_tasks_item_get:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/tasks/[^/]+' }
+              - match_method: { methods: ["get"] }
+          modules:
+            - report: { uuid: api_tasks_item_get, ranges: default }
+            - shared: { uuid: collections_default_read }
+        api_tree_post:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/tree' }
+              - match_method: { methods: ["post"] }
+          modules:
+            - report: { uuid: api_tree, ranges: default }
+            - report: { uuid: api_tree_post, ranges: default }
+            - shared: { uuid: collections_default_write }
+        api_tree_delete_by_url_post:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/tree/delete_by_url' }
+              - match_method: { methods: ["post"] }
+          modules:
+            - report: { uuid: api_tree, ranges: default }
+            - report: { uuid: api_tree_delete_by_url_post, ranges: default }
+            - shared: { uuid: collections_default_write }
+        api_tree_create_card_post:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/tree/create_card' }
+              - match_method: { methods: ["post"] }
+          modules:
+            - report: { uuid: api_tree, ranges: default }
+            - report: { uuid: api_tree_create_card_post, ranges: default }
+            - shared: { uuid: collections_default_write }
+        api_tree_recreate_get:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/tree/recreate' }
+              - match_method: { methods: ["get"] }
+          modules:
+            - report: { uuid: api_tree, ranges: default }
+            - report: { uuid: api_tree_recreate_get, ranges: default }
+            - shared: { uuid: collections_default_write }
+        api_tree_sync_get:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/tree/sync' }
+              - match_method: { methods: ["get"] }
+          modules:
+            - report: { uuid: api_tree, ranges: default }
+            - report: { uuid: api_tree_sync_get, ranges: default }
+            - shared: { uuid: collections_default_write }
+        api_tree_item_post:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/tree/[^/]+' }
+              - match_method: { methods: ["post"] }
+          modules:
+            - report: { uuid: api_tree, ranges: default }
+            - report: { uuid: api_tree_item, ranges: default }
+            - report: { uuid: api_tree_item_post, ranges: default }
+            - shared: { uuid: collections_default_write }
+        api_tree_item_delete:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/tree/[^/]+' }
+              - match_method: { methods: ["delete"] }
+          modules:
+            - report: { uuid: api_tree, ranges: default }
+            - report: { uuid: api_tree_item, ranges: default }
+            - report: { uuid: api_tree_item_delete, ranges: default }
+            - shared: { uuid: collections_default_write }
+        api_tree_item_move_post:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/tree/[^/]+/move' }
+              - match_method: { methods: ["post"] }
+          modules:
+            - report: { uuid: api_tree, ranges: default }
+            - report: { uuid: api_tree_item, ranges: default }
+            - report: { uuid: api_tree_item_move_post, ranges: default }
+            - shared: { uuid: collections_default_write }
+        api_user_get:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/user' }
+              - match_method: { methods: ["get"] }
+          modules:
+            - report: { uuid: api_user, ranges: default }
+            - report: { uuid: api_user_get, ranges: default }
+            - shared: { uuid: collections_default_read }
+        api_user_patch:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/user' }
+              - match_method: { methods: ["patch"] }
+          modules:
+            - report: { uuid: api_user, ranges: default }
+            - report: { uuid: api_user_patch, ranges: default }
+            - shared: { uuid: collections_default_write }
+        api_user_objects_get:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/user/objects' }
+              - match_method: { methods: ["get"] }
+          modules:
+            - report: { uuid: api_user, ranges: default }
+            - report: { uuid: api_user_objects_get, ranges: default }
+            - shared: { uuid: collections_default_read }
+        api_user_merge_post:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/user/merge' }
+              - match_method: { methods: ["post"] }
+          modules:
+            - report: { uuid: api_user, ranges: default }
+            - report: { uuid: api_user_merge_post, ranges: default }
+            - shared: { uuid: collections_default_write }
+        api_user_merge_company_post:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/user/merge_company' }
+              - match_method: { methods: ["post"] }
+          modules:
+            - report: { uuid: api_user, ranges: default }
+            - report: { uuid: api_user_merge_company_post, ranges: default }
+            - shared: { uuid: collections_default_write }
+        api_user_pin_boards_get:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/user/pin_boards' }
+              - match_method: { methods: ["get"] }
+          modules:
+            - report: { uuid: api_user, ranges: default }
+            - report: { uuid: api_user_pin_boards, ranges: default }
+            - report: { uuid: api_user_pin_boards_get, ranges: default }
+            - shared: { uuid: collections_default_read }
+        api_user_pin_boards_post:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/user/pin_boards' }
+              - match_method: { methods: ["post"] }
+          modules:
+            - report: { uuid: api_user, ranges: default }
+            - report: { uuid: api_user_pin_boards, ranges: default }
+            - report: { uuid: api_user_pin_boards_post, ranges: default }
+            - shared: { uuid: collections_default_write }
+        api_user_pin_boards_delete:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/user/pin_boards' }
+              - match_method: { methods: ["delete"] }
+          modules:
+            - report: { uuid: api_user, ranges: default }
+            - report: { uuid: api_user_pin_boards, ranges: default }
+            - report: { uuid: api_user_pin_boards_delete, ranges: default }
+            - shared: { uuid: collections_default_write }
+        api_user_stats_get:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/user/stats' }
+              - match_method: { methods: ["get"] }
+          modules:
+            - report: { uuid: api_user, ranges: default }
+            - report: { uuid: api_user_stats_get, ranges: default }
+            - shared: { uuid: collections_default_read }
+        api_user_companies_get:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/user/companies' }
+              - match_method: { methods: ["get"] }
+          modules:
+            - report: { uuid: api_user, ranges: default }
+            - report: { uuid: api_user_compaines, ranges: default }
+            - report: { uuid: api_user_companies_get, ranges: default }
+            - shared: { uuid: collections_default_read }
+        api_user_companies_post:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/user/companies' }
+              - match_method: { methods: ["post"] }
+          modules:
+            - report: { uuid: api_user, ranges: default }
+            - report: { uuid: api_user_compaines, ranges: default }
+            - report: { uuid: api_user_companies_post, ranges: default }
+            - shared: { uuid: collections_default_write }
+        api_user_companies_item_get:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/user/companies/[^/]+' }
+              - match_method: { methods: ["get"] }
+          modules:
+            - report: { uuid: api_user, ranges: default }
+            - report: { uuid: api_user_compaines, ranges: default }
+            - report: { uuid: api_user_compaines_item, ranges: default }
+            - report: { uuid: api_user_companies_item_get, ranges: default }
+            - shared: { uuid: collections_default_read }
+        api_user_companies_item_delete:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/user/companies/[^/]+' }
+              - match_method: { methods: ["delete"] }
+          modules:
+            - report: { uuid: api_user, ranges: default }
+            - report: { uuid: api_user_compaines, ranges: default }
+            - report: { uuid: api_user_compaines_item, ranges: default }
+            - report: { uuid: api_user_companies_item_delete, ranges: default }
+            - shared: { uuid: collections_default_write }
+        api_users_get:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/users' }
+              - match_method: { methods: ["get"] }
+          modules:
+            - report: { uuid: api_users, ranges: default }
+            - report: { uuid: api_users_get, ranges: default }
+            - shared: { uuid: collections_default_read }
+        api_users_suggest_get:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/users/suggest' }
+              - match_method: { methods: ["get"] }
+          modules:
+            - report: { uuid: api_users, ranges: default }
+            - report: { uuid: api_users_suggest_get, ranges: default }
+            - shared: { uuid: collections_default_read }
+        api_users_search_get:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/users/search' }
+              - match_method: { methods: ["get"] }
+          modules:
+            - report: { uuid: api_users, ranges: default }
+            - report: { uuid: api_users_search_get, ranges: default }
+            - shared: { uuid: collections_default_read }
+        api_users_item_get:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/users/[^/]+' }
+              - match_method: { methods: ["get"] }
+          modules:
+            - report: { uuid: api_users, ranges: default }
+            - report: { uuid: api_users_item, ranges: default }
+            - report: { uuid: api_users_item_get, ranges: default }
+            - shared: { uuid: collections_default_read }
+        api_users_item_contacts_get:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/users/[^/]+/contacts' }
+              - match_method: { methods: ["get"] }
+          modules:
+            - report: { uuid: api_users, ranges: default }
+            - report: { uuid: api_users_item, ranges: default }
+            - report: { uuid: api_users_item_contacts_get, ranges: default }
+            - shared: { uuid: collections_default_read }
+        api_v10_cards_post:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/v1.0/cards' }
+              - match_method: { methods: ["post"] }
+          modules:
+            - report: { uuid: api_v10, ranges: default }
+            - report: { uuid: api_v10_cards, ranges: default }
+            - report: { uuid: api_v10_cards_post, ranges: default }
+            - shared: { uuid: collections_default_write }
+        api_v10_cards_delete:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/v1.0/cards' }
+              - match_method: { methods: ["delete"] }
+          modules:
+            - report: { uuid: api_v10, ranges: default }
+            - report: { uuid: api_v10_cards, ranges: default }
+            - report: { uuid: api_v10_cards_delete, ranges: default }
+            - shared: { uuid: collections_default_write }
+        api_v10_cards_item_1_get:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/v1.0/cards/[^/]+' }
+              - match_method: { methods: ["get"] }
+          modules:
+            - report: { uuid: api_v10, ranges: default }
+            - report: { uuid: api_v10_cards, ranges: default }
+            - report: { uuid: api_v10_cards_item_1, ranges: default }
+            - report: { uuid: api_v10_cards_item_1_get, ranges: default }
+            - shared: { uuid: collections_default_read }
+        api_v10_cards_item_1_patch:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/v1.0/cards/[^/]+' }
+              - match_method: { methods: ["patch"] }
+          modules:
+            - report: { uuid: api_v10, ranges: default }
+            - report: { uuid: api_v10_cards, ranges: default }
+            - report: { uuid: api_v10_cards_item_1, ranges: default }
+            - report: { uuid: api_v10_cards_item_1_patch, ranges: default }
+            - shared: { uuid: collections_default_write }
+        api_v10_cards_item_1_delete:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/v1.0/cards/[^/]+' }
+              - match_method: { methods: ["delete"] }
+          modules:
+            - report: { uuid: api_v10, ranges: default }
+            - report: { uuid: api_v10_cards, ranges: default }
+            - report: { uuid: api_v10_cards_item_1, ranges: default }
+            - report: { uuid: api_v10_cards_item_1_delete, ranges: default }
+            - shared: { uuid: collections_default_write }
+        api_v10_cards_item_2_get:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/v1.0/cards/[^/]+/[^/]+' }
+              - match_method: { methods: ["get"] }
+          modules:
+            - report: { uuid: api_v10, ranges: default }
+            - report: { uuid: api_v10_cards, ranges: default }
+            - report: { uuid: api_v10_cards_item_2, ranges: default }
+            - report: { uuid: api_v10_cards_item_2_get, ranges: default }
+            - shared: { uuid: collections_default_read }
+        api_v10_cards_item_2_patch:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/v1.0/cards/[^/]+/[^/]+' }
+              - match_method: { methods: ["patch"] }
+          modules:
+            - report: { uuid: api_v10, ranges: default }
+            - report: { uuid: api_v10_cards, ranges: default }
+            - report: { uuid: api_v10_cards_item_2, ranges: default }
+            - report: { uuid: api_v10_cards_item_2_patch, ranges: default }
+            - shared: { uuid: collections_default_write }
+        api_v10_cards_item_2_delete:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/v1.0/cards/[^/]+/[^/]+' }
+              - match_method: { methods: ["delete"] }
+          modules:
+            - report: { uuid: api_v10, ranges: default }
+            - report: { uuid: api_v10_cards, ranges: default }
+            - report: { uuid: api_v10_cards_item_2, ranges: default }
+            - report: { uuid: api_v10_cards_item_2_delete, ranges: default }
+            - shared: { uuid: collections_default_write }
+        api_v10_csrf_token_get:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/v1.0/csrf-token' }
+              - match_method: { methods: ["get"] }
+          modules:
+            - report: { uuid: api_v10, ranges: default }
+            - report: { uuid: api_v10_csrf_token_get, ranges: default }
+            - shared: { uuid: collections_default_read }
+        api_v10_boards_get:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/v1.0/boards' }
+              - match_method: { methods: ["get"] }
+          modules:
+            - report: { uuid: api_v10, ranges: default }
+            - report: { uuid: api_v10_boards, ranges: default }
+            - report: { uuid: api_v10_boards_get, ranges: default }
+            - shared: { uuid: collections_default_read }
+        api_v10_boards_post:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/v1.0/boards' }
+              - match_method: { methods: ["post"] }
+          modules:
+            - report: { uuid: api_v10, ranges: default }
+            - report: { uuid: api_v10_boards, ranges: default }
+            - report: { uuid: api_v10_boards_post, ranges: default }
+            - shared: { uuid: collections_default_write }
+        api_v10_user_get:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/v1.0/user' }
+              - match_method: { methods: ["get"] }
+          modules:
+            - report: { uuid: api_v10, ranges: default }
+            - report: { uuid: api_v10_user, ranges: default }
+            - report: { uuid: api_v10_user_get, ranges: default }
+            - shared: { uuid: collections_default_read }
+        api_v10_user_patch:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/v1.0/user' }
+              - match_method: { methods: ["patch"] }
+          modules:
+            - report: { uuid: api_v10, ranges: default }
+            - report: { uuid: api_v10_user, ranges: default }
+            - report: { uuid: api_v10_user_patch, ranges: default }
+            - shared: { uuid: collections_default_write }
+        api_v10_user_merge_post:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/v1.0/user/merge' }
+              - match_method: { methods: ["post"] }
+          modules:
+            - report: { uuid: api_v10, ranges: default }
+            - report: { uuid: api_v10_user, ranges: default }
+            - report: { uuid: api_v10_user_merge_post, ranges: default }
+            - shared: { uuid: collections_default_write }
+        api_1_takeout_status_get:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/1/takeout/status' }
+              - match_method: { methods: ["get"] }
+          modules:
+            - report: { uuid: api_1_takeout, ranges: default }
+            - report: { uuid: api_1_takeout_status_get, ranges: default }
+            - shared: { uuid: collections_default_read }
+        api_1_takeout_delete_post:
+          matcher:
+            match_and:
+              - match_fsm: { uri: '/api/1/takeout/delete' }
+              - match_method: { methods: ["post"] }
+          modules:
+            - report: { uuid: api_1_takeout, ranges: default }
+            - report: { uuid: api_1_takeout_delete_post, ranges: default }
+            - shared: { uuid: collections_default_write }
+        default:
+          matcher: { }
+          modules:
+            - report:
+                uuid: api_tree_dev_null
+                ranges: default
+            - shared: { uuid: collections_default_read }

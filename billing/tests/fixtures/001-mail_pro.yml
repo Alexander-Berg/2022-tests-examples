@@ -1,0 +1,93 @@
+locals:  # Some optional local vars
+  client_id: &x-client-id 82663760
+  service_id: &x-service-id 638
+  contract_type: &x-contract-type MailProContract
+
+  input:
+    processor:
+      valid_input: &x-valid-input
+        renderer_type: *x-processor-renderer-trust  # Must be set - ProcessorRenderer class name from billing.hot.tests.lib.templates.processor
+        contract_type: *x-contract-type             # Must be set - Contract class name from billing.hot.tests.lib.state.contract
+        client_id: *x-client-id                     # Must be set
+        service_id: *x-service-id                   # Must be set
+        template: *x-event-template-trust-standard  # Optional - default value 'payment_standard.json'
+        person_type: *x-person-type-ur              # Optional - default value 'ur'
+        firm_id: *x-yandex-firm-id                  # Optional - default value 'rand.int()'
+        dry_run: false                              # Optional - default False
+        trust_event: &x-valid-input-event           # Rows/refunds must be set manual (as in example below)
+          payment_method_id: *x-payment-method-card
+          products:
+            - { service_fee: 1 }
+          rows:
+            - { amount: 123.12 }
+
+
+system_test_bundle:  # Mocks for system (billing/hot/tests/system) tests
+  <<: *x-trust-system-test-bundle
+  accounts: [ cashless ]
+  processor_input:
+    <<: *x-valid-input
+
+
+cases:      # Test cases (billing.hot.tests.lib.test_case.config.TestConfig)
+  payment:  # Endpoint name
+    - description: Standard workflow  # Optional test case description
+
+      foreach:                                              # Optional block.
+        paths: [ processor.input.event.payment_method_id ]  # Generate simular test cases,
+        values:                                             # change only 'paths' fields values
+         - [ *x-payment-method-card ]
+
+      processor:                              # Processor test case spec
+        input:                                # See: billing.hot.tests.lib.test_case.config.ProcessorTestCaseData
+          <<: *x-valid-input
+          trust_event:                                       # Dict field. All set values overrides data from *x-event-template-trust-standard(trust/payment_standard.json) template
+            payment_method_id: *x-payment-method-card  # Overrides 'event.payment_method_id' field
+            rows:                                      # Generates 2 rows with given amount values. Other row params could be overriden:
+              - { amount: 5432.12 }                    # - { amount: 5432.12, order: { passport_id: 1234 } }
+              - { amount: 1521.21 }
+            refunds:                                   # Generates 1 refund with 1 row
+              - amount: 1234.56
+                rows:
+                  - { amount: 1234.56 }
+        expected:
+          response:
+            status: 200                               # Check response status
+            data: { }                                 # Data will be passed to 'success_processor_response_entries' func
+
+      accounts:                                       # Optional block. Accounts test case spec
+        input:                                        # See: billing.hot.tests.lib.test_case.config.AccountsTestCaseData
+          accounts: [cashless, cashless_refunds]
+        expected:
+          response:
+            status: 200
+            data:                                     # Data will be passed to 'success_accounts_read_batch_response' func
+              balances:
+                - loc: { type: cashless }
+                  credit: '6953.330000'
+                - loc: { type: cashless_refunds }
+                  debit: '1234.560000'
+
+    - description: Invalid event.payment_method_id - calculator configuration error
+      processor:
+        input:
+          <<: *x-valid-input
+          trust_event:
+            <<: *x-valid-input-event
+            payment_method_id: *x-payment-method-apple-pay
+        expected:
+          response:
+            status: 500
+      accounts: ~
+
+    - description: Bad client ID - contract NOT_FOUND error
+      processor:
+        input:
+          <<: *x-valid-input
+          client_id: 1234567890
+        expected:
+          response:
+            status: 400
+            data:
+              message: NOT_FOUND
+      accounts: ~

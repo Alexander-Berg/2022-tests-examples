@@ -1,0 +1,47 @@
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      host: 'core-nmaps-gdpr\\.common\\.testing\\.maps\\.yandex\\.net'
+  modules:
+    - report:
+        uuid: 'core-nmaps-gdpr_common_testing_maps_yandex_net'
+        ranges: default
+    - report:
+        uuid: 'core-nmaps-gdpr_common_testing_maps_yandex_net_default'
+        ranges: default
+    - threshold:
+        lo_bytes: 734003
+        hi_bytes: 838860
+        pass_timeout: 10s
+        recv_timeout: 1s
+    - headers:
+        append_func:
+          X-Forwarded-For: realip
+        create_func_weak:
+          X-Real-IP: realip
+          X-Source-Port-Y: realport
+        create:
+          Host: 'core-nmaps-gdpr.common.testing.maps.yandex.net'
+          X-Ya-Backend-Timeout-Ms: '1000'
+    - balancer2:
+        attempts: 3
+        active:
+          steady: true
+          delay: '10s'
+          request: 'GET /ping HTTP/1.1\nHost: core-nmaps-gdpr.common.testing.maps.yandex.net\r\n\r\n'
+        attempts_rate_limiter:
+          limit: 0.34
+        generated_proxy_backends:
+          proxy_options:
+            connect_timeout: 70ms
+            backend_timeout: 1000ms
+            keepalive_count: 100
+            fail_on_5xx: true
+          include_backends:
+            type: BY_ID
+            ids: [maps_core_nmaps_gdpr_testing_sas]
+        on_error:
+          errordocument:
+            status: 504
+            content: "Service unavailable"

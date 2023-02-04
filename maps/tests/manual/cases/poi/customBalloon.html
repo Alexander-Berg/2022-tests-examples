@@ -1,0 +1,113 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+ПОИ: кастомный балун ПОИ
+
+Description:
+Проверка кастомного балуна ПОИ.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components:
+poi
+
+Estimated time:
+60000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно со спаном Стамбула.
+
+Step:
+  Action:
+  Выполнить клик в метку ПОИ "Дворец Топканы"(справа на спане). 
+
+  Expectation:
+  Снизу появляется пустая белая панель, под лого Яндекса кнопка закрытия панели.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="https://yandex.st/jquery/1.8.0/jquery.min.js" type="text/javascript"></script>
+    <script src="../../helper.js"></script>
+    <script type=text/javascript>
+        Api('init');
+        function init(ymaps) {
+            //ymaps = ym;
+
+            var HintContentLayout = ymaps.templateLayoutFactory.createClass(
+                    '<div style="margin: 10px;">' +
+                    '<b>Название: $[name]</b><br />' +
+                    '<b>Рубрика: $[rubrics]</b><br />' +
+                    '</div>' +
+                    '<img src="http://solobom.ru/wall/8/milyy_kotik_prev.jpg">');
+            var map = myMap = new ymaps.Map('map', {
+                center: [41.015917, 28.962240],
+                zoom: 14,
+                controls: ['typeSelector', 'fullscreenControl']
+            }, {
+                yandexMapDisablePoiInteractivity: false,
+                layerPoiOpenBalloonOnClick: true,
+                layerPoiInteractivityModel: 'default#transparent',
+                layerPoiHintContentLayout: HintContentLayout
+            });
+            addGrid(myMap);
+            __log__("Test case: check customBalloon");
+
+            var counter = 0;
+            var HintContentLayout = ymaps.templateLayoutFactory.createClass(
+                    '<div style="margin: 10px;">' +
+                    '<b>Название: $[name]</b><br />' +
+                    '<b>Рубрика: $[rubrics]</b><br />' +
+                    '</div>' +
+                    '<img src="http://solobom.ru/wall/8/milyy_kotik_prev.jpg">');
+            var BalloonContentLayout = ymaps.templateLayoutFactory.createClass(
+                            '<div style="margin: 10px;">' +
+                            '<b>Название: $[name]</b><br />' +
+                            '<b>Рубрика: {% for item in rubrics %}<b>{{item}}</b>{% endfor %}</b><br />' +
+                            '<b>Хинт: $[hintContent]</b><br />' +
+                            '<b>Местоположение: $[geometry.coordinates]</b><br />' +
+                            '<b>Тип: $[geometry.type]</b><br />' +
+                            '<i id="count"></i> ' +
+                            '<button id="counter-button"> Like! </button>' +
+                            '</div>', {
+
+                        build: function () {
+                            var coordinates = this.getData().geometry.coordinates;
+                            __log__("Координаты балуна: " + coordinates);
+                            BalloonContentLayout.superclass.build.call(this);
+                            $('#counter-button').bind('click', this.onCounterClick);
+                            $('#count').html(counter);
+                        },
+
+                        clear: function () {
+                            $('#counter-button').unbind('click', this.onCounterClick);
+                            BalloonContentLayout.superclass.clear.call(this);
+                        },
+
+                        onCounterClick: function (e) {
+                            $('#count').html(++counter);
+                            if (counter == 5) {
+                                __log__('Done! All over again.');
+                                counter = 0;
+                                $('#count').html(counter);
+                            }
+                        }
+                    });
+
+            map.options.set('layerPoiBalloonContentLayout', BalloonContentLayout);
+
+        }
+    </script>
+</head>
+<body>
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

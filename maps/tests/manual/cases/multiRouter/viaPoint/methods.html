@@ -1,0 +1,101 @@
+<!DOCTYPE HTML>
+<!--(skip)(description)
+
+-->
+<!--(version)
+
+-->
+<!--(commands)
+
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            //TODO: написать тест
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 10,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            addGrid(map);
+            var log = new Log();
+
+            var events = ['geometrychange', 'mapchange', 'optionschange', 'overlaychange', 'parentchange',
+                'propertieschange'];
+            var domevents = ['click', 'contextmenu', 'dblclick', 'mousedown', 'mouseenter', 'mouseleave',
+                'mouseup', 'multitouchend', 'multitouchstart', 'wheel'];
+            var callback = function(e) {
+                log.info(e.get('type'))
+            };
+
+            var multiRoute = new ymaps.multiRouter.MultiRoute({
+                referencePoints: ['Москва, Ленинский проспект', 'Красная площадь', 'Воротниковский переулок 4', 'Кулаков переулок'],
+                params: {
+                    viaIndexes: [1, 2]
+                }
+            }, {
+                editorDrawOver: false,
+                wayPointDraggable: true,
+                viaPointDraggable: true,
+                boundsAutoApply: true,
+                zoomMargin: 30,
+                preset: "islands#multiRouterBig"
+            });
+
+            multiRoute.events.add(events, callback);
+            map.geoObjects.add(multiRoute);
+
+            var collection;
+
+            var clearButton = new ymaps.control.Button('clear');
+            var domButton = new ymaps.control.Button('dom');
+
+            setTimeout(function() {
+                collection = multiRoute.getViaPoints();
+                collection.each(function(object) {
+                    log.info('map: ' + object.getMap());
+                    console.log('map: ' + object.getMap());
+                    log.info('parent: ' + object.getParent());
+                    console.log('parent: ' + object.getParent());
+                    object.getOverlay().then(function(overlay) {
+                        log.info('overlay: ' + overlay + ', ' + (overlay == object.getOverlaySync()));
+                        console.log(overlay);
+                    })
+                });
+
+            }, 1000);
+
+            domButton.events
+                    .add('select', function() {collection.get(0).events.add(domevents, callback)})
+                    .add('deselect', function() {collection.get(0).events.remove(domevents, callback)});
+
+
+            clearButton.events.add('click', function() {
+                log.clear();
+            });
+
+            map.controls
+                    .add(domButton)
+                    .add(clearButton, {float: 'none', position: {right: 10, bottom: 35}});
+
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

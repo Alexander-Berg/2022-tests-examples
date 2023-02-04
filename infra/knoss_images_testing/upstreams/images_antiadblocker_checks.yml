@@ -1,0 +1,84 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - anoh
+      groups: []
+labels:
+  order: '00001000'
+---
+regexp_section:
+  matcher:
+    match_and:
+      - match_fsm:
+          match: 'POST.*'
+      - match_fsm:
+          header:
+            name: x-aab-http-check
+            value: '.*'
+  modules:
+    - shared:
+        uuid: images_antiadblocker_checks
+    - balancer2:
+        attempts: 1
+        rr: {weights_file: ./controls/images_antiadblock.txt}
+        simple_policy: {}
+        backends:
+          - weight: -1
+            name: images_antiadblock
+            modules:
+              - headers:
+                  create:
+                    X-AAB-PartnerToken: !f get_str_env_var("AWACS_AAB_TOKEN")
+                    Y-Service: images_antiadblock
+                    X-Yandex-Service-L7-Port: '81'
+                    X-Forwarded-Proto: 'https'
+                  #create_func:
+                  #  X-Yandex-Service-L7-Host: localip
+                  #create_func_weak:
+                  #  X-Forwarded-Proto: scheme
+              - report:
+                  uuid: images_antiadblock
+                  ranges: default
+              - balancer2:
+                  attempts: 2
+                  attempts_rate_limiter:
+                    limit: 0.2
+                  simple_policy: {}
+                  rr: {}
+                  generated_proxy_backends:
+                    proxy_options:
+                      backend_timeout: 30s
+                      connect_timeout: 60ms
+                    instances:
+                      - weight: 1
+                        host: cryprox-test.yandex.net
+                        port: 80
+                  on_error:
+                    regexp:
+                        sections:
+                            aab_http_check:
+                                matcher:
+                                    match_fsm:
+                                        header:
+                                            name: 'x-aab-http-check'
+                                            value: '.*'
+                                modules:
+                                    - errordocument:
+                                        status: 404
+                            crpd_request:
+                                matcher:
+                                    match_fsm:
+                                        uri: '/(images|gorsel)/_crpd/.*'
+                                modules:
+                                    - errordocument:
+                                        status: 404
+                            default:
+                                matcher: {}
+                                shared:
+                                  uuid: images_prod
+          - weight: 1
+            name: images_prod
+            modules:
+              - shared:
+                  uuid: images_prod

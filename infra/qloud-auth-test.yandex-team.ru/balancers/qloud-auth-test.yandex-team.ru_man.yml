@@ -1,0 +1,79 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - nanny-robot
+      groups: []
+config_transport:
+  nanny_static_file:
+    service_id: rtc_balancer_qloud-auth-test_yandex-team_ru_man
+    instance_tags:
+      ctype: prod
+      itype: balancer
+      prj: qloud-srv-root
+---
+instance_macro:
+  sd: {}
+  unistat: {} 
+  workers: !f get_workers()
+  maxconn: 5000
+  sections:
+    admin:
+      ips: [127.0.0.1, '::1']
+      ports:
+        - 80
+        - !f get_port_var('port')
+      modules:
+        - http: {}
+        - admin: {}
+    http_section:
+      ips: ['*']
+      ports:
+        - 80
+        - !f get_port_var('port')
+      extended_http_macro:
+        modules:
+          - regexp:
+              include_upstreams:
+                filter:
+                  id_prefix_in:
+                    - "awacs-balancer-health"
+                    - "slbping"
+                order:
+                  label:
+                    name: "order"
+    https_section:
+      ips: ['*']
+      ports:
+        - 443
+      extended_http_macro:
+        enable_ssl: true
+        disable_sslv3: true
+        ssl_sni_contexts:
+            qloud-auth-test.yandex-team.ru:
+                servername_regexp: default
+                ca: YandexInternalCA.pem
+                client:
+                  verify_peer: false
+                  verify_once: false
+                  verify_depth: 3
+                  fail_if_no_peer_cert: false
+                cert: !c qloud-auth-test.yandex-team.ru-1
+            qloud-idm-test.yandex-team.ru:
+                servername_regexp: 'qloud-idm-test\\.yandex-team\\.ru'
+                ca: YandexInternalCA.pem
+                client:
+                  verify_peer: true
+                  verify_once: true
+                  verify_depth: 3
+                  fail_if_no_peer_cert: false 
+                cert: !c qloud-idm-test.yandex-team.ru-1
+        modules:
+          - regexp:
+              include_upstreams:
+                filter:
+                  any: true
+                order:
+                  label:
+                    name: order
+

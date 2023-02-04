@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<!--
+Title:
+Объект-оверлей: круг
+
+Description:
+Проверка работы с объектом-оверлеем круг.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components:
+regress_v1.1
+
+Estimated time:
+120000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта загрузилась корректно.
+  На карте множество меток в виде сообщений, в центре спана полупрозрачный синий круг в центре с изображением человека.
+  Метки сообщений внутри круга - зеленого цвета, за пределами круга - синего.
+
+Step:
+  Action:
+  Выполнить клик в метку сообщения за пределами круга.
+
+  Expectation:
+  На месте метки открывается балун с содержимым "Метка".
+
+Step:
+  Action:
+  Выполнить клик в метку сообщения В пределах круга.
+
+  Expectation:
+  Предыдущий балун метки закрылся.
+  По клику на месте метки открывается балун с содержимым "Метка".
+
+Step:
+  Action:
+  Закрыть открытый балун метки кликом в крестик.
+  Навести курсор на изображение человека в центре круга, затем зажать ЛКМ и переместить круг на спане карты.
+
+  Expectation:
+  Балун метки закрылся.
+  При наведении на иконку человека появляется хинт "Перетащи меня".
+  При перемещении курсора круг пропадает, с курсором перемещается только иконка человека, после остановки перемещения и отпускания ЛКМ круг снова отображается. 
+  Метки внутри круга меняют пресет на зеленый, метки вне круга - синие.
+
+Step:
+  Action:
+  Навести курсор на изображение человека в центре круга, затем зажать ЛКМ и переместить круг на спане карты.
+
+  Expectation:
+  При наведении на иконку человека появляется хинт "Перетащи меня".
+  При перемещении курсора круг пропадает, с курсором перемещается только иконка человека, после остановки перемещения и отпускания ЛКМ круг снова отображается. 
+  Метки внутри круга меняют пресет на зеленый, метки вне круга - синие.
+-->
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title>Примеры. Круг.</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <script src="/1.1/index.xml" type="text/javascript"></script>
+    <script type="text/javascript">
+        // Создание обработчика для события window.onLoad
+        YMaps.jQuery(function () {
+            // Создание экземпляра карты и его привязка к созданному контейнеру
+            var map = new YMaps.Map(YMaps.jQuery("#YMapsID")[0]);
+
+            // Установка для карты ее центра и масштаба
+            map.setCenter(new YMaps.GeoPoint(37.64, 55.76), 11);
+
+            var myCircle = new Circle(new YMaps.GeoPoint(37.64, 55.76), 5,{
+                style : {
+                    polygonStyle : {
+                        outline : true,
+                        strokeWidth : 3,
+                        strokeColor : "0000ff55",
+                        fillColor : "0000ff22"
+                    }
+                },
+                interactive : YMaps.Interactivity.NONE
+            });
+            map.addOverlay(myCircle);
+
+            var user = new YMaps.Placemark(map.getCenter(), {
+                style : {
+                    iconStyle : {
+                        href : "../images/people.gif",
+                        size : new YMaps.Point(18, 40),
+                        offset : new YMaps.Point(-7, -25)
+                    }
+                },
+                draggable : true,
+                hasBalloon : false,
+                hasHint : true
+            });
+            user.name = "Перетащи меня";
+            map.addOverlay(user);
+
+            YMaps.Events.observe(user, user.Events.DragStart, function (placemark) {
+                map.removeOverlay(myCircle);
+            });
+
+            YMaps.Events.observe(user, user.Events.DragEnd, function (placemark) {
+                map.addOverlay(myCircle);
+                myCircle.setCenter(placemark.getGeoPoint());
+
+                setActivePoints(ml);
+            });
+
+            // Загрузка данных
+            var ml = new YMaps.YMapsML("https://maps.yandex.ru/export/usermaps/k1f56FwZOOeUGqK5I6A1vPAiePTnx1W-/", {viewAutoApply : false});
+            map.addOverlay(ml);
+            YMaps.Events.observe(ml, ml.Events.Load, function (ml) {
+                setActivePoints(ml);
+            });
+
+            function setActivePoints (ml) {
+                ml.get(0).forEach(function (obj) {
+                    if (myCircle.contains(obj.getGeoPoint())) {
+                        obj.setStyle("default#greenPoint");
+                    } else {
+                        obj.setStyle("default#lightBluePoint");
+                    }
+                });
+            }
+        })
+
+        /**
+         * @name Оверлей "Круг"
+         * @param {YMaps.GeoPoint) center Географические координаты центра
+         * @param {Number} radius Радиус круга (в км)
+         * @param {Object} options Опции оверлея
+         * @param {Number} options.accuracy Количество граней многоугольника
+         */
+        function Circle (center, radius, options) {
+            var _this = this;
+            options = YMaps.jQuery.extend({accuracy : 360}, options);
+
+            // Вызывает родительский конструктор
+            YMaps.Polygon.call(this, [], options);
+
+            // Вызывается при добавлении круга на карту
+            this.onAddToMap = function (map, container) {
+                YMaps.Polygon.prototype.onAddToMap.call(this, map, container);
+                this.updatePoints();
+            }
+
+            // Устанавливает новый центр и радиус
+            this.setCenter = function (newCenter, newRadius) {
+                if (this.getMap() && (!center.equals(newCenter) || radius != newRadius)) {
+                    center = newCenter;
+                    radius = newRadius || radius;
+                    this.updatePoints();
+                }
+            }
+
+            // Вычисляет точки окружности
+            this.updatePoints = function () {
+
+                var map = this.getMap(),
+
+                    // Откладываем геоточку от центра к северу на заданном расстоянии
+                    northPoint = new YMaps.GeoPoint(center.getLng(), center.getLat() + radius / 112.2),
+
+                    // Пиксельные координаты на последнем масштабе
+                    pixCenter = map.coordSystem.fromCoordPoint(center),
+
+                    // Радиус круга в пикселях
+                    pixRadius = pixCenter.getY() - map.coordSystem.fromCoordPoint(northPoint).getY(),
+
+                    // Вершины многоугол
+                    points = [],
+
+                    // Вспомогательные переменные
+                    twoPI = 2 * Math.PI,
+                    delta = twoPI / options.accuracy;
+
+                for (var alpha = 0; alpha < twoPI; alpha += delta) {
+                    points.push(
+                        map.coordSystem.toCoordPoint(
+                            new YMaps.Point(
+                                Math.cos(alpha) * pixRadius + pixCenter.getX(),
+                                Math.sin(alpha) * pixRadius + pixCenter.getY()
+                            )
+                        )
+                    )
+                }
+
+                this.setPoints(points);
+            }
+        }
+
+        YMaps.Utils.extend(Circle, YMaps.Polygon);
+
+    </script>
+
+    <style type="text/css">
+
+        html, body, .b-map {
+            width: 100%;
+            height: 100%;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+        }
+
+        .b-column {
+            float: left;
+        }
+    </style>
+
+</head>
+
+<body>
+    <div id="YMapsID" class="b-map b-column"></div>
+</body>
+
+</html>
+

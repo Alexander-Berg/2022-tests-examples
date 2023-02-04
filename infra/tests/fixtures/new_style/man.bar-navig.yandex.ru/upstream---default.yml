@@ -1,0 +1,80 @@
+---
+regexp_section:
+  matcher: {}
+  modules:
+    - pinger:
+        ping_request_data: 'GET /u?ver=0&show=0 HTTP/1.1\nHost: bar-navig.yandex.ru\r\n\r\n'
+        admin_request_uri: '/u?ver=0&show=0'
+        admin_ips: '0.0.0.0/0,2a02:6b8::/32'
+        admin_error_replier:
+          modules:
+            - errordocument:
+                status: 503
+    - hasher:
+        mode: barnavig
+    - headers:
+        create_func:
+          X-Start-Time: starttime
+        create_func_weak:
+          X-Forwarded-For-Y: realip
+    - icookie:
+        use_default_keys: true
+        domains: [".yandex.ru", ".yandex.by", ".yandex.com", ".yandex.com.tr", ".yandex.kz", ".yandex.ua"]
+        force_equal_to_yandexuid: true
+    - balancer2:
+        attempts: !f count_backends()
+        rr: {weights_file: ./controls/traffic_control.weights}
+        by_hash_policy:
+          unique_policy: {}
+        backends:
+          - weight: 1
+            name: bygeo_vla
+            modules:
+              - report: {ranges: default, uuid: requests_to_vla}
+              - balancer2:
+                  attempts: !f count_backends()
+                  by_hash_policy:
+                    timeout_policy:
+                      timeout: 1s
+                      unique_policy: {}
+                  rr: {}
+                  generated_proxy_backends:
+                    proxy_options: {}
+                    include_backends:
+                      type: BY_ID
+                      ids: [barnavig_vla]
+          - weight: 1
+            name: bygeo_sas
+            modules:
+              - report: {ranges: default, uuid: requests_to_sas}
+              - balancer2:
+                  attempts: !f count_backends()
+                  by_hash_policy:
+                    timeout_policy:
+                      timeout: 1s
+                      unique_policy: {}
+                  rr: {}
+                  generated_proxy_backends:
+                    proxy_options: {}
+                    include_backends:
+                      type: BY_ID
+                      ids: [barnavig_sas]
+          - weight: 1
+            name: bygeo_man
+            modules:
+              - report: {ranges: default, uuid: requests_to_man}
+              - balancer2:
+                  attempts: !f count_backends()
+                  by_hash_policy:
+                    timeout_policy:
+                      timeout: 1s
+                      unique_policy: {}
+                  rr: {}
+                  generated_proxy_backends:
+                    proxy_options: {}
+                    include_backends:
+                      type: BY_ID
+                      ids: [barnavig_man]
+        on_error:
+          modules:
+          - errordocument: {status: '502'}

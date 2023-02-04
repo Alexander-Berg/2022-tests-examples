@@ -1,0 +1,160 @@
+task_id: chatbot__metric_eval_ilariia
+mail_to: ilariia@yandex-team.ru
+owner: ilariia
+
+engine: dssm
+
+dssm:
+  data:
+    work_folder: //home/bs/users/jruziev/ml_engine/chatbot
+
+    tables:
+      raw:
+        raw_pool_train: //home/bs/dssm/benchmark/chatbot/train
+        raw_pool_test: //home/bs/dssm/benchmark/chatbot/test
+
+    pools:
+      pool_train:
+        revision: 4370699
+        source_table: raw_pool_train
+        keys:
+          - context_2
+          - context_1
+          - context_0
+        weight_power: 0
+        shuffle_keys:
+          - context_2
+          - context_1
+          - context_0
+        query_keys:
+          - context_2
+          - context_1
+          - context_0
+        doc_keys:
+          - reply
+        compute_soft_queries: false
+        compute_soft_docs: false
+        compute_unique_queries: false
+        compute_unique_docs: false
+
+      pool_test:
+        revision: 4370699
+        source_table: raw_pool_test
+        keys:
+          - context_2
+          - context_1
+          - context_0
+        weight_power: 0
+        shuffle_keys:
+          - context_2
+          - context_1
+          - context_0
+        query_keys:
+          - context_2
+          - context_1
+          - context_0
+        doc_keys:
+          - reply
+        compute_soft_queries: false
+        compute_soft_docs: false
+        compute_unique_queries: false
+        compute_unique_docs: false
+
+    dictionaries:
+      query_dict:
+        revision: 4239057
+        pool: pool_train
+        fields:
+          - context_2
+          - context_1
+          - context_0
+        min_count:
+          ll3: 50
+          lw: 50
+
+      doc_dict:
+        revision: 4239057
+        pool: pool_train
+        fields:
+          - reply
+        min_count:
+          ll3: 50
+          lw: 50
+
+
+    projector_parameters:
+      Bow:
+        query_proj_param:
+          dictionary: query_dict
+          size: 50
+
+        doc_proj_param:
+          dictionary: doc_dict
+          size: 50
+
+
+  train:
+    fps_batch500_lr0.00075:
+      train_pool: pool_train
+      validation_pool: pool_test
+      cpu_cores: 30
+      pool_passes: 10
+      query:
+        context_2:
+          projectors:
+            - Bow:
+                projector_params: query_proj_param
+                tokens: [lw]
+            - Bow:
+                projector_params: query_proj_param
+                tokens: [ll3]
+        context_1:
+          projectors:
+            - Bow:
+                projector_params: query_proj_param
+                tokens: [lw]
+            - Bow:
+                projector_params: query_proj_param
+                tokens: [ll3]
+        context_0:
+          projectors:
+            - Bow:
+                projector_params: query_proj_param
+                tokens: [lw]
+            - Bow:
+                projector_params: query_proj_param
+                tokens: [ll3]
+
+      document:
+        reply:
+          projectors:
+            - Bow:
+                projector_params: doc_proj_param
+                tokens: [lw]
+            - Bow:
+                projector_params: doc_proj_param
+                tokens: [ll3]
+
+      additional_params: |
+        --valfreq 50000 --batch_size 500 \
+        --threads 30 --joint_mode cos -u 'adam(lr=0.00075)' --output_activations linear \
+        --losses fps \
+        --layers 'Layers(sizes=100:100:100:100:100:100:100,good_init=1,cascade=1,concat_outputs=1,concat_outputs_step=2,norm_layers=1)'
+
+    fps_batch5000_lr0.00025:
+      inherit_from: fps_batch500_lr0.00075
+      inherit_options: [train_pool, validation_pool, query, document, cpu_cores]
+      previous: fps_batch500_lr0.00075
+      pool_passes: 4
+      max_ram: 200000
+      target_field: FakeTarget
+      additional_params: |
+        --valfreq 50000 --batch_size 5000 \
+        --threads 30 --joint_mode cos -u 'adam(lr=0.00025)' --output_activations linear \
+        --losses fps \
+        --layers 'Layers(sizes=100:100:100:100:100:100:100,good_init=1,cascade=1,concat_outputs=1,concat_outputs_step=2,norm_layers=1)'
+
+  evaluate:
+    - model: fps_batch5000_lr0.00025
+      pool_fraction: 0.1
+      revision: 4370699

@@ -1,0 +1,147 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Менеджер объектов: открытие и закрытие хинта объектов
+
+Description:
+Проверка открытия и закрытия хинта объектов. 
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+objectManager
+
+Estimated time:
+90000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась корректно, со спаном Москвы.
+  На спане разноцветные метки коллекции, линия, фигуры прямоугольников.
+  Сверху слева кнопки "close", "isOpen", справа внизу кнопка "addRem...".
+  На спане карты спустя 2 секунды открывается хинт "objectManagerRectangle", под контейнером появляется строка: "open, target: [object Object]".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "isOpen".
+
+  Expectation:
+  Под контейнером появляется строка: "isOpen: true".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "close", затем клик в "isOpen".
+
+  Expectation:
+  По клику в "close" хинт закрывается, под контейнером появляется строка: "close, target: [object Object]".  
+  По клику в "isOpen" под контейнером появляется строка: "isOpen: false". 
+
+Step:
+  Action:
+  Выполнить клик в кнопку "addRem...", затем клик в "isOpen".
+
+  Expectation:
+  По клику в "addRem..." все объекты пропадают со спана карты, под контейнером появляется строка: "addRemove OM and check hint".  
+  По клику в "isOpen" под контейнером появляется строка: "isOpen: false".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "addRem...", затем клик в "close".
+
+  Expectation:
+  По клику в "addRem..." все объекты появляются на спане карты.  
+  По клику в "isOpen" под контейнером появляется строка: "isOpen: false".
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var center = [55.8, 37.6];
+            var map = myMap = new ymaps.Map('map', {
+                center: center,
+                zoom: 10,
+                type: 'yandex#map',
+                controls: ['fullscreenControl', 'typeSelector']
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+
+            var loadingObjectManager = new ymaps.LoadingObjectManager('../objectData.js?%l', {
+                paddingTemplate: 'managerResponse',
+                splitRequests: true,
+                clusterize: false,
+                clusterHasHint: true,
+                clusterOpenEmptyHint: true
+            });
+            map.geoObjects.add(loadingObjectManager);
+
+            setTimeout(function () {
+                loadingObjectManager.objects.hint.open(53, map.getGlobalPixelCenter());
+            }, 2000);
+
+            var isOpenButton = new ymaps.control.Button({data: {content: 'isOpen'}, options: {selectOnClick: false}});
+            var closeButton = new ymaps.control.Button('close');
+            var clearButton = new ymaps.control.Button({data: {content: 'clear log'}, options: {selectOnClick: false}});
+            var addRemoveButton = new ymaps.control.Button({data: {content: 'addRemove'}, options: {selectOnClick: true, position: {right: 10, bottom: 60}}});
+
+            addRemoveButton.events
+                    .add('select', function () {
+                        __log__('addRemove OM and check hint');
+                        map.geoObjects.remove(loadingObjectManager);
+                    })
+                    .add('deselect', function () {
+                        map.geoObjects.add(loadingObjectManager);
+                    });
+
+            isOpenButton.events.add('click', function () {
+                __log__('isOpen: ' + loadingObjectManager.objects.hint.isOpen(53))
+            });
+
+            closeButton.events
+                    .add('select', function () {
+                        loadingObjectManager.objects.hint.close(53);
+                    })
+                    .add('deselect', function () {
+                        loadingObjectManager.objects.hint.open(53);
+                    });
+
+            clearButton.events.add('click', function () {
+                log.clear();
+            });
+
+            map.controls
+                    .add(isOpenButton)
+                    .add(closeButton)
+                    .add(clearButton, {float: 'none', position: {bottom: 25, right: 10}})
+                    .add(addRemoveButton);
+            loadingObjectManager.objects.hint.events.add(['open', 'close'], function (e) {
+                __log__(e.get('type') + ", target: " + e.get('target'));
+                console.log(e.get('target'))
+            });
+
+            loadingObjectManager.clusters.hint.events.add(['open', 'close'], function (e) {
+                __log__(e.get('type') + ", target: " + e.get('target'));
+                console.log(e.get('target'))
+            });
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

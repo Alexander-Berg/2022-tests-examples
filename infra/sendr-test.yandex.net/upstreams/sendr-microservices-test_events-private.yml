@@ -1,0 +1,38 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - barinovalexey
+      groups: []
+labels:
+  order: '10000000'
+config_mode: easy2
+---
+l7_upstream_macro:
+  version: 0.2.3
+  id: sendr-microservices-test_events-private
+  matcher:
+    path_re: (/events/manage/.*)?
+  rewrite:
+  - pattern:
+      literal: true
+      re: /events/manage/
+    replacement: /manage/
+    target: PATH
+  flat_scheme:
+    balancer:
+      attempts: 1
+      fast_attempts: 2
+      do_not_retry_http_responses: true
+      retry_non_idempotent: false
+      connect_timeout: 100ms
+      backend_timeout: 11s
+      max_reattempts_share: 0.35
+      max_pessimized_endpoints_share: 0.35
+    backend_ids:
+      - sendr-microservices-test.events-private_iva
+      - sendr-microservices-test.events-private_sas
+    on_error:
+      static:
+        status: 504
+        content: "Service unavailable"

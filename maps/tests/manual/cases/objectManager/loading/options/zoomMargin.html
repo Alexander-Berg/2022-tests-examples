@@ -1,0 +1,148 @@
+<!DOCTYPE HTML>
+<!--(skip)(description)
+
+-->
+<!--(version)
+
+-->
+<!--(commands)
+
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var coords = [],
+                    center = [56, 34],
+                    features = [],
+                    sourceObjectsQuery;
+            for (var i = 0; i < 10; i++) {
+                var x = center[0] + 0.1 * Math.random() * Math.random() * Math.random() * Math.random() * (Math.random() < 0.5 ? -1 : 1),
+                        y = center[1] + 0.1 * Math.random() * Math.random() * Math.random() * Math.random() * (Math.random() < 0.5 ? -1 : 1);
+                coords[i] = [x, y];
+                features.push({
+                    type: 'Feature',
+                    geometry: {
+                        type: 'Point',
+                        coordinates: coords[i]
+                    }
+                });
+            }
+
+            window.managerResponse = function (x, y, z) {
+                var globalPixelBounds = [
+                    [x * 256, y * 256],
+                    [(x + 1) * 256, (y + 1) * 256]
+                ];
+                var bounds = ymaps.util.bounds.fromGlobalPixelBounds(globalPixelBounds, z, map.options.get('projection'));
+                var rectangle = new ymaps.Rectangle(bounds);
+                rectangle.options.set('coordRendering', 'boundsPath');
+                map.geoObjects.add(rectangle);
+                var it = sourceObjectsQuery.searchInside(rectangle).getIterator();
+                map.geoObjects.remove(rectangle);
+                var answerFeatures = [];
+                var obj;
+                while ((obj = it.getNext()) != it.STOP_ITERATION) {
+                    answerFeatures.push({
+                        id: sourceObjectsQuery.indexOf(obj),
+                        type: 'Feature',
+                        geometry: {
+                            type: 'Point',
+                            coordinates: obj.geometry.getCoordinates()
+                        }
+                    });
+                }
+                window['managerResponse_x_' + x + '_y_' + y + '_z_' + z]({
+                    data: {
+                        type: 'FeatureCollection',
+                        features: answerFeatures
+                    }
+                })
+            };
+
+            var map = myMap = new ymaps.Map('map', {
+                center: center,
+                zoom: 8,
+                type: 'yandex#map',
+                controls: ['fullscreenControl']
+            });
+            bounds = map.getBounds();
+            // TODO: говорят не работает зумклик по кластерам
+            var loadingObjectManager = new ymaps.LoadingObjectManager('https://jsapi.sergeiiak.alexa.maps.dev.yandex.ru/api/2.1/objectManager/loading/response.xml?%c', {
+                paddingTemplate: 'managerResponse_%c',
+                splitRequests: true,
+                clusterize: true,
+                gridSize: 32,
+                minClusterSize: 10
+            });
+            var button = new ym.control.Button("clear");
+            button.events.add("click", function (e) {
+                map.setBounds(bounds);
+            });
+            map.controls.add(button);
+
+            var button1 = new ym.control.Button("100 / 0");
+            button1.events
+                    .add("select", function (e) {
+                        loadingObjectManager.options.set("zoomMargin", 100)
+                    })
+                    .add("deselect", function (e) {
+                        loadingObjectManager.options.set("zoomMargin", 0)
+                    });
+            map.controls.add(button1);
+
+            var button2 = new ym.control.Button("[350, 0] / [0, 150]");
+            button2.events
+                    .add("select", function (e) {
+                        loadingObjectManager.options.set("zoomMargin", [150, 0])
+                    })
+                    .add("deselect", function (e) {
+                        loadingObjectManager.options.set("zoomMargin", [0, 150])
+                    });
+            map.controls.add(button2);
+
+            var button3 = new ym.control.Button("[250, 100, 0, 100] / [100, 0, 100, 250]");
+            button3.events
+                    .add("select", function (e) {
+                        loadingObjectManager.options.set("zoomMargin", [250, 100, 0, 100])
+                    })
+                    .add("deselect", function (e) {
+                        loadingObjectManager.options.set("zoomMargin", [100, 0, 100, 250])
+                    });
+            map.controls.add(button3);
+
+            var button4 = new ym.control.Button("[350, 350, 0, 0] / [0, 0, 350, 350]");
+            button4.events
+                    .add("select", function (e) {
+                        loadingObjectManager.options.set("zoomMargin", [250, 250, 0, 0])
+                    })
+                    .add("deselect", function (e) {
+                        loadingObjectManager.options.set("zoomMargin", [0, 0, 250, 250])
+                    });
+            map.controls.add(button4);
+
+            sourceObjectsQuery = ymaps.geoQuery({
+                type: 'FeatureCollection',
+                features: features
+            }).setOptions('visible', false).addToMap(map);
+            map.geoObjects.add(loadingObjectManager);
+
+
+            addGrid(myMap);
+            var log = new Log();
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

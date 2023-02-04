@@ -1,0 +1,129 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Карта: функция доступного диапазона масштабирования в указанной точке
+
+Description:
+Проверка функции доступного диапазона масштабирования в указанной точке.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+map
+
+Estimated time:
+120000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+  
+  Expectation:
+  Карта отобразилась корректно, со спаном Москвы.
+  В контейнере контрол зума, контрол слоев, сверху слева кнопка "zoomRa...".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "zoomRa...". 
+  
+  Expectation:
+  Под контейнером появляются 7 строк диапазонов зума. В строках: "getZoomRange (satellite)"; "getZoomRange (hybrid):"; "getZoomRange (publicHybrid)" значение диапазона 0,19, в остальных строках 0,21.
+
+Step:
+  Action:
+  Выполнить 11 кликов в контрол зума "+". 
+  
+  Expectation:
+  Происходит корректный призум спана карты, карта не пропадает, не мигает цветами.
+  Контрол зума "+" становится неактивным.
+
+Step:
+  Action:
+  Выполнить два клика в контрол зума "-". 
+  
+  Expectation:
+  Происходит корректный отзум спана карты, карта не пропадает, не мигает цветами.
+  Контрол "+" становится активным.
+
+Step:
+  Action:
+  Выполнить клик контрол слоев, выбрать и выполнить клик в "спутник". 
+  
+  Expectation:
+  Происходит смена отображения карты на спутниковый снимок, при этом ползунок на линейке зума перемещается вверх, контрол зума "+" становится неактивным.
+
+Step:
+  Action:
+  Выполнить клик контрол слоев, выбрать и выполнить клик в "гибрид". 
+  
+  Expectation:
+  Происходит смена отображения карты на спутниковый снимок с подписями домов и линиями улиц, ползунок на месте, контрол зума "+" неактивен.
+
+Step:
+  Action:
+  Выполнить клик контрол слоев, выбрать и выполнить клик в "схема". 
+  
+  Expectation:
+  Происходит смена отображения карты на схему, при этом ползунок на линейке зума перемещается вниз, контрол зума "+" становится активным.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 10,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['typeSelector', 'zoomControl']
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+
+            map.zoomRange.events.add('change', function(e){
+                log.info('zoomRange ' + e.get('type'));
+            });
+
+            var button = new ymaps.control.Button('zoomRange');
+            button.events.add('click', function() {
+                var range = map.zoomRange.get().then(function(coords) {
+                    log.info('get: ' + coords)
+                });
+                log.info('getCurrent: ' + map.zoomRange.getCurrent());
+                ymaps.getZoomRange('yandex#map', map.getCenter()).then(function(res) {
+                    log.info('getZoomRange (map): ' + res)
+                });
+                ymaps.getZoomRange('yandex#satellite', map.getCenter()).then(function(res) {
+                    log.info('getZoomRange (satellite): ' + res)
+                });
+                ymaps.getZoomRange('yandex#hybrid', map.getCenter()).then(function(res) {
+                    log.info('getZoomRange (hybrid): ' + res)
+                });
+                ymaps.getZoomRange('yandex#publicMap', map.getCenter()).then(function(res) {
+                    log.info('getZoomRange (public): ' + res)
+                });
+                ymaps.getZoomRange('yandex#publicMapHybrid', map.getCenter()).then(function(res) {
+                    log.info('getZoomRange (publicHybrid): ' + res)
+                })
+            });
+
+            map.controls.add(button)
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

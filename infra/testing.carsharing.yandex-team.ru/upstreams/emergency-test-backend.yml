@@ -1,0 +1,53 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - egorkutz
+      groups:
+      - yandex_content_8006_dep73834_dep18801
+labels:
+  order: '10000000'
+config_mode: easy2
+---
+l7_upstream_macro:
+  version: 0.0.1
+  id: emergency-test-backend
+  matcher:
+    and_:
+      - host_re: testing.carsharing.in.yandex-team.ru
+      - path_re: /emergency/(.*)
+      - not_: 
+          url_re: '.*\.(css|js|gif|jpe?g|png|svg|eot|ttf|woff?2|ico)'
+  rewrite:
+    - target: 'PATH'
+      pattern:
+        re: '/emergency(/)?(.*)?'
+      replacement: '/%2'
+  monitoring:
+    uuid: emergency-test-backend
+  by_dc_scheme:
+    dc_balancer:
+      weights_section_id: bygeo
+      method: LOCAL_THEN_BY_DC_WEIGHT
+      attempts: 2
+    balancer:
+      attempts: 2
+      max_reattempts_share: 0.15
+      max_pessimized_endpoints_share: 0.2
+      fast_attempts: 2
+      do_not_retry_http_responses: true
+      retry_non_idempotent: false
+      backend_timeout: 120s
+      connect_timeout: 100ms
+      keepalive_count: 10000
+    dcs:
+      - name: sas
+        backend_ids:
+          - sas-drive-admin-emergency-test
+      - name: vla
+        backend_ids:
+          - vla-drive-admin-emergency-test
+    on_error:
+      static:
+        status: 504
+        content: 'Service emergency-test-backend is unavailable'

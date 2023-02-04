@@ -1,0 +1,150 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Геообъект: метод балуна объекта
+
+Description:
+Проверка работы метода балуна геообъектов.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+geoobject
+
+Estimated time:
+90000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан Московской области.
+  На спане карты два ряда объектов: метка, линия, многоугольник, прямоугольник, круг. Верхний ряд синего цвета, нижний - зеленого.
+
+Step:
+  Action:
+  Навести курсор на синюю метку коллекции в верхнем ряду.
+   
+  Expectation:
+  При наведении курсора на метку, метка пропадает, на месте метки открывается балун с содержимым: "balloon content" и кнопкой закрытия.
+
+Step:
+  Action:
+  Вывести курсор на пустое место на спане карты.
+     
+  Expectation:
+  Балун закрывается, на спане карты появляется метка.
+
+Step:
+  Action:
+  Навести курсор на зеленый круг в нижнем ряду.
+   
+  Expectation:
+  При наведении на объект курсор меняется на палец, на круге открывается балун с содержимым: "balloon content" и кнопкой закрытия.
+
+Step:
+  Action:
+  Выполнить клик в кнопку закрытия балуна.
+   
+  Expectation:
+  Балун закрывается, спан карты без изменений. 
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script src="../geoCS.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym; // hack
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.73259667357658, 37.70153663432529],
+                zoom: 9,
+                behaviors: ['scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            geoCSSource(ym, myMap, this);
+
+            addGrid(myMap);
+            var log = new Log();
+
+            log.info('Balloon opens on hover.');
+
+            var collection = new ymaps.GeoObjectCollection();
+            collection
+                    .add(geoObjectPlacemark)
+                    .add(geoObjectPolyline)
+                    .add(geoObjectPolygon)
+                    .add(geoObjectRectangle)
+                    .add(geoObjectCircle)
+                    .add(placemark)
+                    .add(polyline)
+                    .add(polygon)
+                    .add(rectangle)
+                    .add(circle);
+
+            myMap.geoObjects.add(collection);
+
+            collection.each(function (object) {
+                addProperties(object);
+                testBalloonMethods(object);
+            });
+
+            function testBalloonMethods(obj) {
+                var id = obj.options.get('id');
+
+                obj.events
+                        .add('mouseenter', function () {
+                            console.log(id, 'begin OPEN  ...');
+                            obj.balloon.open().then(function () {
+                                console.log(id, 'end OPEN. isOpen: ', obj.balloon.isOpen());
+                            });
+                        })
+                        .add('balloonopen', function () {
+                            console.log(id, '@balloonopen');
+
+                            function onBalloonContextMenu() {
+                                console.log(id, 'begin CLOSE ...');
+                                obj.balloon.close().then(function () {
+                                    console.log(id, 'end CLOSE. isOpen: ', obj.balloon.isOpen());
+                                })
+                            }
+
+                            obj.balloon.getOverlay().then(function (overlay) {
+                                overlay.events.add('mouseleave', onBalloonContextMenu, obj);
+
+                                // Удаляем обработчик при закрытии балуна.
+                                obj.balloon.events.once('close', function () {
+                                    console.log(id, 'balloon@close, REMOVE listener');
+                                    overlay.events.remove('mouseleave', onBalloonContextMenu, obj);
+                                })
+                            });
+                        })
+                        .add('balloonclose', function () {
+                            console.log(id, '@balloonclose');
+                        });
+            }
+
+            function addProperties(obj) {
+                obj.properties.set('iconContent', 'A');
+                obj.properties.set('balloonContent', 'balloon content');
+                obj.options.set('openBalloonOnClick', false)
+            }
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>

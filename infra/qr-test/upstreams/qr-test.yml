@@ -1,0 +1,71 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - gakuznetsov
+      groups: []
+labels:
+  order: '10000000'
+---
+regexp_section:
+  matcher:
+    match_or:
+      - match_fsm:
+          host: 'qr-test\\.yandex\\.ru'
+  modules:
+    - rewrite:
+        actions:
+          - regexp: '.*'
+            header_name: Host
+            rewrite: 'qr-code-test.s3.mds.yandex.net'
+          - regexp: '^/?$'
+            split: path
+            rewrite: '/index.html'
+    - response_headers:
+        create:
+          x-frame-options: DENY
+          x-content-type-options: nosniff
+          Cache-Control: no-cache
+          Content-Security-Policy: >- 
+            default-src 'none'; connect-src 'self' blob: yastatic.net *.yandex.ru yandex.ru yandex.com; img-src 'self' *.yandex.net *.yandex.ru yandex.ru yandex.com data:; media-src yastatic.net *.yandex.net *.yandex.ru yandex.ru yandex.com blob: data:; script-src 'unsafe-inline' 'unsafe-eval' yastatic.net *.yandex.ru yandex.ru yandex.com; style-src 'self' 'unsafe-inline' 'unsafe-eval' yastatic.net; font-src 'self' yastatic.net data:;
+        delete: 'Access-Control-Allow-Origin'
+    - balancer2:
+        rr: {}
+        attempts: 2
+        attempts_rate_limiter:
+          limit: 0.1
+          coeff: 0.99
+        generated_proxy_backends:
+          proxy_options:
+            connect_timeout: 100ms
+            backend_timeout: 10s
+          instances:
+            - host: qr-code-test.s3.mds.yandex.net
+              port: 80
+              weight: 1
+        on_status_code:
+          403:
+            modules:
+              - rewrite:
+                  actions:
+                    - regexp: '/.*'
+                      rewrite: '/404.html'
+                    - regexp: '.*'
+                      header_name: 'Host'
+                      rewrite: 'qr-code-test.s3.mds.yandex.net'
+              - balancer2:
+                  attempts: 1
+                  rr: {}
+                  generated_proxy_backends:
+                    proxy_options:
+                        backend_timeout: 500ms
+                        connect_timeout: '50ms'
+                        keepalive_count: 1
+                        fail_on_5xx: true
+                    instances:
+                        - weight: 1
+                          host: 'qr-code-test.s3.mds.yandex.net'
+                          port: 80
+        on_error:
+          modules:
+            - errordocument: {content: Gateway Timeout, status: 504}

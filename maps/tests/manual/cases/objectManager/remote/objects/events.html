@@ -1,0 +1,165 @@
+<!DOCTYPE HTML>
+<!--(skip)(description)
+
+-->
+<!--(version)
+
+-->
+<!--(commands)
+
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var id = 10001;
+
+            var coords = [],
+                    center = [56, 34],
+                    features = [],
+                    sourceObjectsQuery;
+
+            var map = myMap = new ymaps.Map('map', {
+                center: center,
+                zoom: 4,
+                type: 'yandex#map',
+                controls: ['fullscreenControl'],
+                minZoom: 4
+            });
+
+            __log__("Запусти: remoteNonPointObject");
+            // создаем экземпляр класса RemoteObjectManager
+            var remoteObjectManager = new ymaps.RemoteObjectManager('https://alexa.maps.dev.yandex.ru:4781/?bbox=%b', {
+                splitRequests: true,
+                paddingTemplate: 'managerResponse_bbox_%b',
+                clusterDisableClickZoom: false,
+                geoObjectBalloonContentLayout: ymaps.templateLayoutFactory.createClass('{{properties.balloonContent}}')
+            });
+            map.geoObjects.add(remoteObjectManager);
+
+            addGrid(myMap);
+            var log = new Log();
+
+            var events = ['add', 'objectoptionschange', 'optionschange', 'remove'];
+            var domevents = ['click', 'contextmenu', 'dblclick', 'mousedown', 'mouseenter', 'mouseleave', 'mouseup', 'multitouchend',
+                'multitouchstart', 'wheel'];
+            var moveevents = ['mousemove', 'multitouchmove'];
+            var callback1 = function (e) {
+                __log__(e.get('type'))
+            };
+            var callback2 = function (e) {
+                if (e.get('type') == 'add' || e.get('type') == 'remove') {
+                    __log__(e.get('type') + ', id: ' + e.get('objectId'));
+                    console.log(e.get('child'))
+                } else if (e.get('type') == 'clusteroptionschange') {
+                    __log__(e.get('type') + ', id: ' + e.get('objectId'))
+                } else {
+                    __log__(e.get('type'));
+                }
+            };
+
+            remoteObjectManager.objects.events.add(events, callback2);
+            remoteObjectManager.objects.events.add(domevents, callback1);
+
+            var listenerButton = new ymaps.control.Button({data: {content: 'ignore'}, options: {selectOnClick: true}});
+            var optionButton = new ymaps.control.Button({data: {content: 'option'}, options: {selectOnClick: true}});
+            var removeButton = new ymaps.control.Button({data: {content: 'remove'}, options: {selectOnClick: true}});
+            var removeObjectsButton = new ymaps.control.Button({data: {content: 'removeObj'}, options: {selectOnClick: true}});
+            var freezeButton = new ymaps.control.Button({data: {content: 'freeze'}, options: {selectOnClick: true}});
+            var domButton = new ymaps.control.Button({data: {content: 'DOM'}, options: {selectOnClick: true}});
+            var moveButton = new ymaps.control.Button({data: {content: 'move'}, options: {selectOnClick: true}});
+            var clearButton = new ymaps.control.Button({data: {content: 'clear log'}, options: {selectOnClick: false}});
+
+            listenerButton.events
+                    .add('select', function () {
+                        log.info('Events will be ignored.');
+                        remoteObjectManager.objects.events.remove(events, callback2);
+                    })
+                    .add('deselect', function () {
+                        log.info('Waiting for events...');
+                        remoteObjectManager.objects.events.add(events, callback2);
+                    });
+
+            optionButton.events
+                    .add('select', function () {
+                        remoteObjectManager.objects.each(function (obj) {
+                            remoteObjectManager.objects.setObjectOptions(obj.id, {preset: 'islands#redIcon', fillColor: "#FFFFFF"})
+                        })
+                    })
+                    .add('deselect', function () {
+                        remoteObjectManager.objects.each(function (obj) {
+                            remoteObjectManager.objects.setObjectOptions(obj.id, {preset: 'islands#greenIcon', fillColor: "#000000"})
+                        })
+                    });
+
+            removeButton.events
+                    .add('select', function () {
+                        map.geoObjects.remove(remoteObjectManager);
+                    })
+                    .add('deselect', function () {
+                        map.geoObjects.add(remoteObjectManager);
+                    });
+
+            removeObjectsButton.events
+                    .add('click', function () {
+                        remoteObjectManager.objects.removeAll();
+                    });
+
+            freezeButton.events
+                    .add('select', function () {
+                        remoteObjectManager.objects.options.freeze();
+                    })
+                    .add('deselect', function () {
+                        remoteObjectManager.objects.options.unfreeze();
+                    });
+
+            domButton.events
+                    .add('deselect', function () {
+                        log.info('Waiting for DOM events...');
+                        remoteObjectManager.objects.events.add(domevents, callback1);
+                    })
+                    .add('select', function () {
+                        log.info('DOM events will be ignored.');
+                        remoteObjectManager.objects.events.remove(domevents, callback1);
+                    });
+
+            moveButton.events
+                    .add('select', function () {
+                        log.info('Waiting for move events...');
+                        remoteObjectManager.objects.events.add(moveevents, callback1);
+                    })
+                    .add('deselect', function () {
+                        log.info('Move events will be ignored.');
+                        remoteObjectManager.objects.events.remove(moveevents, callback1);
+                    });
+
+            clearButton.events.add('click', function () {
+                log.clear();
+            });
+
+            map.controls
+                    .add(listenerButton, {float: 'left'})
+                    .add(optionButton, {float: 'left'})
+                    .add(removeButton, {float: 'left'})
+                    .add(removeObjectsButton, {float: 'left'})
+                    .add(freezeButton, {float: 'none', position: {bottom: 55, right: 10}})
+                    .add(clearButton, {float: 'none', position: {bottom: 25, right: 10}})
+                    .add(moveButton, {float: 'left'})
+                    .add(domButton, {float: 'left'});
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

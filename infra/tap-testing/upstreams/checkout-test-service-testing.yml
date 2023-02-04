@@ -1,0 +1,55 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - robot-tap
+      groups: []
+labels:
+  order: '1001'
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      host: checkout-test-service\\.tap-tst\\.yandex\\.ru
+  modules:
+    - report:
+        uuid: 'services'
+        ranges: 'default'
+    - report:
+        uuid: 'checkout-test-service-total'
+        ranges: 'default'
+    - report:
+        uuid: 'checkout-test-service-index'
+        ranges: 'default'
+    - rewrite:
+        actions:
+          - regexp: '.*'
+            rewrite: '/checkout-test-service/master/f2e84f9a063d08e4db8397d5f874332e97ba4392/index.html'
+          - regexp: '.*'
+            header_name: 'Host'
+            rewrite: 'tap-test.s3.mds.yandex.net'
+    - response_headers:
+        create:
+          Cache-Control: public, max-age=900
+          X-Frame-Options: DENY
+          X-Content-Type-Options: nosniff
+          X-XSS-Protection: 1; mode=block
+          Content-Security-Policy: "script-src 'self' 'unsafe-eval' yastatic.net tap-test.s3.mds.yandex.net 'sha256-ZKz/2VOc4SuBkZ5oppo06YVEp14lCFYRJLx10qqZuh4='; style-src 'self' yastatic.net tap-test.s3.mds.yandex.net; font-src 'self' yastatic.net tap-test.s3.mds.yandex.net; img-src 'self' data: yastatic.net tap-test.s3.mds.yandex.net; media-src 'self' yastatic.net tap-test.s3.mds.yandex.net; connect-src wss://checkout-test-service.tap-tst.yandex.ru https://cors-anywhere.herokuapp.com; frame-src http://localhost:* *.yandex.ru; frame-ancestors http://localhost:* *.yandex.ru; report-uri https://csp.yandex.net/csp?from=turboapp-checkout-test-service-pr-{{PR_NUMBER}}&project=turboapp-checkout-test-service"
+    - balancer2:
+        disable_attempts_rate_limiter: true
+        attempts: 5
+        simple_policy: {}
+        rr: {}
+        generated_proxy_backends:
+          proxy_options:
+            backend_timeout: 500ms
+            connect_timeout: 50ms
+            fail_on_5xx: true
+          instances:
+            - weight: 1
+              host: 'tap-test.s3.mds.yandex.net'
+              port: 80
+        on_error:
+          errordocument:
+            status: 503
+            content: 'Service unavailable'

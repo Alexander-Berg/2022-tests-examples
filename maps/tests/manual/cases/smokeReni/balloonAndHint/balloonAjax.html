@@ -1,0 +1,155 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Балун Ajax
+
+Description:
+Получение данных балуна через AJAX-запрос
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+smoke
+
+Estimated time: 
+120000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась корректно.
+  Есть метка с подписью "Узнать адрес".
+  
+Step:
+  Action:
+  Навести курсор на метку.
+
+  Expectation:
+  У метки появился новый хинт с текстом "Перетащите метку и кликнете, чтобы узнать адрес"
+
+Step:
+  Action:
+  Кликнуть в метку на карте.
+
+  Expectation:
+  Появляется балун с текстом "Идет загрузка данных...", после чего текст в балуне меняется на адрес/наименование топонима расположения метки.
+
+Step:
+  Action:
+  Перетащить метку в другое место на карте, после чего кликнуть в нее.
+
+  Expectation:
+  Появляется балун с текстом "Идет загрузка данных...", после чего текст в балуне меняется на адрес/наименование топонима расположения метки.
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась корректно.
+  Есть метка с подписью "Узнать адрес".
+
+
+Step:
+  Action:
+  Навести курсор на метку.
+
+  Expectation:
+  У метки появился новый хинт с текстом "Перетащите метку и кликнете, чтобы узнать адрес"
+
+Step:
+  Action:
+  Кликнуть в метку на карте.
+
+  Expectation:
+  Появляется балун с текстом "Идет загрузка данных...", после чего текст в балуне меняется на адрес/наименование топонима расположения метки.
+
+Step:
+  Action:
+  Перетащить метку в другое место на карте, после чего кликнуть в нее.
+
+  Expectation:
+  Появляется балун с текстом "Идет загрузка данных...", после чего текст в балуне меняется на адрес/наименование топонима расположения метки.
+
+//-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <style>
+        * {
+            text-align: center
+        }
+    </style>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var myMap = new ymaps.Map("map", {
+                        center: [54.83, 37.11],
+                        zoom: 5
+                    }, {
+                        backgroundVisible: false
+                    }),
+            // Метка, содержимое балуна которой загружается с помощью AJAX.
+                    placemark = new ymaps.Placemark([55.8, 37.72], {
+                        iconContent: "Узнать адрес",
+                        hintContent: "Перетащите метку и кликните, чтобы узнать адрес"
+                    }, {
+                        draggable: "true",
+                        preset: "islands#blueStretchyIcon",
+                        // Заставляем балун открываться даже если в нем нет содержимого.
+                        openEmptyBalloon: true
+                    });
+
+            myMap.controls.add(new ymaps.control.RouteButton());
+            myMap.controls.add(new ymaps.control.RouteEditor({options: {}}), {float: 'none', position: {bottom: 35, left: 10}});
+            // Обрабатываем событие открытия балуна на геообъекте:
+            // начинаем загрузку данных, затем обновляем его содержимое.
+            placemark.events.add('balloonopen', function (e) {
+                placemark.properties.set('balloonContent', "Идет загрузка данных...");
+
+                // Имитация задержки при загрузке данных (для демонстрации примера).
+                setTimeout(function () {
+                    ymaps.geocode(placemark.geometry.getCoordinates(), {
+                        results: 1
+                    }).then(function (res) {
+                        var newContent = res.geoObjects.get(0) ?
+                                res.geoObjects.get(0).properties.get('name') :
+                                'Не удалось определить адрес.';
+
+                        // Задаем новое содержимое балуна в соответствующее свойство метки.
+                        placemark.properties.set('balloonContent', newContent);
+                    });
+                }, 1500);
+            });
+
+            myMap.geoObjects.add(placemark);
+
+            addGrid(myMap);
+            var log = new Log();
+
+            log.info('Test script: Перетащите метку и кликните, чтобы узнать адрес');
+            __log__('Карта не должна ломаться');
+            __log__('Проверить все базовые кейсы');
+            __log__('Не забываем про зум отдельно тачпадом и мышью. И скролл страницы с тачпада.');
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div style="display:table;height:800px;text-align:center;width:850px;">
+    <div style="display:table-cell;vertical-align:middle;">
+        <div id="map" style="width:512px; height: 512px;"></div>
+    </div>
+</div>
+</body>
+</html>

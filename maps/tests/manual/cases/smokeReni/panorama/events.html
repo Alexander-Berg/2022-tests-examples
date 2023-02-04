@@ -1,0 +1,136 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+События в панораме
+
+Description:
+Добавляем точки на карте в плеере панорам.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+smoke
+
+Estimated time: 
+120000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Открыт панорамный плеер. 
+  Фотоизображение панорамы и карта под ним отображены корректно.
+
+Step:
+  Action:
+  Навести курсор и кликнуть метку на панораме с сокращенным адресом ("3с1").
+  
+  Expectation:
+  При наведении курсора на область метки - метка становится красной.
+  После клика - метка раздвигается отображая полный адрес(при наведении курсора перекрашивается в красный).
+  На карте появляется красная точка(при необходимости драгом сместите миникарту чтобы посмотреть отображение на карте точки).
+
+Step:
+  Action:
+  Зажав ЛКМ развернуть панораму направо и кликнуть в еще две адресных метки.
+  
+  Expectation:
+  При наведении курсора на область метки - метка становится красной.
+  После клика - метки раздвигаются отображая полный адрес(при наведении курсора перекрашивается в красный).
+  На карте появилось еще 2 красных точки.
+  
+Step:
+  Action:
+  Кликом в последний развернутый адрес на панораме свернуть метку с адресом.
+  
+  Expectation:
+  После клика - метки с адресом свернулась.
+  С карты пропала красная точка на доме.
+
+Step:
+  Action:
+  Закрыть панорамный плеер кликом в крестик на панораме.
+  
+  Expectation:
+  Панорамный плеер закрылся - отображается карта с панорамными линиями.
+  Красные метки- точки пропали с карты.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+
+            var myMap = new ymaps.Map('map', {
+                        center: [55.759142, 37.639987],
+                        zoom: 18,
+                        type: 'yandex#map',
+                        controls: ['typeSelector']
+                    }, {
+                        backgroundVisible: false
+                    }),
+            // Создаём коллекцию, в которой будем хранить точки на карте.
+                    collection = new ymaps.GeoObjectCollection();
+            // Добавляем коллекцию на карту.
+            myMap.geoObjects.add(collection);
+
+            // Получим менеджер панорамы карты.
+            myMap.getPanoramaManager().then(function (manager) {
+                // Включаем режим поиска панорам на карте.
+                manager.enableLookup();
+                // Открываем плеер панорам.
+                manager.openPlayer(myMap.getCenter());
+                // Подпишемся на событие открытия плеера панорам.
+                manager.events.add('openplayer', function () {
+                    // Получим текущий плеер панорам.
+                    var player = manager.getPlayer();
+                    // При закрытии плеера или смене панорамы удаляем добавленные точки.
+                    player.events.add(['panoramachange', 'destroy'], function () {
+                        collection.removeAll();
+                    });
+                    // При клике по свернутому маркеру добавим метку в коллекцию на карте.
+                    player.events.add('markerexpand', function (e) {
+                        // Получим координаты дома, по которому кликнул пользователь.
+                        var position = e.get('marker').getPosition(),
+                                coords = position.slice(0, 2);
+
+                        // Добавим в коллекцию метку с координатами дома.
+                        collection.add(new ymaps.Placemark(coords, {}, {
+                            openBalloonOnClick: false,
+                            iconLayout: 'default#image',
+                            iconImageHref: 'circle.png',
+                            // Размеры метки.
+                            iconImageSize: [10, 10],
+                            // Смещение левого верхнего угла иконки относительно точки привязки.
+                            iconImageOffset: [-5, -5]
+                        }));
+                    });
+                    // При клике по раскрытому маркеру удалим метку из коллекции на карте.
+                    player.events.add('markercollapse', function (e) {
+                        // Получим координаты дома, по которому кликнул пользователь.
+                        var position = e.get('marker').getPosition(),
+                                coords = position.slice(0, 2);
+                        // Найдём метку в коллекции по координатам и удалим её.
+                        collection.each(function (obj) {
+                            if (ymaps.util.math.areEqual(obj.geometry.getCoordinates(), coords)) {
+                                collection.remove(obj);
+                            }
+                        });
+                    });
+                });
+            });
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

@@ -1,0 +1,4 @@
+ALTER TABLE `tasks`
+ADD COLUMN `exclude_users` JSON DEFAULT NULL,
+ADD COLUMN `check_count` SMALLINT NOT NULL DEFAULT 0,
+ADD COLUMN `initial_task_key` CHAR(32) DEFAULT NULL;

@@ -1,0 +1,87 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Пробки: не открывать балун по клику в ДС
+
+Description:
+Проверка корректности работы карты при кликах в ДС.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components:
+traffic
+
+Estimated time:
+180000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть страницу и элементы на ней.
+
+  Expectation:
+  Карта отобразилась корректно со спаном Москвы, с включенным слоем пробок.
+  В контроле пробок иконка светофора соотвествующая баллу пробок, балл пробок, текущее время, шестеренка настроек.
+
+Step:
+  Action:
+  Выполнить клик в шестеренку настроек, клик в чек-бокс дорожных событий.
+
+  Expectation:
+  На пробочных линиях на спане карты появляются иконки ДС.
+
+Step:
+  Action:
+  Открыть инструменты разработчика командами Windows: Ctrl + Shift + I если у вас MacOS: ⌥ + ⌘ + I, вкладку Console.
+  Последовательно навести курсор и выполнить клик в разные типы ДС(дорожные работы, ДТП, перекрытие, прочее).
+
+  Expectation:
+  При наведении на иконку появляется хинт с обозначением ДС, например "Дорожные работы".
+  По клику балун на спане карты не открывается, при этом в консоли появляется объект с соотвествующими метке hintContent и description.
+-->
+<html>
+<head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 10,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            addGrid(myMap);
+            __log__('При клике по дорожному событию балун не открывается. В консоли информация о дорожном событии.');
+
+            var trafficControl = new ymaps.control.TrafficControl({state: {trafficShown: true}});
+            myMap.controls.add(trafficControl);
+            trafficControl.getProvider('traffic#actual').getLayers().info.events.add('click', function (e) {
+                // https://tech.yandex.ru/maps/doc/jsapi/2.1/ref/reference/hotspot.layer.Object-docpage/
+                var object = e.get('activeObject');
+                var properties = object.getProperties();
+
+                __log__(JSON.stringify({
+                    hintContent: properties.hintContent,
+                    description: properties.description
+                }));
+
+                // Отменяем дефолтный балун.
+                e.preventDefault();
+            });
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

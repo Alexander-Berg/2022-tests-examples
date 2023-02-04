@@ -1,0 +1,132 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Кластер: открытие балуна кластера после добавления объектов на карту
+
+Description:
+Проверка метода программного открытия балуна кластера после добавления меток на карту.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+clusterer
+
+Estimated time:
+90000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась корректно.
+  На спане карта с подписями наименований государств. На карте отсуствуют метки и какие-либо элементы.
+  Сверху имеются кнопки "balloon", "clusterer".
+  
+Step:
+  Action:
+  Выполнить клик в кнопку "clusterer".
+
+  Expectation:
+  В районе материка Африки(в нижнем левом углу) появляется множетсво меток коллекции и кластерных меток внутри меток коллекции номер метки.
+  Под контейнером с картой появляется текст: "Clusterer added to map.".
+
+
+Step:
+  Action:
+  Выполнить клик в кнопку "balloon".
+
+  Expectation:
+  Спан карты смещается для открытия балуна кластера.
+  В области с множеством меток открывается балун с двумя колонками.
+  В балуне две колонки(правая колонка шире левой), в правой колонке окно с содержимым: заголовок крупным шрифтом черного цвета с номером метки; тело с номером метки.
+  В левой колонке список из меток, серым фоном выделена отображаемая в окне справа метка.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "clusterer".
+
+  Expectation:
+  Со спана карты пропадает открытый балун кластера и все метки.
+  Под контейнером с картой появляется текст: "Clusterer removed from map.".
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 3,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+
+            var clusterer = new ymaps.Clusterer({disableClickZoom: true, minClusterSize: 2, gridSize: 8});
+            var placemarksNumber = 200;
+            var bounds = map.getBounds();
+            var newPlacemarks = createGeoObjects(placemarksNumber, bounds);
+            var addButton = new ymaps.control.Button('clusterer');
+            var openBalloonButton = new ymaps.control.Button({data: {content: 'balloon'}, options: {selectOnClick: false}});
+
+            // add 200 placemarks
+            clusterer.add(newPlacemarks);
+
+            addButton.events
+                    .add('select', function () {
+                        map.geoObjects.add(clusterer);
+                        log.info('Clusterer added to map.');
+                    })
+                    .add('deselect', function () {
+                        map.geoObjects.remove(clusterer);
+                        log.info('Clusterer removed from map.');
+                    });
+
+            openBalloonButton.events.add('click', function () {
+                var object0State = clusterer.getObjectState(newPlacemarks[0]);
+                object0State.cluster.state.set('activeObject', newPlacemarks[0]);
+                clusterer.balloon.open(object0State.cluster);
+            });
+
+            map.controls
+                    .add(addButton)
+                    .add(openBalloonButton);
+
+            function createGeoObjects(number, bounds) {
+                var placemarks = [];
+                // Создаем нужное количество меток
+                for (var i = 0; i < number; i++) {
+                    // Генерируем координаты метки случайным образом.
+                    var coordinates = getRandomCoordinates(bounds);
+                    // Создаем метку со случайными координатами.
+                    var myPlacemark = new ymaps.Placemark(coordinates, {iconContent: i,
+                        balloonContent: i, hintContent: i, clusterCaption: i}, {});
+                    placemarks.push(myPlacemark);
+                }
+                return placemarks;
+            }
+
+            function getRandomCoordinates(bounds) {
+                var size = [(bounds[1][0] - bounds[0][0]) / 3, (bounds[1][1] - bounds[0][1]) / 3];
+                return [Math.random() * size[0] + bounds[0][0], Math.random() * size[1] + bounds[0][1]];
+            }
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

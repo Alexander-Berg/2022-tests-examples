@@ -1,0 +1,172 @@
+<!DOCTYPE HTML>
+<!--(skip)(description)
+-->
+<!--(version)
+-->
+<!--(parameters)
+-->
+<!--(commands)
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <script src="https://api-maps.yandex.ru/2.1-dev/?lang=ru-Ru&mode=debug&onload=init"
+            type="text/javascript"></script>
+    <script src="https://yandex.st/jquery/1.8.0/jquery.min.js" type="text/javascript"></script>
+    <script type=text/javascript>
+
+        window.jsErrors = [];
+        window.onerror = function (errorMessage) {
+            window.jsErrors[window.jsErrors.length] = errorMessage;
+            console.log(window.jsErrors[window.jsErrors.length])
+        };
+
+        function init(ymaps) {
+            ym = ymaps;
+
+            var myMap = new ym.Map('map', {
+                center: [56.034, 36.976],
+                zoom: 10,
+                behaviors: ['default', 'scrollZoom']
+            },{
+                yandexMapDisablePoiInteractivity: false
+            });
+            var search = new ymaps.control.SearchControl();
+            myMap.controls.add(search);
+            search.options.set('provider', 'yandex#search');
+
+            myMap.controls.add(new ymaps.control.ZoomControl({options: {size: 'small'}}), {float: 'none', position: {bottom: 75, right: 10}});
+            myMap.controls.add(new ymaps.control.RouteEditor({options: {}}), {float: 'none', position: {bottom: 35, left: 10}});
+            myMap.controls.add(new ymaps.control.ListBox({
+                data: {
+                    content: 'Город',
+                    title: 'Город',
+                    image: 'https://cdn1.iconfinder.com/data/icons/orb/16/5.png'
+                },
+                items: [
+                    new ymaps.control.ListBoxItem({data: {content: 'Москва'}}),
+                    new ymaps.control.ListBoxItem({data: {content: 'Новосибирск'}}),
+                    new ymaps.control.ListBoxItem({options: {type: 'separator'}}),
+                    new ymaps.control.ListBoxItem({data: {content: 'Нью-Йорк'}})
+                ],
+                options: {
+                    float: 'none',
+                    position: {
+                        top: 60,
+                        right: 9
+                    }
+                }
+            }));
+            var myGeoObjects = [];
+            myGeoObjects[0] = new ymaps.GeoObject({
+                geometry: { type: "Point", coordinates: [56.034, 36.992] },
+                properties: {
+                    clusterCaption: 'Геообъект №1',
+                    balloonContentBody: 'Содержимое балуна геообъекта №1.'
+                }
+            });
+            myGeoObjects[1] = new ymaps.GeoObject({
+                geometry: { type: "Point", coordinates: [56.021, 36.983] },
+                properties: {
+                    clusterCaption: 'Геообъект №2',
+                    balloonContentBody: 'Содержимое балуна геообъекта №2.'
+                }
+            });
+            myGeoObjects[2] = new ymaps.GeoObject({
+                geometry: { type: "Point", coordinates: [56.045, 36.983] },
+                properties: {
+                    clusterCaption: 'Геообъект №3',
+                    balloonContentBody: 'Содержимое балуна геообъекта №3.'
+                }
+            });
+            myGeoObjects[3] = new ymaps.GeoObject({
+                geometry: { type: "Point", coordinates: [56.021, 36.998] },
+                properties: {
+                    clusterCaption: 'Геообъект №4',
+                    balloonContentBody: 'Содержимое балуна геообъекта №4.'
+                }
+            });
+            myGeoObjects[4] = new ymaps.GeoObject({
+                geometry: { type: "Point", coordinates: [56.034, 36.976] },
+                properties: {
+                    clusterCaption: 'Геообъект №5',
+                    balloonContentBody: 'Содержимое балуна геообъекта №5.'
+                }
+            });
+
+            var clusterer = new ymaps.Clusterer({ clusterDisableClickZoom: true });
+            clusterer.add(myGeoObjects);
+            myMap.geoObjects.add(clusterer);
+
+            var counter = 0,
+                    BalloonContentLayout = ymaps.templateLayoutFactory.createClass(
+                                    '<div style="margin: 10px;">' +
+                                    '<b>$[properties.name]</b><br />' +
+                                    '<i id="count"></i> ' +
+                                    '<button id="counter-button"> +1 </button>' +
+                                    '</div>', {
+
+                                build: function () {
+                                    BalloonContentLayout.superclass.build.call(this);
+                                    $('#counter-button').bind('click', this.onCounterClick);
+                                    $('#count').html(counter);
+                                },
+
+                                clear: function () {
+                                    $('#counter-button').unbind('click', this.onCounterClick);
+                                    BalloonContentLayout.superclass.clear.call(this);
+                                },
+
+                                onCounterClick: function (e) {
+                                    $('#count').html(++counter);
+                                    if (counter == 5) {
+                                        log.info('Done! All over again.');
+                                        counter = 0;
+                                        $('#count').html(counter);
+                                    }
+                                    placemark.events.fire('custom', new ymaps.Event({
+                                        type: 'custom',
+                                        target: this
+                                    }));
+                                }
+                            });
+
+            var placemark = new ymaps.Placemark([55.650625, 37.62708], {
+                name: 'Считаем'
+            }, {
+                balloonContentLayout: BalloonContentLayout
+            });
+            myMap.geoObjects.add(placemark);
+
+            var request = 'москва';
+            ymaps.geocode(request).then(function (res) {
+                var results = res.geoObjects;
+                results.each(function (obj) {
+                    obj.options.set('preset', 'islands#circleDotIcon');
+                    obj.properties.set('hintContent', obj.properties.get('balloonContent'));
+                });
+                myMap.geoObjects.add(results);
+            });
+            var addButton = new ym.control.Button({data: {content: 'add'}, options: {selectOnClick: false, float: 'left'}});
+            var removeButton = new ym.control.Button({data: {content: 'remove'}, options: {selectOnClick: false, float: 'left'}});
+
+            var xml = ym.geoXml.load('http://maps.yandex.ru/export/usermaps/6lXyMJReL87z0LJ0Y3eF2M59iZ1Dbv9D/');
+            var result = ymaps.geoQuery(xml);
+
+            addButton.events.add('click', function () {
+                result.then(function() {
+                    result.addToMap(myMap);
+                    result.applyBoundsToMap(myMap);
+                });
+            });
+
+            myMap.controls
+                    .add(addButton);
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

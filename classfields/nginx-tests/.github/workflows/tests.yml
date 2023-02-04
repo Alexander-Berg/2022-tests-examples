@@ -1,0 +1,25 @@
+name: Tests
+
+on: [pull_request]
+
+jobs:
+  job:
+    name: Tests
+    runs-on: [ self-hosted, ops ]
+    concurrency:
+        group: unit-tests-changed_${{ github.head_ref }}
+        cancel-in-progress: true
+    container:
+      image: registry.yandex.net/vertis/autoru-frontend-buildpkg:2.0-55
+      options: --net host
+      volumes:
+        - /home/robot-vertis-repo/.ssh:/home/teamcity/.ssh
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Install deps
+        run: npm ci
+      - name: Run tests
+        run: npm test
+        env:
+          NODE_EXTRA_CA_CERTS: /usr/share/yandex-internal-root-ca/YandexInternalRootCA.crt

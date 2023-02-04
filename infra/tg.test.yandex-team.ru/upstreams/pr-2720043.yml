@@ -1,0 +1,80 @@
+auth:
+  staff:
+    owners:
+      logins: []
+      groups: []
+labels:
+  order: '10000000'
+---
+regexp_section:
+  matcher:
+    match_and:
+      - match_fsm:
+          host: pr-2720043[.](.*)
+  modules:
+    - headers:
+        create:
+          Host: tasha.s3.mds.yandex.net
+    - response_headers:
+        create:
+          Content-Security-Policy-Report-Only: "script-src 'self' yastatic.net
+            mc.yandex.ru mc.webvisor.com mc.webvisor.org mc.yandex.com
+            mc.yandex.by mc.yandex.com.tr mc.yandex.kz mc.yandex.ua mc.yandex.az
+            mc.yandex.co.il mc.yandex.com.am mc.yandex.com.ge mc.yandex.ee
+            mc.yandex.fr mc.yandex.kg mc.yandex.lt mc.yandex.lv mc.yandex.md
+            mc.yandex.tj mc.yandex.tm mc.yandex.uz s3.yandex.net
+            s3.mds.yandex.net tasha.s3.yandex.net tasha.s3.mds.yandex.net
+            'nonce-iefrHOndCghyN7qq9C53YQ==' 'nonce-vjL5yIpneHBOOpqSfZuqCg=='
+            chat.s3.yandex.net forms.yandex-team.ru; style-src 'self'
+            yastatic.net s3.yandex.net s3.mds.yandex.net tasha.s3.yandex.net
+            tasha.s3.mds.yandex.net 'unsafe-inline' forms.yandex-team.ru;
+            font-src 'self' yastatic.net s3.yandex.net s3.mds.yandex.net
+            tasha.s3.yandex.net tasha.s3.mds.yandex.net; img-src 'self'
+            yastatic.net mc.webvisor.com mc.webvisor.org mc.yandex.com
+            mc.yandex.by mc.yandex.com.tr mc.yandex.kz mc.yandex.ru mc.yandex.ua
+            mc.yandex.az mc.yandex.co.il mc.yandex.com.am mc.yandex.com.ge
+            mc.yandex.ee mc.yandex.fr mc.yandex.kg mc.yandex.lt mc.yandex.lv
+            mc.yandex.md mc.yandex.tj mc.yandex.tm mc.yandex.uz mc.admetrica.ru
+            s3.yandex.net s3.mds.yandex.net tasha.s3.yandex.net
+            tasha.s3.mds.yandex.net data: *.yandex-team.ru; media-src 'self'
+            yastatic.net s3.yandex.net s3.mds.yandex.net tasha.s3.yandex.net
+            tasha.s3.mds.yandex.net; connect-src yandexmetrica.com:*
+            mc.webvisor.com mc.webvisor.org mc.yandex.com mc.yandex.by
+            mc.yandex.com.tr mc.yandex.kz mc.yandex.ru mc.yandex.ua mc.yandex.az
+            mc.yandex.co.il mc.yandex.com.am mc.yandex.com.ge mc.yandex.ee
+            mc.yandex.fr mc.yandex.kg mc.yandex.lt mc.yandex.lv mc.yandex.md
+            mc.yandex.tj mc.yandex.tm mc.yandex.uz mc.admetrica.ru yandex.ru
+            yandex.%tld% ya.ru ecoo.n.yandex-team.ru self *.telegram.org
+            *.yandex-team.ru ws: wss: data: yastatic.net forms.yandex-team.ru
+            wss://*.web.telegram.org; child-src blob: mc.yandex.ru
+            forms.yandex.ru forms.yandex-team.ru; frame-src blob: mc.yandex.ru
+            mc.yandex.md forms.yandex.ru forms.yandex-team.ru gnc.yandex-team.ru
+            q.yandex-team.ru; frame-ancestors webvisor.com *.webvisor.com
+            http://webvisor.com http://*.webvisor.com; report-uri
+            https://csp.yandex.net/csp?from=telegram-tool&project=telegram-tool\
+            ;"
+    - rewrite:
+        actions:
+          - split: path
+            regexp: ^/(.+)
+            rewrite: /tg-tool/pr-2720043/%1
+          - split: path
+            regexp: ^/(.+/)?([^.]+)?$
+            rewrite: /tg-tool/pr-2720043/index.html
+    - balancer2:
+        attempts: 1
+        rr: {}
+        generated_proxy_backends:
+          proxy_options:
+            connect_timeout: 70ms
+            backend_timeout: 10s
+            fail_on_5xx: false
+          instances:
+            - host: tasha.s3.mds.yandex.net
+              port: 80
+              weight: 1
+        on_error:
+          modules:
+            - errordocument:
+                status: 504
+                content: Service unavailable

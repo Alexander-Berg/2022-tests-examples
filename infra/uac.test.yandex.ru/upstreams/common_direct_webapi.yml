@@ -1,0 +1,48 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - next0
+      - shashkin
+      - kigan
+      groups: []
+labels:
+  order: '01000000'
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      uri: '/(web-api|registered)/.*'
+  modules:
+    - headers:
+        create:
+          x-awacs-get-http: '1'
+    - rewrite:
+        actions:
+          - regexp: '.*'
+            header_name: Host
+            rewrite: 'test.direct.yandex.ru'
+    - balancer2:
+        rr: {}
+        attempts: 1
+        attempts_rate_limiter:
+          limit: 0.1
+          coeff: 0.99
+        generated_proxy_backends:
+          proxy_options:
+            https_settings:
+              ca_file: !f get_ca_cert_path("allCAs.pem", "./")
+              sni_on: false
+              verify_depth: 3
+            connect_timeout: 100ms
+            backend_timeout: 60s
+            fail_on_5xx: false
+          instances:
+            - host: test.direct.yandex.ru
+              port: 443
+              weight: 1
+        on_error:
+          modules:
+          - errordocument: 
+              status: 504
+              content: 'Service unavailable'

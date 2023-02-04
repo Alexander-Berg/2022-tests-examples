@@ -1,0 +1,167 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Контрол: методы событий контрола 
+
+Description:
+Проверка методов событий контрола фулскрин
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+control
+
+Estimated time:
+120000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан Москвы, сверху слева имеются 3 контрола фулскрин(контрол с серым фоном, контрол с желтым фоном, контрол с белым фоном).
+  Под контейнером с картой три блока логов, под каждым из которых по 3 строки: "Ок". 
+  Сверху слева кнопки "once", "add", "fire". 
+
+Step:
+  Action:
+  Выполнить клик в кнопку "once", затем клик ПКМ по каждому из контролов фулскрин.
+
+  Expectation:
+  По клику в кнопку под контейнером появляется строка: "Waiting for contextmenu event...". 
+  При ПКМ по контролам появляется контекстное меню, под контейнером появляется строка с номером контрола и событием "contextmenu". 
+
+Step:
+  Action:
+  Выполнить клик в кнопку "add", затем клик ЛКМ в крайний левый и центральный контролы фулскрин.
+
+  Expectation:
+  По клику в кнопку под контейнером появляется строка: "Waiting for events...". 
+  При клике в крайний левый контрол, появляется строка: "fullscreen3: click".
+  При клике в центральный контрол контрол становится неактивным, появляются строки: "fullscreen2: click; fullscreen2: deselect". 
+
+Step:
+  Action:
+  Выполнить клик в кнопку "fire", затем клик ЛКМ в крайний левый и центральный контролы фулскрин.
+
+  Expectation:
+  По клику в кнопку под контейнером появляются три строки с номером контрола и событием "parentchange". 
+-->
+<html>
+<head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            var myMap = new ym.Map('map', {
+                        center: [55.73259667357658, 37.70153663432529],
+                        zoom: 9,
+                        behaviors: ['default', 'scrollZoom'],
+                        controls: []
+                    }),
+                    callback1 = function (e) {
+                        this.info('fullscreen1: ' + e.get('type'))
+                    },
+                    callback2 = function (e) {
+                        this.info('fullscreen2: ' + e.get('type'))
+                    },
+                    callback3 = function (e) {
+                        this.info('fullscreen3: ' + e.get('type'))
+                    },
+                    events = ['click', 'select', 'deselect', 'enable', 'disable', 'mapchange',
+                        'optionschange', 'parentchange', 'fullscreenenter', 'fullscreenexit'],
+                    log = new Log();
+
+            addGrid(myMap);
+
+            var fullscreen1 = new ymaps.control.FullscreenControl({
+                data: {title: '1'},
+                options: {float: 'left'}
+            });
+
+            var fullscreen2 = new ymaps.control.FullscreenControl({
+                data: {title: '2'},
+                options: {float: 'left'},
+                state: {selected: true}
+            });
+
+            var fullscreen3 = new ymaps.control.FullscreenControl({
+                data: {title: '3'},
+                options: {float: 'left'},
+                state: {enabled: false}
+            });
+
+            log.info('group: (object)');
+            validateValue(fullscreen1.events.group(), "[object Object]");
+            validateValue(fullscreen2.events.group(), "[object Object]");
+            validateValue(fullscreen3.events.group(), "[object Object]");
+
+            log.info('');
+            log.info('getParent: (undefined)');
+            validateValue(fullscreen1.events.getParent(), undefined);
+            validateValue(fullscreen2.events.getParent(), undefined);
+            validateValue(fullscreen3.events.getParent(), undefined);
+
+            log.info('');
+            log.info('setParent: (undefined)');
+            fullscreen1.events.setParent(fullscreen1.events.getParent());
+            fullscreen2.events.setParent(fullscreen2.events.getParent());
+            fullscreen3.events.setParent(fullscreen3.events.getParent());
+            validateValue(fullscreen1.events.getParent(), undefined);
+            validateValue(fullscreen2.events.getParent(), undefined);
+            validateValue(fullscreen3.events.getParent(), undefined);
+
+            var listenerButton = new ymaps.control.Button({data: {content: 'add'}, options: {selectOnClick: true}});
+            listenerButton.events
+                    .add('select', function () {
+                        log.info('Waiting for events...');
+                        fullscreen1.events.add(events, callback1, log);
+                        fullscreen2.events.add(events, callback2, log);
+                        fullscreen3.events.add(events, callback3, log);
+                    })
+                    .add('deselect', function () {
+                        log.info('Events will be ignored.');
+                        fullscreen1.events.remove(events, callback1, log);
+                        fullscreen2.events.remove(events, callback2, log);
+                        fullscreen3.events.remove(events, callback3, log);
+                    });
+
+            var onceButton = new ymaps.control.Button({data: {content: 'once'}, options: {selectOnClick: false}});
+            onceButton.events
+                    .add('click', function () {
+                        log.info('Waiting for contextmenu event...');
+                        fullscreen1.events.once('contextmenu', callback1, log);
+                        fullscreen2.events.once('contextmenu', callback2, log);
+                        fullscreen3.events.once('contextmenu', callback3, log);
+                    });
+
+            var fireButton = new ymaps.control.Button({data: {content: 'fire'}, options: {selectOnClick: false}});
+            fireButton.events
+                    .add('click', function () {
+                        fullscreen1.events.fire('parentchange');
+                        fullscreen2.events.fire('parentchange');
+                        fullscreen3.events.fire('parentchange');
+                    });
+
+            myMap.controls
+                    .add(fullscreen1)
+                    .add(fullscreen2)
+                    .add(fullscreen3)
+                    .add(onceButton, { float: 'right'})
+                    .add(listenerButton, { float: 'right'})
+                    .add(fireButton, { float: 'right'});
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

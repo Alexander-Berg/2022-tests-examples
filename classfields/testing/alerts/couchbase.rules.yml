@@ -1,0 +1,27 @@
+groups:
+- name: /etc/prometheus/alerts/couchbase.rules
+  rules:
+
+  - alert: CouchbaseStats_dcp_xdcr_items_remaining
+    expr: round(couchbase_bucket_stats_ep_dcp_xdcr_items_remaining{bucket=~".*"}) > 1000
+    for: 15m
+    labels:
+      severity: warning
+      juggler_aggr_host: vertis-couchbase
+      juggler_tag1: vertis_sre
+      juggler_tag2: vertis_sre_test
+    annotations:
+      description: Items {{ .Value }} not replicated by XDCR in bucket [{{ .Labels.bucket }}] in last 15min, restart XDCR link on node [{{ .Labels.instance }}] or check QUOTA usage
+      summary: Remaining items
+
+  - alert: CouchbaseStats_bucket_quota_watermark
+    expr: round(avg(couchbase_bucket_quota_percent_used) by (bucket)) > 85
+    for: 60m
+    labels:
+      severity: warning
+      juggler_aggr_host: vertis-couchbase
+      juggler_tag1: vertis_sre
+      juggler_tag2: vertis_sre_test
+    annotations:
+      description: QUOTA usage [{{ .Labels.bucket }}-{{ .Value }}%]
+      summary: Quota used

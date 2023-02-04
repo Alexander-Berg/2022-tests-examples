@@ -1,0 +1,57 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - rodion-m
+      groups: []
+labels:
+  order: '001350'
+---
+regexp_section:
+  matcher:
+    match_or:
+      - match_fsm:
+          host: 'mobmetd-testing.metrika.yandex.net'
+      - match_fsm:
+          # В апстриме api-appmetrica_logs_v1_export перезаписывается Host
+          # значением logs-api-server.appmetrica.yandex.ru, и запрос идёт в демон logs-api.
+          # Затем демон logs-api при походе в mobmetd прокидывает переданный ему Host,
+          # поэтому нужно матчить и на этот хостнейм, чтобы обработать запрос от logs-api.
+          host: 'logs-api-server.appmetrica.yandex.ru'
+      - match_fsm:
+          # logs-api при походе в mobmetd прокидывает в заголовке Host, который пришёл к нему в запросе.
+          # И пока тестовый logs-api не съехал с mtback-ов в деплой,
+          # будем обрабатывать запросы ещё с таким вот Host.
+          host: 'logs-api-server.appmetrica.mtback01et.yandex.ru'
+  modules:
+     - headers_hasher:
+        header_name: "X-Yandex-Uid"
+        surround: false
+        randomize_empty_match: true
+     - report:
+        uuid: "mobmetd-testing"
+        ranges: "default"
+     - balancer2:
+        attempts: 2
+        attempts_rate_limiter:
+          limit: 0.15
+        connection_attempts: !f count_backends()
+        status_code_blacklist : ["5xx"]
+        return_last_5xx: true
+        retry_non_idempotent: false
+        unique_policy: {}
+        rendezvous_hashing:
+            request: 'GET /ping HTTP/1.1\nHost: mobmetd-testing.metrika.yandex.net\nUser-agent: l7-balancer\n\n'
+            delay: 10s
+        generated_proxy_backends:
+          proxy_options:
+            backend_timeout: 240s
+            connect_timeout: 100ms
+            fail_on_5xx: false
+          include_backends:
+            type: BY_ID
+            ids: [mobmetd-testing-backend]
+        on_error:
+          errordocument:
+            status: 503
+            content: "Service unavailable"

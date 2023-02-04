@@ -1,0 +1,137 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - nikshel
+      groups: []
+labels:
+  order: '10000000'
+---
+# Этот конфиг сгенерирован автоматически
+# Правила генерации см. тут: https://a.yandex-team.ru/arc/trunk/arcadia/education/infra/balancers/configs
+# Руками менять только в случае крайней необходимости!
+
+regexp_section:
+  matcher:
+    match_fsm:
+      uri: '/api(/.*)?'
+
+  modules:
+    - meta: {id: awacs-logs, fields: {upstream: praktikum-wirth-testing_api}}
+    - report: {uuid: praktikum-wirth-testing_api, ranges: default}
+    - threshold:
+        lo_bytes: 1024
+        hi_bytes: 1024
+        pass_timeout: 15s
+        recv_timeout: 5s
+        on_pass_timeout_failure:
+          errordocument:
+            status: 408
+            content: "Request Timeout"
+    - cookie_hasher:
+        cookie: yandexuid
+    - balancer2:
+        attempts: 1
+        rendezvous_hashing:
+          weights_file: './controls/traffic_control.weights'
+        on_error:
+          errordocument:
+            status: 502
+            content: "[praktikum-wirth-testing_api] Service unavailable"
+        backends:
+          - name: root_service
+            weight: 1
+            modules:
+              - report: {uuid: requests_praktikum-wirth-testing_api_to_service, ranges: default}
+              - balancer2:
+                  rr:
+                    weights_file: './controls/traffic_control.weights'
+                  unique_policy: {}
+                  attempts: 2
+                  connection_attempts: 1
+                  disable_attempts_rate_limiter: true
+                  status_code_blacklist: ['5xx']
+                  return_last_5xx: true
+                  backends:
+                    - name: bygeo_iva
+                      weight: 1
+                      modules:
+                        - report: {uuid: requests_praktikum-wirth-testing_api_to_iva, ranges: default}
+                        - balancer2:
+                            attempts: 3
+                            connection_attempts: 2
+                            attempts_rate_limiter:
+                              limit: 0.2
+                            dynamic:
+                              backends_name: praktikum-wirth-testing.frontend
+                              max_pessimized_share: 0.2
+                            status_code_blacklist: ['5xx']
+                            return_last_5xx: true
+                            generated_proxy_backends:
+                              proxy_options:
+                                backend_timeout: 62s
+                                connect_timeout: 100ms
+                                keepalive_count: 1
+                                allow_connection_upgrade: true
+                                fail_on_5xx: false
+                              include_backends:
+                                type: BY_ID
+                                ids: [praktikum-wirth-testing.frontend]
+                    - name: bygeo_myt
+                      weight: 1
+                      modules:
+                        - report: {uuid: requests_praktikum-wirth-testing_api_to_myt, ranges: default}
+                        - balancer2:
+                            attempts: 3
+                            connection_attempts: 2
+                            attempts_rate_limiter:
+                              limit: 0.2
+                            dynamic:
+                              backends_name: praktikum-wirth-testing.frontend
+                              max_pessimized_share: 0.2
+                            status_code_blacklist: ['5xx']
+                            return_last_5xx: true
+                            generated_proxy_backends:
+                              proxy_options:
+                                backend_timeout: 62s
+                                connect_timeout: 100ms
+                                keepalive_count: 1
+                                allow_connection_upgrade: true
+                                fail_on_5xx: false
+                              include_backends:
+                                type: BY_ID
+                                ids: [praktikum-wirth-testing.frontend]
+          - name: root_pumpkin
+            weight: -1
+            modules:
+              - shared: {uuid: praktikum-wirth-testing_api_pumpkin}
+              - report:
+                  uuid: pumpkin
+                  refers: pumpkin
+                  ranges: default
+              - report: {uuid: requests_praktikum-wirth-testing_api_to_pumpkin, ranges: default}
+              - balancer2:
+                  unique_policy: {}
+                  attempts: 3
+                  connection_attempts: 5
+                  attempts_rate_limiter:
+                    limit: 1
+                  dynamic:
+                    backends_name: practicum-pumpkin-testing
+                    max_pessimized_share: 0.5
+                  status_code_blacklist: ['5xx']
+                  status_code_blacklist_exceptions: ['500']
+                  return_last_5xx: true
+                  on_error:
+                    errordocument:
+                      status: 502
+                      content: "[praktikum-wirth-testing_api pumpkin] Service unavailable"
+                  generated_proxy_backends:
+                    proxy_options:
+                      backend_timeout: 2s
+                      connect_timeout: 100ms
+                      keepalive_count: 1
+                      fail_on_5xx: false
+                    include_backends:
+                      type: BY_ID
+                      ids: [practicum-pumpkin-testing]

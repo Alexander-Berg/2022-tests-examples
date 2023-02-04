@@ -1,0 +1,127 @@
+<!DOCTYPE HTML>
+<!--(skip)(description)
+SearchControl: events
+-->
+<!--(version)
+2.1.4
+-->
+<!--(commands)
+click(9);
+click(15);
+click(15);
+click(13);
+click(13);
+sleep(4000);
+test();
+-->
+<html>
+<head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            var myMap = new ym.Map('map', {
+                        center: [55.73259667357658, 37.70153663432529],
+                        zoom: 9,
+                        behaviors: ['default', 'scrollZoom'],
+                        controls: ['fullscreenControl']
+                    }),
+                    newMap = new ym.Map('map1', {
+                        center: [60, 30],
+                        zoom: 9,
+                        behaviors: ['default', 'scrollZoom'],
+                        controls: ['fullscreenControl']
+                    }),
+                    events = ['load', 'mapchange', 'optionschange', 'parentchange', 'resultselect', 'submit'],
+                    log = new Log();
+
+            addGrid(myMap);
+
+            var search1 = new ymaps.control.SearchControl({
+                options: {
+                    float: 'left'
+                }
+            });
+
+            var callback1 = function (e) {
+                __log__('search1: ' + e.get('type'));
+                if (e.get('type') == 'load') {
+                    __log__('skip: ' + e.get('skip'));
+                    __log__('count: ' + e.get('count'));
+                }
+                if (e.get('type') == 'mapchange') {
+                    try {
+                        __log__('oldMap: ' + e.get('oldMap').getCenter());
+                    } catch (e) {
+                        __log__('oldMap is null')
+                    }
+                    try {
+                        __log__('newMap: ' + e.get('newMap').getCenter());
+                    } catch (e) {
+                        __log__('newMap is null')
+                    }
+                }
+                if (e.get('type') == 'parentchange') {
+                    __log__('oldParent: ' + e.get('oldParent'));
+                    __log__('newParent: ' + e.get('newParent').getMap().getCenter());
+                }
+                if (e.get('type') == 'resultselect') {
+                    __log__('index: ' + e.get('index'));
+                }
+            };
+
+            search1.events.add(events, callback1);
+            setTimeout(function () {
+                __log__('Searching "кафе"...');
+                search1.search('кафе')
+            }, 2000);
+
+            var listenerButton = new ymaps.control.Button({data: {content: 'ignore'}, options: {selectOnClick: true}});
+            listenerButton.events
+                    .add('deselect', function () {
+                        __log__('Waiting for events...');
+                        search1.events.add(events, callback1);
+                    })
+                    .add('select', function () {
+                        __log__('Events will be ignored.');
+                        search1.events.remove(events, callback1);
+                    });
+
+            var mapButton = new ymaps.control.Button({data: {content: 'map'}, options: {selectOnClick: true}});
+            mapButton.events
+                    .add('select', function () {
+                        newMap.controls.add(search1);
+                    })
+                    .add('deselect', function () {
+                        myMap.controls.add(search1);
+                    });
+
+            var optionButton = new ymaps.control.Button({data: {content: 'visible'}, options: {selectOnClick: true}});
+            optionButton.events
+                    .add('select', function () {
+                        search1.options.set('visible', false);
+                    })
+                    .add('deselect', function () {
+                        search1.options.set('visible', true);
+                    });
+
+            myMap.controls
+                    .add(search1)
+                    .add(listenerButton, { float: 'right'})
+                    .add(mapButton, { float: 'right'})
+                    .add(optionButton, { float: 'right'});
+
+            search1.options.set('provider', 'yandex#search');
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+<div id="map1" style="height: 512px; width: 512px; margin-left: 550px; margin-top: -512px"></div>
+</body>
+</html>

@@ -1,0 +1,62 @@
+---
+regexp_path_section:
+  pattern: '/(.*)?'
+  modules:
+    - report:
+        uuid: 'site_yandex_net'
+        ranges: 'default'
+    - headers:
+        create:
+            'Host': 'yastatic.net'
+    - regexp_path:
+        sections:
+          v20:
+            pattern: '/v2.0(.*)'
+            modules:
+            - rewrite:
+                actions:
+                    - regexp: '/(.*)'
+                      rewrite: '/s3/webmaster/siteform/%1'
+            - shared:
+                  uuid: yastatic_net_s3_webmaster
+          i:
+            pattern: '/i(.*)'
+            modules:
+            - response_headers:
+                create:
+                    Strict-Transport-Security: 'max-age=43200000; includeSubDomains;'
+                delete:
+                    'cache-control|access-control-allow-origin|timing-allow-origin|expires'
+            - shared:
+                  uuid: site_yandex_net_common
+          js:
+            pattern: '/js(.*)'
+            modules:
+            - response_headers:
+                create:
+                    Strict-Transport-Security: 'max-age=43200000; includeSubDomains;'
+                delete:
+                    'cache-control|access-control-allow-origin|timing-allow-origin|expires'
+            - shared:
+                  uuid: site_yandex_net_common
+          load:
+            pattern: '/load(.*)'
+            modules:
+            - response_headers:
+                create:
+                    Cache-Control: 'no-cache, must-revalidate'
+                    Expires: 'Mon, 26 Jul 1997 05:00:00 GMT'
+                delete:
+                    'access-control-allow-origin|timing-allow-origin|strict-transport-security'
+            - shared:
+                  uuid: site_yandex_net_common
+          default:
+            modules:
+            - shared:
+                uuid: site_yandex_net_common
+            - rewrite:
+                actions:
+                - regexp: '/(.*)'
+                  rewrite: '/site/%1'
+            - shared:
+                uuid: yastatic_net_s3_site_v2

@@ -1,0 +1,614 @@
+---
+instance_macro:
+  workers: !f get_workers()
+  tcp_listen_queue: 32768
+  maxconn: 20000
+  sd: {}
+  unistat: {
+    hide_legacy_signals: true
+  }
+  sections:
+    admin:
+      ips: [127.0.0.1, '::1']
+      ports:
+        - !f get_port_var('port')
+      modules:
+        - http: {}
+        - admin: {}
+    http_section:
+      ips: ['*']
+      ports:
+        - 80
+        - !f get_port_var('port')
+      extended_http_macro:
+        modules:
+          - regexp:
+              sections:
+                options_methods:
+                  matcher:
+                    match_method:
+                      methods: ['options']
+                  modules:
+                  - shared:
+                      uuid: 'options_verb_section'
+                default:
+                  matcher: {}
+                  modules:
+                  - shared:
+                      uuid: shared_http
+                  - regexp:
+                      sections:
+                        everybodybecoolthisis:
+                          matcher:
+                            match_and:
+                              - match_fsm:
+                                  cgi: '.*everybodybecoolthisis.*'
+                          modules:
+                          - report:
+                              uuid: 'everybodybecoolthisis'
+                              ranges: 'default'
+                          - shared:
+                              uuid: 'shared_http_secondpart'
+                        default:
+                          matcher: {}
+                          modules:
+                          - shared:
+                              uuid: shared_http_secondpart
+                          - headers:
+                                create_func_weak:
+                                  'X-Forwarded-Proto': 'scheme'
+                                  'X-Yandex-Http-Version': 'proto'
+                                create:
+                                  'X-Yandex-L7': 'yes'
+                          - log_headers:
+                                name_re: 'X-Forwarded-For|Accept-Encoding|X-Request-Id|User-Agent|Cache-Control|Pragma'
+                                response_name_re: 'ETag|X-Nginx-Request-Id|Content-Encoding|Cache-Control'
+                          - response_headers_if:
+                              matcher:
+                                match_not:
+                                  match_response_codes:
+                                    codes: [200, 204, 206, 301, 302, 304]
+                              delete_header:
+                                'service-worker-allowed|content-encoding|vary|cache-control|access-control-allow-origin|timing-allow-origin|strict-transport-security|expires'
+                          - response_headers:
+                                delete:
+                                  'valid-until|x-amz-id-2|x-amz-request-id|x-amz-meta-server-side-encryption|x-amz-server-side-encryption|x-amz-meta-s3cmd-attrs|Set-Cookie|X-Amz-Expiration'
+                                create:
+                                  Connection: 'keep-alive'
+                                  Keep-Alive: 'timeout=600'
+                                  Vary: 'Accept-Encoding'
+                          - rewrite:
+                                actions:
+                                  - regexp: '/v-[^/a-zA-Z]+/slovari-ng/(.*)'
+                                    rewrite: '/slovari-ng/%1'
+                                  - regexp: '/android-mail%2Ffeedback%2F(.*)'
+                                    rewrite: '/android-mail/feedback/%1'
+                                  - regexp: '/([/]+)(.*)'
+                                    rewrite: '/%2'
+                                  - regexp: '^/(crossdomain.xml)(\\?.*)?$'
+                                    rewrite: '/crossdomain-xml/%1'
+                          - rewrite:
+                                actions:
+                                  - regexp: '^/encyc/articles_ng/(articles_ng/)+(.*)$'
+                                    rewrite: '/encyc/articles_ng/%2'
+                                  - regexp: '^/encyc/articles_ng/pharma/(.*)$'
+                                    rewrite: '/encyc/articles_generated/pharma/%1'
+                          - rewrite:
+                                actions:
+                                  - regexp: '(.*):443'
+                                    rewrite: '%1'
+                                    header_name: 'Host'
+                                  - regexp: '(.*):80'
+                                    rewrite: '%1'
+                                    header_name: 'Host'
+                          - regexp:
+                              sections:
+                                from_cdn:
+                                  matcher:
+                                    match_fsm:
+                                      header:
+                                        name: X-Cdn-Location
+                                        value: '(.*)'
+                                  modules:
+                                  - headers:
+                                      copy:
+                                        'X-Real-Ip': 'X-Forwarded-For'
+                                  - shared:
+                                      uuid: 'shared_cdn'
+                                  - regexp:
+                                      sections:
+                                        weather_y5_lego_yandex_net:
+                                          matcher:
+                                            match_fsm:
+                                              header:
+                                                name: Host
+                                                value: '(weather|y5|lego|img|js|i|video|kraski|blogs|ask|tv|perevod|jslibs)\\.static\\.yandex\\.net'
+                                          modules:
+                                          - regexp:
+                                              sections:
+                                                lego_static_yandex_net:
+                                                  matcher:
+                                                    match_fsm:
+                                                      header:
+                                                        name: Host
+                                                        value: 'lego\\.static\\.yandex\\.net'
+                                                  modules:
+                                                  - rewrite:
+                                                      actions:
+                                                        - regexp: '/(.*)'
+                                                          rewrite: '/lego/%1'
+                                                  - shared:
+                                                      uuid: "weather_y5_lego_yandex_net_shared"
+                                                ljslibs_static_yandex_net:
+                                                  matcher:
+                                                    match_fsm:
+                                                      header:
+                                                        name: Host
+                                                        value: 'ljslibs\\.static\\.yandex\\.net'
+                                                  modules:
+                                                  - rewrite:
+                                                      actions:
+                                                        - regexp: '/(.*)'
+                                                          rewrite: '/jslibs/%1'
+                                                  - shared:
+                                                      uuid: "weather_y5_lego_yandex_net_shared"
+                                                js_static_yandex_net:
+                                                  matcher:
+                                                    match_fsm:
+                                                      header:
+                                                        name: Host
+                                                        value: 'js\\.static\\.yandex\\.net'
+                                                  modules:
+                                                  - rewrite:
+                                                      actions:
+                                                        - regexp: '/(.*)'
+                                                          rewrite: '/js/%1'
+                                                  - shared:
+                                                      uuid: "weather_y5_lego_yandex_net_shared"
+                                                default:
+                                                  matcher: {}
+                                                  modules:
+                                                  - shared:
+                                                      uuid: weather_y5_lego_yandex_net_shared
+                                                  - regexp_path:
+                                                      include_upstreams:
+                                                        filter:
+                                                          id_prefix_in: ['weather_y5_lego_yandex_net', 'all_']
+                                                        order:
+                                                          label:
+                                                            name: order  
+                                        widgets_yandex_ru:
+                                          matcher:
+                                            match_fsm:
+                                              header:
+                                                name: Host
+                                                value: '(widgets|widgets\\.[a-zA-Z0-9]+)\\.yandex\\.(ru|net|st)'
+                                          modules:
+                                          - regexp_path:
+                                              include_upstreams:
+                                                filter:
+                                                  id_prefix_in: ['widgets_yandex_ru', 'all_']
+                                                order:
+                                                  label:
+                                                    name: order  
+                                        img_encyc_yandex_net:
+                                          matcher:
+                                            match_or:
+                                            - match_fsm:
+                                                header:
+                                                  name: Host
+                                                  value: 'img\\.encyc\\.yandex\\.net'
+                                            - match_fsm:
+                                                header:
+                                                  name: Host
+                                                  value: 'img\\.encyc\\.(rcstatic|betastatic|prestatic)\\.yandex\\.(ru|net)'
+                                          modules:
+                                          - rewrite:
+                                              actions:
+                                              - regexp: '^/articles_ng/(articles_ng/)+(.*)$'
+                                                rewrite: '/articles_ng/%2'
+                                              - regexp: '^/articles_ng/pharma/(.*)$'
+                                                rewrite: '/articles_generated/pharma/%1'
+                                          - regexp_path:
+                                              include_upstreams:
+                                                filter:
+                                                  id_prefix_in: ['img_encyc_yandex_net', 'all_']
+                                                order:
+                                                  label:
+                                                    name: order  
+                                        subbotnik_yastatic_net:
+                                          matcher:
+                                            match_or:
+                                              - match_fsm:
+                                                  header:
+                                                    name: Host
+                                                    value: 'subbotnik\\.yandex\\.st'
+                                              - match_fsm:
+                                                  header:
+                                                    name: Host
+                                                    value: 'subbotnik\\.yastatic\\.net'
+                                              - match_fsm:
+                                                  header:
+                                                    name: Host
+                                                    value: subbotnik\\.([a-zA-Z0-9]+)\\.yandex\\.ru
+                                          modules:
+                                          - regexp_path:
+                                              include_upstreams:
+                                                filter:
+                                                  id_prefix_in: ['subbotnik_yastatic_net', 'all_']
+                                                order:
+                                                  label:
+                                                    name: order 
+                                        static_kp_yandex_net:
+                                          matcher:
+                                            match_or:
+                                            - match_fsm:
+                                                header:
+                                                  name: Host
+                                                  value: 'static\\.kp\\.yandex\\.net'
+                                            - match_fsm:
+                                                header:
+                                                  name: Host
+                                                  value: 'betastatic\\.kp\\.yandex\\.net'
+                                            - match_fsm:
+                                                header:
+                                                  name: Host
+                                                  value: 'videopartner\\.kinopoisk\\.ru'
+                                            - match_fsm:
+                                                header:
+                                                  name: Host
+                                                  value: 'kinopoisk\\..*'
+                                          modules:
+                                          - regexp_path:
+                                              include_upstreams:
+                                                filter:
+                                                  id_prefix_in: ['static_kp_yandex_net', 'all_']
+                                                order:
+                                                  label:
+                                                    name: order
+                                        site_yandex_net:
+                                          matcher:
+                                            match_fsm:
+                                              header:
+                                                name: Host
+                                                value: 'site\\.yandex\\.net'
+                                          modules:
+                                          - regexp_path:
+                                              include_upstreams:
+                                                filter:
+                                                  id_prefix_in: ['site_yandex_net', 'all_']
+                                                order:
+                                                  label:
+                                                    name: order 
+                                        cards2_static_yandex_net:
+                                          matcher:
+                                            match_fsm:
+                                              header:
+                                                name: Host
+                                                value: 'cards2-static\\.yandex\\.net'
+                                          modules:
+                                          - regexp_path:
+                                              include_upstreams:
+                                                  filter:
+                                                    id_prefix_in: ['cards2_static_yandex_net', 'all_']
+                                                  order:
+                                                    label:
+                                                      name: order 
+                                        default_avatars_yandex_net:
+                                          matcher:
+                                            match_or:
+                                            - match_fsm:
+                                                header:
+                                                  name: Host
+                                                  value: 'default\\.avatars(\\.rcstatic\\.|\\.betastatic\\.|\\.prestatic\\.|\\.)yandex\\.(ru|net)'
+                                            - match_fsm:
+                                                header:
+                                                  name: Host
+                                                  value: 'avatars\\.static\\.([a-zA-Z]+\\.)?yandex\\.net'
+                                            - match_fsm:
+                                                header:
+                                                  name: Host
+                                                  value: 'avatars\\.yandex\\.net'
+                                          modules:
+                                          - regexp_path:
+                                              include_upstreams:
+                                                filter:
+                                                  id_prefix_in: ['default_avatars_yandex_net', 'all_']
+                                                order:
+                                                  label:
+                                                    name: order 
+                                        img-css_friends_yandex_net:
+                                          matcher:
+                                            match_or:
+                                            - match_fsm:
+                                                header:
+                                                  name: Host
+                                                  value: 'img-css\\.friends\\.yandex\\.net'
+                                            - match_fsm:
+                                                header:
+                                                  name: Host
+                                                  value: 'img-css\\.friends\\.([a-zA-Z0-9]+)\\.yandex\\.(ru|net)'
+                                          modules:
+                                          - regexp_path:
+                                              include_upstreams:
+                                                filter:
+                                                  id_prefix_in: ['img-css_friends_yandex_net', 'all_']
+                                                order:
+                                                  label:
+                                                    name: order 
+                                        swf_static_yandex_net:
+                                          matcher:
+                                            match_or:
+                                              - match_fsm:
+                                                  header:
+                                                    name: Host
+                                                    value: 'nginx_proxy\\.yandex\\.st'
+                                              - match_fsm:
+                                                  header:
+                                                    name: Host
+                                                    value: 'nginx_proxy\\.yastatic\\.net'
+                                              - match_fsm:
+                                                  header:
+                                                    name: Host
+                                                    value: 'flash\\.dev\\.yandex\\.net'
+                                              - match_fsm:
+                                                  header:
+                                                    name: Host
+                                                    value: 'static\\.music\\.yandex\\.net'
+                                              - match_fsm:
+                                                  header:
+                                                    name: Host
+                                                    value: 'audio\\.lingvo\\.yandex\\.net'
+                                              - match_fsm:
+                                                  header:
+                                                    name: Host
+                                                    value: 'audio\\.lingvo\\.([a-zA-Z0-9\\-]+)\\.yandex\\.(ru|net)'
+                                              - match_fsm:
+                                                  header:
+                                                    name: Host
+                                                    value: 'verdict\\.(pre|beta|rc)?static\\.yandex\\.net'
+                                              - match_fsm:
+                                                  header:
+                                                    name: Host
+                                                    value: 'swf\\.([a-zA-Z0-9]+\\.)?(yandex\\.st|yastatic\\.net)'
+                                              - match_fsm:
+                                                  header:
+                                                    name: Host
+                                                    value: 'swf\\.static\\.([a-zA-Z0-9]+\\.)?yandex\\.net'
+                                          modules:
+                                          - regexp:
+                                              sections:
+                                                swf_static_yandex_net:
+                                                  matcher:
+                                                    match_and:
+                                                    - match_fsm:
+                                                        header:
+                                                          name: Host
+                                                          value: 'swf\\.static\\.yandex\\.net'
+                                                    - match_not:
+                                                        match_fsm:
+                                                          path: '/crossdomain(.*)?'
+                                                  modules:
+                                                  - rewrite:
+                                                      actions:
+                                                        - regexp: '/(.*)'
+                                                          rewrite: '/swf/%1'
+                                                  - shared:
+                                                      uuid: "swf_static_yandex_net_shared"
+                                                audio_lingvo_yandex_net:
+                                                  matcher:
+                                                    match_and:
+                                                    - match_fsm:
+                                                        header:
+                                                          name: Host
+                                                          value: 'audio\\.lingvo\\.yandex\\.net'
+                                                    - match_not:
+                                                        match_fsm:
+                                                          path: '/crossdomain(.*)?'
+                                                  modules:
+                                                  - rewrite:
+                                                      actions:
+                                                        - regexp: '/(.*)'
+                                                          rewrite: '/yandex-slovari-lingvo-player6-swf/%1'
+                                                  - shared:
+                                                      uuid: "swf_static_yandex_net_shared"
+                                                default:
+                                                  matcher: {}
+                                                  modules:
+                                                  - shared:
+                                                      uuid: swf_static_yandex_net_shared
+                                                  - regexp_path:
+                                                      include_upstreams:
+                                                        filter:
+                                                          id_prefix_in: ['swf_static_yandex_net', 'all_']
+                                                        order:
+                                                          label:
+                                                            name: order
+                                        static_rasp_yandex_net:
+                                          matcher:
+                                            match_or:
+                                            - match_fsm:
+                                                header:
+                                                  name: Host
+                                                  value: 'static\\.rasp\\.yandex\\.(net|ru|ua|kz)'
+                                            - match_fsm:
+                                                header:
+                                                  name: Host
+                                                  value: 'static\\.rasp\\.([a-zA-Z0-9]+)\\.yandex\\.(net|ru|ua|kz)'
+                                          modules:
+                                          - rewrite:
+                                              actions:
+                                                - regexp: '^/[\\d.]+(/data/.*)$'
+                                                  rewrite: '%1'
+                                                - regexp: '^/[\\d.]+(/apicc/.*)$'
+                                                  rewrite: '%1'
+                                          - regexp_path:
+                                              include_upstreams:
+                                                filter:
+                                                  id_prefix_in: ['static_rasp_yandex_net', 'all_']
+                                                order:
+                                                  label:
+                                                    name: order  
+                                        static_yandex_net:
+                                          matcher:
+                                            match_or:
+                                            - match_fsm:
+                                                header:
+                                                  name: Host
+                                                  value: 'static\\.yandex\\.net'
+                                            - match_fsm:
+                                                header:
+                                                  name: Host
+                                                  value: 'static\\.([a-zA-Z0-9]+)\\.yandex.net'
+                                          modules:
+                                          - regexp_path:
+                                              include_upstreams:
+                                                filter:
+                                                  id_prefix_in: ['static_yandex_net', 'all_', 'upstream_ok']
+                                                order:
+                                                  label:
+                                                    name: order
+                                        rk_yandex_ru:
+                                          matcher:
+                                            match_or:
+                                            - match_fsm:
+                                                header:
+                                                  name: Host
+                                                  value: '(www\\.rk|rk)\\.yandex\\.ru'
+                                            - match_fsm:
+                                                header:
+                                                  name: Host
+                                                  value: '(www\\.)?rk\\.[a-z0-9-]+\\.yandex\\.net'
+                                          modules:
+                                          - report:
+                                              uuid: 'rk_yandex_ru'
+                                              ranges: 'default'
+                                          - response_headers:
+                                              create:
+                                                'Location': 'https://www.yandex.ru/'
+                                          - errordocument:
+                                              status: 302
+                                        love_yandex_ru:
+                                          matcher:
+                                            match_or:
+                                            - match_fsm:
+                                                header:
+                                                  name: Host
+                                                  value: '(www\\.)?(heart|liebe|amour|amore|amor|love)\\.yandex\\.ru'
+                                            - match_fsm:
+                                                header:
+                                                  name: Host
+                                                  value: 'love\\.yandex\\.ru'
+                                          modules:
+                                          - report:
+                                              uuid: 'love_yandex_ru'
+                                              ranges: 'default'
+                                          - headers:
+                                              create:
+                                                  'Location': 'https://cards.yandex.ru'
+                                          - rewrite:
+                                              actions:
+                                                  - regexp: '(.*)'
+                                                    rewrite: '%1%{url}'
+                                                    header_name: 'Location'
+                                          - headers_forwarder:
+                                              actions:
+                                                  - request_header: 'Location'
+                                                    response_header: 'Location'
+                                          - errordocument:
+                                              status: 301
+                                        main:
+                                          matcher:
+                                            match_or:
+                                            - match_fsm:
+                                                header:
+                                                  name: Host
+                                                  value: 'yandex\\.st'
+                                            - match_fsm:
+                                                header:
+                                                  name: Host
+                                                  value: '(.*)\\.yandex\\.st'
+                                            - match_fsm:
+                                                header:
+                                                  name: Host
+                                                  value: 'static\\.yandex\\.sx'
+                                            - match_fsm:
+                                                header:
+                                                  name: Host
+                                                  value: 'yastatic\\.net'
+                                            - match_fsm:
+                                                header:
+                                                  name: Host
+                                                  value: '(.*)\\.yastatic\\.net'
+                                            - match_fsm:
+                                                header:
+                                                  name: Host
+                                                  value: 'failover\\.static\\.yandex\\.net'
+                                            - match_fsm:
+                                                header:
+                                                  name: Host
+                                                  value: '[a-z0-9-]*-rr-templates\\.hamster\\.yandex\\.[a-z]{1,10}(\\.[a-z]{1,10})?'
+                                            - match_fsm:
+                                                header:
+                                                  name: Host
+                                                  value: '(www\\.)?yandex\\.([[a-zA-Z0-9\\.]+)'
+                                          modules:
+                                          - regexp_path:
+                                              include_upstreams:
+                                                filter:
+                                                  id_prefix_in: ['yastatic_net_', 'all_', 'shared_sections', 'awacs-balancer-health-check', 'pki_validation', 'upstream_ok']
+                                                order:
+                                                  label:
+                                                    name: order
+
+                                        default:
+                                          matcher: {}
+                                          modules:
+                                          - shared:
+                                              uuid: "default_upstreams"
+                                          - regexp_path:
+                                              include_upstreams:
+                                                filter:
+                                                  id_prefix_in: ['all_', 'all_default', 'awacs-balancer-health-check', 'slbping', 'slbl7ping', 'upstream_ok', 'l7test_yandex_ping']
+                                                order:
+                                                  label:
+                                                    name: order
+                                default:
+                                  matcher: {}
+                                  modules:
+                                  - headers:
+                                      create_func_weak:
+                                        X-Real-Ip: 'realip'
+                                        X-Forwarded-For: 'realip'
+                                  - shared:
+                                      uuid: "shared_cdn"
+    https_h2_section:
+      ips: ['*']
+      ports:
+        - 443
+        - !f get_port_var('port', 1)
+      extended_http_macro:
+        enable_ssl: true
+        disable_tlsv1_3: false
+        enable_http2: false
+        ssl_sni_contexts:
+          static.kp.yandex.net:
+            servername_regexp: '(static.kp.yandex.net|betastatic.kp.yandex.net|videopartner.kinopoisk.ru|kinopoisk\\..*)'
+          yastatic.net:
+            servername_regexp: default
+            secondary_cert_postfix: sha2-gsn
+        modules:
+          - regexp:
+              sections:
+                options_methods:
+                  matcher:
+                    match_method:
+                      methods: ['options']
+                  modules:
+                  - shared:
+                      uuid: 'options_verb_section'
+                default:
+                  matcher: {}
+                  modules:
+                   - shared:
+                      uuid: shared_http

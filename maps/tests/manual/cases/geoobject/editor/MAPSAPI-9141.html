@@ -1,0 +1,144 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Геообъект: работа редактора после удаления всех меток полигона
+
+Description:
+Проверка работы редактора после удаления всех меток полигона.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+geoobject
+
+Estimated time:
+180000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан Москвы, на спане два ряда объектов: линия, многоугольник(верхний ряд синего цвета, нижний - зеленого).
+  На всех объектах имеются метки редактирования объектов.
+
+Step:
+  Action:
+  Выполнить даблклик в метку вершину синего многоугольника.
+
+  Expectation:
+  Метка удаляется, пропадает часть области многоугольника.
+  (Во время даблклика промигивает меню вершин, реагируя на события клика)
+
+Step:
+  Action:
+  Выполнить даблклик по оставшимся меткам синего многоугольника.
+  (Во время даблклика промигивает меню вершин, реагируя на события клика)
+
+  Expectation:
+  Метки многоугольника удаляются корректно, по удалению последней метки на месте многоугольника метки отсуствуют.
+
+Step:
+  Action:
+  Выполнить клик в спан карты.
+
+  Expectation:
+  На спане карты появляется метка вершины, от которой к курсору прилипает пунктирная линия.
+
+Step:
+  Action:
+  Выполнить клик в спан карты.
+
+  Expectation:
+  На спане карты появляется вторая метка вершины, между метками сплошная линия с промежуточной меткой, к курсору прилипают пунктирные линии от вершин.
+
+Step:
+  Action:
+  Выполнить клик в спан карты.
+
+  Expectation:
+  На спане карты появляется третья метка вершины, область образовавшегося треугольника окрашена в синий, к курсору прилипают пунктирные первой и последней линии от вершин.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script src="../geoCS.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.73259667357658, 37.70153663432529],
+                zoom: 9,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+
+            geoCSSource(ym, myMap, this);
+            __log__('MAPSAPI-9141: Некорректно работает editor.startDrawing ' +
+                    'в обработчике события geometrychange у полигона');
+            __log__('Редактор переходит в некорректное состояние после удаления последней вершины.');
+            __log__('Редактор не должен останавливаться после удаления последней вершины в этом кейсе.');
+
+            var collection = new ymaps.GeoObjectCollection();
+
+            collection
+                    .add(geoObjectPolyline)
+                    .add(geoObjectPolygon)
+                    .add(polyline)
+                    .add(polygon);
+
+            collection.each(function (obj) {
+                obj.properties.set('balloonContent', 'text');
+                obj.properties.set('hintContent', 'text');
+            });
+
+            myMap.geoObjects
+                    .add(collection);
+            geoObjectPolyline.editor.startEditing();
+            geoObjectPolygon.editor.startEditing();
+            polyline.editor.startEditing();
+            polygon.editor.startEditing();
+
+            //В связи с https://st.yandex-team.ru/MAPSAPI-9879 теперь для полигонов при удалении всех вершин
+            // из внешнего контура сам контур не удаляется
+            //поэтому для полигона надо проверять e.get('originalEvent').get('newCoordinates’)[0].length
+            geoObjectPolyline.events.add('geometrychange', function (e) {
+                if (e.get('originalEvent').get('newCoordinates').length === 0) {
+                    geoObjectPolyline.editor.startDrawing();
+                }
+            });
+            geoObjectPolygon.events.add('geometrychange', function (e) {
+                if (e.get('originalEvent').get('newCoordinates')[0].length === 0) {
+                    geoObjectPolygon.editor.startDrawing();
+                }
+            });
+            polyline.events.add('geometrychange', function (e) {
+                if (e.get('originalEvent').get('newCoordinates').length === 0) {
+                    polyline.editor.startDrawing();
+                }
+            });
+            polygon.events.add('geometrychange', function (e) {
+                if (e.get('originalEvent').get('newCoordinates')[0].length === 0) {
+                    polygon.editor.startDrawing();
+                }
+            });
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

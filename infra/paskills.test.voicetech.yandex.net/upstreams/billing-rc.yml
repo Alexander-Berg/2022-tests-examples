@@ -1,0 +1,55 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - ivangromov
+      groups: []
+labels:
+  order: '10000000'
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      path: '/billing((-|_)rc)?(/billing)?/.*'
+  modules:
+    - exp_getter_macro:
+        service_name: alice_billing
+        testing_mode: {}
+        _version: 3
+    - report: {ranges: default, uuid: requests_to_billing_rc}
+    - headers:
+        create_func_weak:
+            X-Real-Ip: realip
+            X-Forwarded-For-Y: realip
+            X-Request-Id: reqid
+        append_func:
+            X-Forwarded-For: realip
+    - rewrite:
+        actions:
+          - regexp: '/billing((-|_)rc)?(/billing)?/(.*)'
+            rewrite: '/billing/%4'
+            split: url
+    - balancer2:
+        rr: {}
+        attempts: 1
+        fast_attempts: 3
+        attempts_rate_limiter:
+          limit: 0.3
+        fast_503: true
+        return_last_5xx: true
+        status_code_blacklist:
+          - "5xx"
+        generated_proxy_backends:
+          proxy_options:
+            connect_timeout: 100ms
+            backend_timeout: 10s
+            fail_on_5xx: false
+          include_backends:
+            type: BY_ID
+            ids: [billing-rc]
+        on_error:
+          modules:
+            - errordocument:
+                status: 504
+                content: '504: Service Unavailable'
+            

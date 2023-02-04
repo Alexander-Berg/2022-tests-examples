@@ -1,0 +1,50 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - pazus
+      groups: []
+labels:
+  order: 09900000
+config_mode: easy2
+---
+l7_upstream_macro:
+  version: 0.0.1
+  id: memento_priemka
+  matcher:
+    uri_re: '/(memento|settings-storage)/.*'
+  rewrite:
+    - target: PATH
+      pattern:
+        re: '/(memento|settings-storage)/'
+      replacement: '/'
+  monitoring:
+    uuid: memento_priemka
+    response_codes: [503, 504, 500]
+  headers:
+    - create: {target: X-Real-Ip, func: realip, keep_existing: true}
+    - create: {target: X-Forwarded-For-Y, func: realip, keep_existing: true}
+    - create: {target: X-Request-Id, func: reqid, keep_existing: true}
+    - append: {target: X-Forwarded-For, func: realip, do_not_create_if_missing: false}
+  flat_scheme:
+    balancer:
+      attempts: 2
+      fast_attempts: 4
+      fast_attempts_type: CONNECT_FAILURE_AND_503
+      backend_timeout: 1s
+      connect_timeout: 100ms
+      retry_http_responses:
+        codes: [5xx, 429]
+        on_last_failed_retry: PROXY_RESPONSE_AS_IS
+      max_reattempts_share: 0.6
+      max_pessimized_endpoints_share: 0.2
+      health_check:
+        delay: 5s
+        request: 'GET /actuator/health/readiness HTTP/1.1\nHost: paskills-common-testing.alice.yandex.net\n\n'
+        
+    backend_ids:
+    - memento-priemka        
+    on_error:
+      static:
+        status: 504
+        content: "Service unavailable"

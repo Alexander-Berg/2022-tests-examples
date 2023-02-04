@@ -1,0 +1,59 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - librarian
+      groups: []
+labels:
+  order: '1000001'
+---
+regexp_section:
+  matcher:
+        match_and:
+            - match_fsm:
+                uri: '/messenger/api/unread_count'
+            - match_or:
+                - match_fsm:
+                    match: 'GET.*'
+                - match_fsm:
+                    header:
+                        name: Content-Type
+                        value: application/json
+            - match_fsm:
+                header:
+                    name: Origin
+                    value: ((https://(.*\\.)?yandex\\.(ru|com\\.tr|kz|ua|by|az|com\\.am|com\\.ge|co\\.il|kg|lt|lv|md|tj|tm|uz|fr|ee)(:\\d+)?)|(https://.*\\.yandex-team\\.ru)|(https://(www\\.)?ya\\.ru)|(https://(.*\\.)?beru\\.ru)|(https://(.*\\.)?bringly\\.ru)|(https://(.*\\.)?toloka\\.ai)|(https://messenger-test\\.s3\\.mds\\.yandex\\.net))
+  modules:
+    - report:
+        ranges: default
+        uuid: unread_count
+    - report:
+        ranges: default
+        uuid: unread_count_origin
+    - response_headers:
+        create:
+            Access-Control-Allow-Methods: "GET, POST, OPTIONS"
+            Access-Control-Max-Age: "86400"
+            Access-Control-Allow-Credentials: "true"
+            Access-Control-Allow-Headers: "Content-Type"
+    - headers_forwarder:
+        actions:
+          - request_header: 'Origin'
+            response_header: 'Access-Control-Allow-Origin'
+            erase_from_request: true
+            erase_from_response: true
+            weak: false
+    - headers_forwarder:
+        actions:
+          - request_header: 'origin'
+            response_header: 'Access-Control-Allow-Origin'
+            erase_from_request: true
+            erase_from_response: true
+            weak: false
+    - threshold:
+        lo_bytes: 307200
+        hi_bytes: 716800
+        pass_timeout: 10s
+        recv_timeout: 1s
+    - shared:
+        uuid: unread_count

@@ -1,0 +1,175 @@
+---
+regexp_section:
+  matcher: {}
+  modules:
+    - report:
+        uuid: nodejs
+        ranges: default
+    - icookie:
+        use_default_keys: true
+        domains: [".yandex.ru", ".yandex.by", ".yandex.com", ".yandex.com.tr", ".yandex.kz", ".yandex.ua", ".yandex.uz"]
+    - regexp:
+        sections:
+          post_method:
+            matcher:
+              match_fsm: {match: POST.*}
+            modules:
+              - balancer2:
+                  attempts: 1
+                  rr: {weights_file: ./controls/traffic_control.weights}
+                  timeout_policy:
+                    timeout: 15s
+                    unique_policy: {}
+                  backends:
+                    - weight: 1
+                      name: nodejs_sas
+                      modules:
+                        - report: {ranges: default, uuid: requests_nodejs_to_sas}
+                        - balancer2:
+                            attempts: 1
+                            active:
+                              steady: false
+                              request: 'GET /version.json HTTP/1.1\nHost: collections.yandex.ru\n\n'
+                              delay: 10s
+                            generated_proxy_backends:
+                              proxy_options:
+                                backend_timeout: 10s
+                                keepalive_count: 1
+                                fail_on_5xx: false
+                              include_backends:
+                                type: BY_ID
+                                ids: [pdb_nodejs_production_sas]
+                    - weight: 1
+                      name: nodejs_man
+                      modules:
+                        - report: {ranges: default, uuid: requests_nodejs_to_man}
+                        - balancer2:
+                            attempts: 1
+                            active:
+                              steady: false
+                              request: 'GET /version.json HTTP/1.1\nHost: collections.yandex.ru\n\n'
+                              delay: 10s
+                            generated_proxy_backends:
+                              proxy_options:
+                                backend_timeout: 10s
+                                keepalive_count: 1
+                                fail_on_5xx: false
+                              include_backends:
+                                type: BY_ID
+                                ids: [pdb_nodejs_production_man]
+                    - weight: 1
+                      name: nodejs_vla
+                      modules:
+                        - report: {ranges: default, uuid: requests_nodejs_to_vla}
+                        - balancer2:
+                            attempts: 1
+                            active:
+                              steady: false
+                              request: 'GET /version.json HTTP/1.1\nHost: collections.yandex.ru\n\n'
+                              delay: 10s
+                            generated_proxy_backends:
+                              proxy_options:
+                                backend_timeout: 10s
+                                keepalive_count: 1
+                                fail_on_5xx: false
+                              include_backends:
+                                type: BY_ID
+                                ids: [pdb_nodejs_production_vla]
+                    - weight: -1
+                      name: nodejs_devnull
+                      modules:
+                        - report:
+                            uuid: requests_nodejs_to_devnull
+                            ranges: 1ms
+                        - errordocument:
+                            status: 204
+                  on_error:
+                    modules:
+                      - errordocument: {content: OK, status: 200}
+          default:
+            matcher: {}
+            modules:
+              - geobase_macro: {}
+              - balancer2:
+                  attempts: 2
+                  attempts_file: './controls/nodejs.attempts'
+                  rr: {weights_file: ./controls/traffic_control.weights}
+                  timeout_policy:
+                    timeout: 11s
+                    unique_policy: {}
+                  backends:
+                    - weight: 1
+                      name: nodejs_sas
+                      modules:
+                        - report: {ranges: default, uuid: requests_nodejs_to_sas}
+                        - balancer2:
+                            attempts: 1
+                            weighted2: {}
+                            generated_proxy_backends:
+                              proxy_options:
+                                backend_timeout: 5s
+                                connect_timeout: 100ms
+                                keepalive_count: 1
+                              include_backends:
+                                type: BY_ID
+                                ids: [pdb_nodejs_production_sas]
+                    - weight: 1
+                      name: nodejs_man
+                      modules:
+                        - report: {ranges: default, uuid: requests_nodejs_to_man}
+                        - balancer2:
+                            attempts: 1
+                            weighted2: {}
+                            generated_proxy_backends:
+                              proxy_options:
+                                backend_timeout: 5s
+                                connect_timeout: 100ms
+                                keepalive_count: 1
+                              include_backends:
+                                type: BY_ID
+                                ids: [pdb_nodejs_production_man]
+                    - weight: 1
+                      name: nodejs_vla
+                      modules:
+                        - report: {ranges: default, uuid: requests_nodejs_to_vla}
+                        - balancer2:
+                            attempts: 1
+                            weighted2: {}
+                            generated_proxy_backends:
+                              proxy_options:
+                                backend_timeout: 5s
+                                connect_timeout: 100ms
+                                keepalive_count: 1
+                              include_backends:
+                                type: BY_ID
+                                ids: [pdb_nodejs_production_vla]
+                    - weight: -1
+                      name: nodejs_devnull
+                      modules:
+                        - report:
+                            uuid: requests_nodejs_to_devnull
+                            ranges: 1ms
+                        - errordocument:
+                            status: 204
+                  on_error:
+                    modules:
+                      - balancer2:
+                          attempts: 3
+                          weighted2: {}
+                          timeout_policy:
+                            timeout: 5s
+                            unique_policy: {}
+                          generated_proxy_backends:
+                            proxy_options:
+                              backend_timeout: 1s
+                              connect_timeout: 100ms
+                              keepalive_count: 1
+                            include_backends:
+                              type: BY_ID
+                              ids:
+                                - pdb_nodejs_offline_production_man
+                                - pdb_nodejs_offline_production_sas
+                                - pdb_nodejs_offline_production_vla
+                          on_error:
+                            modules:
+                              - errordocument: {content: Gateway Timeout, status: 504}

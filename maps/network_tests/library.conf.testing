@@ -1,0 +1,22 @@
+location ~ ^/test/get/[0-9A-Za-z]*\.seq {
+    access_by_lua_file /usr/lib/yandex/maps/rate-limiter/access.lua;
+    rewrite ^/test/get/([0-9A-Za-z]*\.seq)$ /dummy-responses/test/get/$1 break;
+    proxy_set_header Host s3.mds.yandex.net;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Yandex-Http2 $http2;
+    proxy_set_header X-Yandex-Ja3 $http_ssl_ja3;
+    proxy_set_header X-Forwarded-For-Y $remote_addr;
+    proxy_set_header X-Source-Port-Y $remote_port;
+    proxy_pass https://s3.mds.yandex.net;
+}
+
+location /test/post {
+    access_by_lua_file /usr/lib/yandex/maps/rate-limiter/access.lua;
+    echo_read_request_body;
+    echo -n $request_body;
+}
+
+location ~ ^/test/dav/([0-9]*)$ {
+    access_by_lua_file /usr/lib/yandex/maps/rate-limiter/access.lua;
+    content_by_lua_file /usr/lib/yandex/maps/mobile/dav_handler.lua;
+}

@@ -1,0 +1,44 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - feldsherov
+      groups:
+      - svc_strust_administration
+labels:
+  order: '99999998'
+
+---
+regexp_section:
+  matcher: 
+    match_fsm:
+        path: '/from_directory.*'
+  modules:
+    - headers:
+        create_weak:
+          Host: terminal-selector.psp.test.yandex.net
+        create_func:
+          X-Real-IP: realip
+    - shared:
+        uuid: 'backends'
+    - balancer2:
+        connection_attempts: !f count_backends()
+        attempts: 1
+        unique_policy: {}
+        active:
+          delay: '2s'
+          request: 'GET /ping HTTP/1.1\nHost: terminal-selector.psp.test.yandex.net\nUser-agent: l7-balancer\n\n'  # noqa: E501
+        generated_proxy_backends:
+          proxy_options:
+            backend_timeout: 60s
+            connect_timeout: 70ms
+            keepalive_count: 1
+            keepalive_timeout: 60s
+            fail_on_5xx: false
+          include_backends:
+            type: BY_ID
+            ids: [psp_terminal-selector_testing]
+        on_error:
+          errordocument:
+            status: 504
+            content: "Service unavailable"

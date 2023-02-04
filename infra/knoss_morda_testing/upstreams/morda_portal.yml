@@ -1,0 +1,73 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - ialand
+      groups: []
+labels:
+  order: '10000000'
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      uri: '/(my-cookie\\.js|wsave\\.html|form\\.html|mailinfo\\.js|dropcounters\\.js|all\\.xml|original\\.xml|services\\.xml|hello\\.html|hellom\\.html|hellot\\.html|hellotel\\.html|ok\\.html|index\\.html|index\\.htm|google([a-zA-Z0-9]+)\\.html|application\\.xml|black\\.html|white\\.html|empty\\.html|crossdomain\\.xml|i-social__closer\\.html|login-status\\.html|mda\\.html|mdaxframeproxy\\.html|xframeproxy\\.html|apple-touch-icon\\.png|embeded\\.min\\.js|htc|HTC|mdaiframe\\.html|apple-app-site-association)(.*)?|/|/(wsave|autopattern|all|myclean|screenx|remotes-status|setmy|adddata|wcomplain|route|clean_route|save_route|drop_route|m|d|mdae|gpsave|mgpsave|jcb|gs|bjk|fb|sade|all|themes|skins|rapid|instant|postcard|y|json|data|test|banner|portal|log|black|white|map_router|ua|ru|kz|by|safari|ios7se|inline|jsb|i|dform|chrome|\\.well-known|1tv|1tv\\.ru|matchtv|ntv|5tv|ru24|vesti|rentv|tnt|m24|a2|sovsekretno|izvestia|echotv|probusiness|uspeh|globalstar|tochkatv|hardlife|oceantv|gamanoid|hitv|rutv|topspb|tdk|oirtv|rt|rtdoc|hdmedia|wfc|sibir|ntvpravo|ntvserial|ntvstyle|ctc|samsung-bixby|efir)(/.*)?'
+  modules:
+    - report:
+        uuid: morda
+        ranges: default
+    - threshold:
+        lo_bytes: 153600
+        hi_bytes: 307200
+        pass_timeout: '2s'
+        recv_timeout: '0.05s'
+        on_pass_timeout_failure:
+          errordocument:
+            status: 413
+    - geobase_macro: {}
+    - exp_getter_macro:
+        _version: 3
+        service_name: 'morda'
+    - request_replier:
+        rate_file: './controls/request_replier_morda.ratefile'
+        sink:
+          modules:
+            - balancer2:
+                attempts: 1
+                weighted2: {}
+                generated_proxy_backends:
+                  proxy_options:
+                    backend_timeout: 10s
+                  instances:
+                    - weight: 1
+                      host: sinkadm.priemka.yandex.ru
+                      port: 80
+    - report: {ranges: default, uuid: morda_requests_to_sas}
+    - shared: {uuid: morda_sas}
+    - balancer2:
+        connection_attempts: 5
+        attempts: 1
+        retry_non_idempotent: true
+        attempts_file: './controls/morda.attempts'
+        rr: {}
+        generated_proxy_backends:
+          proxy_options: {}
+          include_backends:
+            type: BY_ID
+            ids: [backends_SAS_PORTAL_MORDA_RC,backends_VLA_PORTAL_MORDA_RC_YP,backends_SAS_PORTAL_MORDA_RC_YP]
+        on_error:
+          modules:
+            - report: {ranges: default, uuid: morda_requests_to_onerror}
+            - balancer2:
+                connection_attempts: 5
+                attempts: 1
+                retry_policy:
+                  unique_policy: {}
+                retry_non_idempotent: true
+                rr: {}
+                generated_proxy_backends:
+                  proxy_options:
+                    connect_timeout: 100ms
+                    backend_timeout: 10s
+                  include_backends:
+                    type: BY_ID
+                    ids: [backends_PRODUCTION_PUMPI_YP]

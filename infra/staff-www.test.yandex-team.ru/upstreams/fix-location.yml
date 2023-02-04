@@ -1,0 +1,36 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - baranovxyz
+      groups: []
+labels:
+  order: '00100000'
+---
+regexp_section:
+    matcher:
+        match_and:
+            - match_or:
+                - match_fsm:
+                    host: 'cab.test.yandex-team.ru'
+                - match_fsm:
+                    host: 'cab.test.tools.yandex-team.ru'
+            - match_fsm:
+                path: '/(.*/)?[^.]+[^/]'
+                surround: false
+            - match_not:
+                match_fsm:
+                    path: '/handle/.*'
+                    surround: false
+    modules:
+        - headers:
+            create_func:
+                Location: url
+        - rewrite:
+            actions:
+              - regexp: '([^?]+)(.*)'
+                header_name: Location
+                rewrite: '%{scheme}://%{host}%1/%2'
+        - errordocument:
+            status: 302
+            remain_headers: Location

@@ -1,0 +1,48 @@
+regexp_section:
+  matcher:
+    match_fsm:
+        uri: '/((api/.*)|(partner/viber)|widget-loader|menu|onboarding|browser-promo)'
+  modules:
+    - headers:
+        create:
+          X-Forwarded-Proto: 'https'
+        create_func:
+          X-Forwarded-Zen-Host: 'host'
+          Host: 'host'
+        append_func:
+          X-Forwarded-For: 'realip'
+          Zen-Forwarded-For: 'realip'
+    - report:
+        uuid: 'to-front'
+        ranges: 'default'
+        matcher_map:
+            export:
+                match_fsm:
+                    uri: '/(.*)/export'
+            export_cached:
+                match_fsm:
+                    uri: '/(.*)/export-cached'
+            more:
+                match_fsm:
+                    uri: '/(.*)/more'
+            layout:
+                match_fsm:
+                    uri: '/(.*)/layout'
+    - balancer2:
+        rr: {}
+        attempts: 1
+        connection_attempts: 2
+        retry_policy:
+            unique_policy: {}
+        generated_proxy_backends:
+            proxy_options: 
+                resolve_timeout: '10ms'
+                connect_timeout: '40ms'
+                backend_timeout: '60s'
+                keepalive_count: 0
+                need_resolve: false
+                fail_on_5xx: true
+                buffering: false
+            include_backends:
+                type: BY_ID
+                ids: [front-l3]

@@ -1,0 +1,60 @@
+# Defaults are listed in comments.
+# If there is no default value, the value is required.
+# Durations format is described here: https://golang.org/pkg/time/#ParseDuration
+
+# state_directory is a directory for storing dynamic balancing state
+state_directory: balancer-state # default: /dev/shm/balancer-state
+
+# unistat handle will be available at: http://HOST:PORT/unistat
+unistat:
+  ip: "::"   # default: "::"
+  port: 8765 # default: 8765
+
+service_discovery:
+  host: sd.yandex.net     # default: "sd.yandex.net"
+  port: 8080              # default: 8080
+  update_frequency: 30s   # default: "5m"
+  connect_timeout: 100ms  # default: "60ms"
+  request_timeout: 1s     # default: "500ms"
+  client_name: example_client
+  cache_dir: "./some_dir" # default: "./sd_cache"
+  log: "/tmp/sd_log"      # default: "/logs/sd_log"
+
+balancers:
+  example_backend1:
+    local_endpoint:
+      ip: "2a02:6b8:0:3400::124"
+      port: 8080
+      fqdn: some.host.yandex.net # default: ""
+    spec:
+      attempts: 2
+      yp_endpointsets:
+        - id: tcp-balancer-hello-world
+          cluster: sas
+      backend_timeout: 24h   # default: "24h"
+      connect_timeout: 100ms # default: "100ms"
+      dynamic:
+        max_pessimized_share: 0.6
+        min_pessimization_coeff: 1
+        weight_increase_step: 0.1
+        history_interval: 10s
+        backends_name: unique_name1
+        active: # default: none
+          use_backend_weight: false
+          weight_normalization_coeff: 1
+          request: "GET / HTTP/1.1\r\n\r\n"
+          delay: 10s
+  example-backend2:
+    local_endpoint:
+      ip: "2a02:6b8:0:3400::126"
+      port: 8080
+    spec:
+      yp_endpointsets:
+        - id: simple-http-server-2-es
+          cluster: sas
+      dynamic:
+        max_pessimized_share: 0.6
+        min_pessimization_coeff: 1
+        weight_increase_step: 0.1
+        history_interval: 10s
+        backends_name: unique_name2

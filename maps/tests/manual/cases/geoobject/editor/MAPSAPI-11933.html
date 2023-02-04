@@ -1,0 +1,99 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Геообъект: событие рисования в режиме рисования
+
+Description:
+Проверка выброса события рисования в режиме рисования.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+geoobject
+
+Estimated time:
+60000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан европейской части России, в центре спана карты синяя метка.
+
+Step:
+  Action:
+  Навести курсор на метку, зажав ЛКМ переместить на спане карты.
+
+  Expectation:
+  Захват и перемещение метки корректные: метка не пропадает, не дублируется на карте.
+  При наведении курсора в область контейнера с картой, при захвате метки под контейнером с картой выбрасывается строка "draw".
+
+Step:
+  Action:
+  Навести курсор на свободное место спана карты, выполнить клик в спан карты.
+
+  Expectation:
+  По клику метка пропадает из предыдущего места и появляется в месте клика.
+  При наведении курсора в область контейнера с картой, при клике в спан карты под контейнером с картой выбрасывается строка "draw".
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            var map = new ymaps.Map('map', {
+                        center: [55.755381, 37.619044],
+                        zoom: 4,
+                        type: "yandex#map"
+                    }, {
+                        geoObjectCircleOverlay: "default#сircle",
+                        geoObjectLineStringOverlay: "default#polyline",
+                        geoObjectPointOverlay: "default#placemark",
+                        geoObjectPolygonOverlay: "default#polygon",
+                        geoObjectRectangleOverlay: "default#rectangle",
+                        geoObjectDraggable: true
+                    }),
+                placemark = new ymaps.GeoObject({
+                        geometry: { type: "Point", coordinates: [55.755381, 37.619044] }
+                    }, {editorDrawing: true}
+                );
+
+            addGrid(map);
+            __log__("Test case: Точечная геометрия должна кидать событие draw");
+
+            map.geoObjects.add(placemark);
+
+            placemark.editor.startEditing();
+            placemark.editor.startDrawing();
+
+            placemark.editor.events.addController({
+                onBeforeEventFiring: function (eventManager, type, event) {
+                    console.log('edr event>', type);
+
+                }
+            });
+//            placemark.events.addController({
+//                onBeforeEventFiring: function (eventManager, type, event) {
+//                    console.log('obj event>', type);
+//                }
+//            });
+            placemark.editor.events.add('draw', function(ev){
+                __log__('draw', ev);
+            });
+        }
+    </script>
+</head>
+<body>
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

@@ -1,0 +1,106 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - romanovich
+      groups: []
+labels:
+  order: '00003001'
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      host: pdb\\.test-cplb\\.yandex\\.ru
+  modules:
+    - headers:
+        create:
+          X-Forwarded-Proto: https
+        create_func:
+          X-Real-IP: realip
+        create_func_weak:
+          X-Forwarded-For-Y: realip
+          X-Req-Id: reqid
+          X-Scheme: scheme
+          X-Source-Port: realport
+    - geobase:
+        geo:
+          balancer2:
+            rr: {}
+            attempts: 2
+            generated_proxy_backends:
+              proxy_options:
+                backend_timeout: 5s
+                buffering: false
+                connect_timeout: 999ms
+                fail_on_5xx: false
+                keepalive_count: 3
+              instances:
+                - weight: 2
+                  cached_ip: 2a02:6b8::91
+                  host: laas.yandex.ru
+                  port: 80
+        laas_answer_header: X-LaaS-Answered
+    - regexp:
+        sections:
+          pdb_backend_test:
+            matcher:
+              match_fsm:
+                uri: /(api|picture)(/.*)?
+            balancer2:
+              rr: {}
+              attempts: 3
+              backends:
+                - weight: 100
+                  balancer2:
+                    attempts: 3
+                    weighted2:
+                      min_weight: 0.05
+                      max_weight: 5.0
+                      plus_diff_per_sec: 0.05
+                      minus_diff_per_sec: 0.05
+                      history_time: 20s
+                      feedback_time: 10s
+                      slow_reply_time: 1s
+                    on_error:
+                      errordocument:
+                        status: 504
+                    generated_proxy_backends:
+                      proxy_options:
+                        backend_timeout: 5s
+                        buffering: false
+                        connect_timeout: 999ms
+                        fail_on_5xx: false
+                        keepalive_count: 3
+                      nanny_snapshots:
+                        - service_id: pdb_backend_test
+                          snapshot_id: bc35d6fe67102651e64c841441253c16e1b82093
+          default:
+            matcher: {}
+            balancer2:
+              rr: {}
+              attempts: 3
+              backends:
+                - weight: 100
+                  balancer2:
+                    attempts: 3
+                    weighted2:
+                      min_weight: 0.05
+                      max_weight: 5.0
+                      plus_diff_per_sec: 0.05
+                      minus_diff_per_sec: 0.05
+                      history_time: 20s
+                      feedback_time: 10s
+                      slow_reply_time: 1s
+                    on_error:
+                      errordocument:
+                        status: 504
+                    generated_proxy_backends:
+                      proxy_options:
+                        backend_timeout: 5s
+                        buffering: false
+                        connect_timeout: 999ms
+                        fail_on_5xx: false
+                        keepalive_count: 3
+                      include_backends:
+                        type: BY_ID
+                        ids: [test]

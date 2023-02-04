@@ -1,0 +1,77 @@
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      uri: '/suggest-personal.*'
+  modules:
+    - report:
+        ranges: default
+        uuid: suggest_personal
+    - stats_eater: {}
+    - balancer2:
+        attempts: 1
+        rr: {weights_file: ./controls/traffic_control.weights}
+        backends:
+        - weight: 1
+          name: !f prefix_with_dc("man")
+          modules:
+            - balancer2:
+                attempts: 4
+                active_policy:
+                  skip_attempts: !f count_backends()
+                  unique_policy: {}
+                hashing:
+                  delay: 5s
+                  request: 'GET /ping HTTP/1.1\nHost: mapsuggest.yandex.net\n\n'
+                generated_proxy_backends:
+                  proxy_options:
+                    backend_timeout: 1000ms
+                    connect_timeout: 40ms
+                    keepalive_count: 10
+                    fail_on_5xx: false
+                  include_backends:
+                    type: BY_ID
+                    ids: [mapsuggest-personal-man]
+        - weight: 1
+          name: !f prefix_with_dc("sas")
+          modules:
+            - balancer2:
+                attempts: 4
+                active_policy:
+                  skip_attempts: !f count_backends()
+                  unique_policy: {}
+                hashing:
+                  delay: 5s
+                  request: 'GET /ping HTTP/1.1\nHost: mapsuggest.yandex.net\n\n'
+                generated_proxy_backends:
+                  proxy_options:
+                    backend_timeout: 1000ms
+                    connect_timeout: 40ms
+                    keepalive_count: 10
+                    fail_on_5xx: false
+                  include_backends:
+                    type: BY_ID
+                    ids: [mapsuggest-personal-sas]
+        - weight: 1
+          name: !f prefix_with_dc("vla")
+          modules:
+            - balancer2:
+                attempts: 4
+                active_policy:
+                  skip_attempts: !f count_backends()
+                  unique_policy: {}
+                hashing:
+                  delay: 5s
+                  request: 'GET /ping HTTP/1.1\nHost: mapsuggest.yandex.net\n\n'
+                generated_proxy_backends:
+                  proxy_options:
+                    backend_timeout: 1000ms
+                    connect_timeout: 40ms
+                    keepalive_count: 10
+                    fail_on_5xx: false
+                  include_backends:
+                    type: BY_ID
+                    ids: [mapsuggest-personal-vla]
+        on_error:
+          modules:
+            - errordocument: {status: 504}

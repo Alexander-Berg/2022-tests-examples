@@ -1,0 +1,150 @@
+<!doctype html>
+<!--
+Title:
+Кластер: отступ для области, в которой производится кластеризация
+
+Description:
+Проверка опции отступа для области, в которой производится кластеризация.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+clusterer
+
+Estimated time:
+90000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан с метками коллекций и кластерными метками(меток коллекции больше).
+  Сверху имеется кнопки "check", "128", "64", "0".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "check".
+
+  Expectation:
+  Под контейнером с картой появляется значение с количеством кластеров вида: "Cейчас показано 24 кластеров."(значение может быть иным).
+
+Step:
+  Action:
+  Выполнить клик в кнопку "0".
+  Выполнить клик в кнопку "check".
+
+  Expectation:
+  Под контейнером с картой появляется значение с меньшим количеством кластеров вида: "Cейчас показано 12 кластеров."(значение может быть иным).
+
+Step:
+  Action:
+  Выполнить клик в кнопку "64".
+  Выполнить клик в кнопку "check".
+
+  Expectation:
+  Под контейнером с картой появляется значение с количеством кластеров больше чем в предыдущем шаге вида: "Cейчас показано 14 кластеров."(значение может быть иным).
+
+Step:
+  Action:
+  Выполнить клик в кнопку "128".
+  Выполнить клик в кнопку "check".
+
+  Expectation:
+  Под контейнером с картой появляется значение с количеством кластеров вида: "Cейчас показано 24 кластеров."(значение должно повторять значение из шага 2).
+-->
+<html>
+<head>
+    <title>API 2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type="text/javascript">
+        Api('init');
+        function init(ymaps) {
+            ym = ymaps;
+
+            var map = myMap = new ym.Map('map', {
+                center: [59.936708, 30.046006],
+                zoom: 12,
+                controls: []
+            }, {
+                // avoidFractionalZoom: true
+            });
+            var bounds = map.getBounds();
+            var log = new Log();
+            addGrid(map);
+            var x = map.getCenter()[0], y = map.getCenter()[1], i = 0;
+
+            // одна иконка и не указываем массив
+            var clusterer = new ym.Clusterer();
+            // add 200 placemarks
+            var placemarksNumber = 500;
+            var newPlacemarks = createGeoObjects(placemarksNumber, bounds);
+
+            clusterer.add(newPlacemarks);
+            map.geoObjects.add(clusterer);
+
+            setTimeout(function () {
+                map.setZoom(14)
+            }, 500);
+
+            var button1 = new ym.control.Button({data: {content: '0'}, options: {selectOnClick: false}});
+            var button2 = new ym.control.Button({data: {content: '64'}, options: {selectOnClick: false}});
+            var button3 = new ym.control.Button({data: {content: '128'}, options: {selectOnClick: false}});
+            var button4 = new ym.control.Button({data: {content: 'check'}, options: {selectOnClick: false}});
+
+            button1.events.add("click", function (e) {
+                clusterer.options.set('viewportMargin', 0);
+            });
+            button2.events.add("click", function (e) {
+                clusterer.options.set('viewportMargin', 64)
+            });
+            button3.events.add("click", function (e) {
+                clusterer.options.set('viewportMargin', 128)
+            });
+            button4.events.add("click", function (e) {
+                map.setZoom(13).then(function () {
+                    map.setZoom(14).then(function () {
+                        var clusters = clusterer.getClusters();
+                        log.info('Cейчас показано ' + clusters.length + ' кластеров.');
+                    })
+                })
+            });
+
+            map.controls
+                    .add(button1)
+                    .add(button2)
+                    .add(button3)
+                    .add(button4);
+
+            function createGeoObjects(number, bounds) {
+                var placemarks = [];
+                // Создаем нужное количество меток
+                for (var i = 0; i < number; i++) {
+                    // Генерируем координаты метки случайным образом.
+                    var coordinates = getRandomCoordinates(bounds);
+                    // Создаем метку со случайными координатами.
+                    var myPlacemark = new ymaps.Placemark(coordinates, {
+                        balloonContent: i, hintContent: i, clusterCaption: i}, {});
+                    placemarks.push(myPlacemark);
+                }
+                return placemarks;
+            }
+
+            function getRandomCoordinates(bounds) {
+                var size = [bounds[1][0] - bounds[0][0], bounds[1][1] - bounds[0][1]];
+                return [Math.random() * size[0] + bounds[0][0], Math.random() * size[1] + bounds[0][1]];
+            }
+        }
+
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;">
+</div>
+</body>
+</html>

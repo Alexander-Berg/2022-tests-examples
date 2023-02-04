@@ -1,0 +1,115 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - woxalex
+      - fexion
+      groups:
+      - svc_images
+      - svc_cvsearch
+labels:
+  order: '00004000'
+---
+regexp_section:
+  matcher:
+    match_fsm:
+        uri: '/images/api/v1/cbir/market.*'
+  modules:
+    - report:
+        uuid: images_api_cbir
+        ranges: default
+    - rps_limiter_macro:
+        installation: COMMON_V2
+        record_name: images_apphost_cbir_test
+        connect_timeout: 150ms
+        backend_timeout: 150ms
+    - threshold:
+        lo_bytes: 1048576
+        hi_bytes: 5242880
+        pass_timeout: 10s
+        recv_timeout: 50ms
+        on_pass_timeout_failure:
+          modules:
+            - errordocument:
+                status: 413
+    - exp_getter_macro:
+        _version: 3
+        service_name: images
+        exp_headers: 'X-Yandex-LogstatUID|X-Yandex-ExpSplitParams'
+    - headers_hasher:
+        header_name: X-Yandex-LogstatUID
+        randomize_empty_match: true
+    - balancer2:
+        attempts: 1
+        attempts_file: ./controls/images.attempts
+        rr: {weights_file: ./controls/production.weights}
+        by_name_from_header_policy:
+          hints:
+            - {hint: 'man', 'backend': 'images_man'}
+            - {hint: 'sas', 'backend': 'images_sas'}
+            - {hint: 'vla', 'backend': 'images_vla'}
+          allow_zero_weights: true
+          strict: true
+          by_hash_policy:
+            unique_policy: {}
+        backends:
+          - weight: 1
+            name: images_vla
+            modules:
+              - report: {ranges: default, uuid: images_api_cbir_requests_to_vla}
+              - shared:
+                  uuid: images_api_cbir_vla
+              - balancer2:
+                  attempts: 2
+                  attempts_rate_limiter:
+                    limit: 0.5
+                  attempts_file: './controls/attempts.count'
+                  rr: {}
+                  generated_proxy_backends:
+                    proxy_options:
+                      backend_timeout: 10s
+                    include_backends:
+                      type: BY_ID
+                      ids: [images_http_adapter_vla]
+          - weight: 1
+            name: images_sas
+            modules:
+              - report: {ranges: default, uuid: images_api_cbir_requests_to_sas}
+              - shared:
+                  uuid: images_api_cbir_sas
+              - balancer2:
+                  attempts: 2
+                  attempts_rate_limiter:
+                    limit: 0.5
+                  attempts_file: './controls/attempts.count'
+                  rr: {}
+                  generated_proxy_backends:
+                    proxy_options:
+                      backend_timeout: 10s
+                    include_backends:
+                      type: BY_ID
+                      ids: [images_http_adapter_sas]
+          - weight: 1
+            name: images_man
+            modules:
+              - report: {ranges: default, uuid: images_api_cbir_requests_to_man}
+              - shared:
+                  uuid: images_api_cbir_man
+              - balancer2:
+                  attempts: 2
+                  attempts_rate_limiter:
+                    limit: 0.5
+                  attempts_file: './controls/attempts.count'
+                  rr: {}
+                  generated_proxy_backends:
+                    proxy_options:
+                      backend_timeout: 10s
+                    include_backends:
+                      type: BY_ID
+                      ids: [images_http_adapter_man]
+          - weight: -1
+            name: images_devnull
+            modules:
+              - report: {ranges: default, uuid: images_api_cbir_requests_to_devnull}
+              - errordocument:
+                  status: 204

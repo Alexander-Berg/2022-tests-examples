@@ -1,0 +1,154 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Мультимаршрут: установка опорных точек мультимаршрута
+
+Description:
+Проверка установки опорных точек мультимаршрута. 
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+multiRouter
+
+Estimated time:
+120000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  При загрузке первоначально загружается карта со спаном Москвы, затем спан меняется на спан Санкт-Петербурга с мультимаршрутом "A"- Ольховая, 22, "B" - Пискаревский проспект, 2к2Щ.
+  Сверху имеются кнопки "setPoints", "notClear...", "clearRe...", снизу слева кнопка "mode".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "setPoints".
+
+  Expectation:
+  Маршрут на спане карты перестраивается, меняются мрашрутные точки "A"- Площадь Ленина, "B" - метро Технологический институт(Стокгольм). 
+
+Step:
+  Action:
+  Выполнить клик в кнопку "setPoints".
+
+  Expectation:
+  Маршрут на спане карты перестраивается, на карте первоначальный маршрут: "A"- Ольховая, 22, "B" - Пискаревский проспект, 2к2Щ.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "notClear...".
+
+  Expectation:
+  На маршруте появляется точка на Дворцовой площади. Маршрут перестраивается: "A"- Ольховая, 22, "B" - Дворцовая площадь, "C" - Пискаревский проспект, 2к2Щ.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "clearRe...".
+
+  Expectation:
+  Метка на Дврцовой площади становится виаточкой. Маршрутная нитка на спане без изменений, маршрут: "A"- Ольховая, 22, Дворцовая площадь(виаточка), "B" - Пискаревский проспект, 2к2Щ.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            //TODO: написать тест
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 10,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+
+            var multiRoute = new ymaps.multiRouter.MultiRoute({
+                referencePoints: ['питер, ольховая 22', 'пискаревский 2к2'],
+                params: {
+                    results: 5
+                }
+            }, {
+                boundsAutoApply: true,
+                wayPointDraggable: true
+            });
+
+            map.geoObjects.add(multiRoute);
+
+            multiRoute.model.events.add("requestcancel", function () {
+                log.info('requestcancel');
+            });
+
+            var setPointsButton = new ymaps.control.Button('setPoints');
+            var setClearRequestsButton = new ymaps.control.Button('clearRequests');
+            var notClearRequestsButton = new ymaps.control.Button('notClearRequests');
+            var modeButton = new ymaps.control.Button('mode');
+
+            setPointsButton.events
+                    .add('select', function () {
+                        multiRoute.model.setReferencePoints(['питер, площадь ленина', 'метро технологический институт'])
+                    })
+                    .add('deselect', function () {
+                        multiRoute.model.setReferencePoints(['питер, ольховая 22', 'пискаревский 2к2'])
+                    });
+
+            setClearRequestsButton.events
+                    .add('select', function () {
+                        multiRoute.model.setReferencePoints(['метро технологический институт', 'питер, площадь ленина', 'Дворцовая площадь'], [1]);
+                        setTimeout(function () {
+                            multiRoute.model.setReferencePoints(['питер, ольховая 22', 'Дворцовая площадь', 'пискаревский 2к2'], undefined, true);
+                        }, 100);
+                    })
+                    .add('deselect', function () {
+                        multiRoute.model.setReferencePoints(['питер, ольховая 22', 'питер, площадь ленина', 'пискаревский 2к2']);
+                        setTimeout(function () {
+                            multiRoute.model.setReferencePoints(['питер, площадь ленина', 'Дворцовая площадь', 'метро технологический институт'], [], true);
+                        }, 100);
+                    });
+            notClearRequestsButton.events
+                    .add('select', function () {
+                        multiRoute.model.setReferencePoints(['метро технологический институт', 'питер, площадь ленина', 'Дворцовая площадь'], [1]);
+                        setTimeout(function () {
+                            multiRoute.model.setReferencePoints(['питер, ольховая 22', 'Дворцовая площадь', 'пискаревский 2к2'], [], false);
+                        }, 100);
+                    })
+                    .add('deselect', function () {
+                        multiRoute.model.setReferencePoints(['питер, ольховая 22', 'питер, площадь ленина', 'пискаревский 2к2'], [1]);
+                        setTimeout(function () {
+                            multiRoute.model.setReferencePoints(['питер, площадь ленина', 'Дворцовая площадь', 'метро технологический институт'], undefined, false);
+                        }, 100);
+                    });
+            modeButton.events
+                    .add('select', function () {
+                        multiRoute.model.setParams({routingMode: 'masstransit'}, true);
+                    })
+                    .add('deselect', function () {
+                        multiRoute.model.setParams({routingMode: 'auto'}, true);
+                    });
+
+            map.controls
+                    .add(setClearRequestsButton)
+                    .add(notClearRequestsButton)
+                    .add(setPointsButton)
+                    .add(modeButton, {position: {bottom: 35, left: 5}});
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

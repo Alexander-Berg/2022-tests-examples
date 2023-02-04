@@ -1,0 +1,93 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - katsura-a
+      groups: []
+labels:
+  order: '00003000'
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      url: '/znatoki/api2/(.*)?'
+  modules:
+    - threshold:
+        lo_bytes: 262144
+        hi_bytes: 419430
+        pass_timeout: 10s
+        recv_timeout: 3s
+    - rewrite:
+        actions:
+            - regexp: '/znatoki/api2/(.*)?'
+              rewrite: '/%1'
+    - regexp:
+        sections:
+            post_method:
+                matcher:
+                    match_fsm:
+                        match: POST.*
+                modules:
+                - balancer2:
+                    attempts: 1
+                    disable_attempts_rate_limiter: true
+                    connection_attempts: !f count_backends()
+                    dynamic:
+                        max_pessimized_share: 0.1
+                    generated_proxy_backends:
+                        proxy_options:
+                            backend_timeout: 5s
+                            connect_timeout: 100ms
+                        include_backends:
+                            type: BY_ID
+                            ids: [answers_backend_fast]
+                    on_error:
+                      modules:
+                      - errordocument: {content: "Gateway Timeout", status: 504}
+            handle_for_morda:
+                matcher:
+                    match_fsm:
+                        url: '/1/morda/shortcut(.*)?'
+                modules:
+                - response_headers:
+                    create_weak:
+                        content-type: "application/json"
+                - balancer2:
+                    attempts: 2
+                    disable_attempts_rate_limiter: true
+                    connection_attempts: !f count_backends()
+                    weighted2: {}
+                    generated_proxy_backends:
+                        proxy_options:
+                            backend_timeout: 5s
+                            connect_timeout: 100ms
+                        include_backends:
+                            type: BY_ID
+                            ids: [answers_backend_fast]
+                    status_code_blacklist:
+                        - 4xx
+                    on_error:
+                        modules:
+                        - errordocument:
+                            remain_headers: content-type
+                            base64: "eyJ0eXBlIjogInEiLCJzdWJ0aXRsZSI6IHsicnUiOiAi0L7RgtCy0LXRgtGLINC90LAg0LLRgdC1INCy0LDRiNC4INCy0L7Qv9GA0L7RgdGLIn0sInVybCI6ICJodHRwOi8vbDd0ZXN0LnlhbmRleC5ydS9xL25vdGljZXM/dXRtX3NvdXJjZT1tb3JkYSZ1dG1fbWVkaXVtPW5ld19zaG9ydGN1dCJ9"
+                            status: 200
+
+            default:
+                matcher: {}
+                modules:
+                - balancer2:
+                    attempts: 2
+                    disable_attempts_rate_limiter: true
+                    connection_attempts: !f count_backends()
+                    weighted2: {}
+                    generated_proxy_backends:
+                        proxy_options:
+                            backend_timeout: 5s
+                            connect_timeout: 100ms
+                        include_backends:
+                            type: BY_ID
+                            ids: [answers_backend_fast]
+                    on_error:
+                      modules:
+                      - errordocument: {content: "Gateway Timeout", status: 504}

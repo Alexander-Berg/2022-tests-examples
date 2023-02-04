@@ -1,0 +1,38 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - pkrasnyuk
+      groups: []
+labels:
+  order: '10000000'
+---
+regexp_section:
+  matcher:
+    match_fsm:
+        host: faced-testing-stable.test.metrika.yandex.net
+  modules:
+    - headers_hasher:
+        header_name: "X-Yandex-Uid"
+        surround: false
+        randomize_empty_match: true
+    - balancer2:
+        connection_attempts: 2
+        attempts: 2
+        unique_policy: {}
+        rendezvous_hashing:
+            request: 'GET /internal/ping HTTP/1.1\nHost: localhost\nUser-agent: l7-balancer\n\n'
+            delay: 10s
+        attempts_rate_limiter:
+          limit: 0.15
+        generated_proxy_backends:
+          proxy_options:
+            backend_timeout: 121s
+            connect_timeout: 70ms
+          include_backends:
+            type: BY_ID
+            ids: [faced-testing-stable-backends]
+        on_error:
+          errordocument:
+            status: 504
+            content: "Service unavailable"

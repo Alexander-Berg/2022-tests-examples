@@ -1,0 +1,115 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - anoh
+      groups: []
+labels:
+  order: 00000900
+---
+regexp_section:
+  matcher:
+    match_fsm: {uri: '(/collections)?/api/v0\\.1/.*'}
+  modules:
+    - antirobot_macro: 
+        version: 0.0.2
+    - icookie:
+        use_default_keys: true
+        force_generate_from_searchapp_uuid: true
+        enable_parse_searchapp_uuid: false
+        domains: [".yandex.ru", ".yandex.by", ".yandex.com", ".yandex.com.tr", ".yandex.kz", ".yandex.ua", ".yandex.uz"]
+    - report: {ranges: default, uuid: api_http_adapter}
+    - headers:
+        create_func_weak:
+          X-Start-Time: starttime
+    - regexp:
+        sections:
+          recent_timestamp:
+            matcher:
+              match_fsm: {uri: '(/collections)?/api/v0\\.1/recent-timestamp.*'}
+            modules:
+              - report: {ranges: default, uuid: api_v01_recent_timestamp}
+              - shared: {uuid: collections_api_http_adapter}
+          link_status:
+            matcher:
+              match_fsm: {uri: '(/collections)?/api/v0\\.1/link-status.*'}
+            modules:
+              - report: {ranges: default, uuid: api_v01_link_status}
+              - shared: {uuid: collections_api_http_adapter}
+          cards:
+            matcher:
+              match_fsm: {uri: '(/collections)?/api/v0\\.1/cards.*'}
+            modules:
+              - report: {ranges: default, uuid: api_v01_cards}
+              - shared: {uuid: collections_api_http_adapter}
+          tree_version:
+            matcher:
+              match_fsm: {uri: '(/collections)?/api/v0\\.1/tree/version.*'}
+            modules:
+              - report: {ranges: default, uuid: api_v01_tree_version}
+              - shared: {uuid: collections_api_http_adapter}
+          tree:
+            matcher:
+              match_fsm: {uri: '(/collections)?/api/v0\\.1/tree.*'}
+            modules:
+              - report: {ranges: default, uuid: api_v01_tree}
+              - shared: {uuid: collections_api_http_adapter}
+          default:
+            matcher: {}
+            modules:
+              - shared: {uuid: collections_api_http_adapter}
+              - balancer2:
+                  attempts: 2
+                  rr: {weights_file: ./controls/traffic_control.weights}
+                  backends:
+                  - weight: 1
+                    name: api_http_adapter_sas
+                    modules:
+                      - report: {ranges: default, uuid: requests_api_http_adapter_to_sas}
+                      - balancer2:
+                          attempts: 1
+                          weighted2: {}
+                          generated_proxy_backends:
+                            proxy_options:
+                              backend_timeout: 15s
+                              fail_on_5xx: true
+                            include_backends:
+                              type: BY_ID
+                              ids: [hamster_app_host_sas_imgs]
+                  - weight: 1
+                    name: api_http_adapter_man
+                    modules:
+                      - report: {ranges: default, uuid: requests_api_http_adapter_to_man}
+                      - balancer2:
+                          attempts: 1
+                          weighted2: {}
+                          generated_proxy_backends:
+                            proxy_options:
+                              backend_timeout: 15s
+                              fail_on_5xx: true
+                            include_backends:
+                              type: BY_ID
+                              ids: [hamster_app_host_man_imgs]
+                  - weight: 1
+                    name: api_http_adapter_vla
+                    modules:
+                      - report: {ranges: default, uuid: requests_api_http_adapter_to_vla}
+                      - balancer2:
+                          attempts: 1
+                          weighted2: {}
+                          generated_proxy_backends:
+                            proxy_options:
+                              backend_timeout: 15s
+                              fail_on_5xx: true
+                            include_backends:
+                              type: BY_ID
+                              ids: [hamster_app_host_vla_imgs]
+                  - weight: -1
+                    name: api_http_adapter_devnull
+                    modules:
+                      - report: {ranges: 1ms, uuid: requests_api_http_adapter_to_devnull}
+                      - errordocument:
+                          status: 204
+                  on_error:
+                    modules:
+                      - errordocument: {content: Gateway Timeout, status: 504}

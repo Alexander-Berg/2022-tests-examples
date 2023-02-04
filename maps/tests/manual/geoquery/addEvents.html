@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<!--
+Title:
+Geoquery: проверка прослушивания событий
+
+Description:
+Проверка прослушивания событий.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+regress
+
+Estimated time:
+180000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно, на спане множество рядов объектов: прямоугольника, круги, метки, линии.
+  Имеются кнопки "geodesic", "add events(circle)", "remove events(circle)".
+
+Step:
+  Action:
+  Открыть инструменты разработчика командами: Windows: Ctrl + Shift + I если у вас MacOS: ⌥ + ⌘ + I, вкладку Console.
+  Проверить журнал событий в консоли.
+
+  Expectation:
+  В консоли множество строк с геообъектами, строки "context", половина строк с приставкой "before", половина с приставкой "after".
+
+Step:
+  Action:
+  Удалить строки в консоли, в Chrome кнопка перечеркнутого круга, в Safari иконка мусорной корзины.
+  Выполнить клик в кнопку "add events(circle)", затем клик в объект круга на карте.
+   
+  Expectation:
+  По клику в круг в консоли появляется строка "Click on circle".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "remove events(circle)", затем клик в объект круга на карте.
+   
+  Expectation:
+  По клику в круг в консоли строк не появляется.
+
+Step:
+  Action:
+  Удалить строки в консоли, в Chrome кнопка перечеркнутого круга, в Safari иконка мусорной корзины.
+  Выполнить клик в кнопку "add events(circle)", затем клик в объект круга на карте.
+   
+  Expectation:
+  По клику в круг в консоли появляется строка "Click on circle".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "remove events(circle)", затем клик в объект круга на карте.
+   
+  Expectation:
+  По клику в круг в консоли строк не появляется.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "geodesic", клик в кнопку "add events(circle)", затем клик в объект круга на карте.
+   
+  Expectation:
+  По клику в "geodesic" в консоли появляется строка "geodesic mode enabled.".
+  По клику в круг в консоли появляется строка "Click on circle".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "remove events(circle)", затем клик в объект круга на карте.
+   
+  Expectation:
+  По клику в круг в консоли строк не появляется.
+-->
+<html>
+<head>
+    <title>addEvents</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <script src="wgs84MercatorSource.js"></script>
+    <script src="../helper.js"></script>
+    <script type="text/javascript">
+        Api('init');
+        function init(ymaps) {
+            
+            var myMap = new ymaps.Map('map', {
+                        center: [55.5541584321358, 37.93061981201168],
+                        zoom: 9,
+                        behaviors: ['default', 'scrollZoom']
+                    }),
+                    i = 0;
+            wgs84MercatorSource(ymaps, myMap, this);
+            
+            var result = ymaps.geoQuery(geoQueryResult).then(function () {
+                // this function adds event before adding objects to myMap, shows information in the log
+                result.addEvents('before', function (e) {
+                    var target = e.get('target');
+                    console.log((target.options.get('id')) + ' ' +
+                            target.geometry.getType() + ': ' + e.get('type'));
+                    console.log('context');
+                }, console.log);
+                for (i = 0; i < result.getLength(); i++) {
+                    result.get(i).events.fire('before');
+                }
+                // this function adds event after adding objects to myMap, shows information in the log
+                result.addEvents('after', function (e) {
+                    var target = e.get('target');
+                    console.log((target.options.get('id')) + ' ' +
+                            target.geometry.getType() + ': ' + e.get('type'));
+                    console.log('context');
+                }, console.log);
+                result.each(function (obj) {
+                    obj.events.fire('after');
+                });
+            });
+            // callback function informs about clicks on circles
+            var callback = function () {
+                console.log('Click on circle.');
+            };
+            // addEventsButton adds circle click listener
+            var addEventsButton = new ymaps.control.Button({data: {content: 'add events (circle)'}}, {selectOnClick: false});
+            // removeEventsButton removes circle click listener
+            var removeEventsButton = new ymaps.control.Button({data: {content: 'remove events (circle)'}}, {selectOnClick: false});
+            // geodesic button sets 'true' value to geodesic option of objects
+            var geodesicButton = new ymaps.control.Button({data: {content: 'geodesic'}}, {selectOnClick: true});
+            addEventsButton.events.add('click', function () {
+                result.search('geometry.type == "Circle"').addEvents(('click'), callback, console.log);
+            });
+            removeEventsButton.events.add('click', function () {
+                result.search('geometry.type == "Circle"').removeEvents(('click'), callback, console.log);
+            });
+            geodesicButton.events
+                    .add('select', function () {
+                        result.setOptions('geodesic', true);
+                        console.log('geodesic mode enabled.');
+                    })
+                    .add('deselect', function () {
+                        result.setOptions('geodesic', false);
+                        console.log('geodesic mode disabled.');
+                    });
+            myMap.controls
+                .add(addEventsButton, {right: 5, top: 35})
+                .add(removeEventsButton, {right: 5, top: 65})
+                .add(geodesicButton, {right: 425, top: 5});
+            // add objects to myMap
+            result.addToMap(myMap);
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;">
+</div>
+<p><a href="https://tech.yandex.ru/maps/archive/doc/jsapi/2.0/ref/reference/geoQuery-docpage/" target="_blank">Docs</a></p>
+</body>
+</html>

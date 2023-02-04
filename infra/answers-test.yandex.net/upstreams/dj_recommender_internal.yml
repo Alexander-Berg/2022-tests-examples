@@ -1,0 +1,65 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - alekseyzotov
+      groups: []
+labels:
+  order: 00008300
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      url: '/recommender_internal_api/dj.*'
+  modules:
+    - threshold:
+        lo_bytes: 262144
+        hi_bytes: 419430
+        pass_timeout: 10s
+        recv_timeout: 2s
+    - balancer2:
+        attempts: 1
+        rr: {weights_file: ./controls/traffic_control.weights}
+        backends:
+        - weight: 1
+          name: answers_man
+          modules:
+            - report: {ranges: default, uuid: balancer_requests_dj_recommender_to_man}
+            - balancer2:
+                attempts: 1
+                rr: {}
+                generated_proxy_backends:
+                  proxy_options:
+                    backend_timeout: 2000ms
+                    connect_timeout: 50ms
+                  include_backends:
+                    type: BY_ID
+                    ids: [answers_dj_recommender_man]
+        - weight: 1
+          name: answers_vla
+          modules:
+            - report: {ranges: default, uuid: balancer_requests_dj_recommender_to_vla}
+            - balancer2:
+                attempts: 1
+                rr: {}
+                generated_proxy_backends:
+                  proxy_options:
+                    backend_timeout: 2000ms
+                    connect_timeout: 50ms
+                  include_backends:
+                    type: BY_ID
+                    ids: [answers_dj_recommender_vla]
+        - weight: 1
+          name: answers_sas
+          modules:
+            - report: {ranges: default, uuid: balancer_requests_dj_recommender_to_sas}
+            - balancer2:
+                attempts: 1
+                rr: {}
+                generated_proxy_backends:
+                  proxy_options:
+                    backend_timeout: 2000ms
+                    connect_timeout: 50ms
+                  include_backends:
+                    type: BY_ID
+                    ids: [answers_dj_recommender_sas]

@@ -1,0 +1,89 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Геообъект: возвращение значения промисом автопана балуна метки
+
+Description:
+Проверка значения возвращаемого промисом автопана балуна метки.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+geoobject
+
+Estimated time:
+90000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+  
+  Expectation:
+  Карта отобразилась корректно, на спане спутниковая карта центра Москвы, в центре спана синяя метка коллекции.
+  Сверху справа кнопка "case".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "case". 
+  
+  Expectation:
+  Происходит смещение спана карты вверх, снизу появляется балун панель с содержимым: "Здесь вы можете увидеть одни из самых прекрасных видов нашей страны!".
+  Под контейнером с картой появляется блок со значениями промиса: "autoPan() fulfilled: true; autoPan() rejected: false".
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            //ymaps = ym;
+
+            var map = myMap = new ymaps.Map('map', {
+                center: [55.755381, 37.619044],
+                zoom: 13,
+                controls: [],
+                type: 'yandex#satellite'
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+            log.info("Test case: промис автопана балуна должен возвращать не undefined");
+
+            var placemark = new ymaps.Placemark([55.755381, 37.619044], {
+                balloonContent: 'Здесь вы можете увидеть одни из самых прекрасных видов нашей страны!'
+            }, {
+                balloonPanelMaxMapArea: Infinity
+            });
+
+            map.geoObjects.add(placemark);
+            var caseButton = new ymaps.control.Button({data: {content: 'case'}, options: {selectOnClick: false, float: 'right'}});
+            caseButton.events.add('click', function () {
+                placemark.balloon.open().then(function () {
+                    var promise = placemark.balloon.autoPan();
+                    console.log(promise);
+                    promise.then(function () {
+                        console.log('o-хо-хо! Промис удался, а ведь в 15 версии вы его и не увидели бы вовсе!');
+                    });
+                    promise.always(function () {
+                        log.info('autoPan() fulfilled: ' + promise.isFulfilled());
+                        log.info('autoPan() rejected: ' + promise.isRejected());
+                    })
+                });
+            });
+            map.controls.add(caseButton);
+
+
+        }
+    </script>
+</head>
+<body>
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+       http://www.springframework.org/schema/beans/spring-beans.xsd">
+
+    <bean class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer"
+          lazy-init="false">
+        <property name="locations">
+            <list>
+                <value>classpath:auto-searcher.properties</value>
+                <value>classpath:local-auto-searcher-monitor.properties</value>
+                <value>classpath:auto-core.properties</value>
+                <value>classpath:catalog.properties</value>
+                <value>classpath:auto-core-local.properties</value>
+            </list>
+        </property>
+        <property name="ignoreUnresolvablePlaceholders" value="false"/>
+        <property name="order" value="-1"/>
+        <property name="ignoreResourceNotFound" value="true"/>
+    </bean>
+
+    <bean id="metricRegistry" class="ru.yandex.common.monitoring.Metrics"
+          factory-method="defaultRegistry"/>
+
+    <bean id="metricClock" class="com.codahale.metrics.Clock"
+          factory-method="defaultClock"/>
+
+    <bean id="httpServerInitializer" class="org.eclipse.jetty.server.Server"
+          destroy-method="stop" lazy-init="false">
+        <property name="connectors">
+            <list>
+                <bean class="com.codahale.metrics.jetty8.InstrumentedBlockingChannelConnector">
+                    <constructor-arg name="port" value="34389"/>
+                    <constructor-arg name="registry" ref="metricRegistry"/>
+                    <constructor-arg name="clock" ref="metricClock"/>
+                    <property name="acceptors" value="2"/>
+                    <property name="acceptQueueSize" value="1024"/>
+                    <property name="lowResourcesMaxIdleTime" value="1000"/>
+                    <property name="maxIdleTime" value="20000000"/>
+                    <property name="soLingerTime" value="200000000"/>
+                    <property name="requestHeaderSize" value="4096"/>
+                    <property name="responseHeaderSize" value="127072"/>
+                    <property name="reuseAddress" value="true"/>
+                </bean>
+            </list>
+        </property>
+        <property name="threadPool">
+            <bean class="com.codahale.metrics.jetty8.InstrumentedQueuedThreadPool">
+                <constructor-arg name="registry" ref="metricRegistry"/>
+                <property name="minThreads" ref="availableProcessors"/>
+                <property name="maxThreads" ref="availableProcessors"/>
+                <property name="maxQueued" value="256"/>
+            </bean>
+        </property>
+        <property name="handler">
+            <bean class="ru.yandex.auto.searcher.jetty.TracingHandler">
+                <constructor-arg name="jaegerHost" value="${auto.jaeger.host}"/>
+                <constructor-arg name="jaegerPort" value="${auto.jaeger.port}"/>
+                <property name="handler">
+                    <bean class="com.codahale.metrics.jetty8.InstrumentedHandler">
+                        <constructor-arg name="registry" ref="metricRegistry"/>
+                        <constructor-arg name="underlying" ref="xmlHandler"/>
+                    </bean>
+                </property>
+            </bean>
+        </property>
+    </bean>
+
+    <bean id="runtime" class="java.lang.Runtime" factory-method="getRuntime"/>
+
+    <bean id="availableProcessors" class="java.lang.Integer">
+        <constructor-arg>
+            <bean factory-bean="runtime" factory-method="availableProcessors"/>
+        </constructor-arg>
+    </bean>
+
+    <bean id="jacksonXmlBuilder" class="ru.yandex.auto.core.search2.JacksonXmlBuilder"/>
+
+    <bean id="xmlHandler" class="ru.yandex.auto.core.servantlet.DefaultHandlingJettyHandler">
+        <property name="xmlBuilder" ref="jacksonXmlBuilder"/>
+        <property name="servantletManager" ref="xmlServantletManager"/>
+        <property name="redirectChecker">
+            <bean class="ru.yandex.common.framework.core.ErrorRedirectChecker"/>
+        </property>
+    </bean>
+
+    <bean id="xmlServantletManager" class="ru.yandex.common.framework.core.ServantletManager">
+        <property name="secFilter">
+            <bean class="ru.yandex.common.framework.core.NoneSecFilter"/>
+        </property>
+        <property name="servantletDispatcher" ref="xmlServantletDispatcher"/>
+    </bean>
+
+    <bean id="xmlServantletDispatcher" class="ru.yandex.auto.core.servantlet.CustomCorrectServantletDispatcher">
+        <property name="servantlets">
+            <map>
+                <entry key="unify-mark-and-model">
+                    <ref bean="unifyMarkModelServantlet"/>
+                </entry>
+            </map>
+        </property>
+    </bean>
+
+    <bean name="unifyMarkModelServantlet" class="ru.yandex.auto.searcher.http.action.UnifyMarkModelAction">
+        <property name="contentType" value="application/xml"/>
+        <property name="servRequestBuilder">
+            <bean id="servRequestBuilder"
+                  class="ru.yandex.auto.searcher.external.MarkAndModelRequestBuilder">
+                <property name="jacksonXmlBuilder" ref="jacksonXmlBuilder"/>
+            </bean>
+        </property>
+        <property name="markAndModelUnifier">
+            <bean class="org.mockito.Mockito" factory-method="mock">
+                <constructor-arg index="0" value="ru.yandex.auto.searcher.external.ExternalMarkAndModelUnifier"/>
+            </bean>
+        </property>
+    </bean>
+
+    <bean id="carSearchParamsFactory"
+          class="ru.yandex.auto.searcher.core.CarSearchParamsFactoryImpl">
+        <property name="regionService" ref="regionService"/>
+        <property name="vendorManager" ref="vendorManager"/>
+        <property name="langsProvider">
+            <bean class="ru.yandex.auto.core.dictionary.SimpleLangsProvider">
+                <constructor-arg>
+                    <list>
+                        <value>RU</value>
+                    </list>
+                </constructor-arg>
+            </bean>
+        </property>
+    </bean>
+
+    <bean id="regionService" class="org.mockito.Mockito" factory-method="mock">
+        <constructor-arg value="ru.yandex.auto.searcher.main.region.RegionServiceImpl"/>
+        <property name="loader" ref="loader"/>
+    </bean>
+
+    <bean id="loader" class="org.mockito.Mockito" factory-method="mock">
+        <constructor-arg value="ru.yandex.extdata.provider.loader.DataLoader"/>
+    </bean>
+
+    <bean id="vendorManager" class="org.mockito.Mockito" factory-method="mock">
+        <constructor-arg value="ru.yandex.auto.core.vendor.VendorManager"/>
+    </bean>
+
+</beans>

@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <title>Historical panoramas Test Stand</title>
+    <script type="application/javascript" src="../../helper.js"></script>
+    <style>
+        .panorama {
+            width: 700px;
+            height: 700px;
+        }
+    </style>
+    </head>
+    <body>
+        <div id="panorama" class="panorama"></div>
+        <form>
+            <select id="years"></select>
+
+            <label for="selectedYear">Currently selected year</label>
+            <input id="selectedYear" disabled="disabled" />
+        </form>
+
+        <script>
+            const documentReady = document.readyState === 'complete' || document.readyState === 'interactive' ?
+                () => Promise.resolve() :
+                () => new Promise((resolve) => document.addEventListener('DOMContentLoaded', () => resolve()));
+
+            const select = document.getElementById('years');
+            const userYearInput = document.getElementById('selectedYear');
+
+            const searchParams = new Map();
+            for (const pair of location.search.substring(1).split('&')) {
+                const [key, value] = pair.split('=').map(decodeURIComponent);
+                searchParams.set(key, value);
+            }
+
+            const llStr = searchParams.get('ll');
+            const ll = llStr ? (llStr.split(',').map((p) => parseFloat(p)).reverse()) : [55.733624, 37.588085];
+
+            const main = async () => {
+                await documentReady();
+
+                ymaps.modules.require(['panorama.locate', 'panorama.Player', 'panorama.locateById']).spread(onInit);
+
+                function onInit(locate, Player, locateById) {
+                    locate(ll).then(
+                        function (panoramas) {
+
+                            if (!panoramas || !panoramas.length) {
+                                console.error(`No panorama was found in: ll=${ll}`);
+                                return;
+                            }
+
+                            var player = new Player(
+                                document.getElementById('panorama'),
+                                panoramas[0],
+                                {
+                                    controls: []
+                                }
+                            );
+
+                            var selectedTimestamp = undefined;
+
+                            player.events.add('panoramachange', function () {
+                                renderYearsDropdown(player.getPanorama(), selectedTimestamp);
+                            });
+
+                            select.addEventListener('change', function () {
+                                var historicalPanoramas = player
+                                    .getPanorama()
+                                    .metadata
+                                    .getAll()
+                                    .Annotation
+                                    .HistoricalPanoramas;
+
+                                var oid;
+
+                                if (select.value < 0) {
+                                    userYearInput.value = 'latest';
+                                    selectedTimestamp = undefined;
+
+                                    var latest = historicalPanoramas.reduce(
+                                        function (max, pan) {
+                                            return pan.timestamp > max.timestamp ? pan : max;
+                                        }
+                                    );
+
+                                    oid = latest.Connection.oid;
+                                } else {
+                                    var selectedHistoryItem = historicalPanoramas[select.value];
+                                    userYearInput.value = selectedHistoryItem.Connection.name;
+                                    selectedTimestamp = selectedHistoryItem.timestamp;
+
+                                    oid = selectedHistoryItem.Connection.oid;
+                                }
+
+                                locateById(oid, {connectionsTimestamp: selectedTimestamp})
+                                    .spread(function (newPanorama) {
+                                        player.setPanorama(newPanorama);
+                                    })
+                                    .catch(logError);
+                            });
+
+                            renderYearsDropdown(panoramas[0], selectedTimestamp);
+                            userYearInput.value = 'latest';
+                        }
+                    ).catch(logError);
+                }
+            }
+
+            function renderYearsDropdown(panorama, selectedTimestamp) {
+                var historicalPanoramas = panorama.metadata.getAll().Annotation.HistoricalPanoramas;
+
+                var html = '<option value="-1">Latest</option>\n';
+                historicalPanoramas.forEach((p, idx) => {
+                    var selected = p.timestamp === selectedTimestamp;
+                    html += `
+                        <option ${selected ? 'selected' : ''} value="${idx}">${p.Connection.name}</option>
+                    `;
+                });
+                select.innerHTML = html;
+            }
+
+            function logError(e) {
+                console.log(e);
+            }
+
+            main().catch(console.error);
+        </script>
+    </body>
+</html>

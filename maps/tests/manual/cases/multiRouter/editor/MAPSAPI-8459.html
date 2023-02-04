@@ -1,0 +1,88 @@
+<!DOCTYPE HTML>
+<!--(skip)(description)
+
+-->
+<!--(version)
+
+-->
+<!--(commands)
+sleep(1000);
+test();
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            //TODO: написать тест
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 10,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            addGrid(map);
+            var log = new Log();
+
+            __log__('MAPSAPI-8459: При удалении крайних путевых точек в редакторе ' +
+                    'валится ошибка о неправильном индексе транзитных точек');
+
+            var events = ['beforewaypointremove', 'waypointremove', 'start', 'stop'];
+
+            var callback = function (e) {
+                log.info(e.get('type'))
+            };
+
+            var multiRoute = new ymaps.multiRouter.MultiRoute({
+                referencePoints: ['питер', 'москва',
+                    'казань', 'екатеринбург'],
+                params: {
+                    viaIndexes: [1,2]
+                }
+            }, {
+                boundsAutoApply: true,
+                preset: "islands#multiRouterSmall"
+            });
+
+            map.geoObjects.add(multiRoute);
+            multiRoute.editor.events.add(events, callback);
+
+            var clearButton = new ymaps.control.Button('clear');
+            var editorButton = new ymaps.control.Button('editor');
+
+            editorButton.events
+                    .add('select', function() {
+                        multiRoute.editor.start({
+                            removeWayPoints: true,
+                            addMidPoints: true
+                        })
+                    })
+                    .add('deselect', function() {
+                        multiRoute.editor.stop()
+                    });
+
+            clearButton.events.add('click', function() {
+                log.clear();
+            });
+
+            map.controls
+                    .add(editorButton)
+                    .add(clearButton, {float: 'none', position: {right: 10, bottom: 35}});
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

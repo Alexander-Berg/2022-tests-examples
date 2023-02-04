@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<!--
+Title:
+Контрол поиска: подстановка поисковых значений
+
+Description:
+Проверка работы поиска при подстановке различных поисковых значений и смене опций поиска.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+regress
+
+Estimated time:
+240000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан Московской области, на спане имеется поисковый инпут с кнопкой "Найти"(в инпуте подсказка "Адрес или объект"). 
+  Сверху имеются кнопки "strictBounds", "useMapBounds", "coordOrder", "provider".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "provider".
+
+  Expectation:
+  Кнопка "provider" меняет значение на "yandex#publicMap".
+  По клику в инпуте появляется значение "площадка", под инпутом появляется плашка "сервер не смог обработать запрос".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "yandex#publicMap".
+
+  Expectation:
+  Кнопка "yandex#publicMap" меняет значение на "yandex#map".
+  В инпуте значение "площадка", под инпутом появляется панель со сниппетами по поисковому запросу.
+  Происходит смена спана карты, на карте появляется метка коллекции.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "coordOrder".
+
+  Expectation:
+  Кнопка "coordOrder" меняет значение на "longlat".
+  Происходит смена спана на спан Ирана, в центре карты метка, в инпуте появляется значение в виде координат, под инпутом появляется панель со сниппетами "Систан и Белуджистан","Иран".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "longlat".
+
+  Expectation:
+  Кнопка "coordOrder" меняет значение на "latlong".
+  Происходит смена спана на спан СПб, в центре карты метка, в инпуте координаты, под инпутом панель со сниппетами топонимов в Санкт-Петербурге.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "useMapBounds".
+
+  Expectation:
+  Спан карты меняется, в центре карты метка коллекции, в инпуте появляется значение "льва толстого", под инпутом панель со сниппетами топонимов в СПб.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "useMapBounds".
+
+  Expectation:
+  Спан карты меняется, в центре карты метка коллекции, в инпуте значение "льва толстого", под инпутом панель со сниппетами топонимов всего мира(Калужская область, Антарктида, Курская область...).
+
+Step:
+  Action:
+  Выполнить клик в кнопку "strictBounds".
+
+  Expectation:
+  Спан карты меняется на спан Санкт-Петербурга, на спане появляется область окрашенная синим(полупрозрачная), в инпуте появляется значение "Ленина".
+  На спане метка коллекции, в саджесте подсказки топонимов в СПБ.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "strictBounds".
+
+  Expectation:
+  Спан карты без изменений, окрашенная синим область пропадает, в инпуте значение "Ленина", под инпутом панель со сниппетами топонимов в Санкт-Петербурге и Ленинградской области.
+-->
+<html>
+<head>
+    <title>API 2.0</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <script src="../../helper.js"></script>
+    <script type=text/javascript>
+        Api('init');
+        function init(ymaps) {
+            var myMap = new ymaps.Map('map', {
+                        center: [55.73259667357658, 37.70153663432529],
+                        zoom: 9,
+                        behaviors: ['default', 'scrollZoom'],
+                        controls: []
+                    }), bounds = new ymaps.Rectangle([
+                        [59.999302212190216, 30.22371063232047],
+                        [59.880094970125405, 30.44206390380444]
+                    ]);
+            
+            var search1 = new ymaps.control.SearchControl();
+            var providerButton = new ymaps.control.Button({data: {content: 'provider'}}, {
+                selectOnClick: true
+            });
+            providerButton.events
+                    .add('select', function () {
+                        search1.options.set('provider', 'yandex#publicMap');
+                        providerButton.data.set('content', 'yandex#publicMap');
+                        search1.search('Площадка');
+                    })
+                    .add('deselect', function () {
+                        search1.options.set('provider', 'yandex#map');
+                        providerButton.data.set('content', 'yandex#map');
+                        search1.search('Площадка');
+                    });
+            var boundsButton = new ymaps.control.Button({
+                data: {content: 'strictBounds'}}, {
+                selectOnClick: true
+            });
+            boundsButton.events
+                    .add('select', function () {
+                        search1.options.set('boundedBy', [
+                            [59.999302212190216, 30.22371063232047],
+                            [59.880094970125405, 30.44206390380444]
+                        ]);
+                        search1.options.set('strictBounds', true);
+                        myMap.geoObjects.add(bounds);
+                        myMap.setBounds([
+                            [59.999302212190216, 30.22371063232047],
+                            [59.880094970125405, 30.44206390380444]
+                        ]);
+                        search1.search('Ленина');
+                    })
+                    .add('deselect', function () {
+                        search1.options.unset('strictBounds');
+                        myMap.geoObjects.remove(bounds);
+                        search1.search('Ленина');
+                    });
+            var mapButton = new ymaps.control.Button({
+                data: {content: 'useMapBounds'}}, {
+                selectOnClick: true
+            });
+            mapButton.events
+                    .add('select', function () {
+                        search1.options.set('useMapBounds', true);
+                        search1.search('Льва толстого');
+                    })
+                    .add('deselect', function () {
+                        search1.options.set('useMapBounds', false);
+                        search1.search('Льва толстого');
+                    });
+            var coordorderButton = new ymaps.control.Button({
+                data: {content: 'coordOrder'}}, {
+                selectOnClick: true
+            });
+            coordorderButton.events
+                    .add('select', function () {
+                        search1.options.set('searchCoordOrder', 'longlat');
+                        coordorderButton.data.set('content', 'longlat');
+                        search1.search('59.975628,30.307568');
+                    })
+                    .add('deselect', function () {
+                        search1.options.set('searchCoordOrder', 'latlong');
+                        coordorderButton.data.set('content', 'latlong');
+                        search1.search('59.975628,30.307568');
+                    });
+            search1.events.add('contextmenu', function () {
+                console.log('search1: st.pete')
+            });
+            boundsButton.events.add('contextmenu', function () {
+                console.log('strictBounds option')
+            });
+            mapButton.events.add('contextmenu', function () {
+                console.log('useMapBounds option')
+            });
+            coordorderButton.events.add('contextmenu', function () {
+                console.log('coordOrder option')
+            });
+            providerButton.events.add('contextmenu', function () {
+                console.log('provider option')
+            });
+            myMap.controls
+                    .add(search1, {top: 5, left: 5})
+                    .add(boundsButton, {right: 5, top: 5})
+                    .add(mapButton, {right: 5, top: 35})
+                    .add(coordorderButton, {right: 5, top: 65})
+                    .add(providerButton, {right: 5, top: 95});
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+<p><a href="https://tech.yandex.ru/maps/archive/doc/jsapi/2.0/ref/reference/control.SearchControl-docpage/" target="_blank">Docs</a></p>
+</body>
+</html>

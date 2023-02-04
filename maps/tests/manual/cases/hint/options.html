@@ -1,0 +1,183 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Хинт: опции хинта 
+
+Description:
+Проверка применения опций хинта.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+hint
+
+Estimated time:
+180000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+  
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан Москвы, в центре спана карты открыт хинт "Hint", сверху слева кнопка "listen", справа кнопки "open", "destroy", "get", "set".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "listen". 
+  
+  Expectation:
+  Спан карты без изменений, под контейнером с картой появляется строка: "Waiting for events...".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "open". 
+  
+  Expectation:
+  В хинте меняется содержимое на "Hello".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "open". 
+  
+  Expectation:
+  Хинт закрывается, под контейнером с картой строка: "hint: close".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "open". 
+  
+  Expectation:
+  В центре спана карты появляется хинт "Hello", под контейнером с картой строка: "hint: open".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "get". 
+  
+  Expectation:
+  Под контейнером с картой блок: "Hello; [object Object]; 55.73259667356406,37.70153663432529".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "set". 
+  
+  Expectation:
+  Хинт смещается на спане карты немного влево и вверх, содержимое меняется на "How are you?", под контейнером с картой блок: "How are you?; 55.83259667356392,37.8015366343253".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "get". 
+  
+  Expectation:
+  Под контейнером с картой блок: "How are you?; [object Object]; 55.83259667356392,37.8015366343253".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "destroy". 
+  
+  Expectation:
+  Со спана карты пропадает хинт.
+-->
+<html>
+<head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            var map = myMap = new ym.Map('map', {
+                        center: [55.73259667357658, 37.70153663432529],
+                        zoom: 9,
+                        behaviors: ['default', 'scrollZoom'],
+                        controls: ['rulerControl']
+                    }),
+                    log = new Log(),
+
+                    events = ['open', 'close'],
+                    domevents = ['click', 'contextmenu', 'dblclick', 'mousedown', 'mouseenter', 'mouseleave', 'mouseup',
+                        'multitouchend', 'multitouchstart', 'wheel'],
+                    moveevents = ['mousemove', 'multitouchmove'],
+                    callback = function (e) {
+                        __log__('hint: ' + e.get('type'));
+                    };
+
+            addGrid(myMap);
+            __log__('open: open and close the hint');
+            __log__('get: show content, overlay map and position in the log');
+            __log__('set: change content and position, show new content and position in log');
+            __log__('destroy: destroy the hint');
+            __log__('listen: listen open and close events');
+
+            myMap.hint.open(myMap.getCenter(), {content: 'Hint'});
+
+            var listenerButton = new ymaps.control.Button({data: {content: 'listen'}, options: {selectOnClick: true}});
+            var openButton = new ymaps.control.Button({data: {content: 'open'}, options: {selectOnClick: true}});
+            var destroyButton = new ymaps.control.Button({data: {content: 'destroy'}, options: {selectOnClick: false}});
+            var getButton = new ymaps.control.Button({data: {content: 'get'}, options: {selectOnClick: false}});
+            var setButton = new ymaps.control.Button({data: {content: 'set'}, options: {selectOnClick: false}});
+
+            listenerButton.events
+                    .add('select', function () {
+                        __log__('Waiting for events...');
+                        myMap.hint.events.add(events, callback);
+                    })
+                    .add('deselect', function () {
+                        __log__('Events will be ignored.');
+                        myMap.hint.events.remove(events, callback);
+                    });
+
+            openButton.events
+                    .add('select', function () {
+                        myMap.hint.open(myMap.getCenter(), { content: 'Hello' }, {
+                            openTimeout: 1500,
+                            closeTimeout: 1500,
+                            overlay: 'html#hint',
+                            pane: 'hint',
+                            holdByMouse: false
+                        });
+                    })
+                    .add('deselect', function () {
+                        myMap.hint.close(myMap.getCenter(), { content: 'Hello' }, {
+                            openTimeout: 1500,
+                            closeTimeout: 1500,
+                            overlay: 'html#label',
+                            pane: 'hint'
+                        });
+                    });
+
+            destroyButton.events.add('click', function () {
+                myMap.hint.destroy();
+            });
+
+            getButton.events.add('click', function () {
+                __log__(myMap.hint.getData().content);
+                __log__(myMap.hint.getOverlaySync().getMap());
+                __log__(myMap.hint.getPosition());
+            });
+
+            setButton.events.add('click', function () {
+                myMap.hint.setData({'content': 'How are you?'});
+                myMap.hint.setPosition([myMap.getCenter()[0] + 0.1, myMap.getCenter()[1] + 0.1]);
+                __log__(myMap.hint.getData().content);
+                __log__(myMap.hint.getPosition());
+            });
+
+            map.controls
+                    .add(openButton, {float: 'right'})
+                    .add(destroyButton, {float: 'right'})
+                    .add(getButton, {float: 'right'})
+                    .add(setButton, {float: 'right'})
+                    .add(listenerButton, {float: 'left'})
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

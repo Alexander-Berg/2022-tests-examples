@@ -1,0 +1,148 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Панель cдвиг карты при отображении балуна c установкой масштабирования.
+
+Description:
+Проверка работы функции сдвига карты для отображения открывшегося балуна с установкой коэфициента масштабирования.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components:
+balloon
+
+Estimated time:
+120000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан с отображением дороги на зеленом фоне.
+  Сверху имеются кнопки "[60.4, 29...]", "[59, 30]", "checkZo...", "autoPan".
+  В центре спана карты открыт балун с содержимым "balloon".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "[59, 30]". 
+
+  Expectation:
+  Происходит смена спана карты, в правом нижнем углу открывается балуном с содержимым "balloon".
+  После начала движения спана под контейнером появляется текст autopanbegin, current zoom: 20, после завершения движения спана autopanend, current zoom: 20.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "checkZo...". 
+  Выполнить клик в кнопку "[60.4, 29...]". 
+
+  Expectation:
+  Происходит перемещение спана карты на спан с зеленым фоном, в верхнем левом углу открыт балун с содержимым "balloon".
+  После начала движения спана под контейнером появляется текст autopanbegin, current zoom: 19, после завершения движения спана autopanend, current zoom: 19.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "autoPan". 
+
+  Expectation:
+  После нажатия кнопки происходит смещение спана карты, так что балун перемещается в центр спана.
+  После начала движения спана под контейнером появляется текст autopanbegin, current zoom: 19, после завершения движения спана autopanend, current zoom: 19.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "checkZo...". 
+  Выполнить клик в кнопку "[59, 30]". 
+
+  Expectation:
+  Происходит смена спана карты, в центре спана балун с содержимым "balloon".
+  После начала движения спана под контейнером появляется текст autopanbegin, current zoom: 20, после завершения движения спана autopanend, current zoom: 20.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var map = myMap = new ym.Map('map', {
+                center: [60.400109, 29.501523],
+                zoom: 19,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl', 'zoomControl']
+            });
+            __log__("Клик '[59, 30]' - тайлы не отображаются");
+            __log__("Клик 'checkZoom'");
+            __log__("Клик [60.4, 29.5] - тайлы отображаются");
+            __log__("Клик '[59, 30]' - тайлы отображаются");
+            addGrid(myMap);
+            var log = new Log();
+
+            var balloon,
+                    contentLayout = ymaps.templateLayoutFactory.createClass('$[balloonContent]balloon'),
+                    options = { contentLayout: contentLayout, closeButton: false, shadow: false };
+
+            // Create balloon instance
+            window.balloon = balloon = new ymaps.Balloon(myMap);
+            balloon.options.set(options).setParent(myMap.options);
+
+            balloon.options.set('autoPanDuration', 800);
+
+            // Listen balloon events
+            balloon.events.add(['autopanbegin', 'autopanend'], function (e) {
+                log.info(e.get('type') + ', current zoom: ' + myMap.getZoom())
+            });
+            balloon.open([60.400109, 29.501523], true);
+
+            // Change map center according to balloon position and dimensions
+            var autoPanButton = new ymaps.control.Button({data: {content: 'autoPan'}, options: {selectOnClick: false}});
+            autoPanButton.events.add('click', function () {
+                balloon.options.set('autoPanDuration', 2500);
+                balloon.options.set('autoPanMargin', 200);
+                balloon.autoPan()
+            });
+
+            // Check zoom range option
+            var checkZoomOptionButton = new ymaps.control.Button({data: {content: 'checkZoom'}, options: {selectOnClick: true}});
+            checkZoomOptionButton.events
+                    .add('select', function () {
+                        balloon.options.set('autoPanCheckZoomRange', true);
+                    })
+                    .add('deselect', function () {
+                        balloon.options.set('autoPanCheckZoomRange', false);
+                    });
+
+            // Set balloon position: [59, 30]
+            var positionButton = new ymaps.control.Button({data: {content: '[59, 30]'}, options: {selectOnClick: false}});
+            positionButton.events.add('click', function () {
+                myMap.setZoom(20);
+                balloon.setPosition([59.922631, 30.335001])
+            });
+
+            // Set balloon position: [60, 29],
+            var anotherPositionButton = new ymaps.control.Button({data: {content: '[60.4, 29.5]'}, options: {selectOnClick: false}});
+            anotherPositionButton.events.add('click', function () {
+                myMap.setZoom(19);
+                balloon.setPosition([60.4, 29.5]);
+            });
+
+            myMap.controls.add(autoPanButton)
+                    .add(checkZoomOptionButton)
+                    .add(positionButton)
+                    .add(anotherPositionButton);
+        }
+
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

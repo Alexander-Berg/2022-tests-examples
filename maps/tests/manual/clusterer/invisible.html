@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<!--
+Title:
+Кластер: опция невидимости объектов
+
+Description:
+Проверка работы опции невидимости объектов.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+regress
+
+Estimated time:
+120000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась корректно.
+  На спане карты метки кластеров, желтые и зеленые метки коллекций.
+  Сверху имеются кнопки "visible", "clusterVisible", "geoVisible".
+
+Step:
+  Action:
+  Открыть инструменты разработчика командами Windows: Ctrl + Shift + I если у вас MacOS: ⌥ + ⌘ + I, вкладку Console.
+  Выполнить два клика в кнопку "visible".
+
+  Expectation:
+  После первого клика в кнопку в консоли появляется строка: "true", спан карты без изменений.
+  После второго клика в консоли появляется строка: "false", со спана карты пропадают все объекты.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "visible".
+
+  Expectation:
+  В консоли появляется строка: "true", на спане вновь появляются все объекты(кластера, метки коллекций).
+
+Step:
+  Action:
+  Выполнить два клика в кнопку "clusterVisible".
+
+  Expectation:
+  После первого клика в кнопку в консоли появляется строка: "true", спан карты без изменений.
+  После второго клика в консоли появляется строка: "false", со спана карты пропадают все кластерные метки.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "clusterVisible".
+
+  Expectation:
+  В консоли появляется строка: "true".
+  На спане карты появляются пропавшие на прошлом шаге метки кластеров.
+
+Step:
+  Action:
+  Выполнить два клика в кнопку "geoVisible".
+
+  Expectation:
+  После первого клика в кнопку в консоли появляется строка: "true", спан карты без изменений.
+  После второго клика в консоли появляется строка: "true", со спана карты пропадают все объекты.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "geoVisible".
+
+  Expectation:
+  В консоли появляется строка: "true".
+  На спане карты вновь появляются все объекты(кластера, метки коллекций).
+-->
+<html>
+<head>
+    <title>API 2.0</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <script src="../helper.js"></script>
+    <script type=text/javascript>
+        Api('init');
+        function init(ymaps) {
+            var myMap = new ymaps.Map('map', {
+                center: [59.96343157514998, 30.317977733422868],
+                zoom: 7,
+                behaviors: ['default', 'scrollZoom']
+            });
+            
+            var clusterer = new ymaps.Clusterer({
+                preset: 'twirl#redClusterIcons',
+                disableClickZoom: true,
+                showInAlphabeticalOrder: true
+            });
+            
+            var i = 0;
+            myMap.geoObjects.add(clusterer);
+            var placemarksNumber = 50,
+                    bounds = myMap.getBounds();
+            console.log('Placemarks added.');
+            var newPlacemarks = createGeoObjects(placemarksNumber, bounds);
+            clusterer.add(newPlacemarks);
+            var visibleButton = new ymaps.control.Button({data: {content: 'visible'}, options: {selectOnClick: true}});
+            visibleButton.events
+                    .add('select', function () {
+                        clusterer.options.set('visible', true);
+                        console.log(clusterer.options.get('visible'))
+                    })
+                    .add('deselect', function () {
+                        clusterer.options.set('visible', false);
+                        console.log(clusterer.options.get('visible'))
+                    });
+            var clusterVisibleButton = new ymaps.control.Button({data: {content: 'clusterVisible'}, options: {selectOnClick: true}});
+            clusterVisibleButton.events
+                    .add('select', function () {
+                        clusterer.options.set('clusterVisible', true);
+                        console.log(clusterer.options.get('clusterVisible'))
+                    })
+                    .add('deselect', function () {
+                        clusterer.options.set('clusterVisible', false);
+                        console.log(clusterer.options.get('clusterVisible'))
+                    });
+            var geoVisibleButton = new ymaps.control.Button({data: {content: 'geoVisible'}, options: {selectOnClick: true}});
+            geoVisibleButton.events
+                    .add('select', function () {
+                        for (var i = 0; i < placemarksNumber; i++) {
+                            newPlacemarks[i].options.set('visible', true);
+                            console.log(clusterer.options.get('visible'))
+                        }
+                    })
+                    .add('deselect', function () {
+                        for (var i = 0; i < placemarksNumber; i++) {
+                            newPlacemarks[i].options.set('visible', false);
+                            console.log(clusterer.options.get('visible'))
+                        }
+                    });            myMap.controls
+                    .add(visibleButton, {top: 5, left: 5})
+                    .add(clusterVisibleButton, {top: 35, left: 5})
+                    .add(geoVisibleButton, {top: 65, left: 5});
+            function createGeoObjects(number, bounds) {
+                var placemarks = [];
+                // Создаем нужное количество меток
+                for (var i = 0; i < number; i++) {
+                    // Генерируем координаты метки случайным образом.
+                    coordinates = getRandomCoordinates(bounds);
+                    // Создаем метку со случайными координатами.
+                    if (Math.random() < 0.5) {
+                        myPlacemark = new ymaps.Placemark(coordinates, {
+                            balloonContent: i, hintContent: i, iconContent: i,
+                            clusterCaption: i}, {preset: 'twirl#yellowStretchyIcon'});
+                    } else {
+                        myPlacemark = new ymaps.Placemark(coordinates, {
+                            balloonContent: 'point ' + i, hintContent: i, iconContent: 'point',
+                            clusterCaption: 'point ' + i}, {preset: 'twirl#greenStretchyIcon'});
+                    }
+                    placemarks.push(myPlacemark);
+                }
+                return placemarks;
+            }
+            function getRandomCoordinates(bounds) {
+                var size = [bounds[1][0] - bounds[0][0], bounds[1][1] - bounds[0][1]];
+                return [Math.random() * size[0] + bounds[0][0], Math.random() * size[1] + bounds[0][1]];
+            }        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+<p><a href="https://tech.yandex.ru/maps/archive/doc/jsapi/2.0/ref/reference/Clusterer-docpage/" target="_blank">Docs</a></p>
+</body>
+</html>

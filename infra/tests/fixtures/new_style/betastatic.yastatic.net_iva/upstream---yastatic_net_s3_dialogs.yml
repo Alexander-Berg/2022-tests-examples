@@ -1,0 +1,78 @@
+---
+regexp_path_section:
+  pattern: '/s3/dialogs(/.*)?'
+  modules:
+    - report:
+        uuid: 'yastatic_net_s3_dialogs'
+        ranges: 'default'
+    - shared:
+        uuid: yastatic_net_s3_dialogs
+    - headers:
+        create:
+            'Host': 'dialogs.s3.yandex.net'
+    - rewrite:
+        actions:
+          - regexp: '/s3/dialogs/(.*)'
+            rewrite: '/%1'
+    - response_headers:
+        create:
+            Cache-Control: 'public, max-age=216013'
+            Strict-Transport-Security: 'max-age=43200000; includeSubDomains;'
+            Access-Control-Allow-Origin: '*'
+            Timing-Allow-Origin: '*'
+        create_func:
+            Expires: 'time:+216001s'
+    - regexp:
+        sections:
+          br_section:
+              matcher:
+                match_and:
+                - match_fsm:
+                    path: '.*(\\.js|\\.css)'
+                - match_fsm:
+                    header:
+                      name: 'accept-encoding'
+                      value: '(.*,\\s*|)br(\\s*;\\s*q\\s*=\\s*(1|0\\.0*[1-9]).*|\\s*,.*|)'
+              modules:
+              - rewrite:
+                  actions:
+                    - regexp: '([^\\?]+)(.*)'
+                      rewrite: '%1.br'
+              - response_headers:
+                  create:
+                    Content-Encoding: br
+              - shared:
+                  uuid: 'yastatic_net_s3_dialogs_common'
+          gzip_section:
+              matcher:
+                match_and:
+                - match_fsm:
+                    path: '.*(\\.js|\\.css)'
+                - match_fsm:
+                    header:
+                      name: 'accept-encoding'
+                      value: '(.*,\\s*|)gzip(\\s*;\\s*q\\s*=\\s*(1|0\\.0*[1-9]).*|\\s*,.*|)'
+              modules:
+              - rewrite:
+                  actions:
+                    - regexp: '([^\\?]+)(.*)'
+                      rewrite: '%1.gz'
+              - response_headers:
+                  create:
+                    Content-Encoding: gzip
+              - shared:
+                  uuid: 'yastatic_net_s3_dialogs_common'
+          default:
+              matcher: {}
+              modules:
+              - shared:
+                  uuid: 'yastatic_net_s3_dialogs_common'
+              - headers:
+                  delete:
+                    'authorization|accept-encoding'
+              - response_headers:
+                  create:
+                    Cache-Control: 'public, max-age=216013'
+                  delete: 'content-encoding'
+              - shared:
+                  uuid: 'yastatic_s3_cached_shared'

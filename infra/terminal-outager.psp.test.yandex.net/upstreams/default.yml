@@ -1,0 +1,44 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - robot-taxi-clown
+      - amosov-f
+      - nanny-robot
+      groups:
+      - svc_psp_devops
+labels:
+  order: '99999999'
+
+---
+regexp_section:
+  matcher: {}
+  modules:
+    - headers:
+        create_weak:
+          Host: terminal-outager.psp.test.yandex.net
+        create_func:
+          X-Real-IP: realip
+    - shared:
+        uuid: 'backends'
+    - balancer2:
+        connection_attempts: !f count_backends()
+        attempts: 1
+        unique_policy: {}
+        active:
+          delay: '2s'
+          request: 'GET /ping HTTP/1.1\nHost: terminal-outager.psp.test.yandex.net\nUser-agent: l7-balancer\n\n'  # noqa: E501
+        generated_proxy_backends:
+          proxy_options:
+            backend_timeout: 60s
+            connect_timeout: 70ms
+            keepalive_count: 1
+            keepalive_timeout: 60s
+            fail_on_5xx: false
+          include_backends:
+            type: BY_ID
+            ids: [psp_terminal-outager_testing]
+        on_error:
+          errordocument:
+            status: 504
+            content: "Service unavailable"

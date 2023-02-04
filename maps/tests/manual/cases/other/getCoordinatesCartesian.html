@@ -1,0 +1,216 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym; // hack
+
+            var constructor = function () {
+                        var layer = new ym.Layer('http://mt.gmapuploader.com/tiles/zDtAlUfaDe/');
+                        layer.getTileUrl = function (tile, zoom) {
+                            var tile = this.restrict(tile, zoom);
+                            return tile ? "http://mt.gmapuploader.com/tiles/zDtAlUfaDe/tile-" + zoom + "-" +
+                                    (tile[1] * Math.pow(2, zoom) + tile[0]) + ".jpg" : null;
+                        };
+                        return layer;
+                    },
+                    lineageMap = new ym.MapType('LineageMap', [constructor]),
+                    myMap = new ym.Map('map', {
+                        center: [18.125, 42.03125],
+                        zoom: 2,
+                        type: null,
+                        behaviors: ['default', 'scrollZoom'],
+                        controls: ['fullscreenControl']
+                    }, {
+                        projection: new ym.projection.Cartesian([
+                            [-100, -100],
+                            [140, 140]
+                        ]),
+                        geoObjectStrokeWidth: 4
+                    }), i = 0;
+
+            ym.mapType.storage.add('lineage#map', lineageMap);
+            myMap.setType("lineage#map");
+
+            var balloonData = new ymaps.data.Manager({
+                balloonContent: 'Content',
+                custom: true
+            });
+
+            var geoObjectPlacemark = new ymaps.GeoObject({
+                geometry: { type: "Point", coordinates: [30, 0]}, properties: balloonData
+            }, {id: 'geoObjectPlacemark', preset: 'islands#greenIcon'});
+
+
+            var geoObjectPolyline = new ymaps.GeoObject({
+                geometry: { type: "LineString", coordinates: [
+                    [30.234375, 7.1875],
+                    [47.578125, 12.890625],
+                    [30.3125, 17.5]
+                ] }, properties: balloonData
+            }, { strokeWidth: 3, id: 'geoObjectPolyline', strokeColor: '#00FF00'});
+
+            var geoObjectCircle = new ymaps.GeoObject({
+                geometry: { type: "Circle", coordinates: [40, 30], radius: 10 }, properties: balloonData
+            }, {id: 'geoObjectCircle', strokeColor: '#00FF00'});
+
+            var geoObjectPolygon = new ymaps.GeoObject({
+                geometry: { type: "Polygon", coordinates: [
+                    [
+                        [30, 55],
+                        [50, 60],
+                        [30, 65]
+                    ],
+                    [
+                        [30, 65],
+                        [50, 65],
+                        [50, 75],
+                        [30, 75]
+                    ]
+                ] },
+                properties: balloonData}, {id: 'geoObjectPolygon', strokeColor: '#00FF00'});
+
+            var geoObjectRectangle = new ymaps.GeoObject({
+                geometry: { type: "Rectangle", coordinates: [
+                    [30.234375, 44.0625],
+                    [50.234375, 49.0625]
+                ] }, properties: balloonData
+            }, {id: 'geoObjectRectangle', strokeColor: '#00FF00'});
+
+            var placemark = new ymaps.Placemark([7.578125, 0], balloonData, {id: 'placemark'});
+
+            var polyline = new ymaps.Polyline([
+                        [6.171875, 6.953125],
+                        [24.921875, 13.125],
+                        [6.249999999999972, 17.734375]
+                    ], balloonData,
+                    {strokeWidth: 3, id: 'polyline'});
+
+            var circle = new ymaps.Circle([
+                [15, 30],
+                10
+            ], balloonData, {id: 'circle'});
+
+            var polygon = new ymaps.Polygon([
+                [
+                    [5, 55],
+                    [25, 60],
+                    [5, 65]
+                ],
+                [
+                    [5, 65],
+                    [25, 65],
+                    [25, 75],
+                    [5, 75]
+                ]
+            ], balloonData, {id: 'polygon'});
+
+            var rectangle = new ymaps.Rectangle([
+                [5, 44.0625],
+                [25, 49.0625]
+            ], balloonData, {id: 'rectangle'});
+
+            addGrid(myMap);
+            var log = new Log();
+            //var editor = new Editor();
+
+            myMap.geoObjects
+                    .add(geoObjectPlacemark)
+                    .add(geoObjectPolyline)
+                    .add(geoObjectPolygon)
+                    .add(geoObjectRectangle)
+                    .add(geoObjectRectangle)
+                    .add(geoObjectCircle)
+                    .add(placemark)
+                    .add(polyline)
+                    .add(polygon)
+                    .add(rectangle)
+                    .add(circle);
+
+            var getPlacemark = new ymaps.control.Button({data: {content: "PM"}, options: {selectOnClick: false}}),
+                    getPolyline = new ymaps.control.Button({data: {content: "PL"}, options: {selectOnClick: false}}),
+                    getPolygon = new ymaps.control.Button({data: {content: "PG"}, options: {selectOnClick: false}}),
+                    getRect = new ymaps.control.Button({data: {content: "RT"}, options: {selectOnClick: false}}),
+                    getCircle = new ymaps.control.Button({data: {content: "CR"}, options: {selectOnClick: false}}),
+                    getMapCenterButton = new ymaps.control.Button({data: {content: "Get center"}, options: {selectOnClick: false}});
+
+            polyline.editor.startDrawing();
+            geoObjectPolyline.editor.startDrawing();
+            polygon.editor.startDrawing();
+            geoObjectPolygon.editor.startDrawing();
+
+            // getCenterButton shows current map center and zoom in the log
+            getMapCenterButton.events.add('click', function () {
+                var center = myMap.getCenter();
+                var zoom = myMap.getZoom();
+                log.info('Center changed to: ' + center + '. Zoom equals ' + zoom);
+            });
+
+            getPlacemark.events.add('click', function () {
+                var pointCoord = placemark.geometry.getCoordinates();
+                log.info('placemark coordinates: ' + pointCoord);
+                var geoObjectPlacemarkCoord = geoObjectPlacemark.geometry.getCoordinates();
+                log.info('geoObjectPlacemark coordinates: ' + geoObjectPlacemarkCoord);
+            });
+
+            getPolyline.events.add('click', function () {
+                var lineCoord = polyline.geometry.getCoordinates();
+                log.info('polyline coordinates: ' + lineCoord);
+                var geoObjectPolylineCoord = geoObjectPolyline.geometry.getCoordinates();
+                log.info('geoObjectPolyline coordinates: ' + geoObjectPolylineCoord);
+            });
+
+            getPolygon.events.add('click', function () {
+                var polygonCoord = polygon.geometry.getCoordinates();
+                log.info('polygon coordinates: ' + polygonCoord);
+                var geoObjectPolygonCoord = geoObjectPolygon.geometry.getCoordinates();
+                log.info('geoObjectPolygon coordinates: ' + geoObjectPolygonCoord);
+            });
+
+            getRect.events.add('click', function () {
+                var rectCoord = rectangle.geometry.getBounds();
+                log.info('rectangle coordinates: ' + rectCoord);
+                var geoObjectRectangleCoord = geoObjectRectangle.geometry.getBounds();
+                log.info('geoObjectRectangle coordinates: ' + geoObjectRectangleCoord);
+            });
+
+            getCircle.events.add('click', function () {
+                var circleCoord = circle.geometry.getCoordinates();
+                log.info('circle coordinates: ' + circleCoord);
+                var geoObjectCircleCoord = geoObjectCircle.geometry.getCoordinates();
+                log.info('geoObjectCircle coordinates: ' + geoObjectCircleCoord);
+            });
+
+            geoObjectPlacemark.options.set('draggable', true);
+            geoObjectPolyline.options.set('draggable', true);
+            geoObjectPolygon.options.set('draggable', true);
+            geoObjectRectangle.options.set('draggable', true);
+            geoObjectCircle.options.set('draggable', true);
+            placemark.options.set('draggable', true);
+            polyline.options.set('draggable', true);
+            polygon.options.set('draggable', true);
+            rectangle.options.set('draggable', true);
+            circle.options.set('draggable', true);
+
+            myMap.controls
+                    .add(getPlacemark)
+                    .add(getPolyline)
+                    .add(getPolygon)
+                    .add(getRect)
+                    .add(getCircle)
+                    .add(getMapCenterButton);
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

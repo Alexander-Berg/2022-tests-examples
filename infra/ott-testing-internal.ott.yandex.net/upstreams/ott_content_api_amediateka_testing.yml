@@ -1,0 +1,50 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - vyacheslav
+      groups: []
+labels:
+  order: '10000000'
+config_mode: easy2
+---
+l7_upstream_macro:
+  version: 0.2.1
+  id: ott_content_api_amediateka_testing
+  matcher:
+    and_:
+      - method: POST
+      - path_re: '/v[0-9]+/content-groups/amediateka/unpublish'
+  monitoring:
+    uuid: ott_content_api_amediateka_testing
+  by_dc_scheme:
+    dc_balancer:
+      weights_section_id: bygeo
+      method: LOCAL_THEN_BY_DC_WEIGHT
+      attempts: 2
+    balancer:
+      retry_non_idempotent: false
+      attempts: 1
+      fast_attempts: 2
+      max_reattempts_share: 0.15
+      max_pessimized_endpoints_share: 0.5
+      health_check:
+        delay: '5s'
+        request: 'GET /ping?l7 HTTP/1.0\n\n'
+      retry_http_responses:
+        on_last_failed_retry: PROXY_RESPONSE_AS_IS
+        codes: [5xx]
+      backend_timeout: 1200s
+      backend_read_timeout: 1200s
+      connect_timeout: 60ms
+    dcs:
+      - name: sas
+        backend_ids:
+          - ott-content-api_testing_backend_sas
+      - name: vla
+        backend_ids:
+          - ott-content-api_testing_backend_vla
+    on_error:
+      static:
+        status: 504
+        content: 'Service unavailable'

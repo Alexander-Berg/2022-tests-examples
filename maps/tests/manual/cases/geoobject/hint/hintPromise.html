@@ -1,0 +1,142 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Геообъект: открытие и закрытие хинта через promise
+
+Description:
+Проверка открытие и закрытие хинта через promise.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+geoobject
+
+Estimated time:
+180000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан Московской области, на спане два ряда объектов: метка "A", линия, многоугольник, прямоугольник, круг(верхний ряд синего цвета, нижний - зеленого), снизу справа имеется кнопка "clear".
+  (кнопка "clear" очищает блок с текстом под контейнером с картой, выполняйте клик в кнопку после каждого шага в тест-кейсе)  
+
+Step:
+  Action:
+  Навести курсор на синюю метку коллекции. 
+
+  Expectation:
+  При наведении курсор меняется на палец, на метке появляется хинт "hint", под контейнером с картой появляется блок: placemark: hintopen; resolved: true, fulfilled: true, rejected: false.
+
+Step:
+  Action:
+  Увести курсор с метки на пустое место на спане карты. 
+
+  Expectation:
+  Через секунду после перевода курсора хинт пропадает, под контейнером с картой появляется блок: placemark: hintclose.
+
+Step:
+  Action:
+  Быстро провести курсором по прямой линии пересекающей зеленый и синий круг на спане карты.
+
+  Expectation:
+  При наведении курсора на объекты он меняется на палец, хинт при этом не открывается, при пересечении объекта круга появляется блок: resolved: true, fulfilled: false, rejected: true.
+  
+Step:
+  Action:
+  Навести курсор на синий прямоугольник, после чего сразу выполнить клик в него. 
+
+  Expectation:
+  При наведении курсор меняется на палец, хинт не появляется, при клике пропадает, под контейнером появляется блок: resolved: true, fulfilled: false, rejected: true, на объекте открывается балун.
+  Содержимое балуна: заголовок "Balloon header"; тело "Balloon body: some text about the object"; футер: "Balloon footer".
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script src="../geoCS.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym; // hack
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.73259667357658, 37.70153663432529],
+                zoom: 9,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl', 'typeSelector']
+            });
+
+            geoCSSource(ym, myMap, this);
+            addGrid(myMap);
+            var log = new Log();
+
+            addProperties(geoObjectPlacemark);
+            addProperties(geoObjectPolyline);
+            addProperties(geoObjectPolygon);
+            addProperties(geoObjectRectangle);
+            addProperties(geoObjectCircle);
+            addProperties(placemark);
+            addProperties(polyline);
+            addProperties(polygon);
+            addProperties(rectangle);
+            addProperties(circle);
+
+            map.geoObjects
+                    .add(geoObjectPlacemark)
+                    .add(geoObjectPolyline)
+                    .add(geoObjectPolygon)
+                    .add(geoObjectRectangle)
+                    .add(geoObjectCircle)
+                    .add(placemark)
+                    .add(polyline)
+                    .add(polygon)
+                    .add(rectangle)
+                    .add(circle);
+
+            var clearButton = new ymaps.control.Button({data: {content: 'clear log'}, options: {selectOnClick: false}});
+            clearButton.events.add('click', function () {
+                log.clear();
+            });
+            map.controls.add(clearButton, {float: 'none', position: {bottom: 25, right: 10}});
+            __log__("Промис реджектится при быстром наведении/сведении, быстром открытии балуна, при драге сразу после наведения");
+            function addProperties(obj) {
+                obj.properties.set('iconContent', 'A');
+                obj.properties.set('hintContent', 'hint');
+                obj.properties.set('balloonContentHeader', 'Balloon header');
+                obj.properties.set('balloonContentBody', 'Balloon body: some text about the object');
+                obj.properties.set('balloonContentFooter', 'Balloon footer');
+                obj.options.set('openHintOnHover', false);
+
+                obj.events.add(['hintopen', 'hintclose'], function (e) {
+                    log.info(e.get('target').options.get('id') + ': ' + e.get('type'))
+                });
+
+                obj.events.add('mouseenter', function (e) {
+                    var promise = obj.hint.open();
+                    promise.always(function () {
+                        log.info('resolved: ' + promise.isResolved() + ', fulfilled: ' + promise.isFulfilled() + ', ' +
+                                'rejected: ' + promise.isRejected());
+                    });
+                });
+
+                obj.events.add('mouseleave', function (e) {
+                    obj.hint.close();
+                });
+
+            }
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

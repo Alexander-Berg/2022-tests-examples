@@ -1,0 +1,40 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - dancingelf
+      groups: []
+labels:
+  order: '10000000'
+---
+regexp_section:
+  matcher:
+    match_or:
+      - match_fsm:
+          host: mobmet-intapi-test.metrika.yandex.net
+      - match_fsm:
+          host: mobmet-intapi-test.metrika.yandex.net:8094
+  modules:
+    - headers:
+        create:
+            Host: mobmet-intapi-test.metrika.yandex.net
+            X-Yandex-Metrika-Request-Source: api
+    - balancer2:
+        attempts: 2
+        attempts_rate_limiter:
+          limit: 0.15
+        connection_attempts: !f count_backends()
+        status_code_blacklist : ["5xx"]
+        return_last_5xx: true        
+        unique_policy: {}
+        active:
+            delay: 1s
+            request: 'GET /ping HTTP/1.1\nHost: mobmet-intapi-test.metrika.yandex.net\nUser-agent: l7-balancer\n\n'
+        generated_proxy_backends:
+          proxy_options:
+            backend_timeout: 240s
+            connect_timeout: 100ms
+            fail_on_5xx: false
+          include_backends:
+            type: BY_ID
+            ids: [mobmet-intapi-testing-backend]

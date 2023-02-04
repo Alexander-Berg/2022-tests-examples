@@ -1,0 +1,47 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - andrei-egerev
+      groups: []
+labels:
+  order: '00000003'
+config_mode: easy2
+---
+l7_upstream_macro:
+  version: 0.0.2
+  id: next_instance_v3
+  matcher:
+    path_re: '/v3/next-instance'
+  monitoring:
+    uuid: api
+  by_dc_scheme:
+    dc_balancer:
+      weights_section_id: bygeo
+      method: LOCAL_THEN_BY_DC_WEIGHT
+      attempts: 2
+    balancer:
+      attempts: 2
+      max_reattempts_share: 0.15
+      max_pessimized_endpoints_share: 0.5
+      fast_attempts: 2
+      fast_attempts_type: CONNECT_FAILURE_AND_503
+      retry_non_idempotent: false
+      retry_http_responses:
+        codes: [5xx]
+      connect_timeout: 70ms
+      backend_timeout: 5s
+    dcs:
+      - name: iva
+        backend_ids:
+          - calls-api-iva
+      - name: vla
+        backend_ids:
+          - calls-api-vla
+      - name: sas
+        backend_ids:
+          - calls-api-sas
+    on_error:
+      static:
+        status: 503
+        content: 'Service unavailable'

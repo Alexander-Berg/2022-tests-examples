@@ -1,0 +1,83 @@
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      host: 'pumpkin\\.yandex\\.ru(:\\d+)?'
+  modules:
+    - report:
+        ranges: default
+        uuid: kubr
+    - balancer2:
+        attempts: 2
+        rr: {weights_file: ./controls/traffic_control.weights}
+        backends:
+          - weight: 1
+            name: kubr_man
+            modules:
+              - report:
+                  ranges: default
+                  uuid: requests_kubr_to_man
+              - balancer2:
+                  attempts: 4
+                  watermark_policy:
+                    lo: 0.1
+                    hi: 0.1
+                    unique_policy: {}
+                  weighted2: {}
+                  generated_proxy_backends:
+                    proxy_options:
+                      backend_timeout: 1s
+                      connect_timeout: 100ms
+                      keepalive_count: 0
+                      fail_on_5xx: true
+                    include_backends:
+                      type: BY_ID
+                      ids: [pumpkin_kubr_man]
+          - weight: 1
+            name: kubr_sas
+            modules:
+              - report:
+                  ranges: default
+                  uuid: requests_kubr_to_sas
+              - balancer2:
+                  attempts: 4
+                  watermark_policy:
+                    lo: 0.1
+                    hi: 0.1
+                    unique_policy: {}
+                  weighted2: {}
+                  generated_proxy_backends:
+                    proxy_options:
+                      backend_timeout: 1s
+                      connect_timeout: 100ms
+                      keepalive_count: 0
+                      fail_on_5xx: true
+                    include_backends:
+                      type: BY_ID
+                      ids: [pumpkin_kubr_sas]
+          - weight: 1
+            name: kubr_vla
+            modules:
+              - report:
+                  ranges: default
+                  uuid: requests_kubr_to_vla
+              - balancer2:
+                  attempts: 4
+                  watermark_policy:
+                    lo: 0.1
+                    hi: 0.1
+                    unique_policy: {}
+                  weighted2: {}
+                  generated_proxy_backends:
+                    proxy_options:
+                      backend_timeout: 1s
+                      connect_timeout: 100ms
+                      keepalive_count: 0
+                      fail_on_5xx: true
+                    include_backends:
+                      type: BY_ID
+                      ids: [pumpkin_kubr_vla]
+        on_error:
+          errordocument:
+            status: 504
+            content: "Service unavailable"

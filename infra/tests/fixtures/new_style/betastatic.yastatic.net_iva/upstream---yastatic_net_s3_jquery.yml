@@ -1,0 +1,64 @@
+---
+regexp_path_section:
+  pattern: '/jquery(/.*)?'
+  modules:
+    - report:
+        uuid: 'yastatic_net_s3_jquery'
+        ranges: 'default'
+    - headers:
+         create:
+            'Host': 'yastatic.s3.yandex.net'
+    - response_headers:
+        create_func:
+            Expires: 'time:+216001s'
+    - regexp:
+        sections:
+          br_section:
+              matcher:
+                match_fsm:
+                    header:
+                      name: 'accept-encoding'
+                      value: '(.*,\\s*|)br(\\s*;\\s*q\\s*=\\s*(1|0\\.0*[1-9]).*|\\s*,.*|)'
+              modules:
+              - rewrite:
+                  actions:
+                    - regexp: '([^\\?]+)(.*)'
+                      rewrite: '%1.br'
+              - response_headers:
+                  create:
+                    Content-Encoding: br
+              - shared:
+                  uuid: 'yastatic_net_s3_jquery_common'
+          gzip_section:
+              matcher:
+                match_fsm:
+                    header:
+                      name: 'accept-encoding'
+                      value: '(.*,\\s*|)gzip(\\s*;\\s*q\\s*=\\s*(1|0\\.0*[1-9]).*|\\s*,.*|)'
+              modules:
+              - rewrite:
+                  actions:
+                    - regexp: '([^\\?]+)(.*)'
+                      rewrite: '%1.gz'
+              - response_headers:
+                  create:
+                    Content-Encoding: gzip
+              - shared:
+                  uuid: 'yastatic_net_s3_jquery_common'
+          default:
+              matcher: {}
+              modules:
+              - shared:
+                  uuid: 'yastatic_net_s3_jquery_common'
+              - headers:
+                  delete:
+                    'accept-encoding|authorization'
+              - response_headers:
+                  create:
+                    Cache-Control: 'public, max-age=216013'
+                    Strict-Transport-Security: 'max-age=43200000; includeSubDomains;'
+                    Timing-Allow-Origin: '*'
+                    Access-Control-Allow-Origin: '*'
+                  delete: 'content-encoding'
+              - shared:
+                  uuid: 'yastatic_s3_cached_shared'

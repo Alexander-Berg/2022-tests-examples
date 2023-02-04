@@ -1,0 +1,36 @@
+---
+l7_upstream_macro:
+  version: 0.0.1
+  compat:
+    threshold_profile: THRESHOLD_PROFILE_CORE_MAPS
+    disable_monitoring: true
+  id: 'default'
+  matcher:
+    any: true
+  headers:
+    - append: {target: 'X-Forwarded-For', func: realip}
+    - create: {target: 'X-Real-IP', func: realip, keep_existing: true}
+    - create: {target: 'Host', value: 'core-jams-matcher.maps.yandex.net'}
+  flat_scheme:
+    balancer:
+      compat:
+        method: ACTIVE
+        watermark_policy:
+          lo: 0.2
+          hi: 0.4
+      health_check:
+        compat:
+          not_steady: true
+        delay: '10s'
+        request: 'GET /ping HTTP/1.1\nHost: core-jams-matcher.maps.yandex.net\r\n\r\n'
+      backend_timeout: 1000ms
+      connect_timeout: 70ms
+      attempts: 3
+      keepalive_count: 100
+      retry_http_responses:
+        codes: ['5xx']
+    backend_ids: [maps_core_jams_matcher_prestable, maps_core_jams_matcher_stable]
+    on_error:
+      static:
+        status: 504
+        content: 'Service unavailable'

@@ -1,0 +1,185 @@
+#!/usr/bin/env python
+import os
+import shutil
+import subprocess
+import sys
+import threading
+
+from optparse import OptionParser
+from termcolor import colored
+
+class Row:
+    def __init__(self, display):
+        self.display = display
+        self.num = display.next_num()
+        self.data = ""
+
+    def append(self, data):
+        self.data += data
+        self.data = self.data.replace("\n", " ")
+        self.display.write_at(self.num, self.data)
+
+    def replace(self, data):
+        self.display.write_at(self.num, " " * len(self.data))
+        self.data = ""
+        self.append(data)
+
+class Display:
+    def __init__(self):
+        self.count = 0
+        sys.stdout.write("\n")
+
+    def next_num(self):
+        ret = self.count
+        sys.stdout.write("\n" * self.count + "\033[%dA" % self.count)
+        self.count += 1
+        return ret
+
+    def write_at(self, num, text):
+        if num:
+            sys.stdout.write("\033[%dB%s\r\033[%dA" % (num, text, num))
+        else:
+            sys.stdout.write("%s\r" % text)
+        sys.stdout.flush()
+
+    def make_row(self):
+        return Row(self)
+
+    def finish(self):
+        sys.stdout.write("\n" * (self.count + 1))
+
+g_display = Display()
+
+class Test:
+    def __init__(self, script):
+        self.status_bar = g_display.make_row()
+        self.script = script
+        self.name = os.path.basename(script)
+        self.log = ""
+        self.status = None
+        self.status_bar.append(colored(self.name, "blue") + " ")
+
+    def drain(self, pipe, action):
+        while True:
+            c = pipe.read(1)
+            if c == "":
+                return
+            action(c)
+        pipe.close()
+
+    def log_append(self, x):
+        self.log += x
+
+    def do_wait(self):
+        self.status = (self.process.wait() == 0)
+        self.log_thread.join()
+        self.progress_thread.join()
+        color, msg = ("green", "OK") if self.status else ("red", "FAILED")
+        self.status_bar.replace(
+            colored(self.name, color, attrs=["dark"]) + " " +
+            colored(msg, color))
+
+    def run(self):
+        self.process = subprocess.Popen("""
+                set -e
+                export PATH=$PATH:{harness_dir}/test-helpers:{harness_dir}:{cwd}/test-helpers:{cwd}
+                export BEWARE_THIS_IS_A_TEST=y
+                ({mkenv} {testdir} && cd {testdir} &&
+                env -u MAKEFLAGS -u MFLAGS PATH=$PATH:{testdir}/bin /bin/sh -e {script}) 3>&2 4>&2 2>&1 </dev/null
+            """.format(
+                harness_dir=options.harness_dir,
+                cwd=options.cwd,
+                mkenv=os.path.realpath(options.mkenv),
+                testdir=os.path.join(options.testroot, self.name),
+                script=os.path.realpath(self.script)
+            ), stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+
+        self.log_thread = threading.Thread(
+                target=self.drain,
+                args=[self.process.stdout, self.log_append])
+        self.log_thread.start()
+
+        self.progress_thread = threading.Thread(
+                target=self.drain,
+                args=[self.process.stderr, self.status_bar.append])
+        self.progress_thread.start()
+
+        self.wait_thread = threading.Thread(target=self.do_wait)
+        self.wait_thread.start()
+
+    def wait(self):
+        self.wait_thread.join()
+        return self.status
+
+
+parser = OptionParser()
+parser.add_option("-E", dest="mkenv", help="path to mkenv script")
+parser.add_option(
+        "-C",
+        dest="no_clean",
+        action="store_true",
+        help="do not cleanup after test completes")
+parser.add_option(
+        "-N",
+        dest="suite_name", help="name of this test suite",
+        default="sh-test-harness-generic")
+options, tests = parser.parse_args()
+options.testroot = os.path.join(
+        "/var/tmp", os.environ["USER"], options.suite_name)
+if os.path.exists(options.testroot):
+    shutil.rmtree(options.testroot)
+    os.makedirs(options.testroot)
+
+options.harness_dir = os.path.realpath(os.path.dirname(sys.argv[0]))
+options.cwd = os.getcwd()
+
+if not tests:
+    def read_tests(_, dir, files):
+        global tests
+        tests = [f for f in files if os.path.isfile(os.path.join(dir, f))]
+        del files[:]
+    os.path.walk("tests", read_tests, None)
+
+header = g_display.make_row()
+header.append(colored("=== Running tests ===", "yellow"))
+
+def find_test(name):
+    if os.path.exists(name):
+        return name
+    test_name = os.path.join("tests", name)
+    if not os.path.exists(test_name):
+        print colored("Cannot locate test " + name, "red")
+        sys.exit(1)
+    return test_name
+
+tests = [Test(find_test(f)) for f in sorted(tests)]
+
+for t in tests:
+    t.run()
+for t in tests:
+    try:
+        t.wait()
+    except KeyboardInterrupt:
+        pass
+
+g_display.finish()
+succeeded = [t for t in tests if t.status]
+failed    = [t for t in tests if not t.status]
+
+for t in failed:
+    print colored("=== " + t.name + " ===", "yellow")
+    for line in t.log.split("\n"):
+        print "    " + line
+    print ""
+
+if failed:
+    print "Failed tests: " + ", ".join(t.name for t in failed)
+print colored(
+        "\n%d test(s) succeeded, %d test(s) failed" % (
+            len(succeeded), len(failed)),
+        ("red" if failed else "green"))
+
+if not options.no_clean and os.path.exists(options.testroot):
+    shutil.rmtree(options.testroot)
+
+sys.exit(bool(failed))

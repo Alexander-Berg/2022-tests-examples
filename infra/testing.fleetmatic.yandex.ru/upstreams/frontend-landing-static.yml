@@ -1,0 +1,46 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - next0
+      groups: []
+labels:
+  order: '04000000'
+config_mode: easy2
+---
+l7_upstream_macro:
+  version: 0.0.1
+  id: frontend-landing-static
+  matcher:
+    and_:
+    - host_re: (.*)(testing|prestable|prod)\.drivematics\.yandex\.(ru|com)
+    - path_re: /(dist|img)(/.*)?
+  rewrite:
+  - target: PATH
+    pattern:
+      re: '/(.*)?'
+    replacement: '/landing/%1'
+  headers:
+  - rewrite:
+      target: 'Host'
+      pattern:
+        re: '(.*)'
+      replacement: 'drivematics-test.s3.mds.yandex.net'
+  flat_scheme:
+    balancer:
+      attempts: 2
+      max_reattempts_share: 0.15
+      max_pessimized_endpoints_share: 0.20
+      fast_attempts: 2
+      retry_http_responses:
+        codes:
+        - 5xx
+        on_last_failed_retry: PROXY_RESPONSE_AS_IS
+      connect_timeout: 70ms
+      backend_timeout: 5s
+    backend_ids:
+    - drivematics_test_s3
+    on_error:
+      static:
+        status: 504
+        content: Service unavailable

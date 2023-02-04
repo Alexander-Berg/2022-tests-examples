@@ -1,0 +1,88 @@
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      uri: '/api/image_recommender(/.*)?'
+  modules:
+    - report:
+        uuid: api_image_recommender
+        ranges: default
+    - rewrite:
+        actions:
+          - regexp: '/api/image_recommender(/.*)?'
+            rewrite: '/yandsearch%1'
+    - balancer2:
+        attempts: 1
+        rr: {weights_file: ./controls/traffic_control.weights}
+        by_name_policy:
+          name: !f get_geo("imagerecommender_", "random")
+          unique_policy: {}
+        backends:
+        - weight: 1
+          name: imagerecommender_sas
+          modules:
+            - report: {ranges: default, uuid: requests_api_image_recommender_to_sas}
+            - balancer2:
+                attempts: 1
+                active: {
+                    steady: false,
+                    request: 'GET /tass HTTP/1.1\r\nHost: pdb.yandex.ru\r\n\r\n',
+                    delay: 1s
+                }
+                generated_proxy_backends:
+                  proxy_options:
+                    backend_timeout: 100ms
+                    connect_timeout: 15ms
+                    keepalive_count: 1
+                  include_backends:
+                    type: BY_ID
+                    ids: [collections_image_recommender_prod_sas]
+        - weight: 1
+          name: imagerecommender_man
+          modules:
+            - report: {ranges: default, uuid: requests_api_image_recommender_to_man}
+            - balancer2:
+                attempts: 1
+                active: {
+                    steady: false,
+                    request: 'GET /tass HTTP/1.1\r\nHost: pdb.yandex.ru\r\n\r\n',
+                    delay: 1s
+                }
+                generated_proxy_backends:
+                  proxy_options:
+                    backend_timeout: 100ms
+                    connect_timeout: 15ms
+                    keepalive_count: 1
+                  include_backends:
+                    type: BY_ID
+                    ids: [collections_image_recommender_prod_man]
+        - weight: 1
+          name: imagerecommender_vla
+          modules:
+            - report: {ranges: default, uuid: requests_api_image_recommender_to_vla}
+            - balancer2:
+                attempts: 1
+                active: {
+                    steady: false,
+                    request: 'GET /tass HTTP/1.1\r\nHost: pdb.yandex.ru\r\n\r\n',
+                    delay: 1s
+                }
+                generated_proxy_backends:
+                  proxy_options:
+                    backend_timeout: 100ms
+                    connect_timeout: 15ms
+                    keepalive_count: 1
+                  include_backends:
+                    type: BY_ID
+                    ids: [collections_image_recommender_prod_vla]
+        - weight: -1
+          name: imagerecommender_devnull
+          modules:
+            - report:
+                uuid: requests_api_image_recommender_to_devnull
+                ranges: 1ms
+            - errordocument:
+                status: 204
+        on_error:
+          modules:
+          - errordocument: {content: Gateway Timeout, status: 504}

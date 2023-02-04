@@ -1,0 +1,139 @@
+# ? Асинхронные действия?
+#
+#
+#
+#
+#
+
+# Нотификации:
+# Startrek: статус получаем из отдельного поля\тега
+# оставляем только важные комментарии (для визуализации \ передачи метаданных)
+# факт выполнения ручных действий выражаем в смене статуса
+#
+# Telegram:
+# owner всегда нотифицируется обо всех событиях
+# дополнительно можно перечислить нотифицируемых в notify для перехода
+#
+#
+
+INITIAL:
+  owner: test
+  edges:
+    HAVE_CHANGES:
+      conditions:
+        - is_changed()
+      actions:
+        - get_ticket_list() # Список тикетов, попадающих в выкладку релиза\хот-фиксов
+        - get_max_versions() # Список максимальных версий пакетов, требуемых для выкладки
+        # (допущение: всё что работает с более старой версией будет работать и с более новой)
+        - comment(HAVE_CHANGES) # Комментарий со списком пакетов и их максимальными версиями
+
+    CLOSED:
+      conditions:
+        - not(is_changed())a
+      actions:
+        - change_status('closed', 'incorrect')
+
+HAVE_CHANGES:
+  owner: dev
+  edges:
+    BUILD_IN_PROGRESS:
+      actions:
+        - comment('Запустил сборку')
+        - build()
+
+BUILD_IN_PROGRESS:
+  owner: dev
+  edges:
+    BUILT:
+      conditions:
+        - is_task_success()
+
+    BUILD_IN_PROGRESS:
+      conditions:
+        - is_task_failed()
+      actions:
+        - change_status('NeedInfo')
+
+BUILT:
+  owner: dev
+  edges:
+    DEPLOY_IN_PROGRESS:
+      actions:
+        - deploy()
+
+DEPLOY_IN_PROGRESS:
+  owner: dev
+  edges:
+    DEPLOYED:
+      conditions:
+        - is_version_deployed()
+        - 2comment(TEXT)
+      actions:
+        - comment(CONDUCTOR_TICKETS_TO_DEPLOY)
+
+    DEPLOY_IN_PROGRESS:
+      conditions:
+        - is_deploy_failed()
+        - change_status('NeedInfo')
+
+DEPLOYED:
+  owner: test
+  edges:
+    TEST_IN_PROGRESS:
+      actions:
+        - start_teamcity(['BalanceFull', 'BalanceSmoke', 'TrustGreenline'])
+        - start_aqua(['FullJava'])
+        - comment(TESTS_LAUNCHED)
+
+TEST_IN_PROGRESS:
+  owner: test
+  edges:
+    TEST_COMPLETE:
+      conditions:
+        - comment_values(TESTS_LAUNCHED)
+        - is_tasks_finished('teamcity', ['BalanceFull', 'BalanceSmoke', 'TrustGreenline'])
+        - is_tasks_finished('aqua', ['FullJava'])
+      actions:
+        - get_task_results('teamcity', ['BalanceFull', 'BalanceSmoke', 'TrustGreenline'])
+        - get_task_results('aqua', ['FullJava'])
+        - comment_values(TESTS_RESULTS)
+
+TEST_COMPLETE:
+  owner: test
+  edges:
+    TEST_SUCCESS:
+      conditions:
+        - is_tests_passed('teamcity', ['BalanceFull', 'BalanceSmoke', 'TrustGreenline']) # raise AlarmException if not
+        - is_tests_passed('aqua', ['FullJava'])
+      actions:
+        - comment('Результаты тестов проанализированы, изменения можно выкладывать. Подтвердите, пожалуйста')
+        - change_status('tested')
+
+TEST_SUCCESS:
+  owner: mng
+  edges:
+    CONFIRMED:
+      conditions:
+        - has_status('confirmed')
+      actions:
+        - comment('Выложите, пожалуйста')
+
+CONFIRMED:
+  owner: admin
+  edges:
+    PROD_DEPLOYED:
+      conditions:
+        - comment_values(CONDUCTOR_TICKETS_TO_DEPLOY)
+        - is_deployed()
+      actions:
+        - change_status('deployed')
+        - comment ('Продублируйте, пожалуйста, выкладку на PT')
+
+PROD_DEPLOYED:
+  owner: admin
+  edges:
+    PT_DEPLOYED:
+      conditions:
+        - comment_values(CONDUCTOR_TICKETS_TO_DEPLOY)
+        - is_deployed()

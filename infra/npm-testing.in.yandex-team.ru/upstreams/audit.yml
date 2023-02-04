@@ -1,0 +1,40 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - frimuchkov
+      groups: []
+labels:
+  order: '0000001'
+---
+regexp_section:
+  matcher:
+    match_fsm:
+        url:  '/-/npm/v1/security/audits(/.*)?'
+  modules:
+    - headers:
+        create:
+          Host: 'yaudit.yandex-team.ru'
+    - balancer2:
+        attempts: 1
+        rr: {}
+        generated_proxy_backends:
+          proxy_options:
+            need_resolve: true
+            connect_timeout: 100ms
+            backend_timeout: 10s
+            keepalive_count: 1
+            fail_on_5xx: false
+            status_code_blacklist: ["429"]
+            https_settings:
+              ca_file: './YandexInternalRootCA.crt'
+              verify_depth: 3
+          instances:
+            - weight: 1
+              host: 'yaudit.yandex-team.ru'
+              port: 443
+        on_error:
+          modules:
+            - errordocument:
+                status: 504
+                content: 'Service unavailable'

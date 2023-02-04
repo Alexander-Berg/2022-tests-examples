@@ -1,0 +1,99 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - kikht
+      groups: []
+labels:
+  order: '10000000'
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      path: (/.*)?
+  report:
+    uuid: git
+    ranges: default
+    balancer2:
+      attempts: 2
+      rr:
+        weights_file: ./controls/traffic_control.weights
+      by_name_policy:
+        name: !f 'get_geo("bygeo_", "random")'
+        unique_policy: {}
+      backends:
+      - name: bygeo_sas
+        weight: 1.0
+        report:
+          uuid: requests_git_to_sas
+          ranges: default
+          balancer2:
+            attempts: 2
+            connection_attempts: 2
+            dynamic:
+              max_pessimized_share: 0.20000000298023224
+              min_pessimization_coeff: 0.10000000149011612
+              weight_increase_step: 0.10000000149011612
+              history_interval: 10s
+            generated_proxy_backends:
+              proxy_options:
+                connect_timeout: 200ms
+                backend_timeout: 900s
+                fail_on_5xx: false
+              include_backends:
+                type: BY_ID
+                ids:
+                - git-sas
+            attempts_rate_limiter:
+              limit: 0.15000000596046448
+              coeff: 0.9900000095367432
+            retry_non_idempotent: true
+            return_last_5xx: true
+            status_code_blacklist:
+            - 5xx
+            - '404'
+      - name: bygeo_vla
+        weight: 1.0
+        report:
+          uuid: requests_git_to_vla
+          ranges: default
+          balancer2:
+            attempts: 2
+            connection_attempts: 2
+            dynamic:
+              max_pessimized_share: 0.20000000298023224
+              min_pessimization_coeff: 0.10000000149011612
+              weight_increase_step: 0.10000000149011612
+              history_interval: 10s
+            generated_proxy_backends:
+              proxy_options:
+                connect_timeout: 200ms
+                backend_timeout: 900s
+                fail_on_5xx: false
+              include_backends:
+                type: BY_ID
+                ids:
+                - git-vla
+            attempts_rate_limiter:
+              limit: 0.15000000596046448
+              coeff: 0.9900000095367432
+            retry_non_idempotent: true
+            return_last_5xx: true
+            status_code_blacklist:
+            - 5xx
+            - '404'
+      - name: bygeo_devnull
+        weight: -1.0
+        report:
+          uuid: requests_git_to_devnull
+          ranges: default
+          errordocument:
+            status: 204
+      on_error:
+        errordocument:
+          status: 504
+          content: Service unavailable
+      return_last_5xx: true
+      status_code_blacklist:
+      - 5xx
+      - '404'

@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans   http://www.springframework.org/schema/beans/spring-beans-3.2.xsd">
+
+    <import resource="domain-stub-ctx.xml"/>
+
+    <import resource="webservice-secondary-ctx.xml"/>
+    <import resource="webservice-ctx.xml"/>
+
+    <bean class="ru.yandex.qe.dispenser.ws.AcceptanceTestBase$SetUp"/>
+    <bean class="ru.yandex.qe.dispenser.ws.abc.ProjectTreeSync"/>
+
+    <bean id="myIdentifier" class="ru.yandex.qe.dispenser.domain.distributed.Identifier">
+        <constructor-arg name="host" value="${qloud.hostname:defaulthost}:${jetty.ServerConnector.port:8082}"/>
+        <constructor-arg name="tag" value="${distributed.tag:common}"/>
+    </bean>
+
+    <bean id="stubQloudTvmService" class="ru.yandex.qe.dispenser.standalone.MockQloudTvmService">
+        <constructor-arg index="0">
+            <map>
+                <entry key="FORMS" value="${forms.tvm.id}"/>
+            </map>
+        </constructor-arg>
+        <constructor-arg index="1">
+            <set>
+                <value>2001974</value>
+                <value>2012192</value>
+                <value>${d.api.tvm.id}</value>
+                <value>${jns.api.tvm.id}</value>
+            </set>
+        </constructor-arg>
+    </bean>
+
+    <bean id="diMailSender" class="ru.yandex.qe.dispenser.standalone.MockEmailSender" primary="true">
+        <property name="mailSender">
+            <null/>
+        </property>
+        <property name="from" value="${r.y.q.d.d.d.n.EmailSender.from}"/>
+    </bean>
+
+    <beans profile="development">
+        <import resource="secondary-ctx.xml"/>
+        <import resource="domain-ctx.xml"/>
+    </beans>
+
+    <beans profile="integration">
+        <bean id="qloudTvmSpringConfiguration" class="ru.yandex.qe.hitman.tvm.QloudTvmSpringConfiguration"/>
+    </beans>
+
+    <beans profile="!integration">
+        <bean id="juggler" class="ru.yandex.qe.dispenser.standalone.MockJugglerApi"/>
+        <bean id="tracker" class="ru.yandex.qe.dispenser.standalone.MockTrackerManager" primary="true"/>
+        <bean id="abc" class="ru.yandex.qe.dispenser.standalone.MockAbcApi" primary="true"/>
+        <bean id="staff" class="ru.yandex.qe.dispenser.standalone.MockStaff" primary="true"/>
+        <bean id="mdsConfig" class="ru.yandex.qe.dispenser.standalone.MockMdsConfigApi"/>
+        <bean id="d-api" class="ru.yandex.qe.dispenser.standalone.MockDApi" primary="true"/>
+        <bean id="d-legacy-api" class="ru.yandex.qe.dispenser.standalone.MockDLegacyApi" primary="true"/>
+        <bean id="jns-api" class="ru.yandex.qe.dispenser.standalone.MockJnsApi" primary="true"/>
+        <bean id="iam-api" class="ru.yandex.qe.dispenser.standalone.MockIAMApi" primary="true"/>
+        <bean id="billing-api" class="ru.yandex.qe.dispenser.standalone.MockBillingApi" primary="true"/>
+
+        <bean id="observabilityExecutor" class="ru.yandex.qe.dispenser.standalone.ObservabilityExecutorBlockingStub" primary="true"/>
+
+        <bean id="nirvanaRemoteDispenserFactory" class="ru.yandex.qe.dispenser.standalone.SpyRemoteDispenserFactory"/>
+        <bean id="mdbRemoteDispenserFactory" class="ru.yandex.qe.dispenser.standalone.SpyRemoteDispenserFactory"/>
+    </beans>
+
+    <beans profile="!sqldao">
+        <bean id="clusteredSingleTaskScheduler" class="org.mockito.Mockito" factory-method="mock">
+            <constructor-arg value="org.quartz.impl.StdScheduler" />
+        </bean>
+        <bean id="quartzTrackerCommentTrigger" class="ru.yandex.qe.dispenser.standalone.MockQuartzTrackerCommentTrigger">
+            <constructor-arg index="0" ref="tracker"/>
+        </bean>
+        <bean id="quartzTrackerJobRunner" class="org.mockito.Mockito" factory-method="mock">
+            <constructor-arg value="ru.yandex.qe.dispenser.quartz.trigger.TrackerJobRunner" />
+        </bean>
+    </beans>
+
+    <beans profile="sqldao">
+        <bean id="autowiringJobFactory" class="ru.yandex.qe.dispenser.quartz.AutowiringSpringBeanJobFactory"/>
+
+        <bean id="testClusteredSchedulerListener" class="ru.yandex.qe.dispenser.quartz.listener.MonitoringSchedulerListener"/>
+        <bean id="testClusteredSchedulerJobListener" class="ru.yandex.qe.dispenser.quartz.listener.MonitoringJobListener"/>
+        <bean id="testClusteredSchedulerTriggerListener" class="ru.yandex.qe.dispenser.quartz.listener.MonitoringTriggerListener"/>
+
+        <bean id="clusteredSingleTaskScheduler" class="ru.yandex.qe.dispenser.quartz.OptionalTriggerSchedulerFactoryBean">
+            <property name="configLocation" value="spring/quartz-1-from-n-nodes-for-single-tasks.properties"/>
+            <property name="dataSource" ref="dataSource"/>
+            <property name="autowiringJobFactory" ref="autowiringJobFactory"/>
+            <property name="overwriteExistingJobs" value="true"/>
+            <property name="transactionManager" ref="txManager"/>
+            <property name="schedulerListeners">
+                <list>
+                    <ref bean="testClusteredSchedulerListener"/>
+                </list>
+            </property>
+            <property name="globalJobListeners">
+                <list>
+                    <ref bean="testClusteredSchedulerJobListener"/>
+                </list>
+            </property>
+            <property name="globalTriggerListeners">
+                <list>
+                    <ref bean="testClusteredSchedulerTriggerListener"/>
+                </list>
+            </property>
+        </bean>
+
+        <bean id="quartzTrackerCommentTrigger" class="ru.yandex.qe.dispenser.quartz.trigger.QuartzTrackerCommentTrigger">
+            <constructor-arg index="0" ref="clusteredSingleTaskScheduler"/>
+        </bean>
+
+        <bean id="trackerIssueUpdateSerializeUtils" class="ru.yandex.qe.dispenser.quartz.job.TicketUpdateSerializationUtils" />
+        <bean id="quartzTrackerJobRunner" class="ru.yandex.qe.dispenser.quartz.trigger.TrackerJobRunner">
+            <constructor-arg index="0" ref="clusteredSingleTaskScheduler"/>
+            <constructor-arg index="1" ref="trackerIssueUpdateSerializeUtils"/>
+        </bean>
+
+        <beans profile="migration">
+            <import resource="application-migration-ctx.xml"/>
+        </beans>
+    </beans>
+
+</beans>

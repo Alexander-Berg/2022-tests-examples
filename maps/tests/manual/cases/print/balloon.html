@@ -1,0 +1,434 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Печать: балуны карт
+
+Description:
+Проверка отображения для печати балунов.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components:
+internal
+
+Estimated time:
+180000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  На странице множество контейнеров с картой. 
+
+Step:
+  Action:
+  Проверить наличие в контейнерах открытых балунов, при отсуствии балуна следуя подсказке над контейнером открыть балун на карте.
+  Например: для контейнера с подсказкой "Открыть балун пробок", выполнить клик в контрол, клик в шестеренку настроек, клик в чекбокс "Дорожные события", клик в иконку дорожных событий на карте.
+  
+  Expectation:
+  Во всех контейнерах открыты балуны меток, кластеров, элементов, контролов, маршрутов.
+
+Step:
+  Action:
+  Выполнить клик ПКМ, в контекстном меню выбрать "Печать", либо CTRL + P.
+  
+  Expectation:
+  Проверить отображение и соответствие балунов на страницах подготовленных к печати.
+  На страницах отсутсвуют контролы, остальные элементы карты имеются, имеются коопирайт, "Условия использования", лого Яндекса.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="https://yandex.st/jquery/1.8.0/jquery.min.js" type="text/javascript"></script>
+    <script src="../../helper.js"></script>
+    <style>
+        p { page-break-before: always; }
+    </style>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var log = new Log();
+
+            var myMap = new ym.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 10,
+                behaviors: ['default', 'scrollZoom']
+            });
+            __log__("печать базовых балунов");
+            __log__("на линейке открыть балуны промежуточных точек");
+            __log__("открыть балун на метке и геолокации");
+            __log__("открыть балун на построенном маршруте");
+            var ruler = myMap.behaviors.get('ruler');
+            ruler.setState('38.42117412,55.76660533~-0.28955496,0.16456542~-1.16476023,-0.01542952~0.08239746,-0.21655094~0.73333740,-0.04034990~0.49101563,0.00437495~-0.59875488,0.30619403~-0.00411987,-0.13424183~-0.28289795,-0.10447482~-0.81163956,0.03272969~0.76220108,-0.16158100~-0.10848999,0.17454529~0.09201050,0.26150637~0.40374756,-0.05154380~0.48065186,-0.03542828~-0.04943848,-0.12734787~-0.24719238,-0.11535986~-0.17028809,-0.13826222~-0.34606934,0.03500023~0.16342163,0.10171121~-0.07553101,0.13314187');
+
+            var myMap1 = new ym.Map('map1', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 10,
+                behaviors: ['default', 'scrollZoom']
+            });
+
+            var counter = 0;
+            var BalloonContentLayout = ymaps.templateLayoutFactory.createClass(
+                    '<div style="margin: 10px;">' +
+                    '<b>$[properties.name]</b><br />' +
+                    '<i id="count"></i> ' +
+                    '<button id="counter-button"> +1 </button>' +
+                    '</div>', {
+
+                        build: function () {
+                            BalloonContentLayout.superclass.build.call(this);
+                            $('#counter-button').bind('click', this.onCounterClick);
+                            $('#count').html(counter);
+                        },
+
+                        clear: function () {
+                            $('#counter-button').unbind('click', this.onCounterClick);
+                            BalloonContentLayout.superclass.clear.call(this);
+                        },
+
+                        onCounterClick: function (e) {
+                            $('#count').html(++counter);
+                            if (counter == 5) {
+                                counter = 0;
+                                $('#count').html(counter);
+                            }
+                            placemark.events.fire('custom', new ymaps.Event({
+                                type: 'custom',
+                                target: this
+                            }));
+                        }
+                    });
+
+            var PanelContentLayout = ymaps.templateLayoutFactory.createClass(
+                    '<div style="margin: 10px;">' +
+                    '<b>$[properties.name]</b><br />' +
+                    '<i id="count"></i> ' +
+                    '<button id="counter-button"> +1 </button>' +
+                    '</div>', {
+
+                        build: function () {
+                            BalloonContentLayout.superclass.build.call(this);
+                            $('#counter-button').bind('click', this.onCounterClick);
+                            $('#count').html(counter);
+                        },
+
+                        clear: function () {
+                            $('#counter-button').unbind('click', this.onCounterClick);
+                            BalloonContentLayout.superclass.clear.call(this);
+                        },
+
+                        onCounterClick: function (e) {
+                            $('#count').html(++counter);
+                            if (counter == 5) {
+                                counter = 0;
+                                $('#count').html(counter);
+                            }
+                            placemark.events.fire('custom', new ymaps.Event({
+                                type: 'custom',
+                                target: this
+                            }));
+                        }
+                    });
+
+            var placemark = new ymaps.Placemark([55.650625, 37.62708], {
+                name: 'Считаем'
+            }, {
+                balloonPanelContentLayout: PanelContentLayout,
+                balloonContentLayout: BalloonContentLayout,
+                balloonPanelMaxMapArea: Infinity
+            });
+            myMap1.geoObjects.add(placemark);
+
+            var myMap2 = new ym.Map('map2', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 10,
+                behaviors: ['default', 'scrollZoom']
+            });
+            myMap2.balloon.open([30, 50], {
+                content: "Content",
+                title: undefined
+            }, {
+                contentLayout: ymaps.templateLayoutFactory.createClass('$[title|Без названия]')
+            });
+
+            var myMap3 = new ym.Map('map3', {
+                center: [55.819543, 37.611619],
+                zoom: 5,
+                behaviors: ['default', 'scrollZoom']
+            });
+            var center = [55.819543, 37.611619],
+                    text = ['...',
+                        'Его слова — мне дальше не пройти,',
+                        '...'].join('<br/>'),
+                    i,
+                    ClusterBalloonItemContentLayout = ym.templateLayoutFactory.createClass([
+                        '<div class=entry>',
+                        '<h3>$[properties.balloonContentHeader]</h3>',
+                        '<i>$[properties.balloonContentBody]</i>',
+                        '<h5>$[properties.balloonContentFooter]</h5>',
+                        '</div>'
+                    ].join('')),
+                    placemarks1 = [], placemarks2 = [], placemarks3 = [], placemarks4 = [], placemarks5 = [], placemarks6 = [],
+                    clusterer1 = new ym.Clusterer({
+                        clusterBalloonContentLayout: "cluster#balloonAccordion",
+                        clusterBalloonItemContentLayout: ClusterBalloonItemContentLayout,
+                        clusterBalloonAccordionShowIcons: false,
+                        clusterBalloonContentLayoutWidth: 300,
+                        clusterBalloonContentHeight: 200
+                    }),
+                    clusterer2 = new ym.Clusterer({
+                        clusterBalloonItemContentLayout: ClusterBalloonItemContentLayout,
+                        clusterBalloonAccordionShowIcons: false,
+                        clusterBalloonPanelMaxMapArea: Infinity,
+                        clusterBalloonPanelContentLayout: "cluster#balloonAccordion"
+                    }),
+                    clusterer3 = new ym.Clusterer({
+                        clusterBalloonItemContentLayout: ClusterBalloonItemContentLayout,
+                        clusterBalloonAccordionShowIcons: false,
+                        clusterBalloonContentLayoutWidth: 300,
+                        clusterBalloonContentHeight: 200
+                    }),
+                    clusterer4 = new ym.Clusterer({
+                        clusterBalloonItemContentLayout: ClusterBalloonItemContentLayout,
+                        clusterBalloonAccordionShowIcons: false,
+                        clusterBalloonPanelMaxMapArea: Infinity
+                    }),
+                    clusterer5 = new ym.Clusterer({
+                        clusterBalloonContentLayout: "cluster#balloonCarousel",
+                        clusterBalloonItemContentLayout: ClusterBalloonItemContentLayout,
+                        clusterBalloonAccordionShowIcons: false,
+                        clusterBalloonContentLayoutWidth: 300,
+                        clusterBalloonContentHeight: 200
+                    }),
+                    clusterer6 = new ym.Clusterer({
+                        clusterBalloonItemContentLayout: ClusterBalloonItemContentLayout,
+                        clusterBalloonAccordionShowIcons: false,
+                        clusterBalloonPanelMaxMapArea: Infinity,
+                        clusterBalloonPanelContentLayout: "cluster#balloonCarousel"
+                    });
+
+            for (i = 0; i < 100; i++) {
+                placemarks1[i] = new ym.Placemark(center, {
+                    clusterCaption: 'Метка ' + (i),
+                    balloonContentHeader: 'Чайлд Роланд к Тёмной Башне пришёл',
+                    balloonContentBody: text,
+                    balloonContentFooter: 'Роберт Браунинг'
+                });
+                placemarks2[i] = new ym.Placemark([center[0] - 2, center[1]], {
+                    clusterCaption: 'Метка ' + (i),
+                    balloonContentHeader: 'Чайлд Роланд к Тёмной Башне пришёл',
+                    balloonContentBody: text,
+                    balloonContentFooter: 'Роберт Браунинг',
+                    iconContent: i
+                });
+                placemarks3[i] = new ym.Placemark([center[0] - 2, center[1]], {
+                    clusterCaption: 'Метка ' + (i),
+                    balloonContentHeader: 'Чайлд Роланд к Тёмной Башне пришёл',
+                    balloonContentBody: text,
+                    balloonContentFooter: 'Роберт Браунинг',
+                    iconContent: i
+                });
+                placemarks4[i] = new ym.Placemark([center[0] - 2, center[1]], {
+                    clusterCaption: 'Метка ' + (i),
+                    balloonContentHeader: 'Чайлд Роланд к Тёмной Башне пришёл',
+                    balloonContentBody: text,
+                    balloonContentFooter: 'Роберт Браунинг',
+                    iconContent: i
+                });
+                placemarks5[i] = new ym.Placemark([center[0] - 2, center[1]], {
+                    clusterCaption: 'Метка ' + (i),
+                    balloonContentHeader: 'Чайлд Роланд к Тёмной Башне пришёл',
+                    balloonContentBody: text,
+                    balloonContentFooter: 'Роберт Браунинг',
+                    iconContent: i
+                });
+                placemarks6[i] = new ym.Placemark([center[0] - 2, center[1]], {
+                    clusterCaption: 'Метка ' + (i),
+                    balloonContentHeader: 'Чайлд Роланд к Тёмной Башне пришёл',
+                    balloonContentBody: text,
+                    balloonContentFooter: 'Роберт Браунинг',
+                    iconContent: i
+                });
+            }
+
+            clusterer1.add(placemarks1);
+            clusterer2.add(placemarks2);
+            clusterer3.add(placemarks3);
+            clusterer4.add(placemarks4);
+            clusterer5.add(placemarks5);
+            clusterer6.add(placemarks6);
+
+            myMap3.geoObjects
+                    .add(clusterer1);
+
+            // open balloon (first cluster in first clusterer)
+            var object0State = clusterer1.getObjectState(placemarks1[0]);
+            object0State.cluster.state.set('activeObject', placemarks1[0]);
+            clusterer1.balloon.open(object0State.cluster);
+
+            var myMap4 = new ym.Map('map4', {
+                center: center,
+                zoom: 5,
+                behaviors: ['default', 'scrollZoom']
+            });
+            myMap4.geoObjects
+                    .add(clusterer2);
+
+            var object2State = clusterer2.getObjectState(placemarks2[0]);
+            object2State.cluster.state.set('activeObject', placemarks2[0]);
+            clusterer2.balloon.open(object2State.cluster);
+
+            var myMap5 = new ym.Map('map5', {
+                center: center,
+                zoom: 5,
+                behaviors: ['default', 'scrollZoom']
+            });
+            myMap5.geoObjects
+                    .add(clusterer3);
+            var object3State = clusterer3.getObjectState(placemarks3[0]);
+            object3State.cluster.state.set('activeObject', placemarks3[0]);
+            clusterer3.balloon.open(object3State.cluster);
+
+            var myMap6 = new ym.Map('map6', {
+                center: center,
+                zoom: 5,
+                behaviors: ['default', 'scrollZoom']
+            });
+            myMap6.geoObjects
+                    .add(clusterer4);
+            var object4State = clusterer4.getObjectState(placemarks4[0]);
+            object4State.cluster.state.set('activeObject', placemarks4[0]);
+            clusterer4.balloon.open(object4State.cluster);
+
+            var myMap7 = new ym.Map('map7', {
+                center: center,
+                zoom: 5,
+                behaviors: ['default', 'scrollZoom']
+            });
+            myMap7.geoObjects
+                    .add(clusterer5);
+            var object5State = clusterer5.getObjectState(placemarks5[0]);
+            object5State.cluster.state.set('activeObject', placemarks5[0]);
+            clusterer5.balloon.open(object5State.cluster);
+
+            var myMap8 = new ym.Map('map8', {
+                center: center,
+                zoom: 5,
+                behaviors: ['default', 'scrollZoom']
+            });
+            myMap8.geoObjects
+                    .add(clusterer6);
+            var object6State = clusterer6.getObjectState(placemarks6[0]);
+            object6State.cluster.state.set('activeObject', placemarks6[0]);
+            clusterer6.balloon.open(object6State.cluster);
+
+            var myMap9 = new ym.Map('map9', {
+                center: center,
+                zoom: 10,
+                behaviors: ['default', 'scrollZoom'],
+                controls: []
+            });
+            var route1 = new ymaps.control.RouteEditor({data: {title: 'route1'}});
+
+            myMap9.controls
+                    .add(route1);
+
+            var myMap10 = new ym.Map('map10', {
+                center: center,
+                zoom: 10,
+                controls: ["trafficControl"]
+            });
+
+            var myMap11 = new ym.Map('map11', {
+                center: center,
+                zoom: 10,
+                controls: ["geolocationControl"]
+            });
+
+            var myMap12 = new ym.Map('map12', {
+                center: center,
+                zoom: 10,
+                controls: ["searchControl"]
+            });
+            setTimeout(function () {
+                myMap12.controls.get("searchControl").search('москва').then(function () {
+                    myMap12.controls.get("searchControl").showResult(0);
+                });
+            }, 1000);
+            var myMap13 = new ym.Map('map13', {
+                center: center,
+                zoom: 10,
+                controls: ["searchControl"]
+            }, {
+                searchControlProvider: 'yandex#search'
+            });
+
+            setTimeout(function () {
+                myMap13.controls.get("searchControl").search('кафе').then(function () {
+                    myMap13.controls.get("searchControl").showResult(0);
+                });
+            }, 1000);
+
+            var myMap14 = new ym.Map('map14', {
+                center: center,
+                zoom: 10,
+                controls: []
+            });
+            var multiRoute = new ymaps.multiRouter.MultiRoute({
+                referencePoints: [
+                    [55.749, 37.524],
+                    "Москва, Успенский пер. 7"
+                ],
+                params: {
+                    routingMode: 'masstransit'
+                }
+            }, {
+                // Автоматически устанавливать границы карты так, чтобы маршрут был виден целиком.
+                boundsAutoApply: true
+            });
+
+            myMap14.geoObjects.add(multiRoute);
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 412px; width: 412px;"></div>
+<p>открыть балун метки</p>
+<div id="map1" style="height: 412px; width: 412px;"></div>
+<p></p>
+<div id="map2" style="height: 412px; width: 412px;"></div>
+<p></p>
+<div id="map3" style="height: 412px; width: 412px;"></div>
+<p></p>
+<div id="map4" style="height: 412px; width: 412px;"></div>
+<p></p>
+<div id="map5" style="height: 412px; width: 412px;"></div>
+<p></p>
+<div id="map6" style="height: 412px; width: 412px;"></div>
+<p></p>
+<div id="map7" style="height: 412px; width: 412px;"></div>
+<p></p>
+<div id="map8" style="height: 412px; width: 412px;"></div>
+<p>построить маршрут и открыть балун</p>
+<div id="map9" style="height: 412px; width: 412px;"></div>
+<p>открыть балун пробок</p>
+<div id="map10" style="height: 412px; width: 412px;"></div>
+<p>открыть балун геолокации</p>
+<div id="map11" style="height: 412px; width: 412px;"></div>
+<p>открыть балун поиска</p>
+<div id="map12" style="height: 412px; width: 412px;"></div>
+<p>открыть балун ППО</p>
+<div id="map13" style="height: 612px; width: 412px;"></div>
+<p>открыть балун мультимаршрута</p>
+<div id="map14" style="height: 412px; width: 412px;"></div>
+</body>
+</html>

@@ -1,0 +1,42 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - robert
+      groups: []
+labels:
+  order: '000500'
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      host: 'noodle-test\\.mtrs\\.yandex-team\\.ru'
+  modules:
+    - headers:
+        create:
+            Host: noodle-test.mtrs.yandex-team.ru
+    - balancer2:
+        attempts: 2
+        attempts_rate_limiter:
+          limit: 1
+        connection_attempts: !f count_backends()
+        unique_policy: {}
+        dynamic:
+          max_pessimized_share: 0.2
+          active:
+            delay: 1s
+            weight_normalization_coeff: 1
+            request: 'GET /ping HTTP/1.1\nHost: noodle-test.mtrs.yandex-team.ru\nUser-agent: l7-balancer\n\n'
+        generated_proxy_backends:
+          proxy_options:
+            backend_timeout: 500ms
+            connect_timeout: 30ms
+            fail_on_5xx: false
+            keepalive_count: 1
+          include_backends:
+            type: BY_ID
+            ids: [noodle-testing-backend]
+        on_error:
+          errordocument:
+            status: 504
+            content: 'Service unavailable: l7-balancer'

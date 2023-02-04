@@ -1,0 +1,87 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - mamay-igor
+      groups: []
+labels:
+  order: '025'
+---
+#{ "order": "025" }
+regexp_section:
+  matcher:
+    match_and:
+      - match_fsm:
+          uri: '/social/internal-api/.+'
+  modules:
+    - rewrite:
+        actions:
+          - regexp: '/social/(.*)'
+            rewrite: '/%1'
+    - report:
+        uuid: 'to-social-internal-api'
+        ranges: 'default'
+    - balancer2:
+        rr: { }
+        attempts: 1
+        fast_attempts: 3
+        fast_503: true
+        by_name_policy:
+          name: !f get_geo("socialint_", "random")
+          allow_zero_weights: false
+          unique_policy: { }
+        backends:
+          - weight: 1
+            name: socialint_sas
+            modules:
+              - report:
+                  uuid: 'to-social-int-sas'
+                  ranges: 'default'
+              - balancer2:
+                  rr: { }
+                  attempts: 1
+                  fast_attempts: 3
+                  fast_503: true
+                  retry_policy:
+                    unique_policy: { }
+                  return_last_5xx: true
+                  status_code_blacklist: ["503"]
+                  generated_proxy_backends:
+                    proxy_options:
+                      resolve_timeout: '10ms'
+                      connect_timeout: '40ms'
+                      backend_timeout: '10s'
+                      keepalive_count: 0
+                      need_resolve: false
+                      fail_on_5xx: false
+                      buffering: false
+                    include_backends:
+                      type: BY_ID
+                      ids: [zen-comments-default-sas]
+          - weight: 1
+            name: socialint_vla
+            modules:
+              - report:
+                  uuid: 'to-social-int-vla'
+                  ranges: 'default'
+              - balancer2:
+                  rr: { }
+                  attempts: 1
+                  fast_attempts: 3
+                  fast_503: true
+                  retry_policy:
+                    unique_policy: { }
+                  return_last_5xx: true
+                  status_code_blacklist: ["503"]
+                  generated_proxy_backends:
+                    proxy_options:
+                      resolve_timeout: '10ms'
+                      connect_timeout: '40ms'
+                      backend_timeout: '10s'
+                      keepalive_count: 0
+                      need_resolve: false
+                      fail_on_5xx: false
+                      buffering: false
+                    include_backends:
+                      type: BY_ID
+                      ids: [zen-comments-default-vla]

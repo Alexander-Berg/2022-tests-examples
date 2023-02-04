@@ -1,0 +1,41 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - tet4enko
+      groups: []
+labels:
+  order: '10000002'
+config_mode: easy2
+---
+l7_upstream_macro:
+  version: 0.0.1
+  id: upstream_jing_www_test_yandex_team_ru
+  matcher:
+    any: true
+  flat_scheme:
+    balancer:
+      compat:
+        method: ACTIVE
+      attempts: 10
+      max_reattempts_share: 0.15
+      fast_attempt_all_endpoints: true
+      health_check:
+        compat:
+          not_steady: true
+        delay: 5s
+        request: 'GET /ping HTTP/1.1\nHost: jing.test.yandex-team.ru\n\n'
+      connect_timeout: 1000ms
+      backend_timeout: 60s
+      allow_connection_upgrade: true
+      keepalive_count: 10
+      retry_http_responses:
+        on_last_failed_retry: PROXY_RESPONSE_AS_IS
+        codes: [5xx]
+    backend_ids:
+      - backend_pods_iva
+      - backend_pods_man
+    on_error:
+      static:
+        status: 504
+        content: 'Service is not available'

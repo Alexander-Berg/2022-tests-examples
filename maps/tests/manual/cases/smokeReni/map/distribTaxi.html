@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<!--
+Title:
+Дистрибуция такси: кнопка такси на картах
+
+Description:
+Проверка отображения кнопки такси на карте.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/search/assessors-testing/maps-api/
+
+Components:
+smoke
+
+Estimated time:
+180000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+  
+  Expectation:
+  Карта отобразилась корректно со спаном Москвы, в контейнере кнопки "search", "button".
+  Над контейнером кнопка "развернуть/свернуть".
+  
+Step:
+  Action:
+  Выполнить клик в кнопку "button".
+  
+  Expectation:
+  На спане карты появляется метка, кнопка инсепшен карт меняется на "Как добраться", рядом появляется кнопка с иконкой приложения Яндекс.Такси.
+
+Step:
+  Action:
+  Выполнить клик в иконку приложения Яндекс.Такси.
+  
+  Expectation:
+  В соседней вкладке браузера октрывается страница заказа такси с картой и отображаемым маршрутом(до метки).
+
+Step:
+  Action:
+  Вернуться на вкладку с картой, клик в кнопку "Развернуть/Свернуть".
+  
+  Expectation:
+  Контейнер с картой разворачивается, становится большего размера, метка не пропадает.
+  В кнопку с иконкой Яндекс.Такси появляется подпись "Доехать на такси".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "Доехать на такси".
+  
+  Expectation:
+  В соседней вкладке браузера октрывается страница заказа такси с картой и отображаемым маршрутом(до метки).
+
+Step:
+  Action:
+  Вернуться на вкладку с картой, клик в кнопку "button".
+  
+  Expectation:
+  С карты пропадает метка, кнопка инсепшен карт меняется на "Открыть в Яндекс.Картах", кнопка "Доехать на такси" пропадает.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "search".
+  
+  Expectation:
+  Происходит смена спана карты на спан Москвоской области, г. Королева на карте появялется метка коллекции с подписью "Россия, Московская область...".
+  Кнопка инсепшен карт меняется на "Как добраться", рядом появляется кнопка "Доехать на такси" с иконкой приложения Яндекс.Такси.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "Доехать на такси".
+  
+  Expectation:
+  В соседней вкладке браузера октрывается страница заказа такси с картой и отображаемым маршрутом(до метки).
+
+Step:
+  Action:
+  Вернуться на вкладку с картой, выполнить отзум скролом мыши на 4 значения.
+  
+  Expectation:
+  Происходит корректный отзум спана карты, карта и метка не пропадают, не мигают цветами.
+  Кнопка "Доехать на такси" не пропадает.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "button".
+  
+  Expectation:
+  На спане карты появляется вторая метка, кнопка инсепшен карт меняется на "Открыть в Яндекс.Картах", кнопка "Доехать на такси" пропадает.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "button".
+  
+  Expectation:
+  С карты пропадет метка появившаяся на предыдущем шаге.
+  Кнопка инсепшен карт меняется на "Как добраться", рядом появляется кнопка "Доехать на такси" с иконкой приложения Яндекс.Такси. 
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <script src="https://yandex.st/jquery/1.6.4/jquery.min.js" type="text/javascript"></script>
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init', '', '', '', '', 'ymaps');
+        
+        var bigMap = false;
+        function init(ymaps) {
+
+            var map = new ymaps.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 11,
+                controls: []
+            }, {
+                suppressMapOpenBlock: false,
+                autoFitToViewport: 'always'
+            });
+            
+            $('#toggler').click(toggle);
+            map.container.fitToViewport();
+
+            var distribTaxi = new ymaps.control.Button('button'); 
+                var placemark = new ymaps.GeoObject({
+                        geometry: { type: "Point", coordinates: [55.684758, 37.738521] }, properties: {
+                            balloonContent: 'text', hintContent: 'text'
+                        }}, {preset: 'islands#greenIcon', draggable: true, openBalloonOnClick: true});    
+
+                distribTaxi.events.
+                    add('select', function () {
+                        map.geoObjects.add(placemark);
+                    })
+                    .add('deselect', function () {
+                        map.geoObjects.remove(placemark);
+                    });       
+            map.controls.add(distribTaxi);
+
+            var searchAdress = new ymaps.control.Button('search'); 
+            searchAdress.events.
+                    add('select', function () {
+                        ymaps.geocode('Королев', {
+                            results: 1
+                        }).then(function (res) {
+                            var firstGeoObject = res.geoObjects.get(0),
+                            coords = firstGeoObject.geometry.getCoordinates(),
+                            bounds = firstGeoObject.properties.get('boundedBy');
+
+                            firstGeoObject.options.set('preset', 'islands#darkBlueDotIconWithCaption');
+                            firstGeoObject.properties.set('iconCaption', firstGeoObject.getAddressLine());
+                            map.geoObjects.add(firstGeoObject);
+                            map.setBounds(bounds, {
+                            checkZoomRange: true
+                            });
+                        });
+                    });    
+            map.controls.add(searchAdress);
+        }
+
+
+        function toggle() {
+            bigMap = !bigMap;
+            if (bigMap) {
+                $('#map').removeClass('smallMap');
+            } else {
+                $('#map').addClass('smallMap');
+            }
+        }
+    </script>
+
+    <style type="text/css">
+        html, body {
+            width: 100%;
+            height: 100%;
+            font-size: 14px;
+        }
+
+        #container {
+            margin: 10px;
+        }
+
+        #map {
+            width: 550px;
+            height: 550px;
+            border: 1px solid black;
+            margin: 0;
+            padding: 0;
+            background-color: #ccc;
+            overflow: hidden;
+        }
+
+        .smallMap {
+            width: 350px !important;
+            height: 350px !important;
+        }
+
+        #toggler {
+            left: 5px;
+            top: 5px;
+            font-size: 12px;
+            margin-bottom: 5px;
+        }
+    </style>
+   </head>
+<body>
+    <div  id=container>
+       <input type="button" value="Развернуть/Cвернуть" id="toggler"/>
+       <div id="map" class="smallMap"></div>
+    </div>
+</body>
+</html>

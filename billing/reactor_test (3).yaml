@@ -1,0 +1,133 @@
+# Nirvana reactions config in format of
+# `arcadia/billing/hot/nirvana/maintenance nirvana-reactions`
+
+root_path: /billing/balance-test/log_tariff
+project_path: /billing/balance-test/Project
+quota: bs_log_tariffication_test
+owner: robot-balance-tester
+
+ttl: &ttl 14
+graph_meta_source: &graph_meta_source a74c913c-11a3-4629-a7e5-fdcaaaf0ea8b
+graph_meta_target: &graph_meta_target 60f43eb2-d3bf-4e29-ab8e-48661a880d45
+graph_proc_source: &graph_proc_source 29613a13-00a1-4a64-af9f-fd208a5a19fa
+graph_proc_target: &graph_proc_target 01464d13-16b3-443a-8fa3-4c3f644a045c
+
+artifacts:
+  - path: partner/bs_outlay/tariff/meta_current
+    type: NIRVANA_DATA_FILE_JSON
+    ttl: *ttl
+  - path: partner/bs_outlay/tariff/meta_tariffed_arnold
+    type: NIRVANA_DATA_FILE_JSON
+    ttl: *ttl
+  - path: partner/bs_outlay/tariff/meta_tariffed_hahn
+    type: NIRVANA_DATA_FILE_JSON
+    ttl: *ttl
+  - path: partner/bs_outlay/tariff/jobs_binary_revision
+    type: PRIMITIVE_INT
+    ttl: 1500
+
+reactions:
+  - path: partner/bs_outlay/tariff/meta/meta_generate_arnold
+    ttl: *ttl
+    triggers:
+      - name: cron
+        cron: 0 0/10 * ? * * *
+    source_graph: *graph_meta_source
+    target_graph: *graph_meta_target
+    params:
+      - name: jobs-binary-arcadia-revision
+        artifact: partner/bs_outlay/tariff/jobs_binary_revision
+      - name: yt_cluster
+        value: arnold
+    inputs:
+      - block: INPUT_generator
+        endpoint: last_generated_meta
+        artifact: partner/bs_outlay/tariff/meta_current
+      - block: INPUT_generator
+        endpoint: last_tariffed_meta
+        artifact: partner/bs_outlay/tariff/meta_tariffed_arnold
+    outputs:
+      - block: OUTPUT_generator
+        endpoint: new_meta
+        artifact: partner/bs_outlay/tariff/meta_current
+
+  - path: partner/bs_outlay/tariff/meta/meta_generate_hahn
+    ttl: *ttl
+    triggers:
+      - name: cron
+        cron: 0 0/10 * ? * * *
+    source_graph: *graph_meta_source
+    target_graph: *graph_meta_target
+    params:
+      - name: jobs-binary-arcadia-revision
+        artifact: partner/bs_outlay/tariff/jobs_binary_revision
+      - name: yt_cluster
+        value: hahn
+    inputs:
+      - block: INPUT_generator
+        endpoint: last_generated_meta
+        artifact: partner/bs_outlay/tariff/meta_current
+      - block: INPUT_generator
+        endpoint: last_tariffed_meta
+        artifact: partner/bs_outlay/tariff/meta_tariffed_hahn
+    outputs:
+      - block: OUTPUT_generator
+        endpoint: new_meta
+        artifact: partner/bs_outlay/tariff/meta_current
+
+  - path: partner/bs_outlay/tariff/tariff/tariffication_arnold
+    ttl: *ttl
+    triggers:
+      - name: meta_current
+        artifact: partner/bs_outlay/tariff/meta_current
+    source_graph: *graph_proc_source
+    target_graph: *graph_proc_target
+    params:
+      - name: jobs-binary-arcadia-revision
+        artifact: partner/bs_outlay/tariff/jobs_binary_revision
+      - name: yt_cluster
+        value: arnold
+    inputs:
+      - block: INPUT
+        endpoint: in
+        artifact: partner/bs_outlay/tariff/meta_current
+    outputs:
+      - block: OUTPUT
+        endpoint: out
+        artifact: partner/bs_outlay/tariff/meta_tariffed_arnold
+
+  - path: partner/bs_outlay/tariff/tariff/tariffication_hahn
+    ttl: *ttl
+    triggers:
+      - name: meta_current
+        artifact: partner/bs_outlay/tariff/meta_current
+    source_graph: *graph_proc_source
+    target_graph: *graph_proc_target
+    params:
+      - name: jobs-binary-arcadia-revision
+        artifact: partner/bs_outlay/tariff/jobs_binary_revision
+      - name: yt_cluster
+        value: hahn
+    inputs:
+      - block: INPUT
+        endpoint: in
+        artifact: partner/bs_outlay/tariff/meta_current
+    outputs:
+      - block: OUTPUT
+        endpoint: out
+        artifact: partner/bs_outlay/tariff/meta_tariffed_hahn
+
+queues:
+  - path: partner/bs_outlay/tariff/tariff/tariffication_arnold_queue
+    size: 1000
+    reactions:
+      - partner/bs_outlay/tariff/tariff/tariffication_arnold
+  - path: partner/bs_outlay/tariff/tariff/tariffication_hahn_queue
+    size: 1000
+    reactions:
+      - partner/bs_outlay/tariff/tariff/tariffication_hahn
+  - path: partner/bs_outlay/tariff/meta/meta_generate_queue
+    size: 1
+    reactions:
+      - partner/bs_outlay/tariff/meta/meta_generate_hahn
+      - partner/bs_outlay/tariff/meta/meta_generate_arnold

@@ -1,0 +1,111 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            var id = 0;
+            var coords = [];
+            var center = [56, 34];
+            var features = [];
+            var sourceObjectsQuery;
+
+            var map = myMap = new ymaps.Map('map', {
+                center: center,
+                zoom: 3,
+                type: 'yandex#map',
+                controls: ['fullscreenControl', 'typeSelector']
+            }, {
+                buttonMaxWidth: 9999
+            });
+
+            var loadingObjectManager = new ymaps.LoadingObjectManager('../../../../?bbox=%b&server=LOM', {
+                paddingTemplate: 'managerResponse_bbox_%b',
+                splitRequests: true,
+                clusterize: false,
+                clusterDisableClickZoom: true,
+                geoObjectBalloonContentLayout: ymaps.templateLayoutFactory.createClass('{{properties.balloonContent}}')
+            });
+
+            sourceObjectsQuery = ymaps.geoQuery({
+                type: 'FeatureCollection',
+                features: features
+            }).setOptions('visible', false).addToMap(map);
+            map.geoObjects.add(loadingObjectManager);
+
+
+            link(myMap);
+
+            loadingObjectManager.clusters.each(function (obj) {
+                loadingObjectManager.clusters.setClusterOptions(obj.id, {preset: clusterPresets[Math.floor(Math.random() * clusterPresets.length)]});
+            });
+
+            var optionsEquals = new ymaps.control.Button('preset == yellow');
+
+            optionsEquals.events.add('select', function () {
+                loadingObjectManager.setFilter('options.preset === "islands#yellowIcon"');
+            });
+            optionsEquals.events.add('deselect', function () {
+                loadingObjectManager.setFilter();
+            });
+
+
+            // properties
+            var propertiesLess = new ymaps.control.Button('type < аптека');
+
+            propertiesLess.events.add('select', function () {
+                loadingObjectManager.setFilter('properties.type < "аптека"');
+            });
+            propertiesLess.events.add('deselect', function () {
+                loadingObjectManager.setFilter();
+            });
+
+
+            // geometry
+            var geometryNotEquals = new ymaps.control.Button('coords[1] > 34 & coords[1] < 38');
+
+            geometryNotEquals.events.add('select', function () {
+                loadingObjectManager.setFilter('geometry.coordinates[1] > 20 && geometry.coordinates[1] < 48 || geometry.coordinates[0][1] > 20 && geometry.coordinates[0][1] < 48 || geometry.coordinates[0][0] && geometry.coordinates[0][0][1] > 20 && geometry.coordinates[0][0][1] < 48');
+            });
+            geometryNotEquals.events.add('deselect', function () {
+                loadingObjectManager.setFilter();
+            });
+
+
+            var getFilterButton = new ymaps.control.Button({
+                data: {
+                    // Текст на кнопке.
+                    content: 'getfilter'
+                },
+                options: {
+                    selectOnClick: false
+                }
+            });
+            getFilterButton.events.add('click', function () {
+                __log__(loadingObjectManager.getFilter());
+            });
+            var button = new ymaps.control.Button('!clusterize');
+            button.events
+                .add('select', function () {
+                    loadingObjectManager.options.set('clusterize', false)
+                })
+                .add('deselect', function () {
+                    loadingObjectManager.options.set('clusterize', true)
+                });
+            map.controls
+                .add(getFilterButton, {position: {top: 5, left: 5}})
+                .add(optionsEquals, {position: {top: 45, right: 5}})
+                .add(propertiesLess, {position: {top: 185, right: 5}})
+                .add(geometryNotEquals, {position: {top: 335, right: 5}});
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

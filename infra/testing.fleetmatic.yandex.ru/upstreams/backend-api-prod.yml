@@ -1,0 +1,35 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - next0
+      - svshevtsov
+      groups: []
+labels:
+  order: '00500000'
+config_mode: easy2
+---
+l7_upstream_macro:
+  version: 0.0.1
+  id: backend-api-prod
+  matcher:
+    and_:
+      - path_re: /api/(.*)
+      - or_:
+        - host_re: (.*)prod\.drivematics\.yandex\.(ru|com)
+        - header: { name: x-forwarded-host, re: (.*)prod\.drivematics\.yandex\.(ru|com) }
+  flat_scheme:
+    balancer:
+      attempts: 3
+      max_reattempts_share: 0.1
+      max_pessimized_endpoints_share: 0.2
+      do_not_retry_http_responses: true
+      connect_timeout: 70ms
+      backend_timeout: 10s
+    backend_ids:
+      - backend_prod_sas
+      - backend_prod_vla
+    on_error:
+      static:
+        status: 504
+        content: 'Service unavailable'

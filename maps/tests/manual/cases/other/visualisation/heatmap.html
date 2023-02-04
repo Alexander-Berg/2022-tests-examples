@@ -1,0 +1,84 @@
+
+<!doctype html>
+<html><head>
+    <meta charset="utf-8"/>
+    <script src="https://yastatic.net/jquery/3.1.0/jquery.min.js"></script>
+    <script src="https://api-maps.yandex.ru/2.1.46/?lang=ru_RU&mode=debug&coordorder=longlat"></script>
+    <script src="ShapeLayer.js"></script>
+    <script>
+        var myMap;
+        var colour = ["68,182,123,0.9", "138,222,127,0.9", "105,97,176,0.9", "47,148,166,0.9"];
+        var strokeStyle = '#FFFFFF';
+        var strokeStyle2 = '#000000';
+        ymaps.ready({
+                    require: ['ShapeLayer'],
+
+                    successCallback: () => {
+                    $.ajax('data_test.json', {
+                    success: buildGrid
+                });
+
+        function buildGrid(data) {
+            var map = new ymaps.Map('map_grid', {
+                        center: [37.695999999999998, 55.751000000000005],
+                        zoom: 10
+                    }, {
+                        avoidFractionalZoom: false
+                    }),
+                    heatmap = new ymaps.ShapeLayer(Object.keys(data).map((key) => {
+                                return {
+                                    type: 'Feature',
+                                    geometry: {
+                                        type: 'Point',
+                                        coordinates: key.split(/,\s*/).map(Number).reverse()
+                                    },
+                                    weight: Number(data[key].total_count)
+                                };
+        }), {
+                mode: 'grid',
+                        gridSize: Math.pow(2, -7),
+                        fillColor: function(objects) {
+                    var weight = objects.reduce((counter, object) => {
+                                return counter + object.weight;
+                }, 0);
+                    return 'rgba(' +
+                            colour[Math.min(Math.floor(weight / 700), 3)] + ')';
+                }
+            });
+
+            map.layers.add(heatmap);
+
+            map.events.add('click', (e) => {
+                var objects = heatmap.getObjectsInPosition(e.get('coords'));
+            if (objects.length) {
+                map.balloon.open(
+                        objects[0].geometry.coordinates,
+                        '<pre>' + JSON.stringify(objects, null, 4) + '</pre>'
+                );
+            }
+        });
+        }
+
+
+        }
+        });
+    </script>
+    <style>
+        html, body, #map_grid, #map_circles {
+            height: 100%;
+            width: 100%;
+            margin: 0;
+            padding: 0;
+        }
+
+        #map_grid, #map_circles {
+            float: left;
+            width: 50%;
+        }
+    </style>
+</head><body>
+<div id="map_grid">
+</div>
+<div id="map_circles">
+</div>
+</body></html>

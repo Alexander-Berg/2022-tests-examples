@@ -1,0 +1,122 @@
+---
+instance_macro:
+  maxconn: 4000
+  buffer: 1048576
+  workers: !f get_workers()
+  log_dir: /place/db/www/logs/
+  thread_mode: true
+  config_check:
+    quorums_file: ./controls/xxx
+  sections:
+    admin:
+      ips: [127.0.0.1, '::1']
+      ports: [8180]
+      modules:
+        - http: {}
+        - admin: {}
+    stats_storage:
+      ips: [127.0.0.4]
+      ports: [16100]
+      modules:
+        - report:
+            just_storage: true
+            uuid: "service_total"
+            ranges: "default"
+        - http: {}
+        - errordocument:
+            status: 200
+    remote_ips_80:
+      ips: ['2a02:6b8:0:3400::1:16', '2a02:6b8:0:3400::1:17']
+      ports: [80]
+      stats_attr: 'http'
+      extended_http_macro:
+        port: 8180
+        report_uuid: 'http'
+        modules:
+          - hasher:
+              mode: subnet
+              subnet_v4_mask: 32
+              subnet_v6_mask: 128
+          - regexp:
+              include_upstreams:
+                filter: {any: true}
+                order: {label: {name: "order"}}
+    https_1:
+      ips: ['2a02:6b8:0:3400::1:16']
+      ports: [443]
+      extended_http_macro:
+        port: 8180
+        report_uuid: 'https'
+        enable_ssl: true
+        ssl_sni_contexts:
+          beta.mobsearch.yandex.ru:
+            servername_regexp: default
+            secondary_cert_postfix: secondary
+        modules:
+          - errordocument:
+              status: 200
+    https_2:
+      ips: ['2a02:6b8:0:3400::1:17']
+      ports: [443]
+      modules:
+        - errorlog:
+            log: !f get_log_path("error_log", 8180, "/place/db/www/logs/")
+            log_level: ERROR
+        - ssl_sni:
+            force_ssl: true
+            contexts:
+              default:
+                cert: !c beta.mobsearch.yandex.ru
+                ocsp: ./ocsp/allCAs-beta.mobsearch.yandex.ru.der
+                log: !f get_log_path("ssl_sni", 8180, "/place/db/www/logs/")
+                secrets_log: !f get_log_path("secrets_log", 8180, "/place/db/www/logs/")
+                disable_sslv3: true
+                ticket_keys:
+                  - {keyfile: /dev/shm/balancer/priv/1st.beta.mobsearch.yandex.ru.key}
+                  - {keyfile: /dev/shm/balancer/priv/2nd.beta.mobsearch.yandex.ru.key}
+                  - {keyfile: /dev/shm/balancer/priv/3rd.beta.mobsearch.yandex.ru.key}
+                secondary:
+                  cert: !c beta.mobsearch.yandex.ru_secondary
+        - http:
+            maxlen: 65536
+            maxreq: 65536
+            keepalive: true
+            no_keepalive_file: ./controls/keepalive_disabled
+        - accesslog:
+            log: !f get_log_path("access_log", 8180, "/place/db/www/logs/")
+        - report:
+            uuid: https
+            ranges: default
+        - errordocument:
+            status: 200
+    https_3:
+      ips: ['127.0.0.1']
+      ports: [4443]
+      modules:
+        - errorlog:
+            log: !f get_log_path("error_log", 4443, "/place/db/www/logs/")
+            log_level: ERROR
+        - ssl_sni:
+            force_ssl: false
+            http2_alpn_file: 'http2_enable.ratefile'
+            http2_alpn_freq: 0.5
+            contexts:
+              default:
+                cert: !f get_public_cert_path("allCAs-beta.mobsearch.yandex.ru.pem", "./env/")
+                priv: !f get_private_cert_path("beta.mobsearch.yandex.ru.pem", "./env/")
+                ocsp: ./ocsp/allCAs-beta.mobsearch.yandex.ru.der
+                log: !f get_log_path("ssl_sni", 4443, "/place/db/www/logs/")
+                secrets_log: !f get_log_path("secrets_log", 4443, "./")
+                disable_sslv3: true
+                ticket_keys:
+                  - {keyfile: /dev/shm/balancer/priv/1st.beta.mobsearch.yandex.ru.key}
+                  - {keyfile: /dev/shm/balancer/priv/2nd.beta.mobsearch.yandex.ru.key}
+                  - {keyfile: /dev/shm/balancer/priv/3rd.beta.mobsearch.yandex.ru.key}
+        - http2:
+            allow_http2_without_ssl: true
+            allow_sending_trailers: false
+        - http: {}
+        - accesslog:
+            log: !f get_log_path("access_log", 4443, "/place/db/www/logs/")
+        - errordocument:
+            status: 200

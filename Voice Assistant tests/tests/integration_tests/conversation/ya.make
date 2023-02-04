@@ -1,4 +1,0 @@
-OWNER(
-    mihajlova
-    nzinov
-)

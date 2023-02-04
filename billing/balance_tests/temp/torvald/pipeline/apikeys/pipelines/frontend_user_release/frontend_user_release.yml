@@ -1,0 +1,74 @@
+# +profile
+#
+
+INITIAL:
+  owner: torvald
+  edges:
+     DEPLOYED:
+       notify: [torvald, pipeliner-support]
+       actions:
+         - testing = get_version('testing')
+         - stable = get_version('stable')
+         - issues = get_changes(stable, testing)
+         - diff = get_github_changes_link()
+#         - conductor = create_conductor_ticket()
+         - update_ticket(description=DESCRIPTION, summary=SUMMARY)
+         - send('I am in DEPLOYED stage', 'torvald')
+         - send('I am in DEPLOYED stage', 'pipeliner-support')
+#         - get_responsibles()
+#         - fill_responsibles()
+
+DEPLOYED:
+  owner: torvald
+  edges:
+    TEST_IN_PROGRESS:
+#      notify: torvald
+      actions:
+        - start_teamcity(TEAMCITY_TEST_PACK)
+        - comment(TESTS_LAUNCHED)
+
+TEST_IN_PROGRESS:
+  owner: test
+  edges:
+    TEST_COMPLETE:
+      conditions:
+        - get_comment_values(TESTS_LAUNCHED)
+        - is_tasks_finished('teamcity', TEAMCITY_TEST_PACK)
+      actions:
+        - get_tasks_results('teamcity', TEAMCITY_TEST_PACK)
+        - comment(TESTS_RESULTS)
+
+TEST_COMPLETE:
+  owner: chihiro
+  edges:
+    TEST_SUCCESS:
+      conditions:
+        - get_comment_values(TESTS_LAUNCHED)
+        - is_tasks_passed('teamcity', TEAMCITY_TEST_PACK) # raise AlarmException if not
+      actions:
+        - comment(u'Результаты тестов проанализированы, изменения можно выкладывать. Подтвердите, пожалуйста')
+        - change_status('tested')
+
+TEST_SUCCESS:
+  owner: chihiro
+  edges:
+    CONFIRMED:
+      conditions:
+        - has_status('confirmed')
+      actions:
+        - comment(u'Выложите, пожалуйста')
+
+CONFIRMED:
+  owner: srg91
+  edges:
+    PROD_DEPLOYED:
+      conditions:
+        - get_comment_values(CONDUCTOR_TICKETS_TO_DEPLOY)
+        - is_deployed()
+      actions:
+        - change_status('deployed')
+        - create_new_version()
+        - create_new_branch()
+
+PROD_DEPLOYED:
+  owner: admin

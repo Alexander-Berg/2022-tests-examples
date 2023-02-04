@@ -1,0 +1,65 @@
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      uri: '/ping'
+  modules:
+    - balancer2:
+        rr: {
+          weights_file: './controls/slb_check.weights'
+        }
+        attempts: 1
+        backends:
+          - weight: 1
+            name: to_upstream
+            modules:
+              - balancer2:
+                  attempts: 1
+                  rr: {}
+                  by_name_policy:
+                    name: !f get_geo("bygeo_", "random")
+                    unique_policy: {}
+                  backends:
+                    - weight: 1
+                      name: bygeo_man
+                      modules:
+                        - balancer2:
+                            attempts: !f count_backends()
+                            rr: {}
+                            generated_proxy_backends:
+                              proxy_options:
+                                connect_timeout: 55ms
+                                backend_timeout: 300ms
+                              include_backends:
+                                type: BY_ID
+                                ids: [man_saas-ip-maps-kv]
+                    - weight: 1
+                      name: bygeo_sas
+                      modules:
+                        - balancer2:
+                            attempts: !f count_backends()
+                            rr: {}
+                            generated_proxy_backends:
+                              proxy_options:
+                                connect_timeout: 55ms
+                                backend_timeout: 300ms
+                              include_backends:
+                                type: BY_ID
+                                ids: [sas_saas-ip-maps-kv]
+                    - weight: 1
+                      name: bygeo_vla
+                      modules:
+                        - balancer2:
+                            attempts: !f count_backends()
+                            rr: {}
+                            generated_proxy_backends:
+                              proxy_options:
+                                connect_timeout: 55ms
+                                backend_timeout: 300ms
+                              include_backends:
+                                type: BY_ID
+                                ids: [vla_saas-ip-maps-kv]
+          - weight: -1
+            name: switch_off
+            errordocument:
+              status: 503

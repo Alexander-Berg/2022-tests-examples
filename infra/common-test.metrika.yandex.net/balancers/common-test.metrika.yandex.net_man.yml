@@ -1,0 +1,47 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - nanny-robot
+      groups: []
+config_transport:
+  nanny_static_file:
+    service_id: rtc_balancer_common-test_metrika_yandex_net_man
+    instance_tags:
+      ctype: prod
+      itype: balancer
+      prj: common-test.metrika.yandex.net
+mode: EASY_MODE
+---
+l7_macro:
+  version: 0.3.4
+  core:
+    trust_x_forwarded_for_y: true
+  http:
+    ports:
+      - 80
+      - 8096
+      - 8099
+      - 8094
+  https:
+    ports:
+      - 443
+      - 8097
+      - 8100
+    certs:
+      - id: common-test.metrika.yandex.net-4
+    enable_tlsv1_3: true
+    enable_http2: true
+  announce_check_reply:
+    url_re: /ping
+  monitoring:
+    enable_announce_check_signals: true
+  headers:
+    - create: {target: X-Forwarded-For, keep_existing: true, func: realip}
+    - create: {target: X-Forwarded-Protocol, func: scheme}
+    - create: {target: X-Req-Id, func: reqid}
+    - create: {target: X-Request-Id, keep_existing: true, func: reqid}
+    - log: {target_re: '(X-Request-Id|X-Yandex-Uid|X-Forwarded-For-Y|X-Real-IP|X-Forwarded-For)'}
+  response_headers:
+    - create: {target: X-Req-Id, func: reqid}
+

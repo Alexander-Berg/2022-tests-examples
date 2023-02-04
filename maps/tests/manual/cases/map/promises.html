@@ -1,0 +1,197 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Карта: работа методов карты через исполнение promises
+
+Description:
+Проверка работы методов карты через исполнение promises.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+map
+
+Estimated time:
+180000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+  
+  Expectation:
+  Карта отобразилась корректно, со спаном материков Евразии и Африки.
+  Сверху имеются кнопки "type", "zoom", "pixels", "bounds", "panTo", "center".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "center". 
+  
+  Expectation:
+  Происходит смена спана с призумом на спан Москвы, на карте имеется синий полупрозрачный многоугольник.
+  Под контейнером с картой появляется строка центра координат: "55.71...., 37.30...".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "panTo". 
+  
+  Expectation:
+  Происходит плавное перемещение спана карты, на спан Санкт-Петербурга.
+  Под контейнером с картой появляется строка центра координат: "59.99...., 29.99...".  
+
+Step:
+  Action:
+  Выполнить клик в кнопку "bounds". 
+  
+  Expectation:
+  Происходит смена спана карты с призумом, на спане Москва, ближе к нижнему левому углу полупрозрачный синий многоугольник.
+  Под контейнером с картой появляется строка координат области просмотра: "55.67...., 37.57..., 55.87...,37.92...".  
+
+Step:
+  Action:
+  Выполнить клик в кнопку "pixels". 
+  
+  Expectation:
+  Происходит смена спана карты с отзумом, на спане северная часть Северной Америки, имеются подписи Северо-Ледовитого океана, море Баффина.
+  Под контейнером с картой появляется строка пиксельных координат: "450.38...., 295.00...".  
+
+Step:
+  Action:
+  Выполнить клик в кнопку "zoom". 
+  
+  Expectation:
+  Происходит смена спана, на спане водная поверхность.
+  Под контейнером с картой появляется строка со значением зума: "18".  
+
+Step:
+  Action:
+  Выполнить клик в кнопку "type", выполнить отзум спана скролом мыши на 11 значений. 
+  
+  Expectation:
+  Происходит смена типа карты, карта - гибрид(спутниковый снимок с подписями), внизу имеется коопирайт правообладателя снимков и коопирайт Яндекса.
+  Под контейнером с картой появляется строка: "13".
+-->
+<html>
+<head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.73259667357658, 37.70153663432529],
+                zoom: 2,
+                behaviors: ['default', 'scrollZoom'],
+                controls: []
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+
+            var geoObjectPolygon = new ymaps.GeoObject({
+                geometry: { type: "Polygon", coordinates: [
+                    [
+                        [55.787092634473694, 37.667663574218096],
+                        [55.68797724922255, 37.666976928710035],
+                        [55.68754896639797, 37.57658996581947],
+                        [55.78474860376539, 37.57684020996037],
+                        [55.787092634473694, 37.667663574218096]
+                    ],
+                    [
+                        [55.78709263446105, 37.71984863281182],
+                        [55.68797724922255, 37.666976928710035],
+                        [55.68599735621169, 37.78258361816322],
+                        [55.78709263446105, 37.71984863281182]
+                    ]
+                ]}});
+            myMap.geoObjects.add(geoObjectPolygon);
+
+            var centerpromiseButton = new ymaps.control.Button({data: {content: 'center'}, options: {selectOnClick: false}});
+            var panpromiseButton = new ymaps.control.Button({data: {content: 'panTo'}, options: {selectOnClick: false}});
+            var boundspromiseButton = new ymaps.control.Button({data: {content: 'bounds'}, options: {selectOnClick: false}});
+            var pixelspromiseButton = new ymaps.control.Button({data: {content: 'pixels'}, options: {selectOnClick: false}});
+            var zoompromiseButton = new ymaps.control.Button({data: {content: 'zoom'}, options: {selectOnClick: false}});
+            var typepromiseButton = new ymaps.control.Button({data: {content: 'type'}, options: {selectOnClick: false}});
+
+            centerpromiseButton.events.add('click', function () {
+                myMap.setCenter(
+                        [55.716901946294286, 37.30336807048247], 7, {
+                            checkZoomRange: true,
+                            duration: 500
+                        }).then(function () {
+                            this.info(myMap.getCenter());
+                        }, function (err) {
+                            this.info('error message (setCenter): ' + err)
+                        }, log)
+            });
+
+            panpromiseButton.events.add('click', function () {
+                myMap.panTo([60, 30], {flying: true, duration: 1000, delay: 10
+                }).then(function () {
+                    this.info(myMap.getCenter());
+                }, function (err) {
+                    this.info('error message (panTo): ' + err)
+                }, log)
+            });
+
+            boundspromiseButton.events.add('click', function () {
+                myMap.setBounds(geoObjectPolygon.geometry.getBounds(),
+                        {
+                            duration: 500,
+                            zoomMargin: [200, 200, 0, 0],
+                            preciseZoom: true
+                        }).then(function () {
+                            this.info(myMap.getBounds());
+                        }, function (err) {
+                            this.info('error message (setBounds): ' + err)
+                        }, log)
+            });
+
+            pixelspromiseButton.events.add('click', function () {
+                myMap.setGlobalPixelCenter(
+                        [450.3885745801663, 295.00097479375603], 3, {
+                            checkZoomRange: true,
+                            duration: 500
+                        }).then(function () {
+                            this.info(myMap.getGlobalPixelCenter());
+                        }, function (err) {
+                            this.info('error message (setGlobalPixelCenter): ' + err)
+                        }, log)
+            });
+
+            zoompromiseButton.events.add('click', function () {
+                myMap.setZoom(18, {checkZoomRange: true}).then(function () {
+                    this.info(myMap.getZoom());
+                }, function (err) {
+                    this.info('error message (setZoom): ' + err)
+                }, log)
+            });
+
+            typepromiseButton.events.add('click', function () {
+                myMap.setType('yandex#hybrid', {checkZoomRange: true}).then(function () {
+                    this.info(myMap.getZoom());
+                }, function (err) {
+                    this.info('error message (setType): ' + err)
+                }, log)
+            });
+
+            myMap.controls
+                    .add(centerpromiseButton)
+                    .add(panpromiseButton)
+                    .add(boundspromiseButton)
+                    .add(pixelspromiseButton)
+                    .add(zoompromiseButton)
+                    .add(typepromiseButton)
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

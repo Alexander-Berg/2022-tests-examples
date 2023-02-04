@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>user actions events</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+<script type="text/javascript" src="../../build?load=package.full,util.dom.element&mode=debug&lang=ru-RU"></script>
+
+<script type="text/javascript">
+
+ymaps.ready(function () {
+
+    var sampleMap = new ymaps.Map("map", {
+        center: [55.76, 37.67],
+        zoom: 10,
+        behaviors: ['default', 'multiTouch', 'scrollZoom'] //, 'leftMouseButtonMagnifier']
+    });
+
+    /*
+     0. Поведение карты:
+     - драг
+     - зумирование + колесом (сам факт)
+     - зуммирование - колесом (сам факт)
+     - магнифайер по правой кнопке мыши
+     - дабл клик по карте
+     - правый дабл клик по карте
+     - левый одиночный клик на карте (не по меткам или чему-то ещё, просто клик в пустую карту)
+     */
+    var mapBehaviors = sampleMap.behaviors;
+    /*
+     - драг
+     */
+    var dragBehavior = mapBehaviors.get('drag');
+    if (dragBehavior) {
+        dragBehavior.events.add('dragstart', function (e) {
+            console.log(e.get('type'));
+        });
+        dragBehavior.events.add('dragend', function (e) {
+            console.log(e.get('type'));
+        });
+    }
+    /*
+     - зумирование + колесом (сам факт)
+     - зуммирование - колесом (сам факт)
+     */
+    var scrollZoomBehavior = mapBehaviors.get('scrollZoom');
+    if (scrollZoomBehavior) {
+        scrollZoomBehavior.events.add('zoomchange', function (e) {
+            console.log(e.get('type'), '  ', e.get('zoomDelta'));
+        });
+    }
+
+    // Можно еще было так, без дополнительного события.
+    // Но я так не сделал из-за того, что все остальные поведения
+    // глушат обычные события, а ScrollZoom использует defaultaction.
+    //    var changeZoomByWheelEvent = false;
+    //
+    //    sampleMap.events.add('wheel', function () {
+    //        changeZoomByWheelEvent = true;
+    //    });
+    //
+    //    sampleMap.events.add('actiontick', function (e) {
+    //        if (changeZoomByWheelEvent) {
+    //            changeZoomByWheelEvent = false;
+    //            console.log('scrollzoom#2 ', (e.get('tick').zoom - sampleMap.getZoom()));
+    //        }
+    //    });
+
+    /*
+     магнифайер по правой кнопке мыши
+
+     activeButton. 0 = leftButton, 2 = rightButton
+     */
+    var rightMouseButtonMagnifierBehavior = mapBehaviors.get('rightMouseButtonMagnifier');
+    if (rightMouseButtonMagnifierBehavior) {
+        rightMouseButtonMagnifierBehavior.events.add('selectionstart', function (e) {
+            console.log(e.get('type'), ' ', e.get('activeButton'));
+        });
+        rightMouseButtonMagnifierBehavior.events.add('selectionend', function (e) {
+            console.log(e.get('type'), ' ', e.get('activeButton'));
+        });
+        rightMouseButtonMagnifierBehavior.events.add('selectioncancel', function (e) {
+            console.log(e.get('type'), ' ', e.get('activeButton'));
+        });
+    }
+    var leftMouseButtonMagnifierBehavior = mapBehaviors.get('leftMouseButtonMagnifier');
+    if (leftMouseButtonMagnifierBehavior) {
+        leftMouseButtonMagnifierBehavior.events.add('selectionstart', function (e) {
+            console.log(e.get('type'), ' ', e.get('activeButton'));
+        });
+        leftMouseButtonMagnifierBehavior.events.add('selectionend', function (e) {
+            console.log(e.get('type'), ' ', e.get('activeButton'));
+        });
+        leftMouseButtonMagnifierBehavior.events.add('selectioncancel', function (e) {
+            console.log(e.get('type'), ' ', e.get('activeButton'));
+        });
+    }
+    /*
+     дабл клик по карте
+     правый дабл клик по карте
+     */
+    var dblClickZoomBehavior = mapBehaviors.get('dblClickZoom');
+    if (dblClickZoomBehavior) {
+        dblClickZoomBehavior.events.add('zoomchange', function (e) {
+            console.log(e.get('type'), ' ', e.get('zoomDelta'));
+        });
+    }
+    /*
+     - левый одиночный клик на карте (не по меткам или чему-то ещё, просто клик в пустую карту)
+
+     обычный клик
+     */
+    sampleMap.events.add('click', function () {
+        console.log('map click ');//, sampleMap.getZoom());
+    });
+    /*
+     Мультитач
+     */
+    var multiTouchBehavior = mapBehaviors.get('multiTouch');
+    if (multiTouchBehavior) {
+        multiTouchBehavior.events.add('multitouchzoomstart', function (e) {
+            console.log(e.get('type'));
+        });
+        // В отличии от элементов управления multiTouchBehavior не округляет zoom, так что delta может быть дробной.
+        multiTouchBehavior.events.add('multitouchzoomend', function (e) {
+            console.log(e.get('type'), 'zoomDelta: ', e.get('zoomDelta'));
+        });
+    }
+
+    /*
+     1. Кнопки зуммирования:
+     - клики на +
+     - клики на -
+     - клики по ярлыкам (Дом, Страна и т.п.)
+     - клики по градуснику за пределами ползунка
+     - клик и перемещение ползунка мышью
+     */
+    var mapControls = sampleMap.controls;
+
+    mapControls.add('zoomControl');
+    var zoomControl = mapControls.get('zoomControl');
+
+    // клики по кнопкам +/-
+    zoomControl.events.add('zoombuttonclick', function (event) {
+        console.log('zoombuttonclick ', event.get('zoomDelta'), ' ', event.get('target'));
+    });
+    // клик по градуснику
+    zoomControl.events.add('scaleclick', function (event) {
+        console.log('scaleclick ', event.get('zoomDelta'), ' ', event.get('target'));
+    });
+    // клик по подсказке
+    zoomControl.events.add('hintclick', function (event) {
+        console.log('hintclick', ' hintValue:', event.get('hintValue'),
+                ' zoomDelta:', event.get('zoomDelta'),
+                ' ', event.get('target'));
+    });
+    // начало драга ползунка
+    zoomControl.events.add('dragstart', function (event) {
+        console.log('dragstart', ' ', event.get('target'));
+    });
+    // окончание драга ползунка
+    zoomControl.events.add('dragend', function (event) {
+        console.log('dragend ', event.get('zoomDelta'), ' ', event.get('target'));
+    });
+
+    /*
+     2. Тулбар: клики по кнопкам
+     - Лапа
+     - Увеличение прямоугольной области
+     - Мои карты
+     - Маршрут
+     - Тыкалка
+     - Линейка
+     */
+    mapControls.add('mapTools');
+    var mapTools = mapControls.get('mapTools');
+    // Остальные кнопки аналогично
+    mapTools.events.add('itemselect', function (e) {
+        console.log('itemselect ', e.get('item'), ' index:', e.get('index'), ' autoSelect:', e.get('autoSelect'));
+    });
+
+    // Пример группы без стандартного значения
+    var sampleRadioGroup = new ymaps.control.RadioGroup({items: [
+        new ymaps.control.Button({data: {content: '<b>Кнопка 1</b>'}}),
+        new ymaps.control.Button({data: {content: '<b>Кнопка 2</b>'}})
+    ]});
+    // Вернет child = null и index = -1, если нет выбранного элемента и RadioGroup без дефолтного значения
+    sampleRadioGroup.events.add('itemselect', function (e) {
+        console.log('itemselect ', e.get('item'), ' index:', e.get('index'), ' autoSelect:', e.get('autoSelect'));
+    });
+    mapControls.add(sampleRadioGroup, {top: 40, left: 5});
+
+    /*
+     3. Кнопка
+     - кнопка "Пробки": клик чтобы включить пробки
+     - кнопка "Пробки": клик чтобы выключить пробки
+     - сворачивание / разворачивание панели пробок
+     */
+    mapControls.add('trafficControl');
+    var trafficBtn = mapControls.get('trafficControl');
+    // включить
+    trafficBtn.events.add('show', function (e) {
+        console.log('trafficBtn ', e.get('type'), ' ', e.get('target').isShown());
+    });
+    // выключить
+    trafficBtn.events.add('hide', function (e) {
+        console.log('trafficBtn ', e.get('type'), ' ', e.get('target').isShown());
+    });
+    // свернуть
+    trafficBtn.events.add('collapse', function (e) {
+        console.log('trafficBtn ', e.get('type'), ' ', e.get('target').isExpanded());
+    });
+    // развернуть
+    trafficBtn.events.add('expand', function (e) {
+        console.log('trafficBtn ', e.get('type'), ' ', e.get('target').isExpanded());
+    });
+
+    /*
+     4. Кнопка "Панорамы":
+     - включение слоя панорам
+     - выключение слоя панорам
+
+     Обычный клик по кнопке.
+     */
+
+    /*
+     5. Кнопка "Показать"
+     - клик чтобы развернуть дроп-даун
+     - клик чтобы свернуть дропдаун
+     - сами клики внутри дропдауна сейчас считает счётчик:
+     https://stat.yandex-team.ru/Maps/Counters/Targets?cid_path=%09R%0971285%09&region_sname=TOT&view=Dynamics
+     */
+    mapControls.add('typeSelector');
+    var typeSelectorControl = mapControls.get('typeSelector');
+    // свернуть
+    typeSelectorControl.events.add('collapse', function (e) {
+        console.log('typeSelectorControl ', e.get('type'), ' ', e.get('target').isExpanded());
+    });
+    // развернуть
+    typeSelectorControl.events.add('expand', function (e) {
+        console.log('typeSelectorControl ', e.get('type'), ' ', e.get('target').isExpanded());
+    });
+    // выбор дочерних элементов
+    var typeSelectorInnerGroup = typeSelectorControl.get(0);
+
+    if (typeSelectorInnerGroup != null) {
+        typeSelectorInnerGroup.events.add('select', function (e) {
+            console.log(e.get('type'), ' ', e.get('target'));
+        });
+    }
+
+    /*
+     6. Миникарта
+     - кнопка сворачивания миникарты
+     - кнопка разворачивания миникарты
+     */
+    mapControls.add('miniMap');
+    var miniMapControl = mapControls.get('miniMap');
+    // свернуть
+    miniMapControl.events.add('collapse', function (e) {
+        console.log('typeSelectorControl ', e.get('type'), ' ', e.get('target').isExpanded());
+    });
+    // развернуть
+    miniMapControl.events.add('expand', function (e) {
+        console.log('typeSelectorControl ', e.get('type'), ' ', e.get('target').isExpanded());
+    });
+
+    /*
+     7. Кнопка сворачивания/разворачивания панели
+     - клик чтобы свернуть левую панель
+     - клик чтобы развернуть левую панель
+
+     Это в картах.
+     */
+
+    /*
+     8. Клики по логотипу на карте
+     */
+    // достаточно спорный способ. зависит от шаблона, который используется
+    var copyrightsPane = sampleMap.panes.get('copyrights');
+    if (copyrightsPane) {
+        // а здесь обычными средствами находим нужный dom-элемент (ссылку) и привязываем событие
+        var copyrightsElement = copyrightsPane.getElement();
+        var logoLink = ymaps.util.dom.element.find(copyrightsElement, '.ymaps-logo-link');
+        if (logoLink) {
+            logoLink.onclick = function (e) {
+                console.log('logo click');
+                return true;
+            }
+        }
+    }
+});
+
+</script>
+</head>
+<body>
+<div id="map" style="width: 95%; height: 500px; margin: 0 auto;"></div>
+</body>
+</html>

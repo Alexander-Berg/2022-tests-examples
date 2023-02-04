@@ -1,0 +1,111 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Кластер: открытие хинта/балуна кластера, после уничтожения кластера до загрузки
+
+Description:
+Проверка открытия хинта/балуна кластера, если до загрузки модулей уничтожить кластер(сменить зум).
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+clusterer
+
+Estimated time:
+90000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Дождаться загрузки и осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась корректно.
+  При загрузке сначала отображается спан Москвы на отдалении, при этом слева в углу видны кластерные метки, через секунду происходит призум и смена на спан Московской области, кластерных меток не видно.
+  
+Step:
+  Action:
+  Зажав ЛКМ переместить спан карты драгом в сторону нижнего левого угла. 
+
+  Expectation:
+  Драг и смещение карты корректное, на спане в районе Брянской области и границ с Украиной и Белоруссией имеются кластерные метки и метки коллекций.
+
+Step:
+  Action:
+  Навести курсор на метку коллекций, после чего выполнить в нее клик ЛКМ.
+
+  Expectation:
+  При наведении курсора на метку - курсор меняется на палец, появляется хинт с номером метки.
+  При клике на метку, спан может сместиться для открытия балуна, метка пропадает и на ее месте открывается балун с содержимым в виде номера метки.
+
+Step:
+  Action:
+  Навести курсор на метку кластера, после чего выполнить в него клик ЛКМ.
+
+  Expectation:
+  При наведении курсора на метку - курсор меняется на палец, появляется пустой маленький хинт.
+  Спан карты смещается для открытия балуна кластера.
+  Кластерная метка пропадает, на ее месте открывается балун с двумя колонками.
+  В балуне две колонки(правая колонка шире левой), в правой колонке окно с содержимым: заголовок крупным шрифтом черного цвета(номер метки); тело (номер метки).
+  В левой колонке список меток кластера, серым фоном выделена отображаемая в окне справа метка.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+        function init(ymaps) {
+            ymaps = ym;
+
+            var map = myMap = new ymaps.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 6,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            }), placemarks = [];
+
+            var clusterer = new ymaps.Clusterer({ clusterDisableClickZoom: true, clusterHasHint: true, clusterOpenEmptyHint: true }),
+                    placemarksNumber = 30,
+                    bounds = map.getBounds(),
+                    newPlacemarks = createGeoObjects(placemarksNumber, bounds);
+
+            clusterer.add(newPlacemarks);
+            map.geoObjects.add(clusterer);
+            __log__("Не должно кидаться ошибок при откурытии хинта");
+            setTimeout(function () {
+                clusterer.getObjectState(placemarks[0]).cluster.events.fire('mouseenter');
+                map.setZoom(8);
+            }, 1000);
+
+
+            function createGeoObjects(number, bounds) {
+                // Создаем нужное количество меток
+                for (var i = 0; i < number; i++) {
+                    // Генерируем координаты метки случайным образом.
+                    var coordinates = getRandomCoordinates(bounds);
+                    // Создаем метку со случайными координатами.
+                    var myPlacemark = new ymaps.Placemark(coordinates, {
+                        balloonContent: i, hintContent: i, clusterCaption: i}, {});
+                    placemarks.push(myPlacemark);
+                }
+                return placemarks;
+            }
+
+            function getRandomCoordinates(bounds) {
+                var size = [bounds[1][0] - bounds[0][0], bounds[1][1] - bounds[0][1]];
+                return [Math.random() / 5 * size[0] + bounds[0][0], Math.random() / 5 * size[1] + bounds[0][1]];
+            }
+
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

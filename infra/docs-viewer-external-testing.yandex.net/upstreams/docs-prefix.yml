@@ -1,0 +1,42 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - birman111
+      groups: []
+labels:
+  order: '10000010'
+config_mode: easy2
+---
+l7_upstream_macro:
+  version: 0.0.1
+  id: docs-prefix
+  matcher:
+    or_:
+      - uri_re: '/en/(docs-beta|docs-viewer)/?.*'
+      - uri_re: '/(docs-beta|docs-viewer)/?.*'
+      - uri_re: '/docs-api.*'
+  flat_scheme:
+    balancer:
+      attempts: 2
+      fast_attempts: 2
+      max_reattempts_share: 0.15
+      max_pessimized_endpoints_share: 0.2
+      retry_http_responses:
+        codes: [5xx]
+      backend_timeout: 10s
+      connect_timeout: 70ms
+      use_https_to_endpoints: {}
+    backend_ids: [docs-proxy]
+    on_error:
+      static:
+        status: 504
+        content: "Service unavailable"
+  headers:
+    - create: {target: X-Forwarded-For, func: realip}
+    - create: {target: X-Source-Domain, func: host}
+    - create: {target: Host, value: 'catboost.docs-ext.yandex-team.ru'}
+    - create: {target: x-proxy-doc-prefix, value: 'docs-beta'}
+  response_headers:
+    - create: {target: Expires, keep_existing: false, value: '0'}
+    - create: {target: Cache-Control, keep_existing: false, value: 'no-store, must-revalidate'}

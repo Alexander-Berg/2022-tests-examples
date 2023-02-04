@@ -1,1 +1,0 @@
-OWNER(jan-fazli)

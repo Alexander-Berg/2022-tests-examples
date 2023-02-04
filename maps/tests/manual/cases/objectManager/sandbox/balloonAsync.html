@@ -1,0 +1,113 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Менеджер объектов: загрузка данных балуна перед открытием
+
+Description:
+Проверка загрузки данных балуна перед открытием. 
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+objectManager
+
+Estimated time:
+90000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась корректно, со спаном Москвы и множеством меток коллекции.
+  В контейнере дефолтный набор контролов.
+  
+Step:
+  Action:
+  Поводить курсором по меткам коллекций на спане карты.
+
+  Expectation:
+  При наведении на метку появялется хинт "Текст подсказки".
+
+Step:
+  Action:
+  Последовательно выполнить клик 5 меток коллекции на спане карты.
+
+  Expectation:
+  По клику в метку открывается балун "Контент балуна".
+  По клику в в последующие метки открывается аналогичный балун, предыдущий балун метки закрывается.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="https://yandex.st/jquery/2.1.0/jquery.min.js" type="text/javascript"></script>
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var myMap = new ymaps.Map('map', {
+                        center: [55.76, 37.64],
+                        zoom: 10
+                    }),
+                    objectManager = new ymaps.ObjectManager({
+                        // Мы хотим загружать данные для балуна перед открытием, поэтому
+                        // запретим автоматически открывать балун по клику.
+                        geoObjectOpenBalloonOnClick: false
+                    });
+            addGrid(myMap);
+            var log = new Log();
+            log.info("Test case: Данные балуна загружаются перед открытием.");
+            log.info("ИЕ8 не поддерживает JQuery");
+
+            myMap.geoObjects.add(objectManager);
+
+
+            $.ajax({
+                url: "../../../js/OMBalloonData.json"
+            }).done(function (data) {
+                objectManager.add(data);
+            });
+
+            // Функция, эмулирующая запрос за данными на сервер.
+            function loadBalloonData(objectId) {
+                var dataDeferred = ymaps.vow.defer();
+
+                function resolveData() {
+                    dataDeferred.resolve('Данные балуна');
+                }
+
+                window.setTimeout(resolveData, 1000);
+                return dataDeferred.promise();
+            }
+
+            function hasBalloonData(objectId) {
+                return objectManager.objects.getById(objectId).properties.balloonContent;
+            }
+
+            objectManager.objects.events.add('click', function (e) {
+                var objectId = e.get('objectId');
+                if (hasBalloonData(objectId)) {
+                    objectManager.objects.balloon.open(objectId);
+                } else {
+                    loadBalloonData(objectId).then(function (data) {
+                        var obj = objectManager.objects.getById(objectId);
+                        obj.properties.balloonContent = data;
+                        objectManager.objects.balloon.open(objectId);
+                    });
+                }
+            });
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

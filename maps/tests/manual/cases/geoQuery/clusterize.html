@@ -1,0 +1,72 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Гео запрос: кластеризация результатов выборки 
+
+Description:
+Проверка кластеризации результатов выборки.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+geoQuery
+
+Estimated time:
+90000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+  
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан Московской области, после загрузки на спане карты появляются кластерные метки.
+  Под контейнером с картой появляется блок данных: "Вернём bounds ...(на следующей строке координаты области видимости)"; "Вернём null (на следующей строке null)".
+-->
+<html>
+<head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../helper.js"></script>
+    <script src="../../js/wgs84MercatorSource.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+        function init(ymaps) {
+            ymaps = ym;
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.5541584321358, 37.93061981201168],
+                zoom: 9,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            wgs84MercatorSource(ym, myMap, this);
+            addGrid(myMap);
+            var log = new Log();
+
+            log.info('applyBoundsToMap(): all geoQueryResult items must be shown on the map');
+
+            // add objects and applies new bounds to myMap
+            var result = ym.geoQuery(geoQueryResult).then(function () {
+                        myMap.geoObjects.add(result.search('geometry.type = "Point"').clusterize());
+                        __log__('Вернём bounds');
+                        __log__(result.search('geometry.type = "Point"').clusterize().getBounds());
+                        __log__('Вернём null');
+                        __log__(result.search('geometry.type = "Point"').clusterize().removeAll().getBounds());
+                    }, function (e) {
+                        alert('error' + e);
+                    }
+            );
+        }
+
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

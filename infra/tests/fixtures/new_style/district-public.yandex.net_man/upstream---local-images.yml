@@ -1,0 +1,36 @@
+---
+regexp_section:
+  matcher:
+    match_and:
+      - match_fsm:
+          host: local\\.yandex\\.(ru|by|uz|kz)
+      - match_fsm:
+          path: /api/attachments/image/.*             
+
+  modules:
+    - antirobot_macro: {}
+    - geobase_macro: {}
+    - exp_getter_macro:
+        service_name: local
+    - report: {uuid: local, refers: local}
+    - report: {uuid: local_images, ranges: default}
+    - balancer2:
+        attempts: 1
+        connection_attempts: 5
+        rr: {}
+        rewind_limit: 0  # отключаем буферизацию запроса
+        generated_proxy_backends:
+          proxy_options:
+            backend_timeout: 300s
+            connect_timeout: 100ms
+            client_read_timeout: 30s
+            client_write_timeout: 30s
+            keepalive_count: 1
+            fail_on_5xx: false
+          include_backends:
+            type: BY_ID
+            ids: [qloud-district-int]
+        on_error:
+          errordocument:
+            status: 502
+            content: "Local unavailable"

@@ -1,0 +1,40 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - fexion
+      groups: []
+labels:
+  order: '00000050'
+---
+regexp_section:
+    matcher:
+        match_fsm:
+            uri: '/images/sitemap.xml'
+    modules:
+    - report:
+        uuid: 'sitemap'
+        ranges: 'default'
+    - rewrite:
+        actions:
+            - regexp: '.*'
+              header_name: 'Host'
+              rewrite: 'images-sitemap.s3.yandex.net'
+    - balancer2:
+        disable_attempts_rate_limiter: true
+        attempts: 5
+        simple_policy: {}
+        rr: {}
+        generated_proxy_backends:
+            proxy_options:
+                backend_timeout: 5s
+                connect_timeout: 50ms
+                fail_on_5xx: true
+            instances:
+                - weight: 1
+                  host: 's3.yandex.net'
+                  port: 80
+        on_error:
+            errordocument:
+                status: 503
+                content: 'Service unavailable'

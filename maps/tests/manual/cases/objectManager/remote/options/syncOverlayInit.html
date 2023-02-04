@@ -1,0 +1,170 @@
+<!doctype html>
+<!--(skip)(description)
+clusterer: showInAlphabeticalOrder option
+This case must be checked manually!
+-->
+<!--(version)
+2.1.4
+-->
+<!--(commands)
+sleep(1000);
+test();
+click(7);
+click(2);
+test();
+click(5);
+click(2);
+test();
+click(4);
+click(2);
+test();
+-->
+<html>
+<head>
+    <title>API 2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../../helper.js"></script>
+    <script type="text/javascript">
+        Api('init');
+        function init(ymaps) {
+            ym = ymaps;
+            //TODO: переделать нафик!!!
+            var id = 10001;
+
+            var coords = [],
+                    center = [56, 34],
+                    features = [],
+                    sourceObjectsQuery;
+
+            // создаем массив объектов с заданными свойствами
+            for (var i = 0; i < 500; i++) {
+
+                // генерим рандомные координаты
+                coords[i] = getRandomCoordinates([
+                    [21.6986867082516, -7.359609493365995],
+                    [74.00974179128383, 82.64039050663403]
+                ]);
+                features.push({
+                    id: id,
+                    type: 'Feature',
+                    geometry: {
+                        type: 'Point',
+                        coordinates: coords[i]
+                    },
+                    bbox: [coords[i], coords[i]],
+                    number: 5,
+                    properties: {
+                        iconContent: 2,
+                        balloonContent: id,
+                        hintContent: id,
+                        clusterCaption: id
+                    }
+                });
+                id++;
+            }
+
+            window.managerResponse = function (x, y, z) {
+                // вычисляем глобальные пиксельные координаты
+                var globalPixelBounds = [
+                    [x * 256, y * 256],
+                    [(x + 1) * 256, (y + 1) * 256]
+                ];
+                // вычисляем географические координаты прямоугольной области
+                var bounds = ymaps.util.bounds.fromGlobalPixelBounds(globalPixelBounds, z, map.options.get('projection'));
+                var rectangle = new ymaps.Rectangle(bounds);
+                map.geoObjects.add(rectangle);
+                // создаем итератор по объектам внутри прямоугольной области
+                var it = sourceObjectsQuery.searchInside(rectangle).getIterator();
+                map.geoObjects.remove(rectangle);
+
+                var answerFeatures = [];
+                var obj;
+                // итерируемся и записываем объекты в отдельный массив
+                while ((obj = it.getNext()) != it.STOP_ITERATION) {
+                    answerFeatures.push({
+                        id: sourceObjectsQuery.indexOf(obj),
+                        type: sourceObjectsQuery.indexOf(obj) % 2 ? 'Feature' : 'Cluster',
+                        number: obj.number,
+                        geometry: {
+                            type: 'Point',
+                            coordinates: obj.geometry.getCoordinates()
+                        },
+                        properties: obj.properties.getAll()
+                    });
+                }
+                // ?
+                window['managerResponse_x_' + x + '_y_' + y + '_z_' + z]({
+                    data: {
+                        type: 'FeatureCollection',
+                        features: answerFeatures
+                    }
+                })
+            };
+
+            var map = myMap = new ymaps.Map('map', {
+                center: center,
+                zoom: 19,
+                type: 'yandex#map',
+                controls: ['fullscreenControl'],
+                minZoom: 4
+            });
+
+            var log = new Log();
+            addGrid(map);
+
+            // создаем экземпляр класса RemoteObjectManager
+            var remoteObjectManager = new ymaps.RemoteObjectManager('https://jsapi.sergeiiak.alexa.maps.dev.yandex.ru/api/2.1/objectManager/remote/response.xml?%c', {
+                splitRequests: true,
+                paddingTemplate: 'managerResponse_%c',
+                clusterDisableClickZoom: false,
+                geoObjectBalloonContentLayout: ymaps.templateLayoutFactory.createClass('{{properties.balloonContent}}')
+            });
+
+            // добавляем исходный массив объектов в geoQuery, делаем объекты невидимыми и добавляем на карту
+            sourceObjectsQuery = ymaps.geoQuery({
+                type: 'FeatureCollection',
+                features: features
+            }).setOptions('visible', false).addToMap(map);
+
+            map.geoObjects.add(remoteObjectManager);
+
+            __log__("Проверяем опцию syncOverlayInit.");
+
+            var syncButton = new ym.control.Button({data: {content: 'syncOverlayInit'}, options: {selectOnClick: true}});
+            var removeButton = new ym.control.Button({data: {content: 'add/remove'}, options: {selectOnClick: true}});
+
+            syncButton.events
+                    .add("select", function (e) {
+                        remoteObjectManager.options.set('syncOverlayInit', true);
+                    })
+                    .add("deselect", function (e) {
+                        remoteObjectManager.options.set('syncOverlayInit', false);
+                    });
+
+            removeButton.events
+                    .add('select', function () {
+                        map.geoObjects.remove(remoteObjectManager);
+                    })
+                    .add('deselect', function () {
+                        map.geoObjects.add(remoteObjectManager);
+                    });
+
+            map.controls
+                    .add(syncButton)
+                    .add(removeButton);
+
+            function getRandomCoordinates(bounds) {
+                var size = [bounds[1][0] - bounds[0][0], bounds[1][1] - bounds[0][1]];
+                return [Math.random() * size[0] + bounds[0][0], Math.random() * size[1] + bounds[0][1]];
+            }
+
+        }
+
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;">
+</div>
+</body>
+</html>

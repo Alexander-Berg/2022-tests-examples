@@ -1,0 +1,116 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Пробки: проверка данных прогноза пробок
+
+Description:
+Проверка данных прогноза пробок.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components:
+traffic
+
+Estimated time:
+90000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть страницу и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно со спаном Москвы, с включенным слоем пробок.
+  На карте линии пробок, сверху кнопки "offset", "level", "localtime", "timestamp", "isotime".
+  Через 2 секунды под контейнером появляется блок данных из 5 строк(дата и время, таймстемп, время, балл пробок).
+
+Step:
+  Action:
+  Последовательно выполнить клик в кнопки "isotime", "timestamp", "localtime", "level", "timeOffset". 
+
+  Expectation:
+  Под контейнером с картой появляются аналогичные строки с данными(дата и время, таймстемп, время, балл пробок).
+  Строки должны совпадать с предыдущими.
+-->
+<html>
+<head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var myMap = new ym.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 10,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+            __log__("Проверка состояния forecastProvider");
+            var forecastProvider = new ymaps.traffic.provider.Forecast({
+                autoUpdate: true
+            }, {
+                timeOffset: 30 * 60
+            });
+
+            forecastProvider.setMap(myMap);
+
+            myMap.layers.options.set({
+                trafficJamOpenBalloonOnClick: false
+            });
+
+            var trafficButton = new ymaps.control.Button({data: {content: 'isotime'}, options: {selectOnClick: false}});
+            var timestampButton = new ymaps.control.Button({data: {content: 'timestamp'}, options: {selectOnClick: false}});
+            var localtimeButton = new ymaps.control.Button({data: {content: 'localtime'}, options: {selectOnClick: false}});
+            var levelButton = new ymaps.control.Button({data: {content: 'level'}, options: {selectOnClick: false}});
+            var offsetButton = new ymaps.control.Button({data: {content: 'offset'}, options: {selectOnClick: false}});
+
+            trafficButton.events.add('click', function () {
+                log.info('isotime: ' + forecastProvider.state.get('isotime'));
+            });
+
+            timestampButton.events.add('click', function () {
+                log.info('timestamp: ' + forecastProvider.state.get('timestamp'));
+            });
+
+            localtimeButton.events.add('click', function () {
+                log.info('localtime: ' + forecastProvider.state.get('localtime'));
+            });
+
+            levelButton.events.add('click', function () {
+                log.info('level: ' + forecastProvider.state.get('level'));
+            });
+
+            offsetButton.events.add('click', function () {
+                log.info('timeOffset: ' + forecastProvider.state.get('timeOffset'));
+            });
+
+            myMap.controls.add(trafficButton, {float: 'left'});
+            myMap.controls.add(timestampButton, {float: 'left'});
+            myMap.controls.add(localtimeButton, {float: 'left'});
+            myMap.controls.add(levelButton, {float: 'left'});
+            myMap.controls.add(offsetButton, {float: 'left'});
+            setTimeout(function () {
+                log.info('isotime: ' + forecastProvider.state.get('isotime'));
+                log.info('timestamp: ' + forecastProvider.state.get('timestamp'));
+                log.info('localtime: ' + forecastProvider.state.get('localtime'));
+                log.info('level: ' + forecastProvider.state.get('level'));
+                log.info('timeOffset: ' + forecastProvider.state.get('timeOffset'));
+            }, 2000);
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

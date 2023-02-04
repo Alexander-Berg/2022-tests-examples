@@ -1,0 +1,114 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Util: асинхронный доступ к значениям в хранилище по ключам
+
+Description:
+Проверка асинхронного доступа к значениям в хранилище по ключам.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components:
+util
+
+Estimated time:
+30000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть страницу и элементы на ней. 
+
+  Expectation:
+  На странице блок тестовых кнопок.
+  Под блоком кнопок в течении нескольких секунд появляются 10 строк "OK", сообщения об ошибках на странице отсутствуют.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+            
+            var log = new Log();
+
+            // Пример 1
+
+            var asyncStorage = new ymaps.util.AsyncStorage();
+            asyncStorage.define('blue', function (provide) {
+                // Эмулируем асинхронную операцию. К примеру, запрос к удаленном серверу.
+                setTimeout(function () {
+                    provide('#001EFF');
+                }, 200);
+            });
+
+            // Асинхронный запрос значения ключа "blue" (массив).
+            asyncStorage.require(['blue'], function (blue) {
+                validateValue(blue, '#001EFF'); // #001EFF
+                // После выполнения первого асинхронного вызова значение уже будет сохранено в хранилище.
+                validateValue(asyncStorage.get('blue'), '#001EFF'); // #001EFF
+            });
+
+            // Асинхронный запрос значения ключа "blue" (строка).
+            asyncStorage.require('blue', function (blue) {
+                validateValue(blue, '#001EFF'); // #001EFF
+                // После выполнения первого асинхронного вызова значение уже будет сохранено в хранилище.
+                validateValue(asyncStorage.get('blue'), '#001EFF'); // #001EFF
+            });
+
+            // Пример 2
+
+            var asyncStorage2 = new ymaps.util.AsyncStorage();
+            asyncStorage2
+                    .define('green', function (provide) {
+                        setTimeout(function () {
+                            provide('#008000');
+                        }, 400);
+                    })
+                    .define('red', function (provide) {
+                        provide('#FF0000');
+                    });
+            var promise = asyncStorage2.require(['red', 'green']);
+            // Используем объект-promise для асинхронного доступа к данным.
+            promise.spread(function (red, green) {
+                validateValue(red, '#FF0000');
+                validateValue('#008000', green); // #FF0000 #008000
+            });
+
+            // Пример сложных зависимостей между значениями в хранилище.
+            var asyncStorage3 = new ymaps.util.AsyncStorage();
+            asyncStorage3
+                    .define('red', function (provide) {
+                        provide('#FF0000');
+                    })
+                // Для получения значения 'green' необходимо значение ключа 'red'.
+                    .define('green', ['red'], function (provide, red) {
+                        validateValue(red, '#FF0000'); // #FF0000
+                        setTimeout(function () {
+                            provide('#008000');
+                        }, 2000);
+                    })
+                    .define('yellow', function (provide) {
+                        setTimeout(function () {
+                            provide('#FFFF00');
+                        }, 1000);
+                    });
+            // Запрашиваем три значения.
+            asyncStorage3.require(['yellow', 'green'], function (yellow, green) {
+                validateValue(yellow, '#FFFF00');
+                validateValue(green, '#008000');
+                validateValue(asyncStorage3.get('red'), '#FF0000'); // #FFFF00 #008000 #FF0000
+            });
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+</body>
+</html>

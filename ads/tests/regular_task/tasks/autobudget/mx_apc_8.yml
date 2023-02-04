@@ -1,0 +1,188 @@
+!include 'apc_pool.iml'
+---
+!include "{root}/network/f16_formula_params.iml"
+---
+!include "{root}/network/f16_factors.iml"
+---
+!include "{root}/network/ignore_lm_factors.iml"
+---
+
+max_launch_count: 30
+
+active: 1
+priority: 1
+mapreduce: {thread_count: 3}
+task_id: mx_apc_vw_{task.data.features}_i{task.data.mx.i}
+#_baseline
+
+usercode:
+  files:
+    'preprocess.py': !literal 'preprocess.py'
+
+calc:
+  exec: |
+    from yabs.vwlib.mappers import VWVivisectionApplyMapper,VWApplyMapper
+    from yabs.matrixnet.factor import F16Factors
+    from yabs.ml.dump import fetch_all, list_dumps, fetch_dump, fetch_latest
+    import datetime
+    import os
+    #fetch_latest("{task.data.vw_task_id}", 'latest_vw')
+
+    def get_vw_spiral_mappers(task_id, target_field, only_forward=True):
+        def time_stamp(d):
+            #!!! model YYYYMMDD uses full YYYYMMDD log with all YYYYMMDDHH events. But datetime(YYYYMMDD) is the beginning of the day
+            # thus +24!
+            shift = datetime.timedelta(hours=24+{task.data.lm_delay})
+            dt = datetime.datetime.strptime(d.date, '%Y%m%d') + shift
+            time_stamp = int(dt.strftime("%s"))
+            return time_stamp
+
+        model_folder = "."
+        last_log_date = datetime.datetime.strptime("{task.last_log_date}", '%Y-%m-%d')
+        end_date = (last_log_date + datetime.timedelta(days=1)).strftime("%Y%m%d")
+        start_date = (last_log_date - datetime.timedelta(days={task.data.days}+4)).strftime("%Y%m%d")
+        dumps = list_dumps(task_id, only_dates=False)
+
+        mappers = []
+        prev_d = None
+        for d in dumps:
+            if start_date <= d.date and d.date < end_date:
+                model_path = os.path.join(model_folder, task_id, d.date)
+                fetch_dump(os.path.join(task_id, d.date), model_path, sources=d.sources)
+                if prev_d:
+                    grepper = Grep('r.EventTime >= %d and r.EventTime < %d' % (time_stamp(d), time_stamp(prev_d)))
+                else:
+                    grepper = Grep('r.EventTime >= %d' % (time_stamp(d)))
+
+                mappers.append([grepper, VWApplyMapper(target_field, model_path=model_path)])
+                prev_d = d
+
+        if not only_forward and prev_d:
+            model_path = os.path.join(model_folder, task_id, prev_d.date)
+            grepper = Grep('r.EventTime < %d' % (time_stamp(prev_d)))
+            mappers.append([grepper, VWApplyMapper(target_field, model_path=model_path)])
+
+        return Tee(mappers, max_records=10000)
+
+
+data:
+  mx:
+    i: 2002
+  features: F16
+
+  days: 14
+
+  vw_task_id: "vw_apc_8_crutch"
+  lm_delay: 12
+
+  mappers: |
+    Grep("r.ProductType is not None and type(r.ProductType) != str"),
+
+    F16Factors({task.matrixnet.formula_params}),
+
+    #FIXME:
+    #RSYAFactors(factors_to_compute=['BannerFullBMCategoryID']),
+    Mapper(
+        """
+        bmcats = []
+        for cat_num in (1, 2, 3):
+            cat = getattr(r, "BMCategory%dID" % cat_num)
+            if cat is not None and cat > 0:
+                bmcats.append(cat)
+        r.BannerFullBMCategoryID = ' '.join([str(cat) for cat in bmcats])
+        """, add_fields=[('BannerFullBMCategoryID', str)]
+    ),
+
+    Mapper("r.Weight = 0.145 if 'performance' in r.Options else 1.", add_fields=[("Weight", float)]),
+
+    get_vw_spiral_mappers("{task.data.vw_task_id}", "FLM50"),
+
+    # F15Factors rewrites FLMNN !!!
+    #VWVivisectionApplyMapper(
+    #    target_fields = dict(
+    #        FLM50=["-"],
+    #        #FLM51=["PageID"],
+    #        #FLM52=["BannerID"],
+    #        #FLM53=["PhraseID"],
+    #        #FLM54=["GoalID"],
+    #        #FLM55=["ContextType"],
+    #        #FLM56=["HourID"],
+    #        #FLM57=["BannerBMCategoryID"],
+    #        #FLM58=["OrderID"],
+    #        #FLM59=["SelectType"],
+    #        #FLM60=["RegionID"],
+    #        #FLM61=[("PageID","OrderID")],
+    #        #FLM62=[("RegionID","OrderID")],
+    #    ),
+    #    model_path="./latest_vw/"),
+
+  train_folds: [1,2,3,4,5,6,7,8,9]
+  test_folds: [0]
+
+engine: matrixnet
+mail_to: yabs-ml-reports@yandex-team.ru,druxa@yandex-team.ru
+matrixnet:
+  command:
+      master_opts: "-w 0.04 -D 0 -i {task.data.mx.i} -c"
+  min_slaves: 1
+
+nodes:
+  learn:
+    min_slaves: 1
+    max_slaves: 1
+
+
+ml:
+
+  slices:
+    product:
+      slice_keys: [ProductType]
+
+  tables:
+    input: [ 'matrixnet/EmptyLog' ]
+  preprocess_classes:
+      - __import__("usercode.preprocess").preprocess.APCModelPreparation(use_rotation_goals=False, use_parent_banner=False, use_target_phrase=False, days_to_learn=14, cut_fields=False, ef_logs_mask="auto-budget-prediction/vw_apc_src_efhwv_(?P<TIME>%Y%m%d%H)", round_date=True, max_delay_days=3)
+
+  learn_fields:
+    #baseline:
+    #  name: FLM50
+    weight:
+      name: Weight
+  factor_types:
+    FLM50: mx
+    #FLM51: mx
+    #FLM52: mx
+    #FLM53: mx
+    #FLM54: mx
+    #FLM55: mx
+    #FLM56: mx
+    #FLM57: mx
+    #FLM58: mx
+    #FLM59: mx
+    #FLM60: mx
+    #FLM61: mx
+    #FLM62: mx
+
+
+validation:
+  enabled:
+    false
+
+testing:
+  allowed:
+    false
+
+expansion:
+  template: |
+    data:
+      features: <<f>>
+    ml:
+      learn_fields:
+        baseline:
+           <<base>>
+  variables:
+    - {f: F16, base: "{}"}
+    - {f: F16_baseline, base: "name: FLM50"}
+
+nirvana:
+    quota: my_ads

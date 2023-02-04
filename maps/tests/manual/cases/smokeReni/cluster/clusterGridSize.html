@@ -1,0 +1,227 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Размер ячейки кластера
+
+Description:
+Изменение размера ячейки кластеризатора.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+smoke
+
+Estimated time: 
+300000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан с отображение России. 
+  Сверху над окном с картой имеется поле ввода количества меток со значением по умолчанию "100".
+  Чек-бокс "Использовать кластеризатор".
+  Кнопки "Добавить на карту", "Удалить все метки".
+
+Step:
+  Action:
+  Клик в кнопку "Добавить на карту".  
+  
+  Expectation:
+  На карту добавляется 100 синих меток коллекции. 
+
+Step:
+  Action:
+  Выполнить зум/отзум (на несколько значений) карты скролом мыши.
+
+  Expectation:
+  При зуме/отзуме синие метки коллекций закрепленны на карте, не мигают, не пропадают.
+
+Step:
+  Action:
+  Клик в кнопку "Удалить все метки". 
+  
+  Expectation:
+  Все метки коллекций пропадают.
+  Карта отображается корректно(цвета не меняются, карта не мигает, надписи не исчезают).
+
+Step:
+  Action:
+  Клик в чек-бокс "Использовать кластеризатор".
+  Клик в кнопку "Добавить на карту".
+  
+  Expectation:
+  Под кнопками "Добавить на карту", "Удалить все метки" появляется поле ввода "Размер ячейки кластера..." со значением "64".
+  На карту добавляются синие метки коллекций, а также красные метки кластеров с цифрами.
+
+Step:
+  Action:
+  Выполнить зум карты(на несколько значений) скролом мыши.
+
+  Expectation:
+  При зуме круглые красные метки кластеров(метки с цифрами) распадаются на синие метки коллекций закрепленных на карте.
+  (Для следующего шага выполнить отзум карты на уровень соотвестующий первому шагу тест-кейса, нажмите кнопку "Удалить все метки")
+
+Step:
+  Action:
+  В поле ввода "Размер ячейки кластера в пикселях" ввести "100".
+  Кликнуть в кнопку "Добавить на карту".
+  
+  Expectation:
+  На карту добавляются красные круглые метки кластеров с цифрами, а также синие метки коллекций.
+
+Step:
+  Action:
+  Выполнить отзум карты скролом мыши до крайнего значения(минимального значения).
+  
+  Expectation:
+  При отзуме кластера меток объединяются, цифра на кластерной метке увеличивается. 
+  На минимальном значении зума на карте одна красная кластерная метка с цифрой "100".
+
+Step:
+  Action:
+  Выполнить максимальный зум карты скролом на тачпаде(призумливаясь к конкретной кластерной метке).
+  
+  Expectation:
+  При зуме кластера меток распадаются на кластера и метки коллекций. 
+  На максимальных значении зума на спане только синие метки коллекций.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="//yandex.st/jquery/1.6.4/jquery.min.js" type="text/javascript"></script>
+    <script src="../../../helper.js"></script>
+    <script src="coords.js"></script>
+    <style>
+        .inputs {
+            padding: 5px;
+        }
+    </style>
+    <script type=text/javascript>
+
+        Api('init');
+        function init(ymaps) {
+            ymaps = ym;
+            var map = myMap = new ymaps.Map('map', {
+                center: [63.369315, 105.440191],
+                zoom: 3,
+                controls: []
+            }, {
+                backgroundVisible: false
+            });
+
+            // Создаем кластеризатор c красной иконкой (по умолчанию используются синяя).
+            var clusterer = new ymaps.Clusterer({preset: 'islands#redClusterIcons'}),
+            // Создаем коллекцию геообъектов.
+                    collection = new ymaps.GeoObjectCollection(),
+            // Дополнительное поле ввода при включенном режиме кластеризации.
+                    gridSizeField = $('<div class="field" style="display: none">Размер ячейки кластера в пикселях: <input type="text" size="6" id ="gridSize" value="64"/></div>')
+                            .appendTo('.inputs');
+
+            // Добавляем кластеризатор на карту.
+            myMap.geoObjects.add(clusterer);
+
+            // Добавляем коллекцию геообъектов на карту.
+            myMap.geoObjects.add(collection);
+
+            $('#useClusterer').bind('click', toggleGridSizeField);
+            $('#addMarkers').bind('click', addMarkers);
+            $('#removeMarkers').bind('click', removeMarkers);
+
+            // Добавление меток с произвольными координатами.
+            function addMarkers() {
+                // Количество меток, которое нужно добавить на карту.
+                var placemarksNumber = $('#count').val(),
+                        bounds = myMap.getBounds(),
+                // Флаг, показывающий, нужно ли кластеризовать объекты.
+                        useClusterer = $('#useClusterer').is(':checked'),
+                // Размер ячейки кластеризатора, заданный пользователем.
+                        gridSize = parseInt($('#gridSize').val()),
+                // Генерируем нужное количество новых объектов.
+                        newPlacemarks = createGeoObjects(placemarksNumber, bounds);
+                __log__(bounds.toString());
+                if (gridSize > 0) {
+                    clusterer.options.set({
+                        gridSize: gridSize
+                    });
+                }
+
+                // Если используется кластеризатор, то добавляем кластер на карту,
+                // если не используется - добавляем на карту коллекцию геообъектов.
+                if (useClusterer) {
+                    // Добавлеяем массив меток в кластеризатор.
+                    clusterer.add(newPlacemarks);
+                } else {
+                    for (var i = 0, l = newPlacemarks.length; i < l; i++) {
+                        collection.add(newPlacemarks[i]);
+                    }
+                }
+            }
+
+            // Функция, создающая необходимое количество геообъектов внутри указанной области.
+            function createGeoObjects(number, bounds) {
+                var randomCoords = [];
+                coords.forEach(function(coord){
+                    if(containsPoint(bounds, coord)){
+                        randomCoords.push(coord);
+                    }
+                });
+                var placemarks = [];
+                // Создаем нужное количество меток
+                for (var i = 0; i < number; i++) {
+                    // Генерируем координаты метки случайным образом.
+                    coordinates = randomCoords.length > i ? randomCoords[i] : randomCoords[randomCoords.length];
+                    // Создаем метку со случайными координатами.
+                    myPlacemark = new ymaps.Placemark(coordinates);
+                    placemarks.push(myPlacemark);
+                }
+                return placemarks;
+            }
+
+            // Функция, генерирующая случайные координаты
+            // в пределах области просмотра карты.
+            function getRandomCoordinates(bounds) {
+                var size = [bounds[1][0] - bounds[0][0], bounds[1][1] - bounds[0][1]];
+
+                return [Math.random() * size[0] + bounds[0][0], Math.random() * size[1] + bounds[0][1]];
+            }
+
+            // Показывать/скрывать дополнительное поле ввода.
+            function toggleGridSizeField() {
+                // Если пользователь включил режим кластеризации, то появляется дополнительное поле
+                // для ввода опции кластеризатора - размер ячейки кластеризации в пикселях.
+                // По умолчанию размер ячейки сетки равен 64.
+                // При отключении режима кластеризации дополнительное поле ввода скрывается.
+                gridSizeField.toggle();
+            }
+
+            // Удаление всех меток с карты
+            function removeMarkers() {
+                // Удаляем все  метки из кластеризатора.
+                clusterer.removeAll();
+                // Удаляем все метки из коллекции.
+                collection.removeAll();
+            }
+            function containsPoint(bounds, point) {
+                return point[0] >= bounds[0][0] && point[0] <= bounds[1][0] &&
+                        point[1] >= bounds[0][1] && point[1] <= bounds[1][1];
+            }
+            addGrid(myMap);
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div class="inputs">Количество меток:
+    <input type="text" size="6" id="count" value="100"/> <br/>
+    <input type="checkbox" id="useClusterer"> Использовать кластеризатор<br>
+    <input type="button" value="Добавить на карту" id="addMarkers"/>
+    <input type="button" value="Удалить все метки" id="removeMarkers"/></div>
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

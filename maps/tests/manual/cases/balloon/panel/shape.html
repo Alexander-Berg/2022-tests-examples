@@ -1,0 +1,130 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Панель балуна возвращающая форму области
+
+Description:
+Проверка работы функции возвращения формы области в панели балуна.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components:
+balloon
+
+Estimated time:
+60000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан Москвы.
+  На спане карты метка коллекции.
+  Снизу открыта панель балуна с содержимым "map balloon".
+
+Step:
+  Action:
+  Выполнить клик метку коллекции. 
+
+  Expectation:
+  Содержимое в панели балуна изменилось на "placemark balloon".
+  Под контейнером с картой добавились строки:
+  "placemark.balloon.getOverlay():[object Object]
+   OK
+   getShape():[object Object]
+   OK
+   getShape().getType():Rectangle
+   OK".
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 10,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+
+            var balloon,
+                    pos = myMap.getCenter(),
+                    contentLayout = ymaps.templateLayoutFactory.createClass('$[content]'),
+                    data = { a: 'custom balloon' },
+                    options = { contentLayout: contentLayout, closeTimeout: 300, panelMaxMapArea: Infinity };
+            window.balloon = balloon = new ymaps.Balloon(myMap);
+            balloon.options.set(options).setParent(myMap.options);
+            balloon.setData(data);
+
+            balloon.open(pos).then(function () {
+                balloon.getOverlay().then(function (overlay) {
+                    __log__('balloon.getOverlay(): ');
+                    __log__(overlay);
+                    validateValue(overlay, "[object Object]");
+                    __log__('getShape(): ');
+                    __log__(overlay.getShape());
+                    validateValue(overlay.getShape(), "[object Object]");
+                    __log__('getShape().getType(): ');
+                    __log__(overlay.getShape().getType());
+                    validateValue(overlay.getShape().getType(), "Rectangle");
+                })
+            });
+
+            map.balloon.open(map.getCenter(), {content: 'map balloon'}, {panelMaxMapArea: Infinity}).then(function () {
+                map.balloon.getOverlay().then(function (overlay) {
+                    __log__('map.balloon.getOverlay(): ');
+                    __log__(overlay);
+                    validateValue(overlay, "[object Object]");
+                    __log__('getShape(): ');
+                    __log__(overlay.getShape());
+                    validateValue(overlay.getShape(), "[object Object]");
+                    __log__('getShape().getType(): ');
+                    __log__(overlay.getShape().getType());
+                    validateValue(overlay.getShape().getType(), "Rectangle");
+                })
+            });
+
+            var placemark = new ymaps.Placemark([55.72725771214265, 37.640390506634007], {balloonContent: 'placemark balloon'},
+                    {balloonPanelMaxMapArea: Infinity});
+            placemark.events.add('balloonopen', function () {
+                setTimeout(function () {
+                    placemark.balloon.getOverlay().then(function (overlay) {
+                        __log__('placemark.balloon.getOverlay(): ');
+                        __log__(overlay);
+                        validateValue(overlay, "[object Object]");
+                        __log__('getShape(): ');
+                        __log__(overlay.getShape());
+                        validateValue(overlay.getShape(), "[object Object]");
+                        __log__('getShape().getType(): ');
+                        __log__(overlay.getShape().getType());
+                        validateValue(overlay.getShape().getType(), "Rectangle");
+                    })
+                }, 500)
+
+            });
+            map.geoObjects.add(placemark);
+
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

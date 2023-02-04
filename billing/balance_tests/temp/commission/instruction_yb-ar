@@ -1,0 +1,186 @@
+t_ar_paid_periods - заполняется только для постоплатных счетов! 
+переход на 3 питон: https://st.yandex-team.ru/BALANCE-29814 
+убрать пре-экшны: yb-ar\agency_rewards\utils\platform.py, блок 
+ log('processing pre-actions...')
+        for action in calc.pre_actions:
+            process_action(action, session, yt_client, yql_client, calc=calc)
+
+yb-ar
+C:\Users\sandyk\AppData\Local\Packages\CanonicalGroupLimited.Ubuntu18.04onWindows_79rhkp1fndgsc\LocalState\rootfs\home\sandyk\projects\ya
+
+конфиги на тм: sandyk@greed-tm1h.paysys /etc/yandex/yb-ar $ nano calculate.cfg.test.xml
+логи на тм: sandyk@greed-tm1h.paysys /var/log/yb $ tail -f agency_rewards.log
+
+
+----------------аркадия
+ 
+cd /mnt/c/arcadia/billing/agency_rewards/
+ya make --checkout -o bin
+. /opt/oraprofile
+source /opt/oraprofile
+export YANDEX_XML_CONFIG="deployment/configs/calculate.cfg.local.xml"
+
+расчет: ./bin/billing/agency_rewards/agency_rewards/main/yb-ar-calculate-bin --no-mnclose --no-dt-checks --no-acts-yt-upload  --no-mv-refresh --no-plsql-calc --no-hy-calc --no-base-light --no-base-m --no-prof-m --no-market-q --no-estate-m --no-platform --no-notifications --no-ok-check --run-dt '2020.02.03' --insert-dt '2020.02.03 15:34:12' 
+
+./bin/billing/agency_rewards/agency_rewards/main/yb-ar-calculate-bin --no-mnclose --no-dt-checks --no-acts-yt-upload  --no-mv-refresh --no-plsql-calc --no-hy-calc --no-base-light --no-base-m --no-market-q --no-estate-m --no-notifications --no-ok-check --run-dt '2020.02.03' --insert-dt '2020.02.03 15:34:12' 
+воркеры: ./bin/billing/agency_rewards/agency_rewards/worker/yb-ar-worker-bin
+----------------
+
+cd ..
+cd sandyk/projects/ya
+git clone https://github.yandex-team.ru/Billing/yb-ar yb-ar-2
+cd yb-ar-2
+virtualenv --no-site-packages --python=python3 env
+. env/bin/activate
+pip install -r requirements/python/requirements.txt
+pip install -r requirements/python/requirements-fabfile.txt
+git branch -a
+git checkout testing-201809
+в конфиге nano deployment/configs/calculate.cfg.local.xml
+	поменять tns для meta И! поставить <Queue id="calculate">calc-test-sandyk</Queue>
+
+python setup.py install
+. /opt/oraprofile
+
+
+YANDEX_XML_CONFIG=./deployment/configs/calculate.cfg.local.xml  yb-ar-calculate --no-mv-refresh --no-plsql-calc --no-hy-calc --no-market --no-base-light --no-market-q --no-estate-m --no-acts-yt-upload --no-mnclose --no-dt-checks --no-notifications --run-dt '2019.05.03' --insert-dt '2019.05.03 14:15:12' --no-base-m
+-------------------------------------------------------------
+в ветке:
+расчет: YANDEX_XML_CONFIG=./deployment/configs/calculate.cfg.local.xml  yb-ar-calculate --no-mv-refresh --no-plsql-calc --no-hy-calc --no-market --no-base-light --no-base-m --no-prof-m --no-market-q --no-estate-m --no-acts-yt-upload --no-mnclose --no-dt-checks --no-platform --no-notifications --no-ok-check --run-dt '2019.03.03' --insert-dt '2019.03.03 14:15:12' 
+--no-inconsistent-data-check --difference-limit  --use-test-data  --testing --prod-testing
+
+--no-ok-check
+
+воркеры:  YANDEX_XML_CONFIG=./deployment/configs/calculate.cfg.local.xml yb-ar-worker
+-----------------------------------------------------------------
+nano deployment/configs/calculate.cfg.local.xml
+nano agency_rewards/m/market.py
+nano agency_rewards/calculate.py
+
+логи:
+ tail -f agency_rewards.log
+---------------------------
+ jobs
+ fg
+ kill -9 $(jobs -p)
+ ---------------------------
+
+ YANDEX_XML_CONFIG = ./deployment/configs/calculate.cfg.local.xml
+
+ C:\tools\.tmp\application-test.cfg.xml
+---------------------
+запуск на тм:
+sudo su yb
+воркеры:/usr/bin/yb-ar-calculate-worker
+расчет: /usr/bin/yb-ar-calculate --no-mv-refresh --no-plsql-calc --no-hy-calc --no-market --no-base-light --no-market-q --no-estate-m
+
+если отвалился доступ до лога: sudo chmod 777 /var/log/yb/agency_rewards.log
+
+воркеры YANDEX_XML_CONFIG=./deployment/configs/calculate.cfg.local.xml celery -A agency_rewards.tasks worker -Q calc
+	
+расчет	YANDEX_XML_CONFIG=./deployment/configs/calculate.cfg.local.xml python -m agency_rewards.calculate --no-mnclose --no-dt-checks --no-mv-refresh --no-plsql-calc
+
+--------------------
+cd /mnt/c/yb-ar/
+
+если проблема с подключением к базе, то возможно пропали права до файла с тнс:
+sudo chmod a-x /opt/oracle/network/admin/tnsnames.ora
+sudo chmod a+r /opt/oracle/network/admin/tnsnames.ora
+
+--------------------
+
+kill -9 `ps aux | grep python | grep calc | grep yb-ar|  awk '{print $2}'`
+sudo kill -9 $(ps aux | grep '[y]b-ar-calculate' | awk '{print $2}')
+
+--------------------------поиск договора с нужной шкалой в оебс
+select   hf.k_alias, hf.k_number, hf.start_date, hf.end_date, cda.comission_type, ou.name, ou.short_code
+    from apps.xxoke_contract_dop_all cda
+    join apps.oke_k_headers_full_v hf
+    on cda.k_header_id = hf.k_header_id
+    join apps.xxgl_operating_units_v ou
+    on ou.org_id = cda.org_id
+    where 1 = 1
+    --and k_alias in ('159934/19', '214553/19')
+    and cda.start_date >= to_date ('27.03.2018', 'dd.mm.yyyy') 
+    and cda.k_line_id in
+      (
+        select   k_line_id
+          from apps.xxoke_dop_terms dt
+          where 1 = 1
+            and dt.term_code = 'XXOKE_SCALE_AGENCY'   --агентская шкала
+            and term_value = '20'                                           --значение шкалы
+            and dt.start_date  >= to_date ('27.03.2018', 'dd.mm.yyyy') 
+            and dt.end_date is null
+      );
+
+------------------------------запуск через пайкрон 
+yb-ar rewards master      command: /usr/bin/yb-ar-calculate --no-mnclose --no-dt-checks --no-mv-refresh --no-acts-yt-upload
+yb-ar rewards worker     command:/usr/bin/yb-ar-calculate-worker &>> /var/log/yb/agency_rewards_worker.log
+
+
+
+-----
+TO_TIMESTAMP('19.06.2019 11:48:14', 'DD.MM.YYYY HH24:MI:SS');
+
+
+---------------
+select contract_eid, till_dt, nds,currency,from_dt,contract_id, discount_type, reward_type, turnover_to_charge, reward_to_charge, 
+ turnover_to_pay, turnover_to_pay_w_nds, reward_to_pay from t_comm_prof_src  where insert_dt = (select  max(insert_dt) from t_comm_prof_src where contract_id like '1000%')
+--where insert_dt = '2019.04.15 14:15:12' 
+order by contract_id, from_dt, discount_type, reward_type, turnover_to_charge, reward_to_charge, 
+ turnover_to_pay, turnover_to_pay_w_nds, reward_to_pay;
+
+
+ -------  после переналивки
+select * from v_pycron where name like 'yb-ar_re%';
+update (select * from t_pycron_descr where name = 'yb-ar rewards master') set command = '/usr/bin/yb-ar-calculate --no-mnclose --no-dt-checks --no-mv-refresh --no-acts-yt-upload', count_per_host = 1;
+update (select * from t_pycron_descr where name = 'yb-ar rewards worker') set command = '/usr/bin/yb-ar-calculate-worker &>> /var/log/yb/agency_rewards_worker.log';
+update (select  * from t_pycron_state where id in (select id from t_pycron_lock where name like 'yb-ar_re%')) set host = 'greed-tm1h';
+update (select * from t_pycron_descr where name like 'yb-ar_re%') set terminate = 0;
+update (select  * from t_pycron_state where id in (select id from t_pycron_lock where name like 'yb-ar_re%')) set started = null, host = 'greed-tm1h', errors = null; 
+update (select * from t_pycron_schedule where name like 'yb-ar_re%') set host = 'greed-tm1h', crontab = '* * * 12 *', enabled = 1 ;
+
+
+----отдельная задача для запуска проверок после расчета
+select * from v_pycron where name = 'yb-ar-check-reward-errors';
+update (select  * from t_pycron_state where id in (select id from t_pycron_lock where name = 'yb-ar-check-reward-errors')) set host = 'greed-tm1h';
+update (select * from t_pycron_descr where name = 'yb-ar-check-reward-errors') set terminate = 0;
+update (select  * from t_pycron_state where id in (select id from t_pycron_lock where name = 'yb-ar-check-reward-errors')) set started = null, host = 'greed-tm1h', errors = null; 
+
+
+
+--------------------------------------
+xxx_ar_invoice_reward    x_t_ar_invoice_reward
+xxx_opt_2015_payments    x_v_opt_2015_payments     v_opt_2015_payments
+xxx_opt_2015_acts        x_v_opt_2015_acts_src     v_opt_2015_acts
+xxx_ar_paid_periods      x_t_ar_paid_periods       t_ar_paid_periods
+xxx_ar_rewards           x_v_ar_rewards            v_ar_rewards
+--------------------------------------
+
+тестирование клиентом:
+	- запускаем с флагом --use-test-data:  
+		(select * from t_pycron_descr where name = 'yb-ar rewards master') set command = '/usr/bin/yb-ar-calculate --no-mnclose --no-dt-checks --no-mv-refresh --no-acts-yt-upload --use-test-data', count_per_host = 1;
+	-в бункере должен быть прописан стартрековский тикет в тестовой очереди
+		https://bunker.yandex-team.ru/agency-rewards/test/calc/test_st/st_test_belarus?v=36
+	-тикет должен быть в статусе "Можно тестировать"  https://st.test.yandex-team.ru/BALANCEAR-8
+
+---------------------------------------sftp
+https://jing.yandex-team.ru/files/sandyk/2019-07-24_18.17.06-y1fgk.png
+
+--------
+select CONTRACT_EID,FROM_DT,TILL_DT,CONTRACT_ID, REWARD_TYPE,DISCOUNT_TYPE,NDS,CURRENCY,TURNOVER_TO_CHARGE,REWARD_TO_CHARGE,
+TURNOVER_TO_PAY,REWARD_TO_PAY,TURNOVER_TO_PAY_W_NDS  from t_comm_base_src
+where contract_id like '%00000%'  
+order by CONTRACT_ID, INSERT_DT, FROM_DT, REWARD_TYPE,DISCOUNT_TYPE,NDS,CURRENCY,TURNOVER_TO_CHARGE,REWARD_TO_CHARGE,TURNOVER_TO_PAY_W_NDS,
+TURNOVER_TO_PAY,REWARD_TO_PAY;
+
+----------
+для проверки связки тикета, создания ноды, запроса прав в idm: 
+		-тикет должен быть в очереди https://st.test.yandex-team.ru/BALANCEAR
+		-согласован серез ОК-ушку
+		-подтвержден 
+		-запустить скрипт /usr/bin$ yb-ar-bunker-node-creator (под yb на tm! )
+
+
+Insert into t_ar_reward_type_rules (ID,FROM_DT,TILL_DT,ORIGIN,REPLACE_BY) values
+('1',to_date('01.01.2019 00:00:00','DD.MM.YYYY HH24:MI:SS'),to_date('01.01.2030 00:00:00','DD.MM.YYYY HH24:MI:SS'),'313','301');

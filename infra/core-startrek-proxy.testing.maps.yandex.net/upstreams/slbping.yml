@@ -1,0 +1,61 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - robot-maps-sandbox
+      groups:
+      - svc_maps-infra
+      - svc_vops_maps
+      - svc_maps-core-startrek-proxy
+      - svc_maps-duty-naviplatformdev
+labels:
+  balancer_deployer_commit_id: '8647004'
+  balancer_deployer_commit_order: '8647004'
+  balancer_deployer_sign: c120e5d30ff5ca03d8c771225761cfb1
+  digest: f7192456d90c09fdba2a5b358ece033e
+  order: '00001000'
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      url: '/ping'
+  modules:
+    - report:
+        uuid: 'slbping'
+        ranges: default
+    - headers:
+        append_func:
+          X-Forwarded-For: realip
+        create_func_weak:
+          X-Real-IP: realip
+          X-Source-Port-Y: realport
+        create:
+          Host: 'core-startrek-proxy.testing.maps.yandex.net'
+    - balancer2:
+        rr: {
+          weights_file: './controls/maps_slb_check.weights'
+        }
+        attempts: 1
+        backends:
+          - weight: 1
+            name: to_upstream
+            modules:
+              - balancer2:
+                  attempts: !f count_backends_sd()
+                  weighted2: {}
+                  disable_attempts_rate_limiter: true
+                  generated_proxy_backends:
+                    proxy_options:
+                      connect_timeout: 70ms
+                      backend_timeout: 700ms
+                    include_backends:
+                      type: BY_ID
+                      ids: [maps_core_startrek_proxy_testing_sas]
+                  on_error:
+                    errordocument:
+                      status: 504
+                      content: "Service unavailable"
+          - weight: -1
+            name: switch_off
+            errordocument:
+              status: 503

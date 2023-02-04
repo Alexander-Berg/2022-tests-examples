@@ -1,0 +1,221 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Менеджер объектов: опции балуна RemoteObjectManager
+
+Description:
+Проверка опций балуна RemoteObjectManager. 
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+objectManager
+
+Estimated time:
+180000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась корректно со спаном Москвы.
+  На спане метки коллекции, метки кластеров со значениями кластеризации, линия, прямоугольники, круг.
+  Сверху кнопки "count", "openHint", "openBall...", "hideIcon".
+  Под контейнером с картой блок: "add, id: 25; add, id: 28".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "count".
+
+  Expectation:
+  Под контейнером с картой появляется строка "OK".
+
+Step:
+  Action:
+  Выполнить статичный и инертный драг спана, максимально отзумить спан карты, затем клик в кнопку "count".
+
+  Expectation:
+  При драгах, зумах количество кластеров на спане карты не меняется, метки не кластеризуются в большие кластера.
+  При клике в "count" под контейнером с картой появляется строка "OK".
+
+Step:
+  Action:
+  Выполнить инертный драг спана, так чтобы кластеры были вне пределов области видимости.
+
+  Expectation:
+  Под контейнером с картой появляется блок "add, id: 25; add, id: 28".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "openHint" навести курсор на объекты на спане карты.
+
+  Expectation:
+  По клику в "openHint" под контейнером появляется блок изменения опций: "clusteroptionschange, id: 28...; optionschange".
+  При наведении курсора на объекты хинт не появляется.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "openHint" навести курсор на объекты на спане карты.
+
+  Expectation:
+  По клику в "openHint" под контейнером появляется блок изменения опций: "clusteroptionschange, id: 28...; optionschange".
+  При наведении курсора на объекты появляется хинт.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "openBall..." выполнить клик в объекты на спане карты.
+
+  Expectation:
+  По клику в "openBall..." под контейнером появляется блок изменения опций: "clusteroptionschange, id: 28...; optionschange".
+  При клике в объекты балун не открывается появляется.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "openBall...", затем последовательно выполнить клик в объекты на спане карты.
+
+  Expectation:
+  По клику в "openBall..." под контейнером появляется блок изменения опций: "clusteroptionschange, id: 28...; optionschange".
+  При клике в объекты открывается балун(у кластера с двумя колонками).
+
+Step:
+  Action:
+  Выполнить клик в кнопку "hideIcon" выполнить клик в объекты на спане карты.
+
+  Expectation:
+  По клику в "hideIcon" под контейнером появляется блок изменения опций: "clusteroptionschange, id: 28...; optionschange".
+  При клике в объекты открывается балун, при этом метки коллекции и метки кластеров не пропадают, а остаются под балуном.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "hideIcon", затем последовательно выполнить клик в объекты на спане карты.
+
+  Expectation:
+  По клику в "hideIcon" под контейнером появляется блок изменения опций: "clusteroptionschange, id: 28...; optionschange".
+  При клике в объекты открывается балун, при этом метки коллекции и метки кластеров пропадают, на их месте открывается балун.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var center = [55.763338, 37.565466];
+
+            var map = myMap = new ymaps.Map('map', {
+                center: center,
+                zoom: 10,
+                type: 'yandex#map',
+                controls: ['fullscreenControl'],
+                minZoom: 4
+            });
+
+            // создаем экземпляр класса RemoteObjectManager
+            var remoteObjectManager = new ymaps.RemoteObjectManager('../objectData2.js?%l', {
+                //splitRequests: true,
+                paddingTemplate: 'managerResponse',
+                clusterDisableClickZoom: true,
+                clusterOpenBalloonOnClick: true,
+                clusterOpenHintOnHover: true,
+                clusterHasHint: true
+            });
+            map.geoObjects.add(remoteObjectManager);
+
+            addGrid(myMap);
+            var log = new Log();
+            log.info('CountButton: после зума и драга количество кластеров на карте не должно меняться');
+            var events = ['add', 'clusteroptionschange', 'optionschange', 'remove'];
+            remoteObjectManager.clusters.events.add(events, function (e) {
+
+                if (e.get('type') == 'add' || e.get('type') == 'remove') {
+                    __log__(e.get('type') + ', id: ' + e.get('objectId'));
+                    console.log(e.get('child'))
+                } else if (e.get('type') == 'clusteroptionschange') {
+                    __log__(e.get('type') + ', id: ' + e.get('objectId'))
+                } else {
+                    __log__(e.get('type'));
+                }
+            });
+
+            var hideIconButton = new ymaps.control.Button('hideIcon');
+            var openBalloonButton = new ymaps.control.Button('openBalloon');
+            var openHintButton = new ymaps.control.Button('openHint');
+            var countButton = new ymaps.control.Button({data: {content: 'count'}, options: {selectOnClick: false}});
+            // var count = 0;
+            countButton.events
+                    .add('click', function () {
+                        count = [];
+                        remoteObjectManager.clusters.each(function (obj) {
+                            console.log(obj);
+                            count.push(obj);
+                        });
+                        remoteObjectManager.objects.each(function (obj) {
+                            console.log(obj);
+                            count.push(obj);
+                        });
+                        validateValue(count.length, 9);
+                    });
+
+            hideIconButton.events
+                    .add('select', function () {
+                        remoteObjectManager.clusters.each(function (obj) {
+                            remoteObjectManager.clusters.setClusterOptions(obj.id, {hideIconOnBalloonOpen: false})
+                        });
+                        remoteObjectManager.options.set('geoObjectHideIconOnBalloonOpen', false);
+                    })
+                    .add('deselect', function () {
+                        remoteObjectManager.clusters.each(function (obj) {
+                            remoteObjectManager.clusters.setClusterOptions(obj.id, {hideIconOnBalloonOpen: true})
+                        });
+                        remoteObjectManager.options.set('geoObjectHideIconOnBalloonOpen', true);
+                    });
+
+            openBalloonButton.events
+                    .add('select', function () {
+                        remoteObjectManager.clusters.each(function (obj) {
+                            remoteObjectManager.clusters.setClusterOptions(obj.id, {openBalloonOnClick: false})
+                        });
+                        remoteObjectManager.options.set('geoObjectOpenBalloonOnClick', false);
+                    })
+                    .add('deselect', function () {
+                        remoteObjectManager.clusters.each(function (obj) {
+                            remoteObjectManager.clusters.setClusterOptions(obj.id, {openBalloonOnClick: true})
+                        });
+                        remoteObjectManager.options.set('geoObjectOpenBalloonOnClick', true);
+                    });
+
+            openHintButton.events
+                    .add('select', function () {
+                        remoteObjectManager.clusters.each(function (obj) {
+                            remoteObjectManager.clusters.setClusterOptions(obj.id, {openHintOnHover: false})
+                        });
+                        remoteObjectManager.options.set('geoObjectOpenHintOnHover', false);
+                    })
+                    .add('deselect', function () {
+                        remoteObjectManager.clusters.each(function (obj) {
+                            remoteObjectManager.clusters.setClusterOptions(obj.id, {openHintOnHover: true})
+                        });
+                        remoteObjectManager.options.set('geoObjectOpenHintOnHover', true);
+                    });
+
+            map.controls
+                    .add(hideIconButton)
+                    .add(openBalloonButton)
+                    .add(openHintButton)
+                    .add(countButton);
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

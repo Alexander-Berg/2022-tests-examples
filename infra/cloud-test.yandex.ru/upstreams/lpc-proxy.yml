@@ -1,0 +1,97 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - lunatic174
+      groups:
+      - svc_ycsite_devops
+labels:
+  order: '100'
+config_mode: easy2
+---
+l7_upstream_macro:
+  by_dc_scheme:
+    balancer:
+      attempts: 2
+      backend_timeout: 5s
+      connect_timeout: 100ms
+      fast_attempts: 2
+      max_pessimized_endpoints_share: 0.2
+      max_reattempts_share: 0.15
+      retry_http_responses:
+        codes:
+        - 5xx
+        on_last_failed_retry: PROXY_RESPONSE_AS_IS
+      retry_non_idempotent: false
+    dc_balancer:
+      attempt_all_dcs: true
+      method: LOCAL_THEN_BY_DC_WEIGHT
+      weights_section_id: bygeo
+    dcs:
+    - backend_ids:
+      - lpc-proxy_man
+      name: man
+    - backend_ids:
+      - lpc-proxy_sas
+      name: sas
+    - backend_ids:
+      - lpc-proxy_vla
+      name: vla
+    on_error:
+      rst: true
+  headers:
+  - rewrite:
+      pattern:
+        re: ^.*[.]yandex[.](.+?)$
+      replacement: yandex.%1
+      target: Host
+  id: lpc-proxy
+  matcher:
+    and_:
+    - not_:
+        uri_re: /promo/kubernetes-in-cloud(/?.*)
+    - or_:
+      - uri_re: /promo/(.*)
+      - uri_re: /resources/(.*)
+      - uri_re: /promo-mdb(/?.*)
+      - uri_re: /events/1-year(/?.*)
+      - uri_re: /events/scale-2019(/?.*)
+      - uri_re: /events/scale-2020(/?.*)
+      - uri_re: /events/launch-kazakhstan(/?.*)
+      - uri_re: /services/speechkit/solutions(/?.*)
+  monitoring:
+    uuid: to-landing-page-constructor
+  rewrite:
+  - pattern:
+      re: /promo/(.*)
+    replacement: /promo/cloud/promo/%1
+    target: PATH
+  - pattern:
+      re: /resources/(.*)
+    replacement: /promo/cloud/resources/%1
+    target: PATH
+  - pattern:
+      re: /promo-mdb(/?.*)
+    replacement: /promo/cloud/promo-mdb%1
+    target: PATH
+  - pattern:
+      re: /events/1-year(/?.*)
+    replacement: /promo/cloud/events/1-year%1
+    target: PATH
+  - pattern:
+      re: /events/scale-2019(/?.*)
+    replacement: /promo/cloud/events/scale-2019%1
+    target: PATH
+  - pattern:
+      re: /events/scale-2020(/?.*)
+    replacement: /promo/cloud/events/scale-2020%1
+    target: PATH
+  - pattern:
+      re: /events/launch-kazakhstan(/?.*)
+    replacement: /promo/cloud/events/launch-kazakhstan%1
+    target: PATH
+  - pattern:
+      re: /services/speechkit/solutions(/?.*)
+    replacement: /promo/cloud/speechkit-solutions%1
+    target: PATH
+  version: 0.2.0

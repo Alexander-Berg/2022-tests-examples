@@ -1,0 +1,122 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Контрол: программный показ результата поиска в области поиска
+
+Description:
+Проверка программный показ результата поиска с опцией области поиска и без.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+control
+
+Estimated time:
+90000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Дождаться загрузки и осмотреть карту и элементы на ней.
+
+  Expectation:
+  При загрузке в контейнере загружается спан Москвы, сверху контейнера кнопки "Найти", "strictBounds".
+  После происходит смена спана с призумом, в центре спана появляется балун с карточкой "Театральная площадь; Сантк-Петербург".  
+  Под контейнером с картой появляется блок: Looking for places in St.Pete (boundedBy + strictBounds!); Театральная площадь, Россия, Санкт-Петербург.
+  После спан карты не меняется, балун с карточкой пропадает, под контейнером с картой появляется блок "Looking for places in St.Pete (boundedBy, but !strictBounds) ..." с адресами по запросу "Театральная".
+
+Step:
+  Action:
+  Выполнить клик в контрол "Найти".
+
+  Expectation:
+  Сверху выпадает плашка с поисковым инпутом со значением "Театральная", кнопкой "Найти", кнопкой сворачивания поиского инпута и панелью со сниппетами с результами поиска по запросу "Театральная". 
+  Результаты в панели сниппетов должны соответсвовать адресам в блоке под контейнером "Looking for places in St.Pete (boundedBy, but !strictBounds)".
+-->
+<html>
+<head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            var myMap = new ym.Map('map', {
+                        center: [55.73259667357658, 37.70153663432529],
+                        zoom: 9,
+                        behaviors: ['default', 'scrollZoom'],
+                        controls: []
+                    }), bounds = new ym.Rectangle([
+                        [59.90, 30.25],
+                        [59.96, 30.38]
+                    ]),
+                    log = new Log();
+
+            addGrid(myMap);
+
+            var search1 = new ymaps.control.SearchControl({
+                options: {
+                    float: 'left',
+                    size: 'meduim',
+                    boundedBy: [
+                        [59.90, 30.25],
+                        [59.96, 30.38]
+                    ]
+                }
+            });
+
+            var boundsButton = new ymaps.control.Button({
+                data: {content: 'strictBounds'},
+                options: {selectOnClick: true, maxWidth: 150}
+            });
+            boundsButton.events
+                    .add('select', function () {
+                        search1.options.set({strictBounds: true});
+                        myMap.geoObjects.add(bounds);
+                        myMap.setBounds([
+                            [59.90, 30.25],
+                            [59.96, 30.38]
+                        ]);
+                    })
+                    .add('deselect', function () {
+                        search1.options.unset('strictBounds');
+                        myMap.geoObjects.remove(bounds);
+                    });
+
+            setTimeout(function () {
+                __log__('Looking for places in St.Pete (boundedBy + strictBounds!)');
+                search1.options.set({strictBounds: true});
+                search1.search('театральная').then(function () {
+                    var results = search1.getResultsArray();
+                    for (var i = 0; i < results.length; i++) {
+                        __log__(results[i].properties.get('name') + ', ' + results[i].properties.get('description'))
+                    }
+                    __log__('');
+                });
+            }, 1500);
+
+            setTimeout(function () {
+                __log__('Looking for places in St.Pete (boundedBy, but !strictBounds)');
+                search1.options.set({strictBounds: false});
+                search1.search('театральная').then(function () {
+                    var results = search1.getResultsArray();
+                    for (var i = 0; i < results.length; i++) {
+                        __log__(results[i].properties.get('name') + ', ' + results[i].properties.get('description'))
+                    }
+                });
+            }, 3000);
+
+            myMap.controls
+                    .add(search1, {floatIndex: 100})
+                    .add(boundsButton)
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

@@ -1,0 +1,45 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - alovtsyus
+      groups: []
+labels:
+  order: '10000001'
+---
+regexp_section:
+  matcher:
+    match_and:
+        - match_fsm:
+            uri: '/rt/.*'
+        - match_fsm:
+            host: yasm-prestable.yandex-team.ru
+  modules:
+    - rewrite:
+        actions:
+          - regexp: '/rt/sigstat'
+            rewrite: '/sigstat'
+          - regexp: '/rt/subs'
+            rewrite: '/subs'
+    - h100: {}
+    - headers_hasher:
+        header_name: 'X-Golovan-Rt-Request'
+        randomize_empty_match: true
+    - balancer2:
+        attempts: 3
+        rendezvous_hashing: {}
+        attempts_rate_limiter:
+          limit: 0.5
+        generated_proxy_backends:
+          proxy_options:
+            backend_timeout: 4s
+            connect_timeout: 70ms
+            keepalive_count: 2
+            fail_on_5xx: false
+          include_backends:
+            type: BY_ID
+            ids: [rtfront-prestable]
+        on_error:
+          errordocument:
+            status: 504
+            content: "prestable rtfront unavailable"

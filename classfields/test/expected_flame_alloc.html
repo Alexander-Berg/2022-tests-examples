@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+<meta charset='utf-8'>
+<style>
+	body {margin: 0; padding: 10px; background-color: #ffffff}
+	h1 {margin: 5px 0 0 0; font-size: 18px; font-weight: normal; text-align: center}
+	header {margin: -24px 0 5px 0; line-height: 24px}
+	button {font: 12px sans-serif; cursor: pointer}
+	p {margin: 5px 0 5px 0}
+	a {color: #0366d6}
+	#hl {position: absolute; display: none; overflow: hidden; white-space: nowrap; pointer-events: none; background-color: #ffffe0; outline: 1px solid #ffc000; height: 15px}
+	#hl span {padding: 0 3px 0 3px}
+	#status {overflow: hidden; white-space: nowrap}
+	#match {overflow: hidden; white-space: nowrap; display: none; float: right; text-align: right}
+	#reset {cursor: pointer}
+	#canvas {width: 100%; height: 432px}
+</style>
+</head>
+<body style='font: 12px Verdana, sans-serif'>
+<h1>Flame Graph</h1>
+<header style='text-align: left'><button id='reverse' title='Reverse'>&#x1f53b;</button>&nbsp;&nbsp;<button id='search' title='Search'>&#x1f50d;</button></header>
+<header style='text-align: right'>Produced by <a href='https://github.com/jvm-profiling-tools/async-profiler'>async-profiler</a></header>
+<canvas id='canvas'></canvas>
+<div id='hl'><span></span></div>
+<p id='match'>Matched: <span id='matchval'></span> <span id='reset' title='Clear'>&#x274c;</span></p>
+<p id='status'>&nbsp;</p>
+<script>
+	// Copyright 2020 Andrei Pangin
+	// Licensed under the Apache License, Version 2.0.
+	'use strict';
+	var root, rootLevel, px, pattern;
+	var reverse = false;
+	const levels = Array(27);
+	for (let h = 0; h < levels.length; h++) {
+		levels[h] = [];
+	}
+
+	const canvas = document.getElementById('canvas');
+	const c = canvas.getContext('2d');
+	const hl = document.getElementById('hl');
+	const status = document.getElementById('status');
+
+	const canvasWidth = canvas.offsetWidth;
+	const canvasHeight = canvas.offsetHeight;
+	canvas.style.width = canvasWidth + 'px';
+	canvas.width = canvasWidth * (devicePixelRatio || 1);
+	canvas.height = canvasHeight * (devicePixelRatio || 1);
+	if (devicePixelRatio) c.scale(devicePixelRatio, devicePixelRatio);
+	c.font = document.body.style.font;
+
+	const palette = [
+		[0xb2e1b2, 20, 20, 20],
+		[0x50e150, 30, 30, 30],
+		[0x50cccc, 30, 30, 30],
+		[0xe15a5a, 30, 40, 40],
+		[0xc8c83c, 30, 30, 10],
+		[0xe17d00, 30, 30,  0],
+		[0xcce880, 20, 20, 20],
+	];
+
+	function getColor(p) {
+		const v = Math.random();
+		return '#' + (p[0] + ((p[1] * v) << 16 | (p[2] * v) << 8 | (p[3] * v))).toString(16);
+	}
+
+	function f(level, left, width, type, title, inln, c1, int) {
+		levels[level].push({left: left, width: width, color: getColor(palette[type]), title: title,
+			details: (int ? ', int=' + int : '') + (c1 ? ', c1=' + c1 : '') + (inln ? ', inln=' + inln : '')
+		});
+	}
+
+	function samples(n) {
+		return n === 1 ? '1 sample' : n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',') + ' samples';
+	}
+
+	function pct(a, b) {
+		return a >= b ? '100' : (100 * a / b).toFixed(2);
+	}
+
+	function findFrame(frames, x) {
+		let left = 0;
+		let right = frames.length - 1;
+
+		while (left <= right) {
+			const mid = (left + right) >>> 1;
+			const f = frames[mid];
+
+			if (f.left > x) {
+				right = mid - 1;
+			} else if (f.left + f.width <= x) {
+				left = mid + 1;
+			} else {
+				return f;
+			}
+		}
+
+		if (frames[left] && (frames[left].left - x) * px < 0.5) return frames[left];
+		if (frames[right] && (x - (frames[right].left + frames[right].width)) * px < 0.5) return frames[right];
+
+		return null;
+	}
+
+	function search(r) {
+		if (r === true && (r = prompt('Enter regexp to search:', '')) === null) {
+			return;
+		}
+
+		pattern = r ? RegExp(r) : undefined;
+		const matched = render(root, rootLevel);
+		document.getElementById('matchval').textContent = pct(matched, root.width) + '%';
+		document.getElementById('match').style.display = r ? 'inherit' : 'none';
+	}
+
+	function render(newRoot, newLevel) {
+		if (root) {
+			c.fillStyle = '#ffffff';
+			c.fillRect(0, 0, canvasWidth, canvasHeight);
+		}
+
+		root = newRoot || levels[0][0];
+		rootLevel = newLevel || 0;
+		px = canvasWidth / root.width;
+
+		const x0 = root.left;
+		const x1 = x0 + root.width;
+		const marked = [];
+
+		function mark(f) {
+			return marked[f.left] >= f.width || (marked[f.left] = f.width);
+		}
+
+		function totalMarked() {
+			let total = 0;
+			let left = 0;
+			Object.keys(marked).sort(function(a, b) { return a - b; }).forEach(function(x) {
+				if (+x >= left) {
+					total += marked[x];
+					left = +x + marked[x];
+				}
+			});
+			return total;
+		}
+
+		function drawFrame(f, y, alpha) {
+			if (f.left < x1 && f.left + f.width > x0) {
+				c.fillStyle = pattern && f.title.match(pattern) && mark(f) ? '#ee00ee' : f.color;
+				c.fillRect((f.left - x0) * px, y, f.width * px, 15);
+
+				if (f.width * px >= 21) {
+					const chars = Math.floor(f.width * px / 7);
+					const title = f.title.length <= chars ? f.title : f.title.substring(0, chars - 2) + '..';
+					c.fillStyle = '#000000';
+					c.fillText(title, Math.max(f.left - x0, 0) * px + 3, y + 12, f.width * px - 6);
+				}
+
+				if (alpha) {
+					c.fillStyle = 'rgba(255, 255, 255, 0.5)';
+					c.fillRect((f.left - x0) * px, y, f.width * px, 15);
+				}
+			}
+		}
+
+		for (let h = 0; h < levels.length; h++) {
+			const y = reverse ? h * 16 : canvasHeight - (h + 1) * 16;
+			const frames = levels[h];
+			for (let i = 0; i < frames.length; i++) {
+				drawFrame(frames[i], y, h < rootLevel);
+			}
+		}
+
+		return totalMarked();
+	}
+
+	canvas.onmousemove = function() {
+		const h = Math.floor((reverse ? event.offsetY : (canvasHeight - event.offsetY)) / 16);
+		if (h >= 0 && h < levels.length) {
+			const f = findFrame(levels[h], event.offsetX / px + root.left);
+			if (f) {
+				if (f != root) getSelection().removeAllRanges();
+				hl.style.left = (Math.max(f.left - root.left, 0) * px + canvas.offsetLeft) + 'px';
+				hl.style.width = (Math.min(f.width, root.width) * px) + 'px';
+				hl.style.top = ((reverse ? h * 16 : canvasHeight - (h + 1) * 16) + canvas.offsetTop) + 'px';
+				hl.firstChild.textContent = f.title;
+				hl.style.display = 'block';
+				canvas.title = f.title + '\n(' + samples(f.width) + f.details + ', ' + pct(f.width, levels[0][0].width) + '%)';
+				canvas.style.cursor = 'pointer';
+				canvas.onclick = function() {
+					if (f != root) {
+						render(f, h);
+						canvas.onmousemove();
+					}
+				};
+				status.textContent = 'Function: ' + canvas.title;
+				return;
+			}
+		}
+		canvas.onmouseout();
+	}
+
+	canvas.onmouseout = function() {
+		hl.style.display = 'none';
+		status.textContent = '\xa0';
+		canvas.title = '';
+		canvas.style.cursor = '';
+		canvas.onclick = '';
+	}
+
+	canvas.ondblclick = function() {
+		getSelection().selectAllChildren(hl);
+	}
+
+	document.getElementById('reverse').onclick = function() {
+		reverse = !reverse;
+		render();
+	}
+
+	document.getElementById('search').onclick = function() {
+		search(true);
+	}
+
+	document.getElementById('reset').onclick = function() {
+		search(false);
+	}
+
+	window.onkeydown = function() {
+		if (event.ctrlKey && event.keyCode === 70) {
+			event.preventDefault();
+			search(true);
+		} else if (event.keyCode === 27) {
+			search(false);
+		}
+	}
+
+f(0,0,23070720,3,'all')
+f(1,0,21858400,1,'java/lang/Thread.run')
+f(2,0,21858400,1,'java/util/concurrent/ThreadPoolExecutor$Worker.run')
+f(3,0,21858400,1,'java/util/concurrent/ThreadPoolExecutor.runWorker')
+f(4,0,2048,1,'java/util/concurrent/ScheduledThreadPoolExecutor$ScheduledFutureTask.run')
+f(5,0,2048,1,'java/util/concurrent/FutureTask.run')
+f(6,0,2048,1,'java/util/concurrent/Executors$RunnableAdapter.call')
+f(7,0,2048,1,'zio/clock/PlatformSpecific$$anon$1$$anon$2.run')
+f(8,0,2048,1,'zio/clock/package$Clock$Service$$anon$1$$Lambda.run')
+f(9,0,2048,1,'zio/clock/package$Clock$Service$$anon$1.$anonfun$sleep$2')
+f(10,0,2048,1,'zio/ZIO$$$Lambda.apply')
+f(11,0,2048,1,'zio/ZIO$.$anonfun$effectAsyncInterrupt$4$adapted')
+f(12,0,2048,1,'zio/ZIO$.$anonfun$effectAsyncInterrupt$4')
+f(13,0,2048,1,'zio/ZIO$.succeedNow')
+f(14,0,2048,2,'zio.ZIO$Succeed')
+f(4,2048,21856352,1,'zio/internal/FiberContext$$Lambda.run')
+f(5,2048,21856352,1,'zio/internal/FiberContext.$anonfun$evaluateLater$1')
+f(6,2048,21856352,1,'zio/internal/FiberContext.evaluateNow')
+f(7,2048,2097152,1,'common/profiler/continuous/LiveContinuousProfiler$$Lambda.apply')
+f(8,2048,2097152,1,'common/profiler/continuous/LiveContinuousProfiler.$anonfun$reportResults$1')
+f(9,2048,2097152,1,'common/profiler/continuous/ContinuousProfilerSpec$DummyReporter.report')
+f(10,2048,2097152,1,'java/lang/ClassLoader.loadClass')
+f(11,2048,2097152,1,'jdk/internal/loader/ClassLoaders$AppClassLoader.loadClass')
+f(12,2048,2097152,1,'jdk/internal/loader/BuiltinClassLoader.loadClass')
+f(13,2048,2097152,1,'jdk/internal/loader/BuiltinClassLoader.loadClassOrNull')
+f(14,2048,2097152,1,'jdk/internal/loader/BuiltinClassLoader.findClassOnClassPathOrNull')
+f(15,2048,2097152,1,'jdk/internal/loader/BuiltinClassLoader.defineClass')
+f(16,2048,2097152,1,'java/security/SecureClassLoader.defineClass')
+f(17,2048,2097152,1,'java/lang/ClassLoader.defineClass')
+f(18,2048,2097152,1,'java/lang/ClassLoader.defineClass1')
+f(19,2048,2097152,2,'java.lang.Class')
+f(7,2099200,2097152,1,'zio/internal/DefaultExecutors$$anon$1.yieldOpCount')
+f(8,2099200,2097152,2,'zio.internal.DefaultExecutors$$anon$1$$anon$2')
+f(7,4196352,2977888,1,'zio/internal/FiberContext.fastPathTrace$1')
+f(8,4196352,2095104,1,'zio/internal/FiberContext.traceLocation')
+f(9,4196352,2095104,1,'zio/internal/stacktracer/Tracer$$anon$1.traceLocation')
+f(10,4196352,2095104,1,'zio/internal/stacktracer/impl/AkkaLineNumbersTracer.traceLocation')
+f(11,4196352,2095104,1,'zio/internal/stacktracer/impl/AkkaLineNumbers$.apply')
+f(12,4196352,2095104,1,'zio/internal/stacktracer/impl/AkkaLineNumbers$.getInfo')
+f(13,4196352,2095104,1,'zio/internal/stacktracer/impl/AkkaLineNumbers$.getConstants')
+f(14,4196352,2095104,1,'zio/internal/stacktracer/impl/AkkaLineNumbers$Constants.readOne')
+f(15,4196352,2095104,1,'zio/internal/stacktracer/impl/AkkaLineNumbers$Constants.put')
+f(16,4196352,2095104,1,'scala/collection/immutable/HashMap.updated')
+f(17,4196352,2095104,1,'scala/collection/immutable/HashMap.updated')
+f(18,4196352,2095104,1,'scala/collection/immutable/BitmapIndexedMapNode.updated')
+f(19,4196352,2095104,1,'scala/collection/immutable/BitmapIndexedMapNode.updated')
+f(20,4196352,2095104,1,'scala/collection/immutable/BitmapIndexedMapNode.updated')
+f(21,4196352,2095104,1,'scala/collection/immutable/BitmapIndexedMapNode.copyAndInsertValue')
+f(22,4196352,2095104,2,'scala.collection.immutable.BitmapIndexedMapNode')
+f(8,6291456,882784,1,'zio/internal/FiberContext.zio$internal$FiberContext$$addTrace')
+f(9,6291456,882784,1,'zio/internal/FiberContext.traceLocation')
+f(10,6291456,882784,1,'zio/internal/stacktracer/Tracer$$anon$1.traceLocation')
+f(11,6291456,882784,1,'zio/internal/stacktracer/impl/AkkaLineNumbersTracer.traceLocation')
+f(12,6291456,882784,1,'zio/internal/stacktracer/impl/AkkaLineNumbers$.apply')
+f(13,6291456,882784,1,'zio/internal/stacktracer/impl/AkkaLineNumbers$.getStreamForLambda')
+f(14,6291456,882784,1,'java/lang/ClassLoader.getResourceAsStream')
+f(15,6291456,882784,1,'java/net/URL.openStream')
+f(16,6291456,882784,1,'sun/net/www/protocol/jar/JarURLConnection.getInputStream')
+f(17,6291456,882784,1,'java/util/jar/JarFile.getInputStream')
+f(18,6291456,882784,1,'java/util/zip/ZipFile.getInputStream')
+f(19,6291456,882784,1,'java/util/zip/ZipFile$ZipFileInflaterInputStream.<init>')
+f(20,6291456,882784,1,'java/util/zip/ZipFile$ZipFileInflaterInputStream.<init>')
+f(21,6291456,882784,1,'java/util/zip/InflaterInputStream.<init>')
+f(22,6291456,882784,2,'byte[]')
+f(7,7174240,14684160,1,'zio/internal/FiberContext.pushContinuation')
+f(8,7174240,14684160,1,'zio/internal/FiberContext.traceLocation')
+f(9,7174240,14684160,1,'zio/internal/stacktracer/Tracer$$anon$1.traceLocation')
+f(10,7174240,14684160,1,'zio/internal/stacktracer/impl/AkkaLineNumbersTracer.traceLocation')
+f(11,7174240,14684160,1,'zio/internal/stacktracer/impl/AkkaLineNumbers$.apply')
+f(12,7174240,14684160,1,'zio/internal/stacktracer/impl/AkkaLineNumbers$.getInfo')
+f(13,7174240,12584960,1,'zio/internal/stacktracer/impl/AkkaLineNumbers$.getConstants')
+f(14,7174240,12584960,1,'zio/internal/stacktracer/impl/AkkaLineNumbers$Constants.readOne')
+f(15,7174240,2172784,1,'java/io/DataInputStream.readUTF')
+f(16,7174240,2172784,1,'java/io/DataInputStream.readUTF')
+f(17,7174240,77680,5,'byte[]')
+f(17,7251920,2095104,1,'java/lang/String.<init>')
+f(18,7251920,2095104,1,'java/lang/String.<init>')
+f(19,7251920,2095104,1,'java/lang/StringUTF16.compress')
+f(20,7251920,2095104,2,'byte[]')
+f(15,9347024,10412176,1,'zio/internal/stacktracer/impl/AkkaLineNumbers$Constants.put')
+f(16,9347024,10412176,1,'scala/collection/immutable/HashMap.updated')
+f(17,9347024,10412176,1,'scala/collection/immutable/HashMap.updated')
+f(18,9347024,10412176,1,'scala/collection/immutable/BitmapIndexedMapNode.updated')
+f(19,9347024,2097152,1,'scala/collection/immutable/BitmapIndexedMapNode.copyAndInsertValue')
+f(20,9347024,2097152,2,'scala.collection.immutable.BitmapIndexedMapNode')
+f(19,11444176,2097152,1,'scala/collection/immutable/BitmapIndexedMapNode.copyAndSetNode')
+f(20,11444176,2097152,2,'scala.collection.immutable.BitmapIndexedMapNode')
+f(19,13541328,6217872,1,'scala/collection/immutable/BitmapIndexedMapNode.updated')
+f(20,13541328,6217872,1,'scala/collection/immutable/BitmapIndexedMapNode.updated')
+f(21,13541328,2019472,1,'scala/collection/immutable/BitmapIndexedMapNode.copyAndInsertValue')
+f(22,13541328,2019472,2,'java.lang.Object[]')
+f(21,15560800,2048,1,'scala/collection/immutable/BitmapIndexedMapNode.copyAndMigrateFromInlineToNode')
+f(22,15560800,2048,2,'scala.collection.immutable.BitmapIndexedMapNode')
+f(21,15562848,4196352,1,'scala/collection/immutable/BitmapIndexedMapNode.copyAndSetNode')
+f(22,15562848,4194304,2,'java.lang.Object[]')
+f(22,19757152,2048,2,'scala.collection.immutable.BitmapIndexedMapNode')
+f(13,19759200,2099200,1,'zio/internal/stacktracer/impl/AkkaLineNumbers$.readMethods')
+f(14,19759200,2099200,1,'scala/collection/immutable/Range.flatMap')
+f(15,19759200,2099200,1,'scala/collection/StrictOptimizedIterableOps.flatMap$')
+f(16,19759200,2099200,1,'scala/collection/StrictOptimizedIterableOps.flatMap')
+f(17,19759200,2099200,1,'zio/internal/stacktracer/impl/AkkaLineNumbers$$$Lambda.apply')
+f(18,19759200,2099200,1,'zio/internal/stacktracer/impl/AkkaLineNumbers$.$anonfun$readMethods$1$adapted')
+f(19,19759200,2099200,1,'zio/internal/stacktracer/impl/AkkaLineNumbers$.$anonfun$readMethods$1')
+f(20,19759200,2099200,1,'zio/internal/stacktracer/impl/AkkaLineNumbers$.readMethod')
+f(21,19759200,2099200,1,'scala/collection/immutable/Range.map')
+f(22,19759200,2099200,1,'scala/collection/SeqFactory$Delegate.newBuilder')
+f(23,19759200,2099200,1,'scala/collection/immutable/Vector$.newBuilder')
+f(24,19759200,2099200,1,'scala/collection/immutable/Vector$.newBuilder')
+f(25,19759200,2099200,1,'scala/collection/immutable/VectorBuilder.<init>')
+f(26,19759200,2099200,2,'java.lang.Object[]')
+f(1,21858400,1212320,3,'no_Java_frame')
+f(2,21858400,1212320,2,'java.lang.String')
+
+search();
+</script></body></html>

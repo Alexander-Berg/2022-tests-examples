@@ -1,0 +1,161 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Кластер: курсор на метках
+
+Description:
+Проверка работы опций курсора при наведении на метки кластера.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+clusterer
+
+Estimated time:
+120000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан Европейской части России. В районе Санкт-Петербурга красные кластерные метки с цифрами.
+  Сверху слева имеется кнопка "cursor".
+
+Step:
+  Action:
+  Выполнить призум к спану Санкт-Петербурга скролом мыши на 3 значения.
+
+  Expectation:
+  Происходит корректный призум.
+  На спане карты множество кластерных меток, синие метки коллекций, а также зеленые метки коллекций с надписью "Point".
+
+Step:
+  Action:
+  Поводить курсором по кластерным меткам, синим и зеленым меткам коллекций.
+
+  Expectation:
+  При наведении на метку кластера курсор - палец. 
+  При наведении на метки коллекций курсор - палец, появляется хинт с числом(номером метки).
+
+Step:
+  Action:
+  Выполнить клик в кнопку "cursor".
+
+  Expectation:
+  Спан карты без изменений. 
+  Под контейнером с картой появляется текст: "help".
+  Кнопка окрашена желтым.
+
+Step:
+  Action:
+  Поводить курсором по кластерным меткам, синим и зеленым меткам коллекций.
+
+  Expectation:
+  При наведении на метку кластера курсор - стрелка со знаком вопросом. 
+  При наведении на метки коллекций курсор - палец, появляется хинт с числом(номером метки).
+
+Step:
+  Action:
+  Выполнить клик в кнопку "cursor".
+
+  Expectation:
+  Спан карты без изменений. 
+  Под контейнером с картой появляется текст: "crosshair".
+  Кнопка окрашена белым.
+
+Step:
+  Action:
+  Поводить курсором по кластерным меткам, синим и зеленым меткам коллекций.
+
+  Expectation:
+  При наведении на метку кластера курсор - перекрестье. 
+  При наведении на метки коллекций курсор - палец, появляется хинт с числом(номером метки).
+-->
+<html>
+
+<head>
+  <title></title>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+
+  <script src="../../../helper.js"></script>
+  <script src="https://yandex.st/jquery/1.6.4/jquery.min.js" type="text/javascript"></script>
+  <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            var map = myMap = new ymaps.Map('map', {
+                center: [59.96343157514998, 30.317977733422868],
+                zoom: 7,
+                // Добавим к стандартным поведениям карты зум колесом мыши.
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            addGrid(map);
+            var log = new Log();
+
+            var clusterer = new ymaps.Clusterer({preset: 'islands#redClusterIcons'});
+            var i = 0;
+            var cursorButton = new ymaps.control.Button({data: {content: 'cursor'}, options: {selectOnClick: true}});
+            var placemarksNumber = 200;
+            var bounds = map.getBounds();
+            var newPlacemarks = createGeoObjects(placemarksNumber, bounds);
+
+            map.geoObjects.add(clusterer);
+            clusterer.add(newPlacemarks);
+
+            cursorButton.events
+                    .add('select', function () {
+                        clusterer.options.set('clusterCursor', 'help');
+                        log.info(clusterer.options.get('clusterCursor'))
+                    })
+                    .add('deselect', function () {
+                        clusterer.options.set('clusterCursor', 'crosshair');
+                        log.info(clusterer.options.get('clusterCursor'))
+                    });
+
+            map.controls.add(cursorButton, {top: 5, left: 5});
+
+            // change map zoom
+            setTimeout(function () {
+                map.setZoom(4)
+            }, 1000);
+
+            function createGeoObjects(number, bounds) {
+                var placemarks = [];
+                // Создаем нужное количество меток
+                for (var i = 0; i < number; i++) {
+                    // Генерируем координаты метки случайным образом.
+                    coordinates = getRandomCoordinates(bounds);
+                    // Создаем метку со случайными координатами.
+                    if (Math.random() > 0.5) {
+                        myPlacemark = new ymaps.Placemark(coordinates, {
+                            balloonContent: i, hintContent: i, clusterCaption: i}, {});
+                    } else {
+                        myPlacemark = new ymaps.Placemark(coordinates, {
+                            balloonContent: i, hintContent: i, iconContent: 'point', clusterCaption: 'point ' + i}, {preset: 'islands#greenStretchyIcon'});
+                    }
+                    placemarks.push(myPlacemark);
+                }
+                return placemarks;
+            }
+
+            function getRandomCoordinates(bounds) {
+                var size = [bounds[1][0] - bounds[0][0], bounds[1][1] - bounds[0][1]];
+                return [Math.random() * size[0] + bounds[0][0], Math.random() * size[1] + bounds[0][1]];
+            }
+
+        }
+    </script>
+</head>
+
+<body style="position: relative; padding: 0; margin: 0;">
+  <div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+
+</html>

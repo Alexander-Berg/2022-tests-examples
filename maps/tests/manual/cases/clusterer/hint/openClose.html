@@ -1,0 +1,145 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Кластер: открытие и закрытие хинта с отловом 
+
+Description:
+Проверка открытия и пропадания хинта на метках и соответствие логов.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components:
+clusterer
+
+Estimated time:
+120000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан Москвы с множеством меток коллекций, также могут быть метки кластеров.
+  Снизу справа имеется кнопка "clear log".
+
+Step:
+  Action:
+  Поочередно навести курсор на 5 меток коллекции.
+
+  Expectation:
+  При наведении на метку ховер курсор меняется на палец.
+  При наведении на метку появляется хинт с номером метки.
+  При наведении на метку под контейнером с картой появляется текст: hintopen, target: [object Object].
+  При переводе курсора вне области метки под контейнером с картой появляется текст: hintclose, target: [object Object].
+
+Step:
+  Action:
+  Выполнить клик в кнопку "clear log".
+
+  Expectation:
+  Текст под контейнером с картой пропадает.
+
+Step:
+  Action:
+  Скролом мыши выполнить отзум карты на одно значение.
+
+  Expectation:
+  Происходит корректный отзум карты. Метки коллекций объединяются в кластерные метки.
+
+Step:
+  Action:
+  Поочередно навести курсор на 5 меток кластеров.
+
+  Expectation:
+  При наведении на метку ховер курсор меняется на палец.
+  При наведении на метку появляется хинт в виде маленького прямоугольного пустого окна.
+  При наведении на метку под контейнером с картой появляется текст: hintopen, target: [object Object].
+  При переводе курсора вне области метки под контейнером с картой появляется текст: hintclose, target: [object Object].
+
+Step:
+  Action:
+  Скролом мыши выполнить максимальный отзум карты.
+
+  Expectation:
+  Происходит корректный отзум карты. На спане карта мира с одной кластерной меткой со значением кластеризации "200".
+
+Step:
+  Action:
+  Навести курсор на кластерную метку, затем на спан карты вне области метки.
+
+  Expectation:
+  При наведении на метку ховер курсор меняется на палец.
+  При наведении на метку появляется хинт в виде маленького прямоугольного пустого окна.
+  При наведении на метку под контейнером с картой появляется текст: hintopen, target: [object Object].
+  При переводе курсора вне области метки под контейнером с картой появляется текст: hintclose, target: [object Object].
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 10,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+
+            var clusterer = new ymaps.Clusterer({disableClickZoom: true, clusterHasHint: true, clusterOpenEmptyHint: true, minClusterSize: 7});
+            var placemarksNumber = 200;
+            var bounds = map.getBounds();
+            var newPlacemarks = createGeoObjects(placemarksNumber, bounds);
+            clusterer.add(newPlacemarks);
+            map.geoObjects.add(clusterer);
+
+
+            clusterer.events.add(['hintopen', 'hintclose'], function (e) {
+                __log__(e.get('type') + ", target: " + e.get('target'));
+                console.log(e.get('target'))
+            });
+            var clearButton = new ymaps.control.Button({data: {content: 'clear log'}, options: {selectOnClick: false}});
+            clearButton.events.add('click', function () {
+                log.clear();
+            });
+            map.controls
+                    .add(clearButton, {float: 'none', position: {bottom: 25, right: 10}});
+
+            function createGeoObjects(number, bounds) {
+                var placemarks = [];
+                // Создаем нужное количество меток
+                for (var i = 0; i < number; i++) {
+                    // Генерируем координаты метки случайным образом.
+                    var coordinates = getRandomCoordinates(bounds);
+                    // Создаем метку со случайными координатами.
+                    var myPlacemark = new ymaps.Placemark(coordinates, {
+                        balloonContent: i, hintContent: i, clusterCaption: i}, {});
+                    placemarks.push(myPlacemark);
+                }
+                return placemarks;
+            }
+
+            function getRandomCoordinates(bounds) {
+                var size = [bounds[1][0] - bounds[0][0], bounds[1][1] - bounds[0][1]];
+                return [Math.random() * size[0] + bounds[0][0], Math.random() * size[1] + bounds[0][1]];
+            }
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

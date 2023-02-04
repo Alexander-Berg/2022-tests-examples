@@ -1,0 +1,203 @@
+<!DOCTYPE HTML>
+<!--(skip)(description)
+
+-->
+<!--(version)
+
+-->
+<!--(commands)
+
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script src="../../../js/objectSource.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var map = myMap = new ymaps.Map('map', {
+                center: [55.716901946294286, 37.30336807048247],
+                zoom: 15,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+            objectManagerSource(ym, myMap, this);
+            var objectManager = new ym.ObjectManager();
+            var placemarksNumber = 100;
+            var bounds = map.getBounds();
+            var newPlacemarks = createGeoObjects(placemarksNumber, bounds);
+            __log__("При загрузке должен вывестись весь перечень добавленных объектов");
+
+            var events = ['add', 'objectoptionschange', 'optionschange', 'remove'];
+            var domevents = ['click', 'contextmenu', 'dblclick', 'mousedown', 'mouseenter', 'mouseleave', 'mouseup', 'multitouchend',
+                'multitouchstart', 'wheel'];
+            var moveevents = ['mousemove', 'multitouchmove'];
+            var callback1 = function (e) {
+                __log__(e.get('type'))
+            };
+            var callback2 = function (e) {
+                if (e.get('type') == 'add' || e.get('type') == 'remove') {
+                    __log__(e.get('type') + ', id: ' + e.get('objectId'));
+                    console.log(e.get('child'))
+                } else if (e.get('type') == 'clusteroptionschange') {
+                    __log__(e.get('type') + ', id: ' + e.get('objectId'))
+                } else {
+                    __log__(e.get('type'));
+                }
+            };
+
+
+            objectManager.objects.events.add(events, callback2);
+            objectManager.objects.events.add(domevents, callback1);
+
+            map.geoObjects.add(objectManager);
+            objectManager.objects.add(newPlacemarks);
+            objectManager.objects.add(objectManagerArrayNonPointObjects);
+            objectManager.objects.add(objectManagerCollectionNonPointObjects);
+            objectManager.objects.add(objectManagerPolygon);
+            objectManager.objects.add(objectManagerPolyline);
+            objectManager.objects.add(objectManagerCircle);
+            objectManager.objects.add(objectManagerRectangle);
+
+            var listenerButton = new ymaps.control.Button({data: {content: 'ignore'}, options: {selectOnClick: true}});
+            var optionButton = new ymaps.control.Button({data: {content: 'option'}, options: {selectOnClick: true}});
+            var removeButton = new ymaps.control.Button({data: {content: 'remove'}, options: {selectOnClick: true}});
+            var removeObjectsButton = new ymaps.control.Button({data: {content: 'removeObj'}, options: {selectOnClick: true}});
+            var freezeButton = new ymaps.control.Button({data: {content: 'freeze'}, options: {selectOnClick: true}});
+            var domButton = new ymaps.control.Button({data: {content: 'DOM'}, options: {selectOnClick: true}});
+            var moveButton = new ymaps.control.Button({data: {content: 'move'}, options: {selectOnClick: true}});
+            var clearButton = new ymaps.control.Button({data: {content: 'clear log'}, options: {selectOnClick: false}});
+
+            listenerButton.events
+                    .add('select', function () {
+                        log.info('Events will be ignored.');
+                        objectManager.objects.events.remove(events, callback2);
+                    })
+                    .add('deselect', function () {
+                        log.info('Waiting for events...');
+                        objectManager.objects.events.add(events, callback2);
+                    });
+
+            optionButton.events
+                    .add('select', function () {
+                        objectManager.objects.each(function (obj) {
+                            objectManager.objects.setObjectOptions(obj.id, {preset: 'islands#redIcon', fillColor: "#00ff00"})
+                        })
+                    })
+                    .add('deselect', function () {
+                        objectManager.objects.each(function (obj) {
+                            objectManager.objects.setObjectOptions(obj.id, {preset: 'islands#greenIcon', fillColor: "#ffff00"})
+                        })
+                    });
+
+            removeButton.events
+                    .add('select', function () {
+                        map.geoObjects.remove(objectManager);
+                    })
+                    .add('deselect', function () {
+                        map.geoObjects.add(objectManager);
+                    });
+
+            removeObjectsButton.events
+                    .add('select', function () {
+                        objectManager.objects.removeAll();
+                    })
+                    .add('deselect', function () {
+                        objectManager.objects.add(newPlacemarks);
+                        objectManager.objects.add(objectManagerArrayNonPointObjects);
+                        objectManager.objects.add(objectManagerCollectionNonPointObjects);
+                        objectManager.objects.add(objectManagerPolygon);
+                        objectManager.objects.add(objectManagerPolyline);
+                        objectManager.objects.add(objectManagerCircle);
+                        objectManager.objects.add(objectManagerRectangle);
+                    });
+
+            freezeButton.events
+                    .add('select', function () {
+                        objectManager.objects.options.freeze();
+                    })
+                    .add('deselect', function () {
+                        objectManager.objects.options.unfreeze();
+                    });
+
+            domButton.events
+                    .add('deselect', function () {
+                        log.info('Waiting for DOM events...');
+                        objectManager.objects.events.add(domevents, callback1);
+                    })
+                    .add('select', function () {
+                        log.info('DOM events will be ignored.');
+                        objectManager.objects.events.remove(domevents, callback1);
+                    });
+
+            moveButton.events
+                    .add('select', function () {
+                        log.info('Waiting for move events...');
+                        objectManager.objects.events.add(moveevents, callback1);
+                    })
+                    .add('deselect', function () {
+                        log.info('Move events will be ignored.');
+                        objectManager.objects.events.remove(moveevents, callback1);
+                    });
+
+            clearButton.events.add('click', function () {
+                log.clear();
+            });
+
+            map.controls
+                    .add(listenerButton, {float: 'left'})
+                    .add(optionButton, {float: 'left'})
+                    .add(removeButton, {float: 'left'})
+                    .add(removeObjectsButton, {float: 'left'})
+                    .add(freezeButton, {float: 'none', position: {bottom: 55, right: 10}})
+                    .add(clearButton, {float: 'none', position: {bottom: 25, right: 10}})
+                    .add(moveButton, {float: 'left'})
+                    .add(domButton, {float: 'left'});
+
+            function createGeoObjects(number, bounds) {
+                var placemarks = [];
+                // Создаем нужное количество меток
+                for (var i = 0; i < number; i++) {
+                    // Генерируем координаты метки случайным образом.
+                    var coordinates = getRandomCoordinates(bounds);
+                    // Создаем метку со случайными координатами.
+                    var myPlacemark = {
+                        "type": "Feature",
+                        "id": 500 + i,
+                        "geometry": {
+                            "type": "Point",
+                            "coordinates": coordinates
+                        },
+                        "properties": {
+                            "balloonContent": i,
+                            "clusterCaption": i,
+                            "hintContent": i
+                        }
+                    };
+                    placemarks.push(myPlacemark);
+                }
+                return placemarks;
+            }
+
+            function getRandomCoordinates(bounds) {
+                var size = [bounds[1][0] - bounds[0][0], bounds[1][1] - bounds[0][1]];
+                return [Math.random() * size[0] + bounds[0][0], Math.random() * size[1] + bounds[0][1]];
+            }
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

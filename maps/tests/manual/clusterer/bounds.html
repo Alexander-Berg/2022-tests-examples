@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<!--
+Title:
+Кластеризация: границы объектов и кластеров
+
+Description:
+Проверка границ объектов и кластеров.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+regress
+
+Estimated time:
+90000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась корректно, на спане множество меток кластеров, меток коллекций.
+  Все объекты находятся в пределах красного прямоугольника, объекты кластеров выделены зеленой линией или прямоугольником.
+  Сверху слева кнопка "add points".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "add points".
+  
+  Expectation:
+  По клику на спане появляются еще метки коллекций и кластера.
+  Область выделения красного прямоугольника растягивается включая новые объекты, объекты кластеров выделены зеленой линией или прямоугольником.
+  В кнопке сверху значение "zoom out".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "zoom out".
+  
+  Expectation:
+  По клику происходит отзум спана карты, почти все метки кластеризуются в кластера.
+  Область выделения красного прямоугольника включет все объекты на карты, объекты кластеров выделены зеленой линией или прямоугольником.
+  Кнопка сверху пропадает.
+-->
+<html>
+<head>
+    <title>API 2.0</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <script src="../helper.js"></script>
+    <script type="text/javascript">
+        Api('init');
+        function init(ymaps) {
+            var myMap = new ymaps.Map('map', {
+                        center: [33.7610, -37.2654],
+                        zoom: 7
+                    }, {
+                        geoObjectFill: false,
+                        geoObjectStrokeWidth: 3,
+                        geoObjectStrokeColor: "#FF0000"
+                    }),
+                    mapBounds = myMap.getBounds(),
+                    dx = (mapBounds[1][1] - mapBounds[0][1]) / 10,
+                    dy = (mapBounds[1][0] - mapBounds[0][0]) / 10,
+                    points = [],
+                    collection = new ymaps.GeoObjectCollection(),
+                    clusterer = new ymaps.Clusterer({
+                        clusterDisableClickZoom: true,
+                        clusterOpenBalloonOnClick: false
+                    }),
+                    button = new ymaps.control.Button("add points"),
+                    i, j;
+            for (i = 1; i < 10; i++) {
+                for (j = 1; j < 10; j++) {
+                    points.push(new ymaps.Placemark([mapBounds[0][0] + dy * i, mapBounds[0][1] + dx * j]));
+                }
+            }
+            if (clusterer.getBounds) {
+                clusterer.events.add("add", function (e) {
+                    collection.removeAll();
+                    collection.add(new ymaps.Rectangle(clusterer.getBounds()));
+                    for (i = 0; i < points.length; i++) {
+                        var cluster = clusterer.getObjectState(points[i]).cluster;
+                        if (cluster) {
+                            collection.add(new ymaps.Rectangle(cluster.getBounds(), {}, {
+                                strokeColor: "#00FF00"
+                            }));
+                        }
+                    }
+                });
+            }
+            clusterer.add(points.slice(0, 50));
+            myMap.geoObjects.add(clusterer).add(collection);
+            myMap.controls.add(button);
+            button.events.once("select", function (e) {
+                clusterer.add(points.slice(50));
+                button.data.set({
+                    content: 'zoom out'
+                });
+            });
+            button.events.once("deselect", function (e) {
+                myMap.controls.remove(button);
+                myMap.setZoom (myMap.getZoom() - 1);
+            });
+            
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;">
+</div>
+<p><a href="https://tech.yandex.ru/maps/archive/doc/jsapi/2.0/ref/reference/Clusterer-docpage/" target="_blank">Docs</a></p>
+</body>
+</html>

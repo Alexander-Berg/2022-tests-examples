@@ -1,0 +1,58 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - lunatic174
+      groups:
+      - svc_ycsite_devops
+labels:
+  order: '100'
+config_mode: easy2
+---
+l7_upstream_macro:
+  version: 0.2.1
+  id: lpc-proxy-il
+  matcher:
+    or_:
+    - host_re: prepod.cloudil.co.il'
+    - host_re: preprod.cloudil.com'
+  headers:
+    - create:
+        target: 'Host'
+        value: 'yandex.com'
+        keep_existing: false
+  monitoring:
+    uuid: to-landing-page-constructor-il
+  rewrite:
+    - target: 'PATH'
+      pattern:
+        re: '/(.*)'
+      replacement: '/promo/cloudil/%1'
+  by_dc_scheme:
+    dc_balancer:
+      weights_section_id: bygeo
+      method: LOCAL_THEN_BY_DC_WEIGHT
+      attempt_all_dcs: true
+    dcs:
+      - name: man
+        backend_ids:
+          - lpc-proxy_man
+      - name: sas
+        backend_ids:
+          - lpc-proxy_sas
+      - name: vla
+        backend_ids:
+          - lpc-proxy_vla
+    balancer:
+      connect_timeout: 100ms
+      backend_timeout: 5s
+      attempts: 2
+      max_reattempts_share: 0.15
+      max_pessimized_endpoints_share: 0.2
+      fast_attempts: 2
+      retry_http_responses:
+        codes: [5xx]
+        on_last_failed_retry: PROXY_RESPONSE_AS_IS
+      retry_non_idempotent: false
+    on_error:
+      rst: true

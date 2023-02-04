@@ -1,0 +1,53 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - nanny-robot
+      - tender-bum
+      groups: []
+labels:
+  order: '99999999'
+---
+prefix_path_router_section:
+  route: ""
+  modules:
+    - report:
+        uuid: "default_route"
+        ranges: "default"
+    - balancer2:
+        attempts: 1
+        rr: {}
+        backends:
+          - name: default_route_any
+            weight: 240
+            modules:
+              - report:
+                  uuid: default_route_any
+                  ranges: "default"
+              - balancer2:
+                  attempts: 1
+                  rr: {}
+                  generated_proxy_backends:
+                    proxy_options:
+                      connect_timeout: 100ms
+                      backend_timeout: 2s
+                      keepalive_count: 0
+                      fail_on_5xx: true
+                    include_backends:
+                      type: BY_ID
+                      ids: [any_yandex_ru_80]
+          - name: default_route_devnull
+            weight: -1
+            modules:
+              - errordocument:
+                  status: 204
+                  content: ''
+        on_error:
+          modules:
+            - response_headers:
+                create_weak:
+                  Content-Type: text/html
+                  charset: utf-8
+            - errordocument:
+                status: 404
+                content: '<html><body>&nbsp;</body></html>'

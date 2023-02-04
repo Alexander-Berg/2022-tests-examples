@@ -1,0 +1,87 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - proller
+      groups: []
+labels:
+  order: '10000000'
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      host: 'dont-match-me.example.com'
+  modules:
+    - shared:
+        uuid: 'shared_http_adapter_dc_separated'
+    - balancer2:
+        attempts: 2
+        rr: {weights_file: ./controls/traffic_control.weights}
+        by_name_policy:
+            name: !f get_geo("bygeo_", "random")
+            allow_zero_weights: false
+            unique_policy: {}
+        backends:
+          - weight: 1
+            name: bygeo_man
+            modules:
+              - report: {uuid: shared-test, ranges: default}
+              - balancer2:
+                  attempts: 3
+                  attempts_rate_limiter:
+                    limit: 0.5
+                  rr: {}
+                  timeout_policy:
+                    timeout: 5s
+                    unique_policy: {}
+                  generated_proxy_backends:
+                    proxy_options:
+                      backend_timeout: 2500ms
+                      connect_timeout: 50ms
+                      keepalive_count: 1
+                    include_backends:
+                      type: BY_ID
+                      ids:
+                        - production_vh_http_adapter_man
+          - weight: 1
+            name: bygeo_vla
+            modules:
+              - report: {uuid: shared-test, ranges: default}
+              - balancer2:
+                  attempts: 3
+                  attempts_rate_limiter:
+                    limit: 0.5
+                  rr: {}
+                  timeout_policy:
+                    timeout: 5s
+                    unique_policy: {}
+                  generated_proxy_backends:
+                    proxy_options:
+                      backend_timeout: 2500ms
+                      connect_timeout: 50ms
+                      keepalive_count: 1
+                    include_backends:
+                      type: BY_ID
+                      ids:
+                        - production_vh_http_adapter_vla
+          - weight: 1
+            name: bygeo_sas
+            modules:
+              - report: {uuid: shared-test, ranges: default}
+              - balancer2:
+                  attempts: 3
+                  attempts_rate_limiter:
+                    limit: 0.5
+                  rr: {}
+                  timeout_policy:
+                    timeout: 5s
+                    unique_policy: {}
+                  generated_proxy_backends:
+                    proxy_options:
+                      backend_timeout: 2500ms
+                      connect_timeout: 50ms
+                      keepalive_count: 1
+                    include_backends:
+                      type: BY_ID
+                      ids:
+                        - production_vh_http_adapter_sas

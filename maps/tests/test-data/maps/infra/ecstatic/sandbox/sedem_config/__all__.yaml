@@ -1,0 +1,47 @@
+main:
+    name: ecstatic-reconfigurator
+    abc_service: maps-core-ecstatic-coordinator
+
+deploy:
+    type: sandbox
+    sandbox:
+        task_type: ECSTATIC_RECONFIGURATOR
+        owner: MAPS_GEOINFRA
+
+resources:
+    testing:
+        sandbox_templates:
+          - name: postcommit_testing
+        sandbox_schedulers:
+          - name: scheduler_testing
+            user: robot-maps-sandbox
+            description: Reconfigure ecstatic
+            user_tags: [my_shiny_tag]
+            schedule:
+                start_time: 2020-01-01T12:00:00Z
+                repetition_interval: 900  # secs
+            kill_timeout: 600  # 10 min
+            priority: SERVICE:HIGH
+            notifications:
+              - recipients: [geo-infra-notifications]
+                task_statuses: [BREAK, FAILURE]
+                scheduler_statuses: [DELETED, FAILURE]
+            semaphores:
+                acquires: [MAPS_CORE_ECSTATIC_RECONFIGURATOR_STABLE]
+                release_in_statuses: [BREAK, FINISH, WAIT]
+    stable:
+        sandbox_templates:
+          - name: postcommit_stable
+        sandbox_schedulers:
+          - name: scheduler_stable
+            user: robot-maps-sandbox
+
+filters:
+    alerts:
+      - filter:
+          staging: ".*_stable"
+        body:
+          notifications:
+            - type: telegram
+              login: ['maps-infra-chat']
+              status: [CRIT]

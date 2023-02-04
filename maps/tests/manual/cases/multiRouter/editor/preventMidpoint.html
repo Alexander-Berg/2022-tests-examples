@@ -1,0 +1,132 @@
+<!DOCTYPE HTML>
+<!--(skip)(description)
+
+-->
+<!--(version)
+
+-->
+<!--(commands)
+
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            //TODO: написать тест
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 10,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            addGrid(map);
+            var log = new Log();
+
+            __log__('default behavior prevented in all before* events (midpoint)')
+
+            var events = ['midpointadd', 'start', 'stop', 'beforemidpointadd',
+                'beforemidpointdrag', 'midpointdrag', 'midpointdragend'];
+
+            var callback = function (e) {
+                log.info('--------' + e.get('type') + '--------');
+                console.log('--------' + e.get('type') + '--------');
+                if ((e.get('type') == 'beforemidpointadd') ||
+                        (e.get('type') == 'beforemidpointdrag')) {
+                    e.preventDefault()
+                }
+                if (e.get('type') == 'beforemidpointdrag') {
+                    log.info('pixelOffset ' + e.get('pixelOffset'));
+                    console.log('pixelOffset ' + e.get('pixelOffset'))
+                }
+                if (e.get('type') == 'beforemidpointadd') {
+                    log.info('coords ' + e.get('coords'));
+                    console.log('coords ' + e.get('coords'));
+                    log.info('pointType ' + e.get('pointType'));
+                    console.log('pointType ' + e.get('pointType'));
+                    log.info('insertIndex ' + e.get('insertIndex'));
+                    console.log('insertIndex ' + e.get('insertIndex'));
+                }
+                if (e.get('type') == 'beforemidpointpinshow') {
+                    log.info('pin ' + e.get('pin'));
+                    console.log(e.get('pin'));
+                    log.info('globalPixels ' + e.get('globalPixels'));
+                    console.log('globalPixels ' + e.get('globalPixels'));
+                    log.info('segment ' + e.get('segment'));
+                    console.log(e.get('segment'));
+                }
+
+            };
+
+            var multiRoute = new ymaps.multiRouter.MultiRoute({
+                referencePoints: ['Москва, Ленинский проспект', 'москва, ,jkmifz zrbvfyrf','Кулаков переулок'],
+                params: {
+                    viaIndexes: [1]
+                }
+            }, {
+                boundsAutoApply: true
+            });
+
+            map.geoObjects.add(multiRoute);
+            multiRoute.editor.events.add(events, callback);
+            multiRoute.options.set('editorDrawOver', false)
+
+            var defaultButton = new ymaps.control.Button('default');
+            var drawOverButton = new ymaps.control.Button('drawOver');
+            var midTypeButton = new ymaps.control.Button('mid');
+            var clearButton = new ymaps.control.Button('clear');
+
+            defaultButton.events
+                    .add('select', function() {multiRoute.editor.start({
+                        addWayPoints: true,
+                        dragViaPoints: true,
+                        dragWayPoints: true,
+                        removeViaPoints: true,
+                        removeWayPoints: true,
+                        addMidPoints: true
+                    })})
+                    .add('deselect', function() {multiRoute.editor.stop()});
+
+            drawOverButton.events
+                    .add('select', function () {
+                        multiRoute.options.set('editorDrawOver', true)
+                    })
+                    .add('deselect', function () {
+                        multiRoute.options.set('editorDrawOver', false)
+                    });
+
+            midTypeButton.events
+                    .add('select', function () {
+                        multiRoute.editor.options.set('midPointsType', 'way')
+                    })
+                    .add('deselect', function () {
+                        multiRoute.editor.options.set('midPointsType', 'via')
+                    });
+
+            clearButton.events.add('click', function() {
+                log.clear()
+            });
+
+            map.controls
+                    .add(defaultButton)
+                    .add(drawOverButton, {float: 'none', position: {right: 10, bottom: 65}})
+                    .add(midTypeButton, {float: 'none', position: {right: 10, bottom: 95}})
+                    .add(clearButton, {float: 'none', position: {right: 10, bottom: 35}});
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

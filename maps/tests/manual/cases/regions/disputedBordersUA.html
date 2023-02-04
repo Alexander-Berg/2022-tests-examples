@@ -1,0 +1,206 @@
+<!doctype html>
+<!--
+Title:
+Регионы: спорные территории Украина
+
+Description:
+Проверка корректного отображения спорных территорий Украины.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components:
+regions
+
+Estimated time:
+60000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно со спаном Украины.
+  Сверху имеются кнопки "3", "2", "1", "0", "be", "en", "uk", "ru", "zoom", справа снизу кнопки "RU", "UA", "US".
+
+Step:
+  Action:
+  Выполнить клик в "RU".  
+
+  Expectation:
+  Украина выделяется полупрозрачным синим цветом, полуостров Крым не выделен.
+
+Step:
+  Action:
+  Выполнить клик в "UA".
+
+  Expectation:
+  К выделенной территории Украины добавляется выделение полуострова Крым.
+
+Step:
+  Action:
+  Выполнить клик в "US".
+
+  Expectation:
+  Выделение полуострова Крым в составе Украины пропадает.
+-->
+<html>
+<head>
+    <title>API 2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../helper.js"></script>
+    <script type="text/javascript">
+        Api('init');
+        function init(ymaps) {
+            ymaps = ym;
+
+            //TODO: переписать для 2.1
+
+            ym.load(['regions'], function () {
+
+                var country = 'UA';
+
+                var ru = new ym.control.Button('ru');
+                var uk = new ym.control.Button('uk');
+                var en = new ym.control.Button('en');
+                var be = new ym.control.Button('be');
+
+                var zero = new ym.control.Button('0');
+                var one = new ym.control.Button('1');
+                var two = new ym.control.Button('2');
+                var three = new ym.control.Button('3');
+
+                var ruBorder = new ym.control.Button('RU');
+                var uaBorder = new ym.control.Button('UA');
+                var usBorder = new ym.control.Button('US');
+
+                var zoom = new ym.control.Button('zoom');
+
+                var map = myMap = new ym.Map('map', {
+                    center: [48.68287504344256, 30.908770005666025],
+                    zoom: 5,
+                    behaviors: ['default', 'scrollZoom'],
+                    controls: []
+                }), lang = 'ru', quality = 0, disputedBorders = 'RU', collection = new ym.GeoObjectCollection();
+
+                var regions = function () {
+                    ym.regions.load(country, {
+                        lang: lang,
+                        quality: quality,
+                        disputedBorders: disputedBorders
+                    }).then(function (result) {
+                        collection.removeAll();
+                        collection.add(result.geoObjects);
+                    });
+                };
+
+                addGrid(map);
+                var log = new Log();
+                __log__("Спорные территории для Украины: Крым");
+                zero.events.add('select', function (e) {
+                    quality = parseInt(e.get('target').data.get('content'));
+                    regions();
+                    setTimeout(function () {
+                        collection.each(function (obj) {
+                            log.info(obj.properties.get('quality'))
+                        })
+                    }, 1000)
+                });
+
+                one.events.add('select', function (e) {
+                    quality = parseInt(e.get('target').data.get('content'));
+                    regions();
+                    setTimeout(function () {
+                        collection.each(function (obj) {
+                            log.info(obj.properties.get('quality'))
+                        })
+                    }, 1000)
+                });
+
+                two.events.add('select', function (e) {
+                    quality = parseInt(e.get('target').data.get('content'));
+                    regions();
+                    setTimeout(function () {
+                        collection.each(function (obj) {
+                            log.info(obj.properties.get('quality'))
+                        })
+                    }, 1000)
+                });
+
+                three.events.add('select', function (e) {
+                    quality = parseInt(e.get('target').data.get('content'));
+                    regions();
+                    setTimeout(function () {
+                        collection.each(function (obj) {
+                            log.info(obj.properties.get('quality'))
+                        })
+                    }, 1000)
+                });
+
+                ru.events.add('select', function (e) {
+                    lang = e.get('target').data.get('content');
+                    regions();
+                });
+
+                en.events.add('select', function (e) {
+                    lang = e.get('target').data.get('content');
+                    regions();
+                });
+
+                uk.events.add('select', function (e) {
+                    lang = e.get('target').data.get('content');
+                    regions();
+                });
+
+                be.events.add('select', function (e) {
+                    lang = e.get('target').data.get('content');
+                    regions();
+                });
+
+                ruBorder.events.add('select', function (e) {
+                    disputedBorders = e.get('target').data.get('content');
+                    regions();
+                });
+
+                uaBorder.events.add('select', function (e) {
+                    disputedBorders = e.get('target').data.get('content');
+                    regions();
+                });
+
+                usBorder.events.add('select', function (e) {
+                    disputedBorders = e.get('target').data.get('content');
+                    regions();
+                });
+
+                zoom.events.add('click', function (e) {
+                    map.setCenter([68.516562, 59.571487], 9)
+                });
+
+                map.controls
+                        .add(zoom)
+                        .add(ru)
+                        .add(uk)
+                        .add(en)
+                        .add(be)
+                        .add(zero)
+                        .add(one)
+                        .add(two)
+                        .add(three)
+                        .add(ruBorder, {position: {bottom: 95, right: 5}})
+                        .add(uaBorder, {position: {bottom: 65, right: 5}})
+                        .add(usBorder, {position: {bottom: 35, right: 5}})
+                        .add('zoomControl');
+                map.geoObjects.add(collection);
+
+            });
+        }
+
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;">
+</div>
+</body>
+</html>

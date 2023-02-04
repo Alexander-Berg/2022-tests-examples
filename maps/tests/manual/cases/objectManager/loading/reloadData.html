@@ -1,0 +1,111 @@
+<!DOCTYPE HTML>
+<!--(skip)(description)
+
+-->
+<!--(version)
+
+-->
+<!--(commands)
+
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var center = [56, 34];
+            var map = myMap = new ymaps.Map('map', {
+                center: center,
+                zoom: 6,
+                type: 'yandex#map',
+                controls: ['fullscreenControl', 'typeSelector']
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+            log.info('Server: apps/loadingServerFilterWithoutNonPoint.js, port: 4785');
+            log.info('Server: apps/loadingServerFilter.js, port: 4783');
+
+            var loadingObjectManager = new ymaps.LoadingObjectManager('https://alexa.maps.dev.yandex.ru:4785/?bbox=%b', {
+                paddingTemplate: 'managerResponse_bbox_%b',
+                splitRequests: true
+            });
+            map.geoObjects.add(loadingObjectManager);
+
+            setTimeout(function () {
+                loadingObjectManager.objects.balloon.open(365);
+            }, 1000);
+
+            var reloadButton = new ymaps.control.Button({data: {content: 'reload'}, options: {selectOnClick: false}});
+            var hintBalloonButton = new ymaps.control.Button({data: {content: 'hintBalloon'}, options: {selectOnClick: false}});
+            var addRemoveButton = new ymaps.control.Button({data: {content: 'addRemove'}, options: {selectOnClick: true}});
+            var checkObjectButton = new ymaps.control.Button({data: {content: 'check'}, options: {selectOnClick: true}});
+            var addRemove2Button = new ymaps.control.Button({data: {content: 'addRemove2'}, options: {selectOnClick: false}});
+            var setUrlButton = new ymaps.control.Button({data: {content: 'setUrl'}, options: {selectOnClick: true}});
+
+            setUrlButton.events
+                    .add('select', function () {
+                        loadingObjectManager.setUrlTemplate('https://alexa.maps.dev.yandex.ru:4783/?bbox=%b');
+                    })
+                    .add('deselect', function () {
+                        loadingObjectManager.setUrlTemplate('https://alexa.maps.dev.yandex.ru:4785/?bbox=%b');
+                    });
+
+            reloadButton.events
+                    .add('click', function () {
+                        loadingObjectManager.reloadData();
+                    });
+
+
+            hintBalloonButton.events.add('click', function () {
+                loadingObjectManager.objects.balloon.open(200).then(function () {
+                    loadingObjectManager.setUrlTemplate(((loadingObjectManager.getUrlTemplate() == 'https://alexa.maps.dev.yandex.ru:4785/?bbox=%b') ? 'https://alexa.maps.dev.yandex.ru:4783/?bbox=%b' : 'https://alexa.maps.dev.yandex.ru:4785/?bbox=%b'));
+                    loadingObjectManager.reloadData();
+                });
+                loadingObjectManager.objects.hint.open(68);
+            });
+
+            addRemoveButton.events.add('deselect', function () {
+                map.geoObjects.add(loadingObjectManager);
+            })
+                    .add('select', function () {
+                        map.geoObjects.remove(loadingObjectManager);
+                    });
+
+            addRemove2Button.events.add('click', function () {
+                loadingObjectManager.objects.removeAll();
+            });
+
+            checkObjectButton.events
+                    .add('click', function () {
+                        var count = 0;
+                        loadingObjectManager.objects.each(function (obj) {
+                                    count++;
+                                }
+                        );
+                        __log__(count);
+                    });
+
+            map.controls
+                    .add(reloadButton)
+                    .add(addRemoveButton)
+                    .add(addRemove2Button)
+                    .add(hintBalloonButton)
+                    .add(checkObjectButton)
+                    .add(setUrlButton);
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

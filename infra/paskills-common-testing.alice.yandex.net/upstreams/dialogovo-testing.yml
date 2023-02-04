@@ -1,0 +1,60 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - pazus
+      groups: []
+labels:
+  order: '10000000'
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      path: '/dialogovo-testing/.*'
+  modules:
+    - rewrite:
+        actions:
+          - regexp: '/dialogovo-testing/'
+            rewrite: '/'
+            split: url
+    - balancer2:
+        connection_attempts: 2
+        attempts: 2
+        rr: {}
+        timeout_policy:
+          timeout: 3500ms
+          by_name_policy:
+            name: !f get_geo("dialogovo_", "random")
+            unique_policy: {}
+        backends:
+          - weight: 1
+            name: dialogovo_testing
+            modules:
+              - report: {ranges: "500ms,1000ms,2000ms,3000ms,4000ms,4500ms,5s,10s", uuid: dialogovo_priemka}
+              - balancer2:
+                  attempts: 3
+                  attempts_rate_limiter:
+                    limit: 0.3    
+                  fast_attempts: !f count_backends_sd()
+                  fast_503: true
+                  unique_policy: {}
+                  weighted2:
+                    slow_reply_time: 2s
+                    min_weight: 0.3
+                    max_weight: 3.0
+                    plus_diff_per_sec: 0.1
+                    minus_diff_per_sec: 0.1
+                    history_time: 30s
+                    feedback_time: 90s
+                  generated_proxy_backends:
+                    proxy_options: 
+                      backend_timeout: 3500ms
+                      connect_timeout: 60ms
+                      fail_on_5xx: true
+                    include_backends:
+                      type: BY_ID
+                      ids: [dialogovo-testing]
+        on_error:
+          errordocument:
+            status: 504
+            content: "Service unavailable"

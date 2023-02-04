@@ -1,0 +1,388 @@
+#-*- coding: utf-8 -*-
+
+import xmlrpclib
+import pprint
+import webbrowser
+import os
+import subprocess
+import datetime
+from datetime import date
+import sqlalchemy
+import urlparse
+import pickle
+import proxy_provider
+
+def Print(obj):
+    print pprint.pformat(obj).decode('unicode_escape')
+
+host = 'greed-tm1f'
+##host = 'greed-ts1f'
+##host = 'greed-load2e'
+
+rpc = proxy_provider.GetServiceProxy(host, 0)
+test_rpc = proxy_provider.GetServiceProxy(host, 1)
+
+## Для приведения формата даты
+sql_date_format = "%d.%m.%Y %H:%M:%S"
+
+def create_client(client_params):
+    ## Параметры "по-умолчанию"
+    client_params_defaults = {
+        'EMAIL': 'client@in-fo.ru',
+        'FAX': '5408410',
+        'IS_AGENCY': 0,
+        'NAME': u'Test',
+        'PHONE': '911',
+        'URL': 'www.qwerty.ru'
+    }
+    params = client_params_defaults.copy()
+    ## Если при вызове переданы набор параметров,
+    ## он переопределяет соответствующие значения "по-умолчанию"
+    if client_params:
+        params.update(client_params)
+
+    code, status, client_id = rpc.Balance.CreateClient(16571028, params)
+
+    if params['IS_AGENCY'] == 1:
+        print 'Agency_id: %d' % (client_id)
+    else: print 'Client_id: %d' % (client_id)
+    return client_id
+
+def link_client_uid (client_id, uid):
+    id_uid = test_rpc.ExecuteSQL('balance', 'balance', 'select PASSPORT_ID from T_ACCOUNT where LOGIN = :uid', {'uid': uid})[0]['passport_id']
+    test_rpc.ExecuteSQL('balance', 'update (select * from T_ACCOUNT where PASSPORT_ID = :id_uid ) set client_id = :client_id', {'id_uid': id_uid, 'client_id': client_id })
+    print '%s linked to %s' % (uid, client_id)
+
+def get_next_service_order_id (service_id):
+    if service_id == 7:
+        seq_name = 'S_TEST_SERVICE_ORDER_ID_7'
+    elif service_id == 116:
+        seq_name = 'S_TEST_SERVICE_ORDER_ID_116'
+    else: seq_name = 'S_TEST_SERVICE_ORDER_ID'
+
+    service_order_id = test_rpc.ExecuteSQL('balance', 'balance', 'select '+seq_name+'.nextval from dual')[0]['nextval']
+    print 'Service_order_id: %d' % (service_order_id)
+    return service_order_id
+
+def create_or_update_order (client_id, product_id, service_id, service_order_id, params = None, agency_id = None, manager_uid = None):
+    ## Параметры "по-умолчанию":
+    order_params_defaults = {
+        'TEXT': 'Py_Test order',
+        'GroupServiceOrderID': -1,
+        'GroupWithoutTransfer': 1,
+    }
+    ## Собираем обязательные переданные пользователем параметры в словарь:
+    main_params = {
+        'ClientID': client_id,
+        'ProductID' : product_id,
+        'ServiceID' : service_id,
+        'ServiceOrderID' : service_order_id
+    }
+    ## Дополняем словарь необязательными параметрами, если они переданы
+    if agency_id: main_params.update({'AgencyID': agency_id})
+    if manager_uid: main_params.update({'ManagerUID': manager_uid})
+    ## Последовательно применяем параметры:
+    ## order_params <- по-умолчанию <- переданные <- переданные обязательные
+    order_params = {}
+    order_params.update(order_params_defaults)
+    order_params.update(params)
+    order_params.update(main_params)
+
+    rpc.Balance.CreateOrUpdateOrdersBatch(16571028,[order_params])
+    order_id = test_rpc.ExecuteSQL('balance', 'balance', 'select max(id) from T_ORDER where CLIENT_ID = :client_id' , {'client_id': client_id })[0]['MAX(ID)']
+    print 'Order: %d' % order_id
+    return order_id
+
+def create_request (client_id, orders_list, invoice_dt = None):
+    ##req = rpc.Balance.CreateRequest(16571028, client_id, [{'Qty': qty, 'ServiceID': service_id,
+    ##                                        'ServiceOrderID': service_order_id, 'BeginDT':requestDate}],{})
+    req = rpc.Balance.CreateRequest(16571028, client_id, orders_list, {})
+    request_id = test_rpc.ExecuteSQL('balance', 'select max(id) from T_REQUEST where CLIENT_ID = :client_id' , {'client_id': client_id })[0]['MAX(ID)']
+    if invoice_dt:
+        test_rpc.ExecuteSQL('balance', 'update (select * from T_REQUEST where ID = :request_id ) set INVOICE_DT = to_date(:invoice_dt,\'DD.MM.YYYY HH24:MI:SS\')',
+         {'request_id': request_id, 'invoice_dt': invoice_dt.strftime(sql_date_format)})
+    print 'Request: %s' % (req[3])
+    return request_id
+
+def create_invoice (request_id, person_id, paysys_id, credit=0, contract_id=0):
+    if credit == 1:
+        invoice_id = rpc.Balance.CreateInvoice(16571028,{'PaysysID': paysys_id, 'PersonID': person_id, 'RequestID': request_id, 'Credit': 1, 'ContractID': contract_id})
+    else: invoice_id = rpc.Balance.CreateInvoice(16571028,{'PaysysID': paysys_id, 'PersonID': person_id, 'RequestID': request_id})
+    print 'Invoice: https://balance-admin.greed-tm1f.yandex.ru/invoice.xml?invoice_id=' + str(invoice_id)
+    query = "select external_id, total_sum, consume_sum from t_invoice where id = :invoice_id"
+    external_id = test_rpc.ExecuteSQL('balance', query, {'invoice_id':invoice_id})[0]['external_id']
+    return invoice_id
+
+def create_force_invoice (client_id, person_id, campaigns_list, paysys_id, invoice_dt=None, agency_id=None, credit=0, contract_id=0, manager_uid = None):
+    ## Владелец заказа: клиент
+    order_owner = client_id
+    ## Владелец счёта: агентство, если передано
+    if agency_id:
+        invoice_owner = agency_id
+    else: invoice_owner = client_id
+
+    service_order_id = []
+    order_id = []
+    orders_list = []
+    print '------ Orders list: ------'
+    ## Проходим цикл столько раз, сколько словарей-заказов передано в campaigns_list
+    for i in [x for x in xrange(len(campaigns_list))]:
+        ## Сперва создаём заказы
+        service_order_id.append(get_next_service_order_id(campaigns_list[i]['service_id']))
+        order_id.append(
+            create_or_update_order (order_owner,
+                                    product_id = campaigns_list[i]['product_id'],
+                                    service_id = campaigns_list[i]['service_id'],
+                                    service_order_id = service_order_id[i],
+                                    params = {'TEXT':'Py_order_for_full_invoice'},
+                                    agency_id = agency_id,
+                                    manager_uid = manager_uid
+            )
+        )
+        ## Затем добавляем их в список для реквеста
+        orders_list.append({'ServiceID': campaigns_list[i]['service_id'],
+                            'ServiceOrderID': service_order_id[i],
+                            'Qty': campaigns_list[i]['qty'],
+                            'BeginDT': campaigns_list[i]['begin_dt']}
+                            )
+    request_id = create_request (invoice_owner, orders_list, invoice_dt)
+    if credit == 1:
+        invoice_id = create_invoice (request_id, person_id, paysys_id, credit=1, contract_id=contract_id)
+    else: invoice_id = create_invoice (request_id, person_id, paysys_id)
+    ## Добавляем в order_list продукт, чтобы вернуть из метода полную информацию о результате выполнения
+    for i in [x for x in xrange(len(campaigns_list))]:
+        orders_list[i].update({'ProductID': campaigns_list[i]['product_id']})
+    print orders_list
+    return invoice_id, orders_list
+
+def OEBS_payment (invoice_id, payment_sum = None, payment_date = None):
+    query = "select external_id, total_sum, consume_sum from t_invoice where id = :invoice_id"
+    external_id = test_rpc.ExecuteSQL('balance', query, {'invoice_id':invoice_id})[0]['external_id']
+    total_sum = test_rpc.ExecuteSQL('balance', query, {'invoice_id':invoice_id})[0]['total_sum']
+    ## Если передана сумма, то оплата на неё, если нет, то на полную сумму счёта
+    if payment_sum:
+        p_sum = payment_sum
+    else: p_sum = total_sum
+    ## Если передана дата, то оплата этой датой, если нет, то sysdate
+    if payment_date:
+        p_date = payment_date
+    else: p_date = datetime.datetime.today()
+    test_rpc.ExecuteSQL('balance', 'insert into t_correction_payment (dt, doc_date, sum, memo, invoice_eid) values (to_date(:paymentDate,'+
+        '\'DD.MM.YYYY HH24:MI:SS\'),to_date(:paymentDate,\'DD.MM.YYYY HH24:MI:SS\'),:total_sum,\'Testing\',:external_id)',
+        {'paymentDate':p_date.strftime(sql_date_format),'total_sum': p_sum,'external_id':external_id})
+    test_rpc.TestBalance.OEBSPayment(invoice_id)
+    print 'Invoice %s (%d) received payment %d' % (external_id, invoice_id, p_sum)
+    return 1
+
+def do_campaigns (service_id, service_order_id, campaigns_params, do_stop = 0, campaigns_dt = None):
+    ## Формируем словарик параметров "по-умолчанию" со значениями 0
+    campaigns_defaults = dict.fromkeys(['Bucks', 'Shows', 'Clicks', 'Units', 'Days', 'Money'], 0)
+    ## params <- параметры "по-умолчанию" <- переданные обязательные параметры
+    params = campaigns_defaults.copy()
+    params.update(campaigns_params)
+    params.update({'service_id': service_id, 'service_order_id': service_order_id, 'do_stop': do_stop})
+    ## Если передана дата, то открутки этой датой, если нет, то sysdate
+    if campaigns_dt:
+        test_rpc.TestBalance.OldCampaigns(params, campaigns_dt)
+    else: test_rpc.TestBalance.Campaigns(params)
+    print '%d-%d: completed %d Bucks, %d Money' % (service_id, service_order_id, params['Bucks'], params['Money'])
+    return 1
+
+def create_act (invoice_id, act_dt = None):
+    if act_dt:
+        act_id = test_rpc.TestBalance.OldAct(invoice_id, act_dt)
+    else: act_id = test_rpc.TestBalance.Act(invoice_id)
+    print 'Act_id: %d' % act_id[0]
+
+def act_accounter (client_id, force, date):
+    ## В тестовом серванте метод ActAccounter вызывает внутренний метод act_accounter
+    ## Правильно называть так, так как CUtAgava только частный случай генерации актов
+    test_rpc.TestBalance.ActAccounter(client_id, force, date)
+    print 'Acts generated'
+
+def get_overdraft(is_money, service_order_id, invoice_id, service_id, client_id, limit):
+
+    (year, month) = divmod(date.today().month, 12)
+
+    money_first = 0
+    money_q = 0
+    bucks_first = 0
+    bucks_q = 0
+    limit_new = (limit*12) + 10
+
+    if is_money == 1:
+            money_first = 10
+
+    if is_money == 0:
+            bucks_first = 10
+
+    test_rpc.TestBalance.OldCampaigns({'Money':money_first,'Bucks': bucks_first, 'stop': '0', 'service_id': service_id, 'service_order_id': service_order_id},date.today().replace(year=date.today().year+year, month=month-6).strftime("%Y-%m-%d"))
+    test_rpc.TestBalance.OldAct(invoice_id, date.today().replace(year=date.today().year+year, month=month-6).strftime("%Y-%m-%d"))
+
+    for i in [4,3,2,1]:
+
+        if is_money == 1:
+            money_q = limit_new/i
+
+        if is_money == 0:
+            bucks_q = limit_new/i
+
+        test_rpc.TestBalance.OldCampaigns({'Money':money_q,'Bucks': bucks_q, 'stop': '0', 'service_id': service_id, 'service_order_id': service_order_id},date.today().replace(year=date.today().year+year, month=month-i).strftime("%Y-%m-%d"))
+        test_rpc.TestBalance.OldAct(invoice_id, date.today().replace(year=date.today().year+year, month=month-i).strftime("%Y-%m-%d"))
+
+    test_rpc.TestBalance.CalculateOverdraft ([client_id])
+    print 'get_overdraft complete'
+
+def merge_clients (master_client_id, slave_client_id):
+    test_rpc.TestBalance.MergeClients(16571028, master_client_id, slave_client_id)
+    print 'Clients %d <- %d merged' % (master_client_id, slave_client_id)
+
+def turn_on (invoice_id, sum = None):
+    if sum:
+        test_rpc.TestBalance.TurnOn({'invoice_id': invoice_id, 'sum': sum})
+        print 'Invoice %d is turned on %d' % (invoice_id, sum)
+    else:
+        test_rpc.TestBalance.TurnOn({'invoice_id': invoice_id})
+        print 'Invoice %d is turned on full sum' % invoice_id
+
+def hide_act (act_id):
+    test_rpc.TestBalance.HideAct(act_id)
+    print 'Act %d hidden' % act_id
+
+def unhide_act (act_id):
+    test_rpc.TestBalance.UnideAct(act_id)
+    print 'Act %d unhidden' % act_id
+
+##------------------------------------------------------------------------------
+def create_person(client_id, type_, params=None):
+    ## Переданные обязательные параметры
+    main_params = {
+        'client_id': client_id,
+        'type'     : type_
+    }
+    ## Обязательные параметры зависящие от переданного типа
+    defaults_by_type = {
+                        'ur': {'name': 'PyTest Org', ## Юр.лицо РФ
+                               'phone': '+7 905 1234567',
+                               'email': 'test-balance-notify@yandex-team.ru',
+                               'postcode': '123456',
+                               'postaddress': 'Python street, 42',
+                               'inn': '7719246912',
+                               'longname': 'PyTest Organization ООО',
+                               'legaladdress': 'Python street, 42',
+                               'person_id': 0},
+                        'ur2': {'name': 'PyTest Org',
+                                'phone': '+7 812 9999999',
+                                ##'fax': '+7 812 9999999',
+                                'email': 'pytestorg@yandex.ru',
+                                ##'representative': 'Hf', ## Контактное лицо
+
+                                'address': 'Python street, 42',
+                                ##'authority-doc-details': 'WY',
+                                ##'authority-doc-type': u'\u041f\u043e\u043b\u043e\u0436\u0435\u043d\u0438\u0435 \u043e \u0444\u0438\u043b\u0438\u0430\u043b\u0435',
+                                ##'bik': '044030723',
+                                ##'delivery-city': 'KZN',
+                                ##'delivery-type': '4',
+                                'account': '40702810574605466942',
+                                'inn': '7719246912',
+                                ##'invalid-address': '1',
+                                 ##'kpp': '7243',
+                                'legaladdress': 'Python street, 42',
+                                'live-signature': '1',
+                                'longname': 'PyTest Organization ООО',
+                                'person_id': 0,
+                                'postaddress': 'Python street, 42',
+                                'postcode': '191025'
+                                ##'s_signer-position-name': 'President',
+                                ##'signer-person-gender': 'W',
+                                ##'signer-person-name': 'Signer aZzy',
+                                ##'type': 'ur'
+                                ##'vip': '1'
+                             },
+                        'yt': { 'delivery-city': 'KIV',
+                                'invalid-address': '0',
+                                's_signer-position-name': '',
+                                'live-signature': '0',
+                                'authority-doc-type': u'\u041f\u0440\u0438\u043a\u0430\u0437',
+                                'authority-doc-details': 'u',
+                                'person_id': 0,
+                                'email': 'xTW9@fOJz.XcJ',
+                                'signer-person-name': 'Signer O',
+                                'fax': '+7 812 1549970',
+                                'phone': '+7 812 5389048',
+                                'representative': 'B',
+                                'signer-person-gender': 'X',
+                                'address': u'\u0423\u043b\u0438\u0446\u0430 4',
+                                'bank': 'Bank GFa',
+                                'account': '249322',
+                                'name': 'YT_MTL',
+                                'region': '21326',
+                                'vip': '1',
+                                'delivery-type': '1',
+                                'longname': '000 sGjma',
+                                'legaladdress': 'Avenue 4'},
+                        'ph': {'phone': '+7 905 1234567', ## Физ.лицо РФ
+                               'email': 'testagpi2@yandex.ru',
+                               'person_id': 0},
+                        'pu': {'phone': '+7 905 1234567', ## Юр.лицо РФ
+                               'email': 'testagpi2@yandex.ru',
+                               'inn': '245781126558',
+                               'person_id': 0},
+                        'trp': {'email': 'testagpi2@yandex.ru', ## Физ-лицо Турция
+                                'phone': '+7 905 1234567',
+                                'postcode': '12345',
+                                'postaddress': 'Tur addr',
+                                'person_id': 0},
+                        'usp': {'lname': 'Py_John',
+                                'fname': 'Py_Doy',
+                                'email': 'usp@email.com',
+                                'phone': '+1 650 5173548',
+                                'postaddress': 'Py_Street 5',
+                                'city': 'py_city',
+                                'postcode': '98411',
+                                ##'file': '/testDocs.txt',
+                                'us-state': 'CA',
+                                'verified-docs': '1',
+                                'person_id': 0},
+                        'usu': {'name': 'Py_John',
+                                'phone': '+1 650 5173548',
+                                'email': 'usp@email.com',
+                                'postaddress': 'Py_Street 5',
+                                'city': 'py_city',
+                                'us-state': 'CA',
+                                'postcode': '98411',
+                                ##'file': '/testDocs.txt',
+                                'verified-docs': '1',
+                                'person_id': 0}
+                        }
+    ## Общие для всех типов параметры
+    defaults = {'fname': 'Test1',
+                'lname': 'Test2',
+                'mname': 'Test3'}
+    ## person_params <- общие <- "по-умолчанию" для типа <- переданные <- переданные по-умолчанию
+    person_params = {}
+    person_params.update(defaults)
+    person_params.update(defaults_by_type[type_])
+    person_params.update(params)
+    person_params.update(main_params)
+
+    person_id = rpc.Balance.CreatePerson(16571028, person_params)
+    print 'Person: %d' % (person_id)
+    return person_id
+
+def get_input_value (query):
+    ##Waiting for the value like: select input fromt_export where type = 'UA_TRANSFER' and classname = 'Order' and object_id = <id>
+    query = query.replace("'", "\'")
+    query = query.replace("input", "UTL_ENCODE.BASE64_ENCODE(input) as key1")
+    value = test_rpc.ExecuteSQL('balance', query)[0]['key1']
+    return pickle.loads(value.decode('base64'))
+
+def tmp (str):
+    ## Вариант 1: получение списка вызовов из глобального пространства имён
+    ## Вариант 2: примеры вызово в аннотациях (3.0 ?) - получение аннотаций для функций
+    exmpl = {'CreateTransferMultiple': 'MTestLib.CreateTransferMultiple(16571028,[{"ServiceID":7, "ServiceOrderID":"291631412", "QtyOld":"30000.000000", "QtyNew":"0.000000"}],[{"ServiceID":7, "ServiceOrderID":"291631411", QtyDelta":"30000.000000"}])',
+                    'UpdateCampaigns': 'MTestLib.UpdateCampaigns([{"ServiceID": 7, "ServiceOrderID": 291631705, "dt": datetime.datetime.now(), "stop": 0, "Bucks": 14, "Money": 0}])',
+             '': ''
+    }
+    for method in exmpl:
+        if str.upper() in method.upper() : print (exmpl[method])

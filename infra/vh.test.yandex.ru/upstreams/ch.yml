@@ -1,0 +1,126 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - woodie
+      groups: []
+labels:
+  order: '10000000'
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      uri: '/test-sync/(.*)'
+  modules:
+    - h100: {}
+    - report: {uuid: test_sync, ranges: default}
+    - rewrite:
+        actions:
+
+        - regexp: '/test-sync/station_carousels[%?]*(.*)'
+          rewrite: '/vh/station-carousels?synchronous_scheme=1&handler=public/station_carousels&%1'
+
+        - regexp: '/test-sync/player/([^x][^\\.\\?]*\\.json)\\??(.*)'
+          rewrite: '/vh/discrete-player?handler=public/player/%1&%2&synchronous_scheme=1'
+
+        - regexp: '/test-sync/pg/player/([^?]*)\\??(.*)'
+          rewrite: '/vh/player-html?handler=public/player/%1&%2&synchronous_scheme=1'
+
+        - regexp: '/test-sync/mychannel/([%./a-zA-z0-9]+)[%?]*(.*)'
+          rewrite: '/vh/my-channel-stable-26?handler=public/%1&%2&yachannel=1'
+        
+        - regexp: '/test-sync/doc2doc[%?]*(.*)'
+          rewrite: '/vh/doc2doc?handler=public/doc2doc&%1&synchronous_scheme=1'
+
+        - regexp: '/test-sync/pg/doc2doc[%?]*(.*)'
+          rewrite: '/vh/discrete-doc2doc?handler=public/doc2doc&%1'
+        
+        - regexp: '/test-sync/feed[%?]*(.*)'
+          rewrite: '/vh/video-hosting-discrete-feed?handler=public/feed.json&%1&synchronous_scheme=1&srcrwr=GENERATE_PROMO_HTTP_REQUEST:videorecom.search.yandex.net:31667:100000000&srcrwr=TEMPLATER:vh-runtime-thurman-testing-1.sas.yp-c.yandex.net:3400&srcrwr=APP_HOST:tkec2jh5d7vpot6n.sas.yp-c.yandex.net:80&&graph=video-hosting-discrete-feed@7004612'
+
+        - regexp: '/test-sync/promo_carousel[%?]*(.*)'
+          rewrite: '/vh/promo-carousel?&synchronous_scheme=1&handler=public/promo_carousel&%1&srcrwr=GENERATE_PROMO_HTTP_REQUEST:videorecom.search.yandex.net:31667:100000000&'
+        
+        - regexp: '/test-sync/carousel_videohub.json[%?]*(.*)'
+          rewrite: '/vh/single-carousel?handler=public/carousel_videohub.json&%1&synchronous_scheme=1&srcrwr=GENERATE_PROMO_HTTP_REQUEST:videorecom.search.yandex.net:31667:100000000&'
+
+        - regexp: '/test-sync/carousels_videohub.json[%?]*(.*)'
+          rewrite: '/vh/carousels?handler=public/carousels_videohub.json&%1&synchronous_scheme=1'
+
+        - regexp: '/test-sync/collection\\?collection_id=(voditem_channel.*)'
+          rewrite: '/vh/collection?handler=public/collection&collection_id=%1&synchronous_scheme=1'
+
+        - regexp: '/test-sync/collection\\?collection_id=(ugc_channel.*)'
+          rewrite: '/vh/collection?handler=public/collection&collection_id=%1&synchronous_scheme=1'
+
+        - regexp: '/test-sync/collection\\?collection_id=(.*)'
+          rewrite: '/vh/single-carousel?handler=public/carousel_videohub&carousel_id=%1&synchronous_scheme=1'
+
+        - regexp: '/test-sync/my_subscriptions[%?]*(.*)'
+          rewrite: '/vh/my-subscriptions?handler=public/my_subscriptions&%1&synchronous_scheme=1'
+
+        - regexp: '/test-sync/blogger[%?]*(.*)'
+          rewrite: '/vh/blogger?%1&synchronous_scheme=1'
+          
+        - regexp: '/test-sync/pg/feed.json[%?]*(.*)'
+          rewrite: '/vh/video-hosting-discrete-feed?handler=public/feed.json&%1&synchronous_scheme=1'
+
+        - regexp: '/test-sync/search[%?]*(.*)'
+          rewrite: '/vh/search?handler=public/search&%1&synchronous_scheme=1'
+
+        - regexp: '/test-sync/filter_identities[%?]*(.*)'
+          rewrite: '/vh/filter_identities?%1&synchronous_scheme=1'
+        
+        - regexp: '/test-sync/top_carousels\\.json[%?]*(.*)'
+          rewrite: '/vh/top_carousels?synchronous_scheme=1&handler=public/top_carousels.json&%1&srcrwr=APP_HOST:sas-vh-app-host-testing-yappy-1.sas.yp-c.yandex.net:80&&graph=testing_navigation@7&srcrwr=MERGER:vkoorits.man.yp-c.yandex.net:7070'
+
+        - regexp: '/test-sync/graphql[%?]*(.*)'
+          rewrite: '/vh/graphql?%1&synchronous_scheme=1'
+
+        - regexp: '/test-sync/carousel_zen[%?]*(.*)'
+          rewrite: '/vh/zen_carousel?handler=public/carousel_videohub.json&%1&synchronous_scheme=1'
+
+        - regexp: '/test-sync/episodes_channel[%?]*(.*)'
+          rewrite: '/vh/stable-26?&%1&handler=public/episodes&synchronous_scheme=1&srcrwr=APP_HOST:sas-vh-app-host-testing-yappy-1.sas.yp-c.yandex.net:80&&graph=testing_episodes_with_pg@11'
+
+        - regexp: '/test-sync/episodes_blogger[%?]*(.*)'
+          rewrite: '/vh/stable-26?&%1&handler=public/episodes&synchronous_scheme=1&srcrwr=APP_HOST:sas-vh-app-host-testing-yappy-1.sas.yp-c.yandex.net:80&&graph=testing_episodes_with_pg@11'
+
+        - regexp: '/test-sync/series_seasons\\.json[%?]*(.*)'
+          rewrite: '/vh/series_seasons?synchronous_scheme=1&handler=public/series_seasons&%1'
+
+        - regexp: '^/test-sync/([%./a-zA-z0-9]+)[%?]*(.*)'
+          rewrite: '/vh/stable-26?handler=public/%1&%2'
+
+
+        
+    - exp_getter_macro:
+        service_name: vh
+        testing_mode: {}
+        _version: 3
+    - balancer2:
+        attempts: 2
+        rr: {}
+        backends:
+          - weight: 1
+            name: test_sync
+            modules:
+              - report: {uuid: test_sync, ranges: default}
+              - balancer2:
+                  attempts_rate_limiter:
+                    limit: 0.5   
+                  attempts: 3
+                  rr: {}
+                  timeout_policy:
+                    timeout: 5s
+                    unique_policy: {}
+                  generated_proxy_backends:
+                    proxy_options:
+                      backend_timeout: 5s
+                      connect_timeout: 50ms
+                      status_code_blacklist: ["408"]
+                      keepalive_count: 1
+                    include_backends:
+                      type: BY_ID
+                      ids:
+                        - man_vh_http_adapter_testing

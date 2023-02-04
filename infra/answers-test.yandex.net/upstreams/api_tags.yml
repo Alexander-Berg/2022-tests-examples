@@ -1,0 +1,34 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - anoh
+      groups: []
+labels:
+  order: '00000010'
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      url: '/znatoki/api-tags.*'
+  modules:
+    - threshold:
+        lo_bytes: 500
+        hi_bytes: 1024
+        pass_timeout: 9s
+        recv_timeout: 1s
+    - rewrite:
+        actions:
+            - regexp: '/znatoki/api-tags(.*)'
+              rewrite: '/suggest-answers-tags%1'
+    - stats_eater: {}
+    - balancer2:
+        attempts: 2
+        weighted2: {}
+        generated_proxy_backends:
+          proxy_options:
+            connect_timeout: 40ms
+            backend_timeout: 200ms
+          include_backends:
+            type: BY_ID
+            ids: [suggest_multi]

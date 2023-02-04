@@ -1,0 +1,123 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - lyalchenko
+      - av-kotikov
+      - danichk
+      - avitella
+      - nanny-robot
+      - dudkomv
+      groups:
+      - svc_alice_grpc_proxy
+config_transport:
+  nanny_static_file:
+    service_id: rtc_balancer_grpc-testing_alice_yandex_net_sas
+    instance_tags:
+      ctype: prod
+      itype: balancer
+      prj: grpc-testing.alice.yandex.net
+---
+instance_macro:
+  maxconn: 4000
+  workers: !f get_workers()
+  log_dir: /place/db/www/logs/
+  unistat: {}
+  sd: {}
+  sections:
+    admin:
+      ips: [127.0.0.1, '::1']
+      ports: [!f 'get_port_var("port")']
+      modules:
+        - http: {}
+        - admin: {}
+    empty_section:
+      ips: [127.0.0.1]
+      ports: [1]
+      extended_http_macro:
+        enable_ssl: true
+        ssl_sni_contexts:
+          grpc-testing.alice.yandex.net:
+            cert: !c 'grpc-testing.alice.yandex.net'
+            servername_regexp: 'grpc-testing\\.alice.\\.yandex\\.net'
+          rpc-testing.alice.yandex.net:
+            cert: !c 'rpc-testing.alice.yandex.net'
+            servername_regexp: default
+        modules:
+            - errordocument:
+                status: 502
+    http_section:
+      ips: ['*']
+      ports: [80]
+      modules:
+        - errorlog:
+            log: !f get_log_path("error_log", 80, "/place/db/www/logs/")
+            log_level: ERROR
+        - http2:
+            allow_http2_without_ssl: true
+            allow_sending_trailers: true
+        - http: {}
+        - headers:
+            create_func:
+                X-Real-Ip: realip
+            delete: X-Forwarded-For
+        - accesslog:
+            log: !f get_log_path("access_log", 80, "/place/db/www/logs/")
+        - regexp:
+            include_upstreams:
+                filter:
+                    any: true
+                order:
+                    label:
+                        name: order
+    https_section:
+        ips: ['*']
+        ports: [443]
+        modules:
+            - errorlog:
+                log: !f get_log_path("error_log", 443, "/place/db/www/logs/")
+                log_level: ERROR
+            - ssl_sni:
+                http2_alpn_freq: 1
+                force_ssl: true
+                contexts:
+                    grpc-testing.alice.yandex.net:
+                        servername:
+                            servername_regexp: 'grpc-testing\\.alice\\.yandex\\.net'
+                        priv: !f get_private_cert_path("grpc-testing.alice.yandex.net.pem", "/dev/shm/balancer/priv")
+                        cert: !f get_public_cert_path("allCAs-grpc-testing.alice.yandex.net.pem", "/dev/shm/balancer")
+                        log: !f get_log_path("ssl_sni", 443, "/place/db/www/logs/")
+                        ticket_keys:
+                            - 
+                                keyfile: !f get_private_cert_path("1st.grpc-testing.alice.yandex.net.key", "/dev/shm/balancer/priv")
+                            - 
+                                keyfile: !f get_private_cert_path("2nd.grpc-testing.alice.yandex.net.key", "/dev/shm/balancer/priv")
+                            - 
+                                keyfile: !f get_private_cert_path("3rd.grpc-testing.alice.yandex.net.key", "/dev/shm/balancer/priv")
+                    default:
+                        priv: !f get_private_cert_path("rpc-testing.alice.yandex.net.pem", "/dev/shm/balancer/priv")
+                        cert: !f get_public_cert_path("allCAs-rpc-testing.alice.yandex.net.pem", "/dev/shm/balancer")
+                        log: !f get_log_path("ssl_sni", 443, "/place/db/www/logs/")
+                        ticket_keys:
+                            - 
+                                keyfile: !f get_private_cert_path("1st.rpc-testing.alice.yandex.net.key", "/dev/shm/balancer/priv")
+                            - 
+                                keyfile: !f get_private_cert_path("2nd.rpc-testing.alice.yandex.net.key", "/dev/shm/balancer/priv")
+                            - 
+                                keyfile: !f get_private_cert_path("3rd.rpc-testing.alice.yandex.net.key", "/dev/shm/balancer/priv")
+            - http2:
+                allow_sending_trailers: true
+            - http: {}
+            - headers:
+                create_func:
+                    X-Real-Ip: realip
+                delete: X-Forwarded-For
+            - accesslog:
+                log: !f get_log_path("access_log", 443, "/place/db/www/logs/")
+            - regexp:
+                include_upstreams:
+                    filter:
+                        any: true
+                    order:
+                        label:
+                            name: order

@@ -1,0 +1,129 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - librarian
+      groups: []
+labels:
+  order: '00020005'
+---
+regexp_section:
+    matcher:
+        match_and:
+            - match_or:
+                - match_fsm:
+                    host: 'api.messenger.test.yandex-team.ru'
+                - match_fsm:
+                    host: 'api.messenger.test.yandex.com'
+                - match_fsm:
+                    host: 'api.messenger.test.yandex.ru'
+                - match_fsm:
+                    host: 'api.messenger.test.yandex.net'
+                - match_fsm:
+                    host: 'api.messenger.test.yandex-team.ru:443'
+                - match_fsm:
+                    host: 'api.messenger.test.yandex.com:443'
+                - match_fsm:
+                    host: 'api.messenger.test.yandex.ru:443'
+                - match_fsm:
+                    host: 'api.messenger.test.yandex.net:443'
+            - match_or:
+                - match_fsm:
+                    uri: '/notify(/.*)?'
+                - match_fsm:
+                    uri: '/ping(/.*)?'
+                - match_fsm:
+                    uri: '/change_chat_avatar(/.*)?'
+    modules:
+        - report: {ranges: default, uuid: registry}
+        - report: {ranges: default, uuid: registry_internal}
+        - report: {ranges: default, uuid: registry_internal_other}
+        - threshold:
+            lo_bytes: 307200
+            hi_bytes: 716800
+            pass_timeout: 10s
+            recv_timeout: 1s
+        - shared:
+            uuid: registry_internal_other
+        - stats_eater: {}
+        - balancer2:
+            attempts: 2
+            rr: {weights_file: ./controls/traffic_control.weights}
+            backends:
+                - weight: 1
+                  name: registryinternal_man
+                  modules:
+                    - report: {ranges: default, uuid: registry_requests_to_man}
+                    - report: {ranges: default, uuid: registry_internal_other_requests_to_man}
+                    - balancer2:
+                        attempts: 2
+                        connection_attempts: 5
+                        attempts_rate_limiter:
+                            limit: 0.2 
+                        active:
+                            delay: '5s'
+                            request: 'GET /admin?action=ping&from=slb HTTP/1.1\r\nHost: l7.mssngr.search.yandex.net\r\n\r\n'
+                        generated_proxy_backends:
+                            proxy_options:
+                                backend_timeout: 3000ms
+                                connect_timeout: 50ms
+                                keepalive_count: 5
+                                keepalive_timeout: "60s"
+                                status_code_blacklist_exceptions: ["503"]
+                            include_backends:
+                                type: BY_ID
+                                ids: [registry_internal_man]
+                - weight: 1
+                  name: registryinternal_vla
+                  modules:
+                    - report: {ranges: default, uuid: registry_requests_to_vla}
+                    - report: {ranges: default, uuid: registry_internal_other_requests_to_vla}
+                    - balancer2:
+                        attempts: 2
+                        connection_attempts: 5
+                        attempts_rate_limiter:
+                            limit: 0.2 
+                        active:
+                            delay: '5s'
+                            request: 'GET /admin?action=ping&from=slb HTTP/1.1\r\nHost: l7.mssngr.search.yandex.net\r\n\r\n'
+                        generated_proxy_backends:
+                            proxy_options:
+                                backend_timeout: 3000ms
+                                connect_timeout: 50ms
+                                keepalive_count: 5
+                                keepalive_timeout: "60s"
+                                status_code_blacklist_exceptions: ["503"]
+                            include_backends:
+                                type: BY_ID
+                                ids: [registry_internal_vla]
+                - weight: 1
+                  name: registryinternal_sas
+                  modules:
+                    - report: {ranges: default, uuid: registry_requests_to_sas}
+                    - report: {ranges: default, uuid: registry_internal_other_requests_to_sas}
+                    - balancer2:
+                        attempts: 2
+                        connection_attempts: 5
+                        attempts_rate_limiter:
+                            limit: 0.2 
+                        active:
+                            delay: '5s'
+                            request: 'GET /admin?action=ping&from=slb HTTP/1.1\r\nHost: l7.mssngr.search.yandex.net\r\n\r\n'
+                        generated_proxy_backends:
+                            proxy_options:
+                                backend_timeout: 3000ms
+                                connect_timeout: 50ms
+                                keepalive_count: 5
+                                keepalive_timeout: "60s"
+                                status_code_blacklist_exceptions: ["503"]
+                            include_backends:
+                                type: BY_ID
+                                ids: [registry_internal_sas]
+                - weight: -1
+                  name: registryinternal_devnull
+                  modules:
+                    - report: {ranges: default, uuid: registry_requests_to_devnull}
+                    - report: {ranges: default, uuid: registry_internal_other_requests_to_devnull}
+                    - errordocument:
+                        status: 200
+        

@@ -1,0 +1,58 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - levobuhov
+      groups: []
+labels:
+  order: '10000000'
+---
+regexp_section:
+  matcher:
+    match_and:
+      - match_fsm:
+          uri: '/msr(/.*)?'
+  modules:
+    - report:
+        uuid: mail_smart_reply
+        ranges: "10ms,20ms,40ms,80ms,120ms,200ms"
+        
+    - balancer2:
+        attempts: 3
+        rr: {}
+        backends:
+        - weight: 1
+          name: msr_myt
+          modules:
+            - report: {ranges: default, uuid: requests_mail_smart_reply_to_myt}
+            - balancer2:
+                connection_attempts: 5
+                attempts_rate_limiter:
+                  limit: 0.2
+                dynamic:
+                  max_pessimized_share: 0.2
+                attempts: 3
+                generated_proxy_backends:
+                  proxy_options:
+                    backend_timeout: 5s
+                    connect_timeout: 100ms
+                    keepalive_count: 1
+                    https_settings:
+                      ca_file: !f get_ca_cert_path("allCAs.pem", "./")
+                      verify_depth: 3
+                  include_backends:
+                    type: BY_ID
+                    ids: [smart-reply-server-testing-v2-myt-443]
+        
+
+        - weight: -1
+          name: msr_devnull
+          modules:
+            - report:
+                uuid: requests_mail_smart_reply_to_devnull
+                ranges: 2ms
+            - errordocument:
+                status: 204
+        on_error:
+          modules:
+          - errordocument: {content: Gateway Timeout, status: 504}

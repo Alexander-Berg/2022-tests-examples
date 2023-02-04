@@ -1,0 +1,53 @@
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans  http://www.springframework.org/schema/beans/spring-beans-3.0.xsd
+                           http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd">
+
+    <context:annotation-config/>
+
+    <bean id="ehCacheManagerTwo" class="ru.yandex.qe.cache.EhCacheManagerFactoryBean"/>
+
+    <bean class="ru.yandex.qe.cache.CacheManagerConfigurationFactoryBean">
+        <property name="name" value="two"/>
+        <property name="cacheManagerPeerListenerFactory" ref="cacheManagerEventListenerFactory"/>
+        <property name="cacheManagerPeerProviderFactory" ref="cacheManagerPeerProviderFactory"/>
+    </bean>
+
+    <bean name="cacheManagerEventListenerFactory" class="ru.yandex.qe.cache.FactoryConfigurationFactoryBean">
+        <property name="className" value="net.sf.ehcache.distribution.RMICacheManagerPeerListenerFactory"/>
+        <property name="properties" value="hostName=localhost, port=22222, socketTimeoutMillis=2000"/>
+    </bean>
+
+    <bean  name="cacheManagerPeerProviderFactory" class="ru.yandex.qe.cache.ManualRMIPeerProviderFactoryBean">
+        <property name="cacheName" value="testCache"/>
+        <property name="port" value="11111"/>
+        <property name="peersHosts" value="localhost"/>
+    </bean>
+
+    <bean name="testCacheTwo" class="net.sf.ehcache.Cache">
+        <constructor-arg>
+            <bean class="ru.yandex.qe.cache.CacheConfigurationFactoryBean">
+                <property name="cacheConfiguration">
+                    <bean class="net.sf.ehcache.config.CacheConfiguration">
+                        <property name="name" value="testCache"/>
+                        <property name="maxEntriesLocalHeap" value="10"/>
+                        <property name="eternal" value="true"/>
+                        <property name="memoryStoreEvictionPolicyFromObject">
+                            <bean class="net.sf.ehcache.store.MemoryStoreEvictionPolicy" factory-method="fromString">
+                                <constructor-arg value="LRU" />
+                            </bean>
+                        </property>
+                    </bean>
+                </property>
+                <property name="cacheEventListenerFactory">
+                    <bean class="ru.yandex.qe.cache.CacheEventListenerFactoryFactoryBean">
+                        <property name="className" value="net.sf.ehcache.distribution.RMICacheReplicatorFactory"/>
+                        <property name="properties" value="replicateAsynchronously=false, replicateUpdatesViaCopy=true, replicatePutsViaCopy=true"/>
+                    </bean>
+                </property>
+            </bean>
+        </constructor-arg>
+    </bean>
+
+</beans>

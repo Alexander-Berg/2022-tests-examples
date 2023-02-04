@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<!--
+Title:
+Геообъект: режим редактирования и позиция на карте
+
+Description:
+Проверка режима редактирования и позиции на карте.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+smoke, regress
+
+Estimated time:
+120000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно, на карте спан Московской области.
+  Сверху имеются кнопка "add".
+
+Step:
+  Action:
+  Открыть инструменты разработчика командами: Windows: Ctrl + Shift + I если у вас MacOS: ⌥ + ⌘ + I.
+  Выполнить клик в кнопку "add". 
+
+  Expectation:
+  Спан карты без изменений, в консоли появляется строка: "selected...".
+
+Step:
+  Action:
+  Выполнить два клика в спан карты на расстоянии друга от друга.
+   
+  Expectation:
+  После второго клика клику на спане карты появляются метки вершин, между метками сплошная синия линия, к курсору прилипает пунктирная линия от последней выставленной метки.
+  В консоли при клике в спан появляется строка с координатами клика и объектом события.
+
+Step:
+  Action:
+  Выполнить клик в выставленную на предыдущем шаге метку линии. 
+
+  Expectation:
+  При наведении курсора на метку - метка окрашивается желтым.
+  По клику метка становится желтой, появляется меню: "Удалить; Завершить".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "Завершить".
+   
+  Expectation:
+  Меню с кнопками пропадает, линия сохраняет редактированный вид.
+  Курсор - рука, метки редактирования с объекта не пропадают.
+
+Step:
+  Action:
+  Навести курсор на круглую метку на отрезке, зажав ЛКМ переместить метку на спане карты.
+
+  Expectation:
+  При наведении метка окрашивается желтым.
+  При зажатии ЛКМ и переносе от меток вершин к переносимой метке тянутся пунктирные линии, после установки пунктирные линии становятся сплошными.
+  Переносимая метка становится вершиной, появляются новые круглые метки в центре новых участков линии.
+-->
+<html>
+<head>
+    <title>API 2.0</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <script src="../helper.js"></script>
+    <script type=text/javascript>
+        Api('init');
+        function init(ymaps) {
+            var myMap = new ymaps.Map('map', {
+                center: [55.48247590180118, 38.14622650146206],
+                zoom: 10,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+            var polyline, coords1, coords2, i = 1;
+            var coordArray = [
+                [55.54637320396795, 38.06657562255759],
+                [55.53391361810497, 38.27806243896325],
+                [55.445804852224505, 38.33162078857238],
+                [55.384870896996354, 38.16545257568149],
+                [55.437998081284796, 37.992417907712486],
+                [55.48247590180118, 38.14622650146206]
+            ];
+            var event = ['click'];
+            var callback = function (e) {
+                console.log(e.get('position'));
+                console.log(e);
+                if (i == 1) {
+                    coords1 = e.get('coords');
+                    i += 1;
+                } else {
+                    coords2 = e.get('coords');
+                    polyline = new ymaps.Polyline([coords1, coords2], {}, {strokeWidth: 3});
+                    myMap.geoObjects.add(polyline);
+                    polyline.editor.startDrawing()
+                }
+            };
+            var objButton = new ymaps.control.Button('add');
+            objButton.events
+                    .add('select', function () {
+                        console.log('selected...')
+                        myMap.events.add(event, callback)
+                    })
+                    .add('deselect', function () {
+                        console.log('deselected...')
+                        myMap.events.remove(event, callback);
+                        polyline.editor.stopDrawing();
+                        polyline.editor.stopEditing();
+                        myMap.geoObjects.remove(polyline);
+                        i = 1;
+                    });
+            myMap.controls.add(objButton);
+            var drawButton = new ymaps.control.Button('draw');
+            drawButton.events
+                    .add('click', function () {
+                        draw()
+                    });
+            //myMap.controls.add(drawButton);
+            function draw() {
+                polyline = new ymaps.Polyline([coordArray[0], coordArray[1]], {}, {strokeWidth: 3});
+                myMap.geoObjects.add(polyline);
+                myMap.events.add('click', function (event) {
+                    console.log(event);
+                    console.log('Hello!: ' + event.get('position'));
+                });
+                polyline.editor.startDrawing();
+                myMap.events.fire('click', {
+                    map: myMap,
+                    position: [150, 150]
+                });
+                /*polyline.editor.events.fire('vertexadd', {
+                 parentModel: polyline.editor.getModel(),
+                 vertexIndex: 2,
+                 globalPixels: myMap.options.get('projection').toGlobalPixels([150, 150], myMap.getZoom())
+                 });*/
+                console.log(polyline.editor);
+                polyline.editor.addVertex(myMap.options.get('projection').toGlobalPixels([150, 150], myMap.getZoom()));
+            }
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+<p><a href="https://tech.yandex.ru/maps/archive/doc/jsapi/2.0/ref/reference/GeoObjectCollection-docpage/" target="_blank">Docs</a></p>
+</body>
+</html>

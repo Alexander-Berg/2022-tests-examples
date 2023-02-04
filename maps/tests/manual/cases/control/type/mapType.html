@@ -1,0 +1,111 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Контрол тип карты: установка собственного типа карты
+
+Description:
+Проверка установки собственного типа карты.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+control
+
+Estimated time:
+90000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Дождаться загрузки карты и осмотреть карту и элементы на ней.
+
+  Expectation:
+  При первоначальной загрузке в контейнере карта со спаном Санкт-Петербурга, сверху слева "Слои" с развернутым списком: "Мой тип карты"; разделитель; "Панорамы". Также имеется кнопка "remove".
+  Под контейнером с картой текст: "add map type".
+  Через 2 секунды спан карты меняется на серую область с надписями: "Для этого участка местности нет данных...", справа появляется контрол "Слои" с развернутым списком: "Мой тип карты"(стоит галка); разделитель; "Панорамы".
+  Список у контрола слева свернулся.
+  Под контейнером с картой текст: "set type".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "remove".
+
+  Expectation:
+  Выпадающий список типов карты под правым контролом свернулся.
+  Под контейнером с картой текст: "remove map type".
+
+Step:
+  Action:
+  Выполнить клик в правый контрол "Слои".
+
+  Expectation:
+  Под контролом выпадает список: разделитель; "Панорамы".
+
+Step:
+  Action:
+  Выполнить клик в левый контрол "Слои".
+
+  Expectation:
+  Выпадающий список типов карты под правым контролом свернулся.
+  Под левым контролом выпадает список: разделитель; "Панорамы".  
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            var map = myMap = new ym.Map('map', {
+                        center: [59.94, 30.33],
+                        zoom: 12,
+                        controls: ["fullscreenControl"]
+                    }),
+                    log = new Log(),
+                    before = new ym.control.TypeSelector([]),
+                    after = new ym.control.TypeSelector([]),
+                    i = 0;
+
+            addGrid(map);
+
+            var Layer = function () {
+                return new ym.Layer('');
+            };
+            ym.layer.storage.add('my#layer', Layer);
+            var type = new ym.MapType('Мой тип карты ', ['my#layer']);
+            ym.mapType.storage.add('my#mapType', type);
+
+            map.controls.add(before, {float: 'left'});
+            before.expand();
+
+            log.info('add map type');
+            before.addMapType(type);
+            after.addMapType(type);
+
+            setTimeout(function () {
+                log.info('set type');
+                map.setType(type);
+                map.controls.add(after, {float: 'right'});
+                after.expand();
+            }, 2000);
+
+            var button = new ymaps.control.Button('remove');
+            button.events.add('click', function () {
+                log.info('remove map type');
+                before.removeMapType(type);
+                after.removeMapType(type);
+            });
+
+            map.controls.add(button)
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

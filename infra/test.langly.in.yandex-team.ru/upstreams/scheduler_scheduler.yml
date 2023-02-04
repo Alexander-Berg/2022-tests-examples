@@ -1,0 +1,44 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - yarulin
+      - nanny-robot
+      groups: []
+labels:
+  order: '1000000'
+config_mode: easy2
+---
+l7_upstream_macro:
+  version: 0.3.0
+  id: scheduler_scheduler
+  matcher:
+    path_re: (/.*)?
+  monitoring:
+    uuid: scheduler-scheduler
+  by_dc_scheme:
+    dc_balancer:
+      weights_section_id: bygeo
+      method: LOCAL_THEN_BY_DC_WEIGHT
+      attempts: 2
+    balancer:
+      compat:
+        method: RR
+      attempts: 2
+      max_reattempts_share: 0.15
+      fast_attempts: 2
+      do_not_retry_http_responses: true
+      retry_non_idempotent: false
+      connect_timeout: 100ms
+      backend_timeout: 5s
+    dcs:
+    - name: man
+      backend_ids:
+      - langly-test-stage.scheduler_man
+    - name: sas
+      backend_ids:
+      - langly-test-stage.scheduler_sas
+    on_error:
+      static:
+        status: 504
+        content: Service unavailable

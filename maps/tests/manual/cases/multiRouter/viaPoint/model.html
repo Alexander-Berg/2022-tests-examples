@@ -1,0 +1,99 @@
+<!DOCTYPE HTML>
+<!--(skip)(description)
+
+-->
+<!--(version)
+
+-->
+<!--(commands)
+
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            //TODO: написать тест
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 10,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            addGrid(map);
+            var log = new Log();
+
+            var events = ['referencepointchange'];
+            var callback = function(e) {
+                log.info(e.get('type'))
+            };
+
+            var multiRoute = new ymaps.multiRouter.MultiRoute({
+                referencePoints: ['Москва, Ленинский проспект', 'Красная площадь', 'Воротниковский переулок 4', 'Кулаков переулок'],
+                params: {
+                    viaIndexes: [1, 2]
+                }
+            }, {
+                editorDrawOver: false,
+                wayPointDraggable: true,
+                viaPointDraggable: true,
+                boundsAutoApply: true,
+                zoomMargin: 30,
+                preset: "islands#multiRouterBig"
+            });
+
+            multiRoute.events.add(events, callback);
+            map.geoObjects.add(multiRoute);
+
+            var collection;
+
+            var clearButton = new ymaps.control.Button('clear');
+            var methodsButton = new ymaps.control.Button('methods');
+            var destroyButton = new ymaps.control.Button('destroy');
+            var updateButton = new ymaps.control.Button('update');
+
+            methodsButton.events.add('click', function() {
+                collection = multiRoute.getViaPoints();
+                collection.each(function(object) {
+                    log.info('reference point: ' + object.model.getReferencePoint());
+                    log.info('reference point index: ' + object.model.getReferencePointIndex());
+                });
+                collection.get(0).model.setReferencePoint('Льва Толстого 16, Москва')
+            });
+
+            destroyButton.events.add('click', function() {
+                collection.get(0).model.destroy();
+            });
+
+            updateButton.events.add('click', function() {
+                collection.get(0).model.update({});
+            });
+
+            clearButton.events.add('click', function() {
+                log.clear();
+            });
+
+            map.controls
+                    .add(methodsButton)
+                    .add(destroyButton)
+                    .add(updateButton)
+                    .add(clearButton, {float: 'none', position: {right: 10, bottom: 35}});
+
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

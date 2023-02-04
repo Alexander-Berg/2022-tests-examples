@@ -1,0 +1,39 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - anoh
+      - kasperovich
+      - keepclean
+      groups: []
+labels:
+  order: 00008400
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      url: '(/znatoki)?/recommender.*'
+  modules:
+    - threshold:
+        lo_bytes: 262144
+        hi_bytes: 419430
+        pass_timeout: 10s
+        recv_timeout: 2s
+    - balancer2:
+        attempts: 1
+        rr: {weights_file: ./controls/traffic_control.weights}
+        backends:
+        - weight: 1
+          name: answers_man
+          modules:
+            - report: {ranges: default, uuid: balancer_requests_recommender_to_man}
+            - balancer2:
+                attempts: 1
+                weighted2: {}
+                generated_proxy_backends:
+                  proxy_options:
+                    backend_timeout: 5s
+                    connect_timeout: 2s
+                  include_backends:
+                    type: BY_ID
+                    ids: [answers_recommender_man]

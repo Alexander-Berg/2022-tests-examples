@@ -1,0 +1,42 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - deniskuzin
+      groups: []
+labels:
+  order: 09999996
+config_mode: easy2
+---
+l7_upstream_macro:
+  version: 0.0.1
+  id: lpm-uber
+  matcher:
+    and_:
+      - path_re: '/bindings-external/v2.0/bindings/'
+      - header: {name: 'X-Service-Token', re: 'ubertaxi_4ea0f5fc283dc942c27bc7ae022e8821'}
+  monitoring:
+    uuid: lpm-uber
+    response_codes: [429, 499]
+  headers:
+    - create:
+        target: Host
+        value: trust-lpm-test.paysys.yandex.net
+        keep_existing: false
+  flat_scheme:
+    balancer:
+      backend_timeout: 20s
+      connect_timeout: 100ms
+      attempts: 1
+      fast_attempts: 2
+      max_pessimized_endpoints_share: 0.5
+      do_not_retry_http_responses: true
+      do_not_limit_reattempts: true
+      use_https_to_endpoints: {}    
+      keepalive_count: 100      
+    backend_ids:
+      - atlas
+    on_error:
+      static:
+        status: 504
+        content: 'Service unavailable'

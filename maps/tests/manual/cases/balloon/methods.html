@@ -1,0 +1,144 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Отлов событий балуна
+
+Description:
+Проверяем события балуна.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components:
+balloon
+
+Estimated time:
+120000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась.
+  На карте спан Москвы.
+  Вверху слева имеется кнопка "listen".
+
+Step:
+  Action:
+  Выполнить клик в любое место на спане карты.
+
+  Expectation:
+  В центре карты открывается балун, с содержимым "Balloon".
+
+Step:
+  Action:
+  Выполнить еще один клик в любое место на спане карты.
+
+  Expectation:
+  Содержимое балуна сменилось на "New text in balloon".
+
+Step:
+  Action:
+  Закрыть балун кликом в крестик.
+  
+  Expectation:
+  Балун закрылся, спан карты без изменений.
+  
+Step:
+  Action:
+  Клик в кнопку "listen".
+  
+  Expectation:
+  Кнопка становится активной(окрашена желтым), под контейнером с картой появляется текст: "Waiting for events...".
+
+Step:
+  Action:
+  Выполнить клик в любое место на спане карты.
+
+  Expectation:
+  В центре карты открывается балун, с содержимым "Balloon".
+  Под контейнером с картой появляется текст: "balloon: open".
+
+Step:
+  Action:
+  Выполнить еще один клик в любое место на спане карты.
+
+  Expectation:
+  Содержимое балуна сменилось на "New text in balloon".
+
+Step:
+  Action:
+  Закрыть балун кликом в крестик.
+  
+  Expectation:
+  Балун закрылся, спан карты без изменений.
+  Под контейнером с картой появляется текст: "balloon: userclose; balloon: close".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "listen".
+  
+  Expectation:
+  Кнопка становится неактивной(окрашена белым).
+  Под контейнером с картой появляется текст: "Events will be ignored.".
+-->
+<html>
+<head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym; // hack
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.73259667357658, 37.70153663432529],
+                zoom: 9,
+                behaviors: ['default', 'scrollZoom'],
+                controls: []
+            });
+
+            addGrid(map);
+            var log = new Log();
+
+            log.info('Click the map to open balloon');
+
+            var balloon = null;
+            var events = ['open', 'close', 'userclose'];
+            var callback = function (e) {
+                log.info('balloon: ' + e.get('type'))
+            };
+
+            map.events.add('click', function () {
+                if (map.balloon.isOpen()) {
+                    map.balloon.setData({ 'content': 'New text in balloon' });
+                } else {
+                    balloon = map.balloon.open(map.getCenter(), {content: 'Balloon'});
+                }
+            });
+
+            var listenerButton = new ymaps.control.Button({data: {content: 'listen'}, options: {selectOnClick: true}});
+            listenerButton.events
+                    .add('deselect', function () {
+                        log.info('Events will be ignored.');
+                        map.balloon.events.remove(events, callback);
+                    })
+                    .add('select', function () {
+                        log.info('Waiting for events...');
+                        map.balloon.events.add(events, callback);
+                    });
+
+            map.controls.add(listenerButton)
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

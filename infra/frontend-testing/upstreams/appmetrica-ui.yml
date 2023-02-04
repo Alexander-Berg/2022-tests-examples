@@ -1,0 +1,48 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - kholodny-d
+      groups: []
+labels:
+  order: '00002000'
+---
+regexp_section:
+  matcher:
+    match_and:
+      - match_or:
+        - match_fsm:
+            host: 'test\\.appmetri(c|k)a\\.yandex\\.(ru|ua|by|kz|com|com.tr)'
+        - match_fsm:
+            host: 'appmetri(c|k)a\\.crowdtest\\.(metri(k|c)a\\.)?yandex\\.(ru|ua|by|kz|com|com.tr)'
+      - match_or:
+        - match_fsm:
+            path: '/dashboard(/.*)?'
+        - match_fsm:
+            path: '/static(/.*)?'
+        - match_fsm:
+            path: '/api(/.*)?'
+  modules:
+    - balancer2:
+        retry_non_idempotent: false
+        attempts: 2
+        attempts_rate_limiter:
+          limit: 0.15
+        connection_attempts: !f count_backends()
+        status_code_blacklist : ["5xx"]
+        return_last_5xx: true
+        unique_policy: {}
+        dynamic:
+          max_pessimized_share: 1
+        generated_proxy_backends:
+          proxy_options:
+            backend_timeout: 120s
+            connect_timeout: 100ms
+            fail_on_5xx: true
+          include_backends:
+            type: BY_ID
+            ids: [appmetrica-ui]
+        on_error:
+          errordocument:
+            status: 503
+            content: "Service unavailable"

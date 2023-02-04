@@ -1,0 +1,42 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - ntatarinov
+      groups: []
+labels:
+  order: '10000000'
+---
+ regexp_section:
+   matcher:
+     match_fsm:
+       uri: '/yablocker(/.*)?'
+   modules:
+     - rewrite:
+         actions:
+           - regexp: '/yablocker(/.*)'
+             rewrite: '%1'
+     - report:
+         uuid: yablocker
+         ranges: default
+     - balancer2:
+         connection_attempts: 2
+         attempts: 2
+         active:
+           delay: '10s'
+           request: 'GET /ping HTTP/1.1\nHost: api-test.browser.yandex.net\n\n'
+         unique_policy: {}
+         attempts_rate_limiter:
+           limit: 0.15
+         generated_proxy_backends:
+           proxy_options:
+             backend_timeout: 10s
+             connect_timeout: 70ms
+           include_backends:
+             type: BY_ID
+             ids: [browser-api-yablocker-testing]
+         on_error:
+           errordocument:
+             status: 504
+             content: "Service unavailable"
+ 

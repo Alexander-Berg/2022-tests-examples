@@ -1,0 +1,98 @@
+---
+
+- name: Role for deploy vertis_test_docker group
+  hosts: 'vertis_test_docker'
+  become: yes
+  vars_files:
+    - vars/golp_driver.yml
+    - vars/test_docker.yml
+    - vars/non-cloud.yml
+  vars:
+    locale_lang: en_US.UTF-8
+    dp_environment: testing
+    autoenv: 'test'
+    docker_bridge_subnet_v6: 'fd00:bc:1::/64'
+    group: 'vertis_test_docker'
+
+  roles:
+    - { role: common-role }
+    - { role: vector, tags: "vector" }
+    - { role: cms-agent }
+    - { role: consul-dns, tags: "consul-dns" }
+    - { role: filebeat7, tags: "filebeat7" }
+    - { role: deploy-primary-secret }
+    - { role: vertis-datasources-secrets, tags: "vertis-datasources-secrets" }
+    - { role: docker, tags: "docker" }
+    - { role: docker-gc }
+    - { role: golp-driver, driver_versions_list: "{{ golp_logging_driver.testing }}" }
+    - { role: nomad-clients }
+    - { role: hw-watcher-walle-config, when: tags.walle is defined }
+    - { role: sub-zero, tags: "sub-zero" }
+
+  tasks:
+    - name: 'Installing packages'
+      apt:
+        name: "{{ packages }}"
+        state: present
+      vars:
+        packages:
+        - libgeobase6=6.0-28
+        - libgeobase6-abi=6.0-28
+        - libgeobase6-nodejs=6.0-28
+        - p2p-distribution=1.0-33
+        - yandex-vertis-tzdata=1.0.0+1645427053
+        - yandex-vertis-geodata6=1.0.0+1639477789
+        - hprof-contrib=0.2.158+1648216778
+        - hprof-courier=0.2.158+1648216778
+      tags: [ 'pkg' ]
+
+- name: Start all services
+  hosts: 'vertis_test_docker'
+  serial: 1
+
+  tasks:
+    - name: Start unbound
+      systemd:
+        state: started
+        name: unbound
+
+    - name: Start consul
+      systemd:
+        state: started
+        name: consul
+
+    - name: Start nomad
+      systemd:
+        state: started
+        name: nomad
+
+    - name: Start graphite-sender
+      systemd:
+        state: started
+        name: graphite-sender
+
+    - name: Start filebeat
+      systemd:
+        state: started
+        name: filebeat
+
+    - name: start hprof-courier
+      systemd:
+        state: started
+        name: hprof-courier
+
+    - name: walle bundle dir permission
+      file:
+        path: /var/lib/juggler-client/bundles/wall-e-checks-bundle/
+        state: directory
+        recurse: yes
+        owner: monitor
+        group: monitor
+      when: tags.walle is defined
+      register: juggler_agent_restart
+
+    - name: restart juggler-agent if needed
+      systemd:
+       state: restarted
+       name: juggler-client
+      when: juggler_agent_restart.changed

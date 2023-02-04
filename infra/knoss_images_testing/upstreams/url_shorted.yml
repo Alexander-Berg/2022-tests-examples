@@ -1,0 +1,99 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - evseevd
+      groups: []
+labels:
+  order: '00000554'
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      uri: '/images-apphost/url-shorted'
+  modules:
+    - shared:
+        uuid: images_url_shorted_prod
+    - threshold:
+        lo_bytes: 1048576
+        hi_bytes: 5242880
+        pass_timeout: 10s
+        recv_timeout: 50ms
+        on_pass_timeout_failure:
+          modules:
+            - errordocument:
+                status: 413
+    - balancer2:
+        attempts: 1
+        attempts_file: ./controls/images.attempts
+        rr: {weights_file: ./controls/production.weights}
+        by_name_from_header_policy:
+          hints:
+            - {hint: 'man', 'backend': 'images_man'}
+            - {hint: 'sas', 'backend': 'images_sas'}
+            - {hint: 'vla', 'backend': 'images_vla'}
+          allow_zero_weights: true
+          strict: true
+          by_hash_policy:
+            unique_policy: {}
+        backends:
+          - weight: 1
+            name: images_vla
+            modules:
+              - report: {ranges: default, uuid: images_url_shorted_requests_to_vla}
+              - shared:
+                  uuid: images_url_shorted_vla
+              - balancer2:
+                  attempts: 2
+                  attempts_rate_limiter:
+                    limit: 0.5
+                  attempts_file: './controls/attempts.count'
+                  rr: {}
+                  generated_proxy_backends:
+                    proxy_options:
+                      backend_timeout: 2s
+                    include_backends:
+                      type: BY_ID
+                      ids: [images_http_adapter_vla]
+          - weight: 1
+            name: images_sas
+            modules:
+              - report: {ranges: default, uuid: images_url_shorted_requests_to_sas}
+              - shared:
+                  uuid: images_url_shorted_sas
+              - balancer2:
+                  attempts: 2
+                  attempts_rate_limiter:
+                    limit: 0.5
+                  attempts_file: './controls/attempts.count'
+                  rr: {}
+                  generated_proxy_backends:
+                    proxy_options:
+                      backend_timeout: 2s
+                    include_backends:
+                      type: BY_ID
+                      ids: [images_http_adapter_sas]
+          - weight: 1
+            name: images_man
+            modules:
+              - report: {ranges: default, uuid: images_url_shorted_requests_to_man}
+              - shared:
+                  uuid: images_url_shorted_man
+              - balancer2:
+                  attempts: 2
+                  attempts_rate_limiter:
+                    limit: 0.5
+                  attempts_file: './controls/attempts.count'
+                  rr: {}
+                  generated_proxy_backends:
+                    proxy_options:
+                      backend_timeout: 2s
+                    include_backends:
+                      type: BY_ID
+                      ids: [images_http_adapter_man]
+          - weight: -1
+            name: images_devnull
+            modules:
+              - report: {ranges: default, uuid: images_apphost_requests_to_devnull}
+              - errordocument:
+                  status: 204

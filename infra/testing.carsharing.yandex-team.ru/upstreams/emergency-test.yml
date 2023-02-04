@@ -1,0 +1,51 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - egorkutz
+      groups: []
+labels:
+  order: '10000000'
+config_mode: easy2
+---
+l7_upstream_macro:
+  version: 0.0.1
+  id: emergency-test
+  matcher:
+    and_:
+      - host_re: 'testing.carsharing.in.yandex-team.ru' 
+      - path_re: '/emergency/(.*\.(css|js|gif|jpe?g|png|svg|eot|ttf|woff?2|ico))?'
+  rewrite:
+    - target: 'PATH'
+      pattern:
+        re: '/emergency(/)?(.*)?'
+      replacement: '/%2'
+  monitoring:
+    uuid: emergency-test
+  by_dc_scheme:
+    dc_balancer:
+      weights_section_id: bygeo
+      method: LOCAL_THEN_BY_DC_WEIGHT
+      attempt_all_dcs: true
+    balancer:
+      attempts: 3
+      max_reattempts_share: 0.15
+      max_pessimized_endpoints_share: 0.2
+      fast_attempts: 3
+      retry_http_responses: 
+        codes: [404, 500]
+        on_last_failed_retry: PROXY_RESPONSE_AS_IS
+      retry_non_idempotent: false
+      connect_timeout: 70ms
+      backend_timeout: 10s
+    dcs:
+      - name: sas
+        backend_ids:
+          - sas-drive-admin-emergency-test
+      - name: vla
+        backend_ids:
+          - vla-drive-admin-emergency-test
+    on_error:
+      static:
+        status: 504
+        content: 'Service emergency-test is unavailable'

@@ -1,0 +1,82 @@
+---
+regexp_path_section:
+  pattern: '/iso-avatars(/.*)?'
+  modules:
+    - report:
+        uuid: 'yastatic_net_s3_iso-avatars'
+        ranges: 'default'
+    - shared:
+        uuid: yastatic_net_s3_iso-avatars
+    - headers:
+        create:
+            'Host': 'yastatic.s3.yandex.net'
+        delete:
+            'authorization|accept-encoding'
+    - response_headers:
+        create:
+            Cache-Control: 'public, max-age=216013'
+            Strict-Transport-Security: 'max-age=43200000; includeSubDomains;'
+            Access-Control-Allow-Origin: '*'
+            Timing-Allow-Origin: '*'
+        create_func:
+            Expires: 'time:+216001s'
+    - regexp:
+        sections:
+          br_section:
+              matcher:
+                match_and:
+                - match_fsm:
+                    path: '.*(\\.js|\\.css|\\.svg)'
+                - match_fsm:
+                    header:
+                      name: 'accept-encoding'
+                      value: '(.*,\\s*|)br(\\s*;\\s*q\\s*=\\s*(1|0\\.0*[1-9]).*|\\s*,.*|)'
+              modules:
+              - rewrite:
+                  actions:
+                    - regexp: '(/.*)'
+                      rewrite: '%1.br'
+              - response_headers_if:
+                  matcher: 
+                      match_response_codes:
+                        codes: [200, 204, 206]
+                  create_header:
+                    Content-Encoding: br
+              - shared:
+                  uuid: 'yastatic_net_s3_iso-avatars_common'
+          gzip_section:
+              matcher:
+                match_and:
+                - match_fsm:
+                    path: '.*(\\.js|\\.css|\\.svg)'
+                - match_fsm:
+                    header:
+                      name: 'accept-encoding'
+                      value: '(.*,\\s*|)gzip(\\s*;\\s*q\\s*=\\s*(1|0\\.0*[1-9]).*|\\s*,.*|)'
+              modules:
+              - rewrite:
+                  actions:
+                    - regexp: '(/.*)'
+                      rewrite: '%1.gz'
+              - response_headers_if:
+                  matcher: 
+                      match_response_codes:
+                        codes: [200, 204, 206]
+                  create_header:
+                    Content-Encoding: gzip
+              - shared:
+                  uuid: 'yastatic_net_s3_iso-avatars_common'
+          default:
+              matcher: {}
+              modules:
+              - shared:
+                  uuid: 'yastatic_net_s3_iso-avatars_common'
+              - headers:
+                  delete:
+                    'authorization|accept-encoding'
+              - response_headers:
+                  create:
+                    Cache-Control: 'public, max-age=216013'
+                  delete: 'content-encoding'
+              - shared:
+                  uuid: 'yastatic_s3_cached_shared'

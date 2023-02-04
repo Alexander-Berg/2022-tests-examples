@@ -1,0 +1,64 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - frenz
+      groups: []
+labels:
+  order: '00001100'
+---
+regexp_section:
+  matcher:
+    match_fsm:
+        uri: '/informer/.*'
+  modules:
+    - report:
+        uuid: "informer"
+        ranges: "default"
+    - hasher:
+        mode: request
+    - headers:
+        delete: "Connection"
+        create:
+          X-Forwarded-Proto: https
+        create_func:
+          Host: host
+          X-Metrika-Real-IP: realip
+          Ssl-Session-Ticket-Key-Name: ssl_ticket_name
+          Ssl-Session-Ticket-Iv: ssl_ticket_iv
+        create_func_weak:
+          X-Real-IP: realip
+        append_func:
+          X-Forwarded-For: realip
+    - response_headers:
+        create:
+          X-XSS-Protection: '1; mode=block'
+          Strict-Transport-Security: 'max-age=31536000'
+    - balancer2:
+        attempts: 2
+        rr: {}
+        backends:
+          - weight: 2
+            name: phantom2d-informer-test
+            modules:
+            - report: {ranges: default, uuid: requests_to_informer_to_test}
+            - cookie_hasher:
+                cookie: yandexuid
+            - balancer2:
+                by_hash_policy:
+                  unique_policy: {}
+                attempts: 1
+                attempts_rate_limiter:
+                  limit: 0.1
+                  coeff: 0.99
+                connection_attempts: 1
+                rendezvous_hashing: {}
+                generated_proxy_backends:
+                  proxy_options:
+                    backend_timeout: 11s
+                    keepalive_count: 1
+                    connect_timeout: 70ms
+                  include_backends:
+                    type: BY_ID
+                    ids:
+                      - phantom2d-informer-test

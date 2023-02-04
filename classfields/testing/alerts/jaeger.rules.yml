@@ -1,0 +1,55 @@
+groups:
+- name: jaeger
+  rules:
+    - alert: Spans_Dropped
+      expr: 'sum(rate(jaeger_collector_spans_dropped_total{job="jaeger"}[90s])) / sum(rate(jaeger_collector_spans_received_total{job="jaeger"}[90s])) > 0.05'
+      for: 20m
+      labels:
+        juggler_aggr_host: vertis_ops_jaeger
+        juggler_tag1: logs
+        juggler_tag2: jaeger
+      annotations:
+        summary: 'jaeger collector drop rate is {{ $value | printf "%.2f" }}'
+        description: 'jaeger collector drop rate is {{ $value | printf "%.2f" }}'
+    - alert: Trace_Writes_Err
+      #expr: 'sum(rate(jaeger_ydb_writer_traces_errors_total{job="jaeger"}[90s])) > 0'
+      expr: 'sum(rate(jaeger_clickhouse_writes_total{status="err"}[1m])) > 0'
+      for: 10m
+      labels:
+        juggler_aggr_host: vertis_ops_jaeger
+        juggler_tag1: logs
+        juggler_tag2: jaeger
+      annotations:
+        summary: "jaeger"
+        description: "jaeger collector dropping spans. https://grafana.vertis.yandex-team.ru/d/dls_koKWz/jaeger?orgId=1&refresh=10s&fullscreen&panelId=65&var-promenv=Prometheus-testing&var-jobname=jaeger"
+    - alert: Agent_Down
+      expr: '((sum(up{job="nomad-clients"}) by (instance) - count(nomad_client_allocs_memory_rss{task="jaeger-agent"}) by (instance)) or (up{job="nomad-clients"}-1)) > 0'
+      for: 10m
+      labels:
+        juggler_aggr_host: vertis_ops_jaeger
+        juggler_tag1: logs
+        juggler_tag2: jaeger
+      annotations:
+        summary: "jaeger: node {{ $labels.instance }} is down"
+        description: "jaeger: node {{ $labels.instance }} is down"
+    - alert: Agent_Drops
+      expr: 'sum(rate(jaeger_agent_reporter_batches_failures_total{job="jaeger"}[90s])) by (docker_host) > 0'
+      for: 10m
+      labels:
+        juggler_aggr_host: vertis_ops_jaeger
+        juggler_tag1: logs
+        juggler_tag2: jaeger
+      annotations:
+        summary: "jaeger: agent {{ $labels.docker_host }} is dropping spans"
+        description: "jaeger: agent {{ $labels.docker_host }} is dropping spans"
+    - alert: Trace_Writes_Count
+      expr: 'sum(rate(jaeger_collector_spans_received_total[2m])) > 33000'
+      for: 20m
+      labels:
+        juggler_aggr_host: vertis_ops_jaeger
+        juggler_tag1: logs
+        juggler_tag2: jaeger
+        severity: warning
+      annotations:
+        summary: "jaeger"
+        description: "Jaeger span write rate is over 33k, https://docs.yandex-team.ru/classifieds-ops-internal/void/duty-faq#ochistka-klastera-jaeger"

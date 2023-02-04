@@ -1,0 +1,30 @@
+#!/usr/bin/env node
+'use strict';
+
+/* eslint-disable no-console */
+const { promisify } = require('util');
+const exec = promisify(require('child_process').exec);
+
+const packageRe = /\.\/([a-z\d-]+)\.(\d+)\.tests\.txt/;
+
+/**
+ * Генерирует имена пакетов и номера частей из имен файлов со списками тестов.
+ */
+exec(`find . -maxdepth 1 \\( -name '*.tests.txt' \\)`).then(
+    (result) => {
+        const packages = [];
+        result.stdout
+            .split('\n')
+            .filter(Boolean)
+            .forEach((filename) => {
+                const match = filename.match(packageRe) || [];
+                const packageName = match[1];
+                const partIndex = match[2];
+                if (!packageName || !partIndex) {
+                    return;
+                }
+                packages.push({ name: packageName, partIndex });
+            });
+        console.log(JSON.stringify(packages));
+    },
+);

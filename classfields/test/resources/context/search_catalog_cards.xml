@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:util="http://www.springframework.org/schema/util"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+       http://www.springframework.org/schema/beans/spring-beans-3.1.xsd http://www.springframework.org/schema/util http://www.springframework.org/schema/util/spring-util.xsd"
+       default-lazy-init="true">
+
+    <bean class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer"
+          lazy-init="false">
+        <property name="locations">
+            <list>
+                <value>classpath:/context/test.properties</value>
+            </list>
+        </property>
+        <property name="ignoreUnresolvablePlaceholders" value="false"/>
+        <property name="order" value="-1"/>
+        <property name="ignoreResourceNotFound" value="true"/>
+    </bean>
+
+    <bean id="newYoctoCatalogSearcher"
+          class="ru.yandex.auto.searcher.search.NewYoctoCatalogCardSearcher" lazy-init="true">
+        <constructor-arg name="yoctoSearchTemplate" ref="catalogCardYoctoSearchTemplate"/>
+    </bean>
+
+    <bean id="catalogCardYoctoSearchTemplate"
+          factory-bean="yoctoCatalogCardUpdateListener" factory-method="buildSearcher"/>
+
+    <bean id="yoctoCatalogCardUpdateListener"
+          class="ru.yandex.auto.indexer.yocto.handler.catalog.CatalogCardUpdateListener">
+        <constructor-arg name="catalogDataType" ref="catalogDataType"/>
+        <constructor-arg name="converter" ref="yoctoDocumentConverter"/>
+        <constructor-arg name="extDataService" ref="extDataService"/>
+        <constructor-arg name="phaser" ref="initialCatalogCardPhaser"/>
+        <constructor-arg name="catalogCardsRootDirectory" value="${auto.shard.catalog-dir}"/>
+    </bean>
+
+    <bean id="catalogDataType"
+          class="ru.yandex.extdata.common.meta.DataType">
+        <constructor-arg index="0" value="CARS_PALMA_CATALOG"/>
+        <constructor-arg index="1">
+            <util:constant static-field="ru.yandex.auto.core.AutoSchemaVersions.CATALOG_CARDS_PALMA_VERSION"/>
+        </constructor-arg>
+    </bean>
+
+    <bean id="yoctoDocumentConverter"
+          class="ru.yandex.auto.core.search2.conversion.yocto.CatalogCardYoctoEntityConverter"/>
+
+    <bean name="extDataService" class="ru.yandex.auto.extdata.ExtDataServiceProxy">
+        <constructor-arg name="edsClient" ref="extDataClient"/>
+    </bean>
+
+    <bean id="initialCatalogCardPhaser"
+          class="java.util.concurrent.Phaser">
+        <constructor-arg value="1"/>
+    </bean>
+
+    <bean name="extDataHttpClientFactory" class="ru.yandex.auto.extdata.AutoExtDataClientFactory">
+        <constructor-arg name="ops" ref="operationalSupport"/>
+        <constructor-arg name="storagePath" value="${auto.ext.data.fs.storage.dir}"/>
+        <constructor-arg name="dataTypeRegistry" ref="dataTypeRegistry"/>
+        <constructor-arg name="s3url" value="${auto.s3edr.s3.url}"/>
+        <constructor-arg name="s3key" value="${auto.s3edr.s3.auth.key}"/>
+        <constructor-arg name="s3secret" value="${auto.s3edr.s3.auth.secret}"/>
+        <constructor-arg name="s3bucket" value="${auto.s3edr.s3.bucket}"/>
+        <constructor-arg name="s3keyPrefix" value="${auto.s3edr.key-prefix}"/>
+        <constructor-arg name="replicatePeriodInMinutes" value="5"/>  <!-- Replication period is 5 minutes -->
+        <constructor-arg name="maxConcurrentReplicates" value="1"/>
+        <constructor-arg name="maxWarningSilenceInMinutes" value="40"/> <!-- Time in minutes to avoid warnings -->
+        <constructor-arg name="maxErrorSilenceInMinutes" value="80"/> <!-- Time in minutes to avoid errors -->
+    </bean>
+
+    <bean name="extDataClient" factory-bean="extDataHttpClientFactory" factory-method="build"/>
+
+    <bean name="operationalSupport" class="ru.yandex.auto.app.OperationalSupport"/>
+
+    <bean id="dataTypeRegistry"
+          class="ru.yandex.extdata.common.meta.DataTypeRegistry">
+        <constructor-arg>
+            <list>
+                <ref bean="catalogDataType"/>
+            </list>
+        </constructor-arg>
+    </bean>
+
+</beans>

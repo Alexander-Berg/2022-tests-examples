@@ -1,0 +1,48 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - dinislamov44
+      groups: []
+labels:
+  order: '10000000'
+config_mode: easy2
+---
+l7_upstream_macro:
+  version: 0.0.1
+  id: pr2-hermione-events-frontend
+  matcher:
+    and_:
+    - host_re: 'pr2\.games-test\.yandex\.(ru|by|ua|kz|com|com\.tr)'
+    - path_re: '/(events|hermione)(/.*)?'
+    - method: GET
+  rewrite:
+  - target: PATH
+    pattern:
+      re: '^/?$'
+    replacement: '/games/'
+  - target: PATH
+    pattern:
+      re: '^/api/user/info/v1/avatar(/.*)?'
+    replacement: '/games/api/user/info/v1/avatar%1'
+  headers:
+    - uaas:
+        service_name: games
+
+  flat_scheme:
+    balancer:
+      attempts: 2
+      fast_attempts: 2
+      retry_http_responses:
+        codes:
+        - 429
+      connect_timeout: 5s
+      backend_timeout: 180s
+      max_reattempts_share: 0.2
+      max_pessimized_endpoints_share: 0.2
+    backend_ids:
+    - pr2-games-frontend
+    on_error:
+      static:
+        status: 504
+        content: Service unavailable

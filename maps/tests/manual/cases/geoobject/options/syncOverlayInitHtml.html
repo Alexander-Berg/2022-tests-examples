@@ -1,0 +1,191 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Геообъект: включение опции синхронного добавления оверлея на карту
+
+Description:
+Проверка включения опции синхронного добавления оверлея на карту.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+geoobject
+
+Estimated time:
+180000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+  
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан Санкт-Петербурга, сверху справа кнопки "add", "remove", "clusterer".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "add".
+  
+  Expectation:
+  На спане карты появляется множество синих меток коллекций.
+  Под контейнером с картой появляется строка: "Placemarks added. useClusterer state: undefined".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "clusterer".
+  Выполнить клик в кнопку "add".
+  
+  Expectation:
+  На спане карты появляются красные метки кластеров, и синие метки коллекций.
+  Под контейнером с картой появляется строка: "Placemarks added. useClusterer state: true".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "add".
+  
+  Expectation:
+  На спане карты увеличивается количество меток кластеров.
+  Под контейнером с картой появляется строка: "Placemarks added. useClusterer state: true".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "remove".
+  
+  Expectation:
+  Со спана карты пропадают ранее добавленные метки коллекций и метки кластеров.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "add".
+  
+  Expectation:
+  На спане карты появляются красные метки кластеров, и синие метки коллекций.
+  Под контейнером с картой появляется строка: "Placemarks added. useClusterer state: true".
+
+Step:
+  Action:
+  Выполнить отзум скролом мыши на одно значение.
+  
+  Expectation:
+  На спане карты уменьшается количество меток коллекции, метки кластеризуются в кластеры. В кластерных метках растет значение кластеризации.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "clusterer".
+  Выполнить клик в кнопку "add".
+  
+  Expectation:
+  На спане карты появляются множество синих меток коллекций.
+  Под контейнером с картой появляется строка: "Placemarks added. useClusterer state: false".
+
+Step:
+  Action:
+  Навести курсор на метку коллекции и выполнить клик в нее.
+  
+  Expectation:
+  При наведении курсор меняется на палец, появляется хинт с номером метки, по клику спан карты может сместится, вместо метки на спане карты открывается балун с содержимым в виде номера метки.
+-->
+<html>
+<head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script src="https://yandex.st/jquery/1.6.4/jquery.min.js" type="text/javascript"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            var map = myMap = new ymaps.Map('map', {
+                center: [59.96343157514998, 30.317977733422868],
+                zoom: 11,
+                // Добавим к стандартным поведениям карты зум колесом мыши.
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            addGrid(myMap);
+
+            // Создаем кластеризатор c красной иконкой (по умолчанию используются синия).
+            var clusterer = new ymaps.Clusterer({preset: 'islands#redClusterIcons'}),
+            // Создаем коллекцию геообъектов.
+                    collection = new ymaps.GeoObjectCollection();
+            var log = new Log();
+            var i = 0;
+            // Добавляем кластеризатор на карту.
+            myMap.geoObjects.add(clusterer);
+
+            // Добавляем коллекцию геообъектов на карту.
+            myMap.geoObjects.add(collection);
+
+            var addMarkersButton = new ymaps.control.Button({data: {content: 'add'}, options: {selectOnClick: false}});
+            var removeMarkersButton = new ymaps.control.Button({data: {content: 'remove'}, options: {selectOnClick: false}});
+            var clustererButton = new ymaps.control.Button({data: {content: 'clusterer'}, options: {selectOnClick: true}});
+
+            // Добавление меток с произвольными координатами.
+            addMarkersButton.events.add('click', function addMarkers() {
+                // Количество меток, которое нужно добавить на карту.
+                var placemarksNumber = 100,
+                        bounds = myMap.getBounds(),
+                // Флаг, показывающий, нужно ли кластеризовать объекты.
+                        useClusterer = clustererButton.state.get('selected');
+                log.info('Placemarks added. useClusterer state: ' + useClusterer);
+                // Генерируем нужное количество новых объектов.
+                var newPlacemarks = createGeoObjects(placemarksNumber, bounds);
+
+                // Если используется кластеризатор, то добавляем кластер на карту,
+                // если не используется - добавляем на карту коллекцию геообъектов.
+                if (useClusterer) {
+                    // Добавлеяем массив меток в кластеризатор.
+                    clusterer.add(newPlacemarks);
+                } else {
+                    for (var i = 0, l = newPlacemarks.length; i < l; i++) {
+                        collection.add(newPlacemarks[i]);
+                    }
+                }
+            });
+
+            // Функция, создающая необходимое количество геообъектов внутри указанной области.
+            function createGeoObjects(number, bounds) {
+                var placemarks = [];
+                // Создаем нужное количество меток
+                for (var i = 0; i < number; i++) {
+                    // Генерируем координаты метки случайным образом.
+                    coordinates = getRandomCoordinates(bounds);
+                    // Создаем метку со случайными координатами.
+                    myPlacemark = new ymaps.Placemark(coordinates, {
+                        balloonContent: i, hintContent: i}, {pointOverlay: 'html#placemark', syncOverlayInit: true});
+                    placemarks.push(myPlacemark);
+                }
+                return placemarks;
+            }
+
+            // Функция, генерирующая случайные координаты
+            // в пределах области просмотра карты.
+            function getRandomCoordinates(bounds) {
+                var size = [bounds[1][0] - bounds[0][0], bounds[1][1] - bounds[0][1]];
+                return [Math.random() * size[0] + bounds[0][0], Math.random() * size[1] + bounds[0][1]];
+            }
+
+            // Удаление всех меток с карты
+            removeMarkersButton.events.add('click', function removeMarkers() {
+                // Удаляем все  метки из кластеризатора.
+                clusterer.removeAll();
+                // Удаляем все метки из коллекции.
+                collection.removeAll();
+            });
+
+            myMap.controls
+                    .add(addMarkersButton, {float: 'right'})
+                    .add(removeMarkersButton, {float: 'right'})
+                    .add(clustererButton, {float: 'right'})
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<!--
+Title:
+Маршрут: опция области на карте с искомыми объектами
+
+Description:
+Проверка опции области на карте с искомыми объектами.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+regress
+
+Estimated time:
+90000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта загрузилась корректно.
+  Сверху кнопка "bounded by".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "bounded by".
+
+  Expectation:
+  Через некоторое время после клика происходит смена спана с отзумом на спан с построенным маршрутом из 3 меток и транзитной точки.
+  Маршрутная нитка - фиолетовая.
+
+Step:
+  Action:
+  Выполнить клик в метку "1", "2", "3" маршрута.
+
+  Expectation:
+  В месте меток "1", "2" открывается балун с содержимым, в виде полного топонима места.
+  В месте метки "3" открывается балун с координатами точки.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "bounded by".
+
+  Expectation:
+  Происходит отзум спана карты, на спане появляется зеленая маршрутная нитка с меткой "1" возле Набережные Челны.
+-->
+<html>
+<head>
+    <title>API 2.0</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <script src="../helper.js"></script>
+    <script type=text/javascript>
+        Api('init');
+        function init(ymaps) {
+            var myMap = new ymaps.Map('map', {
+                    center: [55.00718809437818, 38.094514924687026],
+                    zoom: 7
+                }),
+                
+                zoom = new ymaps.control.ZoomControl(),
+                button1 = new ymaps.control.Button({data: {content: 'bounded by'}}, {selectOnClick: true});
+
+            button1.events
+                .add("select", function (e) {
+                    var route = new ymaps.route([
+                        'красный',
+                        'тула',
+                        { type: 'viaPoint', point: 'калуга' },
+                        { type: 'wayPoint', point: [54.59766481046268, 39.615647888182124] }
+                    ], {
+                        mapStateAutoApply: true,
+                        boundedBy: [
+                            [56.393500932099016, 35.5287338256808],
+                            [53.47902043412735, 40.72526702880481]
+                        ]
+                    }).then(function (route) {
+                        myMap.geoObjects.add(route);
+                    });
+                })
+                .add('deselect', function () {
+                    var route = new ymaps.route([
+                        'красный',
+                        'тула',
+                        { type: 'viaPoint', point: 'калуга' },
+                        { type: 'wayPoint', point: [54.59766481046268, 39.615647888182124] }
+                    ], {
+                        mapStateAutoApply: true
+                    }).then(function (route) {
+                        route.getPaths().options.set({
+                            strokeColor: '00FF00',
+                            opacity: 0.9
+                        });
+                        myMap.geoObjects.add(route);
+                    });
+                });
+            myMap.controls
+                .add(zoom)
+                .add(button1);
+            
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+<p><a href="https://tech.yandex.ru/maps/archive/doc/jsapi/2.0/ref/reference/router.Route-docpage/" target="_blank">Docs</a></p>
+</body>
+</html>

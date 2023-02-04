@@ -1,0 +1,212 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Регионы: вырезание и выделение регионов на карте
+
+Description:
+Проверка вырезания и выделения регионов на карте.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components:
+regions
+
+Estimated time:
+120000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно со спаном Африки.
+  Сверху имеются кнопки с выпадающими списками и кнопка "remove".
+
+Step:
+  Action:
+  С помощью кнопок сверху выбрать "RU", "en", "3". 
+  Отзумить и переместить спан карты над Россией.
+
+  Expectation:
+  Россия выделяется полупрозрачным синим цветом, с выделенными границами регионов.
+
+Step:
+  Action:
+  Поводить курсором по регионам, затем зажать ЛКМ над одним из регионов и переместить курсор.
+
+  Expectation:
+  При наведении появляется хинт на английском с наименованием региона.
+  При зажатии ЛКМ происходит захват региона, при переносе курсора область выделения переносится вслед за курсором.
+
+Step:
+  Action:
+  Нажать ЛКМ на перенесенную область региона.
+
+  Expectation:
+  Область окрашивается в розовый, граница региона салатового цвета.
+
+Step:
+  Action:
+  Нажать ЛКМ на область другого региона на карте России.
+
+  Expectation:
+  Выделение предыдущего региона сменилось на синий полупрозрачный, регион в который произошел клик окрашивается в розовый, граница региона салатового цвета.
+
+Step:
+  Action:
+  Зажать ЛКМ над выделенным на карте регионом и переместить курсор.
+
+  Expectation:
+  При зажатии ЛКМ происходит захват региона, при переносе курсора область выделения переносится вслед за курсором.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="//yandex.st/jquery/1.9.1/jquery.min.js"></script>
+    <script src="../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        var countries = {
+            RU: 60189,//RU
+            UA: 60199, //UA
+            BY: 59065, //BEL
+            KZ: 214665 //KZ
+        }, langs = ['ru', 'uk', 'en', 'be'];
+
+        function init(ymaps) {
+            //ymaps = ym;
+            geoMap = map = new ymaps.Map('map', {
+                center: [0, 0],
+                type: "yandex#map",
+                zoom: 3
+            }, {
+                suppressObsoleteBrowserNotifier: true,
+                suppressMapOpenBlock: true
+
+            });
+            addGrid(geoMap);
+            var log = new Log();
+            log.info("Test case:");
+
+            var sCountry = $("#country"),
+                    sLng = $("#lang"),
+                    sLevel = $("#level");
+            for (var i in countries) {
+                $("<option value=" + i + ">" + i + "</option>").appendTo(sCountry);
+            }
+            for (var j in langs) {
+                var i = langs[j];
+                $("<option value=" + i + ">" + i + "</option>").appendTo(sLng);
+            }
+            var lastCollection = 0,
+                    lastActiveRegion = 0;
+
+
+            $("#remove").click(function () {
+                geoMap.geoObjects.remove(lastCollection);
+                lastCollection = 0;
+            });
+
+            $("select").change(function () {
+                var lng = $("option:selected", sLng).val() || 'ru',
+                        contr = $("option:selected", sCountry).val(),
+                        level = $("option:selected", sLevel).val();
+                if (lastCollection) {
+                    geoMap.geoObjects.remove(lastCollection);
+                }
+                ymaps.regions.load(contr, {
+                    lang: lng,
+                    quality: level
+                }).then(function (result) {
+                    lastCollection = result.geoObjects;
+                    lastCollection.options.set({
+                        zIndex: 1,
+                        zIndexHover: 1,
+                        draggable: true
+                    });
+
+
+                    lastCollection.events.add('click', function (event) {
+                        var target = event.get('target');
+
+                        let iterator = map.geoObjects.get(0).getIterator();
+                        while ((geoObject = iterator.getNext()) != iterator.STOP_ITERATION) {
+
+                            geoObject.options.set('preset', '')
+                        }
+                        lastActiveRegion = target;
+                        lastActiveRegion.options.set('preset', {
+                            strokeWidth: 3,
+                            fillColor: 'F99',
+                            strokeColor: '9f9'
+                        });
+                        if(target.properties.get('osmId') == 140291){
+                            let idTumen = 140291;
+                            let iterator = map.geoObjects.get(0).getIterator();
+                            let geoObject;
+                            while ((geoObject = iterator.getNext()) != iterator.STOP_ITERATION) {
+                                let osmId = geoObject.properties.get('osmId');
+                                let parents = geoObject.properties.get('parents').map((parent) => parent.id);
+                                if (osmId == idTumen || parents.indexOf(idTumen) != -1) {
+                                    geoObject.options.set('preset', {
+                                        strokeWidth: 3,
+                                        fillColor: 'F99',
+                                        strokeColor: '9f9'
+                                    });
+                                }
+                            }
+
+                        }
+                        if(target.properties.get('osmId') == 140337){
+                            let idArkhangelsk = 140337;
+                            let iterator = map.geoObjects.get(0).getIterator();
+                            let geoObject;
+                            while ((geoObject = iterator.getNext()) != iterator.STOP_ITERATION) {
+                                let osmId = geoObject.properties.get('osmId');
+                                let parents = geoObject.properties.get('parents').map((parent) => parent.id);
+                                if (osmId == idArkhangelsk || parents.indexOf(idArkhangelsk) != -1) {
+                                    geoObject.options.set('preset', {
+                                        strokeWidth: 3,
+                                        fillColor: 'F99',
+                                        strokeColor: '9f9'
+                                    });
+                                }
+                            }
+
+                        }
+                    });
+
+                    geoMap.geoObjects.add(lastCollection);
+                }, function () {
+                    //alert('no response');
+                });
+            });
+        }
+    </script>
+</head>
+<body>
+<p style='padding: 5px;'>
+    Для отображения нужного региона выберите страну, язык и уровень детализации соответственно.<br><br>
+    <select id=country>
+        <option>-</option>
+    </select>
+    <select id=lang>
+        <option>-</option>
+    </select>
+    <select id=level>
+        <option value=0>0</option>
+        <option value=1>1</option>
+        <option value=2>2</option>
+        <option value=3>3</option>
+    </select>
+    <input id=remove type=button value='remove'>
+</p>
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

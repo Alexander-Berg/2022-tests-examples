@@ -1,0 +1,66 @@
+import os
+
+REDIS_SENTINEL_LOCATION = os.environ.get('REDIS_SENTINEL_LOCATION')
+if REDIS_SENTINEL_LOCATION is None:
+    REDIS_SENTINEL_LOCATION = [
+        ('sas-9km5wf07po5xoux5.db.yandex.net', REDIS_SENTINEL_PORT),
+        ('vla-xftq4m8h2b17h4iv.db.yandex.net', REDIS_SENTINEL_PORT),
+    ]
+else:
+    REDIS_SENTINEL_LOCATION = [
+        (location, REDIS_SENTINEL_PORT) for location in
+        REDIS_SENTINEL_LOCATION.split(',')
+    ]
+
+REDIS_SENTINEL_MASTER = os.environ.get('REDIS_SENTINEL_MASTER', 'corp_education_testing')
+
+REDIS_SENTINEL_CACHE_BACKEND = os.environ.get(
+    'REDIS_SENTINEL_CACHE_BACKEND',
+    'kelvin.common.redis.redis_cache.RedisSentinelCacheWithStats'
+)
+
+def get_redis_cache_settings(max_entries=100*1000, key_prefix='django_cache', timeout=MAIN_CACHE_DEFAULT_TIMEOUT):
+    return {
+        'BACKEND': REDIS_SENTINEL_CACHE_BACKEND,
+        'LOCATION': REDIS_SENTINEL_LOCATION,
+        'OPTIONS': {
+            'REDIS_CLIENT_CLASS': 'django_redis_sentinel.client.SentinelClient',
+            'PASSWORD': os.environ.get('REDIS_SENTINEL_PASSWORD', 'password'),
+            'SENTINEL_SERVICE_NAME': REDIS_SENTINEL_MASTER,
+            'REDIS_CLIENT_KWARGS': {
+                'db': int(os.environ.get('REDIS_DB', '0')),
+            },
+            'MAX_ENTRIES': max_entries,
+        },
+        'TIMEOUT': timeout,
+        'KEY_PREFIX': key_prefix
+    }
+
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+    },
+    'user_staff_groups': {
+        'BACKEND': 'django.core.cache.backends.db.DatabaseCache',
+        'LOCATION': 'accounts_userstaffgroups_cache',
+        'TIMEOUT': USER_STAFF_GROUPS_CACHE_DEFAULT_TIMEOUT,
+        'OPTIONS': {
+            'MAX_ENTRIES': USER_STAFF_GROUPS_CACHE_MAX_ENTRIES,
+        },
+    },
+    'main_cache': get_redis_cache_settings(
+        max_entries=MAIN_CACHE_MAX_ENTRIES,
+        timeout=MAIN_CACHE_DEFAULT_TIMEOUT,
+        key_prefix='django_cache'
+    ),
+    'user_course': get_redis_cache_settings(
+        max_entries=USER_COURSE_CACHE_MAX_ENTRIES,
+        timeout=USER_COURSE_CACHE_DEFAULT_TIMEOUT,
+        key_prefix='match_cache'
+    ),
+    'staff_reader': get_redis_cache_settings(
+        max_entries=STAFF_READER_CACHE_MAX_ENTRIES,
+        timeout=STAFF_READER_CACHE_DEFAULT_TIMEOUT,
+        key_prefix='suggestuser'
+    )
+}

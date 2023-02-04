@@ -1,0 +1,83 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Карта: менеджер действий карты
+
+Description:
+Проверка работы менеджера действий карты.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+map
+
+Estimated time:
+60000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+  
+  Expectation:
+  На странице загружаются контейнера с картой, со спаном Москвы, после загруки происходит смещение спана карты двумя драгами спанаы. 
+  В центре спана после остановки населенный пункт Бронницы.
+  По окончанию перемещения спана под контейнером с картой появляется блок: "Validate map.getGlobalPixelCenter() 158880.89.... and 158880.89591...; OK". 
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            //ymaps = ym;
+            var map = myMap = new ym.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 10,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['typeSelector', 'zoomControl']
+            });
+            addGrid(myMap);
+            var log = new Log();
+
+            var currentCenter = map.getGlobalPixelCenter(),
+                    intermediateCenter = [currentCenter[0] + 200, currentCenter[1] + 200],
+                    finalCenter = [currentCenter[0] + 400, currentCenter[1] + 400],
+                    action1 = new ymaps.map.action.Single({
+                        globalPixelCenter: intermediateCenter,
+                        zoom: map.getZoom(),
+                        duration: 500,
+                        timingFunction: 'ease-in-out',
+                        checkZoomRange: false
+                    }, map),
+                    action2 = new ymaps.map.action.Single({
+                        globalPixelCenter: finalCenter,
+                        zoom: map.getZoom(),
+                        duration: 500,
+                        timingFunction: 'ease-in-out',
+                        checkZoomRange: false
+                    }, map);
+
+            map.events.once('actionend', function () {
+                map.events.once('actionend', function () {
+                    __log__('Validate map.getGlobalPixelCenter() ' + map.getGlobalPixelCenter() + ' and ' + finalCenter);
+                    validateValue(map.getGlobalPixelCenter(), finalCenter);
+                });
+
+                map.action.execute(action2);
+            });
+
+            map.action.execute(action1);
+        }
+    </script>
+</head>
+<body>
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

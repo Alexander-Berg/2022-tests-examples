@@ -1,0 +1,122 @@
+---
+instance_macro:
+  workers: !f get_workers()
+  sections:
+    admin:
+      ips: [127.0.0.1, '::1']
+      ports: [16020]
+      modules:
+        - http: {}
+        - admin: {}
+    stats_storage:
+      ips: [127.0.0.4]
+      ports: [16020]
+      modules:
+        - report:
+            uuid: 'service_total'
+            ranges: 'default'
+            just_storage: true
+        - http: {}
+        - errordocument:
+            status: 204
+    https_section:
+      ips: ['2a02:6b8::3:29', '87.250.250.29']
+      ports: [443]
+      local_ips: [local_v4_addr, local_v6_addr]
+      local_ports: [16021]
+      extended_http_macro:
+        port: 16021
+        report_uuid: 'https'
+        enable_ssl: true
+        ssl_sni_contexts:
+          collections.yandex.ru:
+            servername_regexp: default
+        modules:
+          - threshold:
+              lo_bytes: 420000
+              hi_bytes: 10485760
+              pass_timeout: 10s
+              recv_timeout: 1s
+          - headers:
+              create_func:
+                X-Forwarded-For-Y: realip
+                X-Collections-Req-Id: reqid
+              create_func_weak:
+                X-Req-Id: reqid
+          - log_headers:
+              name_re: 'User-Agent|X-Req-Id'
+          - response_headers:
+              delete: 'uWSGI-encoding|uwsgi-encoding'
+          - exp_getter_macro:
+              service_name: collections
+              testing_mode: {}
+          - regexp:
+              include_upstreams:
+                filter:
+                  id_prefix_in:
+                    - 'common_'
+                    - 'slbping'
+                    - 'awacs-balancer-health-check'
+                order:
+                  label:
+                    name: order
+    http_section:
+      ips: ['2a02:6b8::3:29', '87.250.250.29']
+      ports: [80]
+      local_ips: [local_v4_addr, local_v6_addr]
+      local_ports: [16020]
+      extended_http_macro:
+        port: 16020
+        report_uuid: 'http'
+        modules:
+          - headers:
+              create_func_weak:
+                X-Req-Id: reqid
+          - log_headers:
+              name_re: 'User-Agent|X-Req-Id'
+          - regexp:
+              include_upstreams:
+                filter:
+                  id_prefix_in:
+                    - 'http_'
+                    - 'slbping'
+                    - 'awacs-balancer-health-check'
+                order:
+                  label:
+                    name: order
+    internal_section:
+      ips: ['2a02:6b8:0:3400::103c']
+      ports: [80]
+      extended_http_macro:
+        port: 16020
+        report_uuid: 'http'
+        modules:
+          - threshold:
+              lo_bytes: 420000
+              hi_bytes: 10485760
+              pass_timeout: 10s
+              recv_timeout: 1s
+          - headers:
+              create_func:
+                X-Collections-Req-Id: reqid
+              create_func_weak:
+                X-Req-Id: reqid
+                X-Forwarded-For-Y: realip
+          - log_headers:
+              name_re: 'User-Agent|X-Req-Id'
+          - regexp:
+              include_upstreams:
+                filter:
+                  and:
+                    - not:
+                        id_suffix_in:
+                          - '_man'
+                          - '_vla'
+                    - id_prefix_in:
+                        - 'common_'
+                        - 'int_'
+                        - 'slbping'
+                        - 'awacs-balancer-health-check'
+                order:
+                  label:
+                    name: order

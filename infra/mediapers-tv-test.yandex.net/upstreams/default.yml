@@ -1,0 +1,65 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - nanny-robot
+      groups: []
+labels:
+  order: '99999999'
+---
+regexp_section:
+  matcher: {}
+  modules:
+    - threshold:
+        lo_bytes: 3072
+        hi_bytes: 5120
+        pass_timeout: 10s
+        recv_timeout: 2s
+    - shared:
+        uuid: backends
+    - balancer2:
+        attempts: 2
+        rr: {weights_file: ./controls/traffic_control.weights}
+        backends:
+          - weight: 1
+            name: bygeo_man
+            modules:
+              - report: {ranges: default, uuid: requests_to_man}
+              - balancer2:
+                  attempts: 2
+                  weighted2: {}
+                  generated_proxy_backends:
+                    proxy_options:
+                      connect_timeout: 50ms
+                      backend_timeout: 50ms
+                    include_backends:
+                      type: BY_ID
+                      ids: [mediapers-tv-test_man]
+          - weight: 1
+            name: bygeo_sas
+            modules:
+              - report: {ranges: default, uuid: requests_to_sas}
+              - balancer2:
+                  attempts: 2
+                  weighted2: {}
+                  generated_proxy_backends:
+                    proxy_options:
+                      connect_timeout: 50ms
+                      backend_timeout: 50ms
+                    include_backends:
+                      type: BY_ID
+                      ids: [mediapers-tv-test_sas]
+          - weight: 1
+            name: bygeo_vla
+            modules:
+              - report: {ranges: default, uuid: requests_to_vla}
+              - balancer2:
+                  attempts: 2
+                  weighted2: {}
+                  generated_proxy_backends:
+                    proxy_options:
+                      connect_timeout: 50ms
+                      backend_timeout: 50ms
+                    include_backends:
+                      type: BY_ID
+                      ids: [mediapers-tv-test_vla]

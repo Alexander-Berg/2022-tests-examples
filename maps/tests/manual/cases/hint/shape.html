@@ -1,0 +1,120 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Хинт: проверка метода получающего форму области хинта
+
+Description:
+Проверка метода получающего форму области хинта.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+hint
+
+Estimated time:
+60000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+  
+  Expectation:
+  Карта отобразилась корректно. 
+  На карте спан Москвы, сверху справа контрол фулскрин, в центре спана карты метка, рядом с меткой хинт "maps hint", под контейнером блок: "hint.getOverlay(): [object Object]; getShape(): [object Object]; getShape().getType(): Rectangle" и аналогичный блок с приставкой "map.hint...".
+
+Step:
+  Action:
+  Навести курсор на метку на спане карты. 
+  
+  Expectation:
+  При наведении на метку курсор меняется на палец, появляется хинт "placemark hint", под контейнером блок: "placemark.hint.getOverlay(): [object Object]; getShape(): [object Object]; getShape().getType(): Rectangle".
+  Хинт "maps hint" при наведении на метку пропадает, на спане карты остается пустой маленький прямоугольный хинт.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 10,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+
+            var hint,
+                    pos = myMap.getCenter(),
+                    contentLayout = ymaps.templateLayoutFactory.createClass('$[content]'),
+                    data = { a: 'custom hint' },
+                    options = { contentLayout: contentLayout, closeTimeout: 300 };
+            window.hint = hint = new ymaps.Hint(myMap);
+            hint.options.set(options).setParent(myMap.options);
+            hint.setData(data);
+
+            hint.open(pos).then(function () {
+                hint.getOverlay().then(function (overlay) {
+                    console.log(overlay);
+                    console.log(overlay.getShape());
+                    __log__('hint.getOverlay(): ' + overlay);
+                    __log__('getShape(): ' + overlay.getShape());
+                    __log__('getShape().getType(): ' + overlay.getShape().getType());
+                })
+            });
+
+            map.hint.open(map.getCenter(), {content: 'map hint'}).then(function () {
+                map.hint.getOverlay().then(function (overlay) {
+                    console.log(overlay);
+                    console.log(overlay.getShape());
+                    __log__('map.hint.getOverlay(): ' + overlay);
+                    __log__('getShape(): ' + overlay.getShape());
+                    __log__('getShape().getType(): ' + overlay.getShape().getType());
+                })
+            });
+
+            var placemark = new ymaps.Placemark([55.72725771214265, 37.640390506634007], {hintContent: 'placemark hint'});
+            placemark.events.add('hintopen', function () {
+                setTimeout(function () {
+                    placemark.hint.getOverlay().then(function (overlay) {
+                        console.log(overlay);
+                        console.log(overlay.getShape());
+                        __log__('placemark.hint.getOverlay(): ' + overlay);
+                        __log__('getShape(): ' + overlay.getShape());
+                        __log__('getShape().getType(): ' + overlay.getShape().getType());
+                    })
+                }, 500)
+
+            });
+            map.geoObjects.add(placemark);
+
+            /*var button = new ymaps.control.Button('shape');
+             button.events.add('click', function() {
+             map.hint.getOverlay().then(function(overlay) {
+             console.log(overlay);
+             console.log(overlay.getShape());
+             __log__('getOverlay(): ' + overlay);
+             __log__('getShape(): ' + overlay.getShape());
+             __log__('getShape().getType(): ' + overlay.getShape().getType());
+             })
+             });
+             map.controls.add(button);*/
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

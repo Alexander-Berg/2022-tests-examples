@@ -1,0 +1,53 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - deligor
+      groups:
+      - svc_mssngrbackend_administration
+labels:
+  order: '10000000'
+---
+regexp_section:
+    matcher:
+       match_and:
+            - match_or:
+                - match_fsm:
+                    host: 'api.messenger.test.yandex-team.ru'
+                - match_fsm:
+                    host: 'api.messenger.test.yandex.(com|ru|net)'
+                - match_fsm:
+                    host: 'api.messenger.test.yandex-team.ru:443'
+                - match_fsm:
+                    host: 'api.messenger.test.yandex.(com|ru|net):443'
+                - match_fsm:
+                    host: (.*\\.)?yandex\\.(ru|com\\.tr|kz|ua|by|az|com\\.am|com\\.ge|co\\.il|kg|lt|lv|md|tj|tm|uz|fr|ee|com)
+                - match_fsm:
+                    host: (.*\\.)?yandex\\.(ru|com\\.tr|kz|ua|by|az|com\\.am|com\\.ge|co\\.il|kg|lt|lv|md|tj|tm|uz|fr|ee|com):443
+            - match_fsm:
+                uri: '/yambogram(/.*)?'
+    modules:
+        - report: {ranges: default, uuid: yambogram}
+        - threshold:
+            lo_bytes: 307200
+            hi_bytes: 716800
+            pass_timeout: 10s
+            recv_timeout: 1s
+        - shared:
+            uuid: yambogram
+        - stats_eater: {}
+        - balancer2:
+            attempts: 2
+            connection_attempts: 5
+            attempts_rate_limiter:
+                limit: 0.2 
+            rr: {}
+            generated_proxy_backends:
+                proxy_options:
+                    backend_timeout: 3000ms
+                    connect_timeout: 50ms
+                    keepalive_count: 5
+                    keepalive_timeout: "60s"
+                include_backends:
+                    type: BY_ID
+                    ids: [yambogram_vla]

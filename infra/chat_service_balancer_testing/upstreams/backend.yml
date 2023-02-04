@@ -1,0 +1,92 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - roboslone
+      groups:
+      - svc_chatswithbusinesses
+labels:
+  order: '99999999'
+---
+regexp_section:
+    matcher:
+        match_fsm:
+            uri: /(botapi|chat|chats_list|service)/.*
+    modules:
+        - balancer2:
+            attempts: 2
+            rr: {weights_file: ./controls/traffic_control.weights}
+            by_name_policy:
+                name: !f get_geo("regularinstances_", "random")
+                unique_policy: {}
+            backends:
+                -   name: regularinstances_sas
+                    weight: 1
+                    modules:
+                        - report: {ranges: default, uuid: requests_to_backend}
+                        - balancer2:
+                            attempts: 2
+                            connection_attempts: !f count_backends()
+                            attempts_rate_limiter:
+                                limit: 0.3
+                            unique_policy: {}
+                            active:
+                                delay: '30s'
+                                request: 'GET /ping/?check_active=1 HTTP/1.1\nHost: localhost\n\n'
+                            generated_proxy_backends:
+                                proxy_options:
+                                    connect_timeout: 200ms
+                                    backend_timeout: 15s
+                                include_backends:
+                                    type: BY_ID
+                                    ids: [backend-sas]
+                -   name: regularinstances_man
+                    weight: 1
+                    modules:
+                        - report: {ranges: default, uuid: requests_to_backend}
+                        - balancer2:
+                            attempts: 2
+                            connection_attempts: !f count_backends()
+                            attempts_rate_limiter:
+                                limit: 0.3
+                            unique_policy: {}
+                            active:
+                                delay: '30s'
+                                request: 'GET /ping/?check_active=1 HTTP/1.1\nHost: localhost\n\n'
+                            generated_proxy_backends:
+                                proxy_options:
+                                    connect_timeout: 200ms
+                                    backend_timeout: 15s
+                                include_backends:
+                                    type: BY_ID
+                                    ids: [backend-man]
+                -   name: regularinstances_vla
+                    weight: 1
+                    modules:
+                        - report: {ranges: default, uuid: requests_to_backend}
+                        - balancer2:
+                            attempts: 2
+                            connection_attempts: !f count_backends()
+                            attempts_rate_limiter:
+                                limit: 0.3
+                            unique_policy: {}
+                            active:
+                                delay: '30s'
+                                request: 'GET /ping/?check_active=1 HTTP/1.1\nHost: localhost\n\n'
+                            generated_proxy_backends:
+                                proxy_options:
+                                    connect_timeout: 200ms
+                                    backend_timeout: 15s
+                                include_backends:
+                                    type: BY_ID
+                                    ids: [backend-vla]
+                -   name: fallback
+                    weight: -1
+                    modules:
+                        -   errordocument:
+                                status: 504
+                                content: "Service unavailable"
+            on_error:
+                errordocument:
+                    status: 504
+                    content: "Service unavailable"

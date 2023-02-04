@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:util="http://www.springframework.org/schema/util"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+       http://www.springframework.org/schema/util http://www.springframework.org/schema/util/spring-util.xsd"
+       default-lazy-init="true">
+
+    <bean class="org.springframework.beans.factory.annotation.RequiredAnnotationBeanPostProcessor"/>
+
+    <import resource="classpath:searchline-infrastructrure.xml"/>
+
+    <bean id="application" name="application"
+          class="ru.yandex.auto.searchline.app.ApplicationInstance" init-method="start">
+        <constructor-arg name="environment" ref="environment"/>
+    </bean>
+
+    <bean id="environment" class="ru.yandex.auto.app.DefaultEnvironment"/>
+
+    <alias name="application" alias="operationalSupport"/>
+
+    <bean id="carSuggestManager" class="ru.yandex.auto.searchline.manager.car.CarSuggestManager">
+        <constructor-arg name="queryProcessor" ref="carsWizardParseQueryProcessor"/>
+        <constructor-arg name="catalog" ref="catalogPersistenceManager"/>
+        <property name="regionsDictionary" ref="sellerCityAllAliasDictionary"/>
+    </bean>
+
+    <bean id="motoSuggestManager" class="ru.yandex.auto.searchline.manager.moto.MotoSuggestManager">
+        <constructor-arg name="queryProcessor" ref="motoWizardParseResultParallelQueryProcessor"/>
+        <constructor-arg name="catalog" ref="motoCatalogPersistenceManager"/>
+        <constructor-arg name="locale" value="${auto.locale}"/>
+        <property name="regionsDictionary" ref="sellerCityAllAliasDictionary"/>
+    </bean>
+
+    <bean id="truckSuggestManager" class="ru.yandex.auto.searchline.manager.truck.TruckSuggestManager">
+        <constructor-arg name="queryProcessor" ref="trucksWizardParseQueryProcessor"/>
+        <constructor-arg name="catalog" ref="truckCatalogPersistenceManager"/>
+        <constructor-arg name="locale" value="${auto.locale}"/>
+        <property name="regionsDictionary" ref="sellerCityAllAliasDictionary"/>
+    </bean>
+
+    <bean id="allCategorySuggestManager" class="ru.yandex.auto.searchline.manager.CompoundSuggestManager">
+        <constructor-arg name="carSuggest" ref="carSuggestManager" />
+        <constructor-arg name="truckSuggest" ref="truckSuggestManager"/>
+        <constructor-arg name="motoSuggest" ref="motoSuggestManager"/>
+        <constructor-arg name="carStat" ref="carsOffersStatService"/>
+        <constructor-arg name="truckStat" ref="trucksOffersStatService"/>
+        <constructor-arg name="motoStat" ref="motoOffersStatService"/>
+    </bean>
+
+    <bean id="apiHandler" class="ru.yandex.auto.searchline.api.route.DefaultApiHandler">
+        <constructor-arg name="allCategorySuggestManager" ref="allCategorySuggestManager"/>
+        <constructor-arg name="opsSupport" ref="operationalSupport"/>
+        <constructor-arg name="debugParamsDirective">
+            <bean factory-bean="debugParams" factory-method="apply"/>
+        </constructor-arg>
+    </bean>
+
+    <bean id="debugParams" class="ru.yandex.auto.searchline.api.directive.DebugParams.Directive">
+        <constructor-arg name="env" ref="environment"/>
+    </bean>
+
+    <bean class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">
+        <property name="locations">
+            <list>
+                <value>file:/etc/yandex/vertis-datasources/datasources.properties</value>
+                <value>classpath:searchline.properties</value>
+                <value>classpath:auto-core.properties</value>
+            </list>
+        </property>
+        <property name="ignoreUnresolvablePlaceholders" value="false"/>
+        <property name="order" value="-1"/>
+        <property name="ignoreResourceNotFound" value="true"/>
+    </bean>
+</beans>

@@ -1,0 +1,60 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - robot-maps-sandbox
+      groups:
+      - svc_maps-infra
+      - svc_maps-core-ratelimiter
+      - svc_maps-duty-infra
+      - svc_vops_maps
+labels:
+  balancer_deployer_commit_id: '9401790'
+  balancer_deployer_sign: 0bcf73b3100603798b9b68f105ab3749
+  digest: 80414be6c82ea65cc719977285b0f556
+  order: '00001000'
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      url: '/ping'
+  modules:
+    - report:
+        uuid: 'slbping'
+        ranges: default
+    - headers:
+        append_func:
+          X-Forwarded-For: realip
+        create_func_weak:
+          X-Real-IP: realip
+          X-Source-Port-Y: realport
+        create:
+          Host: 'core-ratelimiter.testing.maps.yandex.net'
+    - balancer2:
+        rr: {
+          weights_file: './controls/maps_slb_check.weights'
+        }
+        attempts: 1
+        backends:
+          - weight: 1
+            name: to_upstream
+            modules:
+              - balancer2:
+                  attempts: !f count_backends_sd()
+                  weighted2: {}
+                  disable_attempts_rate_limiter: true
+                  generated_proxy_backends:
+                    proxy_options:
+                      connect_timeout: 70ms
+                      backend_timeout: 700ms
+                    include_backends:
+                      type: BY_ID
+                      ids: [maps_core_ratelimiter_testing_sas,maps_core_ratelimiter_testing_vla]
+                  on_error:
+                    errordocument:
+                      status: 504
+                      content: "Service unavailable"
+          - weight: -1
+            name: switch_off
+            errordocument:
+              status: 503

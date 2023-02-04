@@ -1,0 +1,164 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Карта: подгрузка тайлов при изменении контейнера
+
+Description:
+Проверка подгрузки тайлов при изменении контейнера.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+map
+
+Estimated time:
+180000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+  
+  Expectation:
+  Карта отобразилась корректно. 
+  В контейнере карта со спаном Москвы. В контейнере дефолтный набор контролов, слева снизу кнопки применения опций.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "setZoom". 
+  
+  Expectation:
+  Происходит отзум спана карты на несколько значений.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "Width", затем клик в кнопку "fitToVie...". 
+  
+  Expectation:
+  По клику в "Width" спан карты без изменений, кнопка окрашена желтым.
+  По клику в "fitToVie..." контейнер увеличивается в ширине, увеличивается и меняется контрол поиска, карта подгрузилась корректно.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "Width", затем клик в кнопку "fitToVie...". 
+  
+  Expectation:
+  По клику в "Width" спан карты без изменений, кнопка окрашена белым.
+  По клику в "fitToVie..." контейнер уменьшается до первоначального размера, уменьшается и меняются контрол поиска, карта отображается корректно.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "Height", затем клик в кнопку "avtoFitT...". 
+  
+  Expectation:
+  По клику в "Height" спан карты без изменений, под картой появляется пустая область контейнера.
+  По клику в "avtoFitT..." увеличивается область вьюпорта, карта подгрузилась корректно.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "Height", затем клик в кнопку "avtoFitT...". 
+  
+  Expectation:
+  По клику в "Height" контейнер с картой уменьшается до первоначального размера, карта отображается корректно.
+  По клику в "avtoFitT..." спан карты и контейнер без изменений.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "case", затем снова клик в кнопку "case". 
+  
+  Expectation:
+  По клику в "case" контейнер с картой увеличивается на всю ширину страницы браузера.
+  По следующему клику проиходит отзум на несколько значений спана карты.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "setZoom". 
+  
+  Expectation:
+  Происходит призум на несколько значений спана карты, карта отображается корректно.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="https://yandex.st/jquery/1.6.4/jquery.min.js" type="text/javascript"></script>
+    <script src="https://yandex.st/jquery-ui/1.8.16/jquery-ui.min.js" type="text/javascript"></script>
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            //ymaps = ym;
+            var map = myMap = new ymaps.Map('map', {
+                center: [55.751818, 37.627284],
+                zoom: 10
+            }, {
+                layerTileContainerClass: 'default#canvas',
+                layerTileClass: 'default#canvas',
+                layerTileAnimationDuration: 0
+                //layerNotFoundTile: 'http://avatars.yandex.net/get/serjopepper/normal-fd48c95f1c5a152eaf00e4e775c3275.6209'
+            });
+
+            addGrid(map);
+            var log = new Log();
+            var caseButton = new ymaps.control.Button({data: {content: 'case'}, options: {selectOnClick: false, position: {bottom: 160, left: 10}}});
+            caseButton.events.add('click', function () {
+                myMap.setZoom(myMap.getZoom() - 2);
+                setTimeout(function () {
+                    myMap.container.enterFullscreen();
+                }, 100);
+            });
+            map.controls.add(caseButton);
+
+            var test1Button = new ym.control.Button({data: {content: 'setZoom'}, options: {selectOnClick: false, position: {bottom: 10, left: 10}}}),
+                    test2Button = new ym.control.Button({data: {content: 'Width'}, options: {selectOnClick: true, position: {bottom: 40, left: 10}}}),
+                    test3Button = new ym.control.Button({data: {content: 'fitToViewport'}, options: {selectOnClick: false, position: {bottom: 70, left: 10}}}),
+                    test4Button = new ym.control.Button({data: {content: 'avtoFitToViewport'}, options: {selectOnClick: true, position: {bottom: 100, left: 10}}}),
+                    test5Button = new ym.control.Button({data: {content: 'Height'}, options: {selectOnClick: true, position: {bottom: 130, left: 10}}});
+
+            log.info('Кейс setZoom -> changeWidth -> fitToViewport все тайлы должны подгрузиться');
+            log.info('button case - change zoom and enterFullscreen(),  в DOM нет старых тайлов');
+            test1Button.events.add('click', function () {
+                myMap.setZoom(8);
+
+            });
+            test2Button.events
+                    .add('select', function () {
+                        $('#map').width(900);
+                    })
+                    .add('deselect', function () {
+                        $('#map').width(512);
+                    });
+            test3Button.events.add('click', function () {
+                myMap.container.fitToViewport();
+            });
+            test4Button.events
+                    .add('select', function () {
+                        myMap.options.set('autoFitToViewport', 'always');
+                    })
+                    .add('deselect', function () {
+                        myMap.options.set('autoFitToViewport', 'none');
+                    });
+            test5Button.events
+                    .add('select', function () {
+                        $('#map').height(900);
+                    })
+                    .add('deselect', function () {
+                        $('#map').height(512);
+                    });
+
+            myMap.controls.add(test5Button)
+                    .add(test4Button)
+                    .add(test3Button)
+                    .add(test2Button)
+                    .add(test1Button);
+        }
+    </script>
+</head>
+<body>
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

@@ -1,0 +1,423 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - yurifrolov
+      groups: []
+labels:
+  order: '10000000'
+---
+regexp_section:
+  matcher: {}
+  modules:
+    - pinger:
+        ping_request_data: 'GET /robots.txt HTTP/1.1\r\nHost: api.sport.yandex.ru\r\n\r\n'
+        admin_request_uri: '/robots.txt'
+        admin_error_replier:
+          modules:
+            - errordocument:
+                status: 503
+    - report: 
+        ranges: default
+        uuid: requests_news_sport_api
+        matcher_map:
+            yandexsport: 
+                match_or:
+                    - match_fsm: 
+                        cgi: 'preset=yandexsport'
+                        surround: true
+                    - match_fsm:
+                        path: '/v2/projects/yandexsport.*'
+            wizard: {match_fsm: {cgi: 'preset=wizard', surround: true}}
+            objectanswer: {match_fsm: {cgi: 'preset=objectanswer', surround: true}}
+            morda: {match_fsm: {cgi: 'preset=morda', surround: true}}
+    - antirobot_macro:
+         version: 0.0.2
+    - hasher:
+        mode: request
+    - regexp:
+        sections:
+            deny_nopublic:
+                matcher:
+                    match_and:
+                        - match_not:
+                            match_fsm:
+                                url: '/(public|robots\\.txt).*'
+                        - match_not:
+                            match_fsm:
+                                header:
+                                    name: X-Yandex-Internal-Request
+                                    value: "1"
+                modules:
+                    - errordocument:
+                        status: 403
+            slow-queries:
+                matcher:
+                    match_or:
+                        - match_fsm:
+                            url: '/v2//?\\w+/competitions/\\d+/?'
+                        - match_fsm:
+                            url: '/v2/files'
+                            surround: true
+                        - match_fsm:
+                            cgi: 'limit=\\d\\d\\d+'
+                            surround: true
+                        - match_fsm:
+                            url: '/v2/projects/yandexsport/entity'
+                modules:
+                    - balancer2:
+                        attempts: 2
+                        attempts_file: './controls/admin.attempts'
+                        by_name_policy:
+                            name: !f suffix_with_dc('api')
+                            unique_policy: {}
+                        rr: {weights_file: ./controls/traffic_control.weights}
+                        backends:
+                            - weight: 1
+                              name: api_sas
+                              modules:
+                                - report: {ranges: default, uuid: requests_news_sport_api_to_sas}
+                                - balancer2:
+                                    attempts: 3
+                                    connection_attempts: !f count_backends()
+                                    attempts_rate_limiter:
+                                        limit: 0.2
+                                    rendezvous_hashing: {}
+                                    timeout_policy:
+                                        timeout: 6000ms
+                                        unique_policy: {}
+                                    generated_proxy_backends:
+                                        proxy_options:
+                                            backend_timeout: 1000ms
+                                            connect_timeout: 50ms
+                                            keepalive_count: 50
+                                        include_backends:
+                                            type: BY_ID
+                                            ids: [sas_news_sport_api]
+                            - weight: 1
+                              name: api_man
+                              modules:
+                                - report: {ranges: default, uuid: requests_news_sport_api_to_man}
+                                - balancer2:
+                                    attempts: 3
+                                    connection_attempts: !f count_backends()
+                                    attempts_rate_limiter:
+                                        limit: 0.2
+                                    rendezvous_hashing: {}
+                                    timeout_policy:
+                                        timeout: 6000ms
+                                        unique_policy: {}
+                                    generated_proxy_backends:
+                                        proxy_options:
+                                            backend_timeout: 1000ms
+                                            connect_timeout: 50ms
+                                            keepalive_count: 50
+                                        include_backends:
+                                            type: BY_ID
+                                            ids: [man_news_sport_api]
+                            - weight: 1
+                              name: api_vla
+                              modules:
+                                - report: {ranges: default, uuid: requests_news_sport_api_to_vla}
+                                - balancer2:
+                                    attempts: 3
+                                    connection_attempts: !f count_backends()
+                                    attempts_rate_limiter:
+                                        limit: 0.2
+                                    rendezvous_hashing: {}
+                                    timeout_policy:
+                                        timeout: 6000ms
+                                        unique_policy: {}
+                                    generated_proxy_backends:
+                                        proxy_options:
+                                            backend_timeout: 1000ms
+                                            connect_timeout: 50ms
+                                            keepalive_count: 50
+                                        include_backends:
+                                            type: BY_ID
+                                            ids: [vla_news_sport_api]
+                        on_error:
+                            modules:
+                                - errordocument:
+                                    status: 500
+            apphost-queries:
+                matcher:
+                    match_fsm:
+                        path: '/v2//?\\w+/events.*'
+                modules:
+                    - balancer2:
+                        attempts: 2
+                        attempts_file: './controls/admin.attempts'
+                        by_name_policy:
+                            name: !f suffix_with_dc('api')
+                            unique_policy: { }
+                        rr: { weights_file: ./controls/traffic_control.weights }
+                        backends:
+                            - weight: 1
+                              name: api_sas
+                              modules:
+                                - report: { ranges: default, uuid: requests_news_sport_api_to_sas }
+                                - balancer2:
+                                    attempts: 2
+                                    rr: { weights_file: ./controls/traffic_control.weights }
+                                    by_name_from_header_policy:
+                                        hints:
+                                            - { hint: 'node', 'backend': 'backend_node' }
+                                            - { hint: 'apphost', 'backend': 'backend_apphost' }
+                                        allow_zero_weights: true
+                                        strict: true
+                                        unique_policy: { }
+                                    backends:
+                                        - weight: 1
+                                          name: backend_node
+                                          modules:
+                                            - report: {ranges: default, uuid: requests_news_sport_api_to_sas_node}
+                                            - balancer2:
+                                                attempts: 3
+                                                connection_attempts: !f count_backends()
+                                                attempts_rate_limiter:
+                                                    limit: 0.2
+                                                rendezvous_hashing: { }
+                                                timeout_policy:
+                                                    timeout: 3000ms
+                                                    unique_policy: { }
+                                                generated_proxy_backends:
+                                                    proxy_options:
+                                                        backend_timeout: 500ms
+                                                        connect_timeout: 50ms
+                                                        keepalive_count: 50
+                                                    include_backends:
+                                                        type: BY_ID
+                                                        ids: [ sas_news_sport_api ]
+                                        - weight: -1
+                                          name: backend_apphost
+                                          modules:
+                                            - report: {ranges: default, uuid: requests_news_sport_api_to_sas_apphost}
+                                            - rewrite:
+                                                actions:
+                                                  - regexp: '(.*)'
+                                                    split: path
+                                                    rewrite: '/sport_api%1'
+                                            - balancer2:
+                                                attempts: 3
+                                                connection_attempts: !f count_backends()
+                                                attempts_rate_limiter:
+                                                    limit: 0.2
+                                                rendezvous_hashing: { }
+                                                timeout_policy:
+                                                    timeout: 3000ms
+                                                    unique_policy: { }
+                                                generated_proxy_backends:
+                                                    proxy_options:
+                                                        backend_timeout: 500ms
+                                                        connect_timeout: 50ms
+                                                        keepalive_count: 50
+                                                    include_backends:
+                                                        type: BY_ID
+                                                        ids: [ priemka_news_apphost_sas ]
+                            - weight: 1
+                              name: api_man
+                              modules:
+                                - report: { ranges: default, uuid: requests_news_sport_api_to_man }
+                                - balancer2:
+                                    attempts: 2
+                                    rr: { weights_file: ./controls/traffic_control.weights }
+                                    by_name_from_header_policy:
+                                        hints:
+                                            - { hint: 'node', 'backend': 'backend_node' }
+                                            - { hint: 'apphost', 'backend': 'backend_apphost' }
+                                        allow_zero_weights: true
+                                        strict: true
+                                        unique_policy: { }
+                                    backends:
+                                        - weight: 1
+                                          name: backend_node
+                                          modules:
+                                            - report: {ranges: default, uuid: requests_news_sport_api_to_man_node}
+                                            - balancer2:
+                                                attempts: 3
+                                                connection_attempts: !f count_backends()
+                                                attempts_rate_limiter:
+                                                    limit: 0.2
+                                                rendezvous_hashing: { }
+                                                timeout_policy:
+                                                    timeout: 3000ms
+                                                    unique_policy: { }
+                                                generated_proxy_backends:
+                                                    proxy_options:
+                                                        backend_timeout: 500ms
+                                                        connect_timeout: 50ms
+                                                        keepalive_count: 50
+                                                    include_backends:
+                                                        type: BY_ID
+                                                        ids: [ man_news_sport_api ]
+                                        - weight: -1
+                                          name: backend_apphost
+                                          modules:
+                                            - report: {ranges: default, uuid: requests_news_sport_api_to_man_apphost}
+                                            - rewrite:
+                                                actions:
+                                                  - regexp: '(.*)'
+                                                    split: path
+                                                    rewrite: '/sport_api%1'
+                                            - balancer2:
+                                                attempts: 3
+                                                connection_attempts: !f count_backends()
+                                                attempts_rate_limiter:
+                                                    limit: 0.2
+                                                rendezvous_hashing: { }
+                                                timeout_policy:
+                                                    timeout: 3000ms
+                                                    unique_policy: { }
+                                                generated_proxy_backends:
+                                                    proxy_options:
+                                                        backend_timeout: 500ms
+                                                        connect_timeout: 50ms
+                                                        keepalive_count: 50
+                                                    include_backends:
+                                                        type: BY_ID
+                                                        ids: [ priemka_news_apphost_man ]
+                            - weight: 1
+                              name: api_vla
+                              modules:
+                                - report: { ranges: default, uuid: requests_news_sport_api_to_vla }
+                                - balancer2:
+                                    attempts: 2
+                                    rr: { weights_file: ./controls/traffic_control.weights }
+                                    by_name_from_header_policy:
+                                        hints:
+                                            - { hint: 'node', 'backend': 'backend_node' }
+                                            - { hint: 'apphost', 'backend': 'backend_apphost' }
+                                        allow_zero_weights: true
+                                        strict: true
+                                        unique_policy: { }
+                                    backends:
+                                        - weight: 1
+                                          name: backend_node
+                                          modules:
+                                            - report: {ranges: default, uuid: requests_news_sport_api_to_vla_node}
+                                            - balancer2:
+                                                attempts: 3
+                                                connection_attempts: !f count_backends()
+                                                attempts_rate_limiter:
+                                                    limit: 0.2
+                                                rendezvous_hashing: { }
+                                                timeout_policy:
+                                                    timeout: 3000ms
+                                                    unique_policy: { }
+                                                generated_proxy_backends:
+                                                    proxy_options:
+                                                        backend_timeout: 500ms
+                                                        connect_timeout: 50ms
+                                                        keepalive_count: 50
+                                                    include_backends:
+                                                        type: BY_ID
+                                                        ids: [ vla_news_sport_api ]
+                                        - weight: -1
+                                          name: backend_apphost
+                                          modules:
+                                            - report: {ranges: default, uuid: requests_news_sport_api_to_vla_apphost}
+                                            - rewrite:
+                                                actions:
+                                                  - regexp: '(.*)'
+                                                    split: path
+                                                    rewrite: '/sport_api%1'
+                                            - balancer2:
+                                                attempts: 3
+                                                connection_attempts: !f count_backends()
+                                                attempts_rate_limiter:
+                                                    limit: 0.2
+                                                rendezvous_hashing: { }
+                                                timeout_policy:
+                                                    timeout: 3000ms
+                                                    unique_policy: { }
+                                                generated_proxy_backends:
+                                                    proxy_options:
+                                                        backend_timeout: 500ms
+                                                        connect_timeout: 50ms
+                                                        keepalive_count: 50
+                                                    include_backends:
+                                                        type: BY_ID
+                                                        ids: [ priemka_news_apphost_vla ]
+                        on_error:
+                            modules:
+                                - errordocument:
+                                    status: 500
+            default:
+                matcher: {}
+                modules:
+                    - balancer2:
+                        attempts: 2
+                        attempts_file: './controls/admin.attempts'
+                        by_name_policy:
+                            name: !f suffix_with_dc('api')
+                            unique_policy: {}
+                        rr: {weights_file: ./controls/traffic_control.weights}
+                        backends:
+                            - weight: 1
+                              name: api_sas
+                              modules:
+                                - report: {ranges: default, uuid: requests_news_sport_api_to_sas}
+                                - balancer2:
+                                    attempts: 3
+                                    connection_attempts: !f count_backends()
+                                    attempts_rate_limiter:
+                                        limit: 0.2
+                                    rendezvous_hashing: {}
+                                    timeout_policy:
+                                        timeout: 3000ms
+                                        unique_policy: {}
+                                    generated_proxy_backends:
+                                        proxy_options:
+                                            backend_timeout: 1000ms
+                                            connect_timeout: 50ms
+                                            keepalive_count: 50
+                                        include_backends:
+                                            type: BY_ID
+                                            ids: [sas_news_sport_api]
+                            - weight: 1
+                              name: api_man
+                              modules:
+                                - report: {ranges: default, uuid: requests_news_sport_api_to_man}
+                                - balancer2:
+                                    attempts: 3
+                                    connection_attempts: !f count_backends()
+                                    attempts_rate_limiter:
+                                        limit: 0.2
+                                    rendezvous_hashing: {}
+                                    timeout_policy:
+                                        timeout: 3000ms
+                                        unique_policy: {}
+                                    generated_proxy_backends:
+                                        proxy_options:
+                                            backend_timeout: 1000ms
+                                            connect_timeout: 50ms
+                                            keepalive_count: 50
+                                        include_backends:
+                                            type: BY_ID
+                                            ids: [man_news_sport_api]
+                            - weight: 1
+                              name: api_vla
+                              modules:
+                                - report: {ranges: default, uuid: requests_news_sport_api_to_vla}
+                                - balancer2:
+                                    attempts: 3
+                                    connection_attempts: !f count_backends()
+                                    attempts_rate_limiter:
+                                        limit: 0.2
+                                    rendezvous_hashing: {}
+                                    timeout_policy:
+                                        timeout: 3000ms
+                                        unique_policy: {}
+                                    generated_proxy_backends:
+                                        proxy_options:
+                                            backend_timeout: 1000ms
+                                            connect_timeout: 50ms
+                                            keepalive_count: 50
+                                        include_backends:
+                                            type: BY_ID
+                                            ids: [vla_news_sport_api]
+                        on_error:
+                            modules:
+                                - errordocument:
+                                    status: 500

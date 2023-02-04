@@ -1,0 +1,188 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Карта: события контейнера
+
+Description:
+Проверка прослушивания событий контейнера карты.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components:
+map
+
+Estimated time:
+180000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан Москвы, сверху слева кнопки: "DOM", "move", "listen".
+  Справа внизу имеются контрол слоев, контрол фулскрин, кнопка "clear log".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "listen". 
+
+  Expectation:
+  Под контейнером с картой появляется строка: "Waiting for events...".
+
+Step:
+  Action:
+  Выполнить клик в контрол фулскрин. 
+
+  Expectation:
+  Карта разворачивается на всю ширину страницы браузера.
+
+Step:
+  Action:
+  Выполнить клик в контрол фулскрин. 
+
+  Expectation:
+  Карта сворачивается до первоначальных размеров контейнера.
+  Под контейнером с картой блок: map.container: sizechange; map.container: fullscreenenter; map.container: beforefullscreenexit; map.container: sizechange; map.container: fullscreenexit.
+
+Step:
+  Action:
+  Выполнить клик в кнопку закрытия балуна. 
+
+  Expectation:
+  Балун закрылся. 
+  Под контейнером появляются строки: "balloonclose; close".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "clear log". 
+  Выполнить клик в кнопку "DOM", перевести курсор в центр спана карты.
+
+  Expectation:
+  По клику в кнопку "DOM" под контейнером с картой появляется строка: "Waiting for DOM events...; map.container: click".
+  При переводе курсора под контейнером появляются строки: "map.container: mouseleave; map.container: mouseenter".
+
+Step:
+  Action:
+  Последовательно выполнить клик, даблклик, клик ПКМ, скрол на спане карты. 
+
+  Expectation:
+  При выполнении действий под контейнером фиксируются события контейнера, с приставкой "map.container".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "DOM", клик в кнопку "clear log". 
+  Выполнить клик в кнопку "move", переместить курсор на спане карты.
+
+  Expectation:
+  По клику в "move" под контейнером появляется строка "Waiting for move events...".
+  При перемещении курсора под контейнером появляется множество строк "map.container: mousemove".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "clear log". 
+  Переместить курсор на спане карты при помощи тачпада(при отсуствии повторить шаг при помощи мыши).
+
+  Expectation:
+  При перемещении курсора под контейнером появляется множество строк "map.container: mousemove".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "move". 
+
+  Expectation:
+  Под контейнером с картой появляется строка: "Move events will be ignored.".
+  События перемещения курсора не просулшиваются контейнером.
+-->
+<html>
+<head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym; // hack
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.73259667357658, 37.70153663432529],
+                zoom: 9,
+                behaviors: ['default'],
+                controls: []
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+            log.info('Dom button - not ignored/ignored domevents');
+            log.info('Move button - not ignored/ignored moveevents (mousemove, multitouchmove)');
+            log.info('Listen button - not ignored/ignored events(sizechange, fullscreenenter, fullscreenexit, beforefullscreenexit)');
+
+            var events = ['sizechange', 'fullscreenenter', 'fullscreenexit', 'beforefullscreenexit'];
+
+            var domevents = ['click', 'contextmenu', 'dblclick', 'mousedown', 'mouseenter', 'mouseleave', 'mouseup', 'multitouchend',
+                'multitouchstart', 'wheel'];
+
+            var moveevents = ['mousemove', 'multitouchmove'];
+
+            var callback = function (e) {
+                log.info('map.container: ' + e.get('type'));
+            };
+
+            var listenerButton = new ymaps.control.Button({data: {content: 'listen'}, options: {selectOnClick: true}});
+            var moveButton = new ymaps.control.Button({data: {content: 'move'}, options: {selectOnClick: true}});
+            var domButton = new ymaps.control.Button({data: {content: 'DOM'}, options: {selectOnClick: true}});
+            var clearButton = new ymaps.control.Button({data: {content: 'clear log'}, options: {selectOnClick: false}});
+
+            listenerButton.events
+                    .add('deselect', function () {
+                        log.info('Events will be ignored.');
+                        myMap.container.events.remove(events, callback);
+                    })
+                    .add('select', function () {
+                        log.info('Waiting for events...');
+                        myMap.container.events.add(events, callback);
+                    });
+
+            moveButton.events
+                    .add('select', function () {
+                        log.info('Waiting for move events...');
+                        myMap.container.events.add(moveevents, callback);
+                    })
+                    .add('deselect', function () {
+                        log.info('Move events will be ignored.');
+                        myMap.container.events.remove(moveevents, callback);
+                    });
+
+            domButton.events
+                    .add('select', function () {
+                        log.info('Waiting for DOM events...');
+                        myMap.container.events.add(domevents, callback);
+                    })
+                    .add('deselect', function () {
+                        log.info('DOM events will be ignored.');
+                        myMap.container.events.remove(domevents, callback);
+                    });
+
+            clearButton.events.add('click', function () {
+                log.clear();
+            });
+
+            map.controls
+                    .add(listenerButton, {float: 'left'})
+                    .add(clearButton, {float: 'none', position: {bottom: 25, right: 10}})
+                    .add(new ymaps.control.FullscreenControl(), {float: 'none', position: {bottom: 165, right: 10}})
+                    .add(new ymaps.control.TypeSelector(), {float: 'none', position: {bottom: 195, right: 10}})
+                    .add(moveButton, {float: 'left'})
+                    .add(domButton, {float: 'left'})
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

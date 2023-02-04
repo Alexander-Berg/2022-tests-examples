@@ -1,0 +1,155 @@
+syntax = "proto3";
+
+package vertis.anubis.api.test.broker;
+
+import "broker/broker_options.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_package = "vertis.anubis.api.test";
+option java_multiple_files = true;
+
+message EmptySubsEvent {
+  option (.broker.config) = {
+    name: "anubis/empty-subs",
+    substreams: [
+    ]
+  };
+  google.protobuf.Timestamp timestamp = 1;
+}
+
+message SubCategoryEvent {
+  option (.broker.config) = {
+    name: "anubis/subcategory",
+    substreams: [
+        {
+            name: "first",
+            filter: {
+                field_name: "category"
+                field_value: "first_cat"
+            }
+            yt: {
+               expire_in_days: 2
+            }
+            clickhouse: {
+                cluster: "test"
+                db: "test"
+                table: "first_category"
+                expire_in_days: 1
+            }
+        },
+        {
+            name: "second",
+            filter: {
+                field_name: "category"
+                field_value: "second_cat"
+            }
+            yt: {
+               expire_in_days: 2
+            }
+        }
+    ]
+  };
+  google.protobuf.Timestamp timestamp = 1;
+  string category = 2;
+}
+
+enum Domain {
+      DOMAIN_UNKNOWN = 0;
+      DOMAIN_AUTO = 1;
+      DOMAIN_REALTY = 2;
+      DOMAIN_GENERAL = 3;
+}
+
+message SubEnumEvent {
+  option (.broker.config) = {
+    name: "anubis/subenum",
+    substreams: [
+        {
+            name: "auto",
+            filter: {
+                field_name: "domain"
+                field_value: "DOMAIN_AUTO"
+            }
+            yt: {
+               expire_in_days: 2
+            }
+        },
+        {
+            name: "realty",
+            filter: {
+                field_name: "domain"
+                field_value: "DOMAIN_REALTY"
+            }
+            kafka: {}
+        }
+    ]
+  };
+  google.protobuf.Timestamp timestamp = 1;
+  Domain domain = 2;
+}
+
+message IllegalSubEvent {
+  option (.broker.config) = {
+    name: "anubis/illegal-subenum",
+    substreams: [
+        {
+            name: "auto",
+            filter: {
+                field_name: "domain"
+                field_value: "AUTO"
+            }
+            yt: {
+               expire_in_days: 2
+            }
+        },
+         {
+            name: "auto",
+            filter: {
+                field_name: "domain"
+                field_value: "DOMAIN_REALTY"
+            }
+        },
+        {
+            name: "auto_ru",
+            filter: {
+                field_name: "code"
+                field_value: "500"
+            }
+            clickhouse: {
+                cluster: "test"
+                db: "test"
+                table: "codes"
+                primary_key: ["foo"]
+                expire_in_days: 1
+            }
+        },
+        {
+            name: "empty",
+            kafka: {}
+        }
+    ]
+  };
+  google.protobuf.Timestamp timestamp = 1;
+  Domain domain = 2;
+  int32 code = 3;
+}
+
+message SubEnumEventWithDeepNames {
+    option (.broker.config) = {
+        name: "anubis/subenum-with-deep-names",
+        substreams: [
+            {
+                name: "auto/events",
+                filter: {
+                    field_name: "domain"
+                    field_value: "DOMAIN_AUTO"
+                }
+                yt: {
+                    expire_in_days: 2
+                }
+            }
+        ]
+    };
+    google.protobuf.Timestamp timestamp = 1;
+    Domain domain = 2;
+}

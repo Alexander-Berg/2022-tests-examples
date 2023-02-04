@@ -1,0 +1,157 @@
+<!doctype html>
+<html>
+<head>
+    <title>API 2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="https://yandex.st/jquery/1.8.0/jquery.min.js" type="text/javascript"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+
+    <script src="http://node.jsapi.sergeiiak.erebus.maps.dev.yandex.ru/?load=package.controls&lang=ru-RU&mode=debug&onload=init"
+            type="text/javascript"></script>
+
+    <script type="text/javascript">
+        function init(ymaps) {
+
+            var options = {
+                iconLayout: 'default#image',
+                iconImageHref: 'http://ww1.sinaimg.cn/mw690/c436ef6agw1e7t75ji3lbg20ii0l80t6.gif',
+                iconImageSize: [42, 42],
+                iconImageOffset: [-21, -21],
+                draggable: true
+            }, myPlacemark = [], myCircle = [], collection = new ymaps.GeoObjectCollection(), collectionCircle = new ymaps.GeoObjectCollection(),
+                    coords = [
+                        [55.75396, 37.620393],
+                        [59.939095, 30.315868],
+                        [56.838607, 60.605514],
+                        [55.030199, 82.92043],
+                        [55.798551, 49.106324],
+                        [47.222531, 39.718705],
+                        [56.326887, 44.005986],
+                        [44.952116, 34.102411],
+                        [50.450418, 30.523541],
+                        [46.484579, 30.732597],
+                        [53.902257, 27.561831],
+                        [41.008925, 28.967111],
+                        [52.516067, 13.376975],
+                        [47.049538, 8.304368],
+                        [52.373085, 4.893276],
+                        [31.25516, 121.474693]
+                    ];
+            var myMap = new ymaps.Map('map', {
+                center: [55.751574, 37.573856],
+                zoom: 7,
+                controls: ['searchControl']
+            }, {
+                searchControlProvider: 'yandex#search'
+            });
+            for(var i = 0; i < 16; i++){
+                myPlacemark[i] = new ymaps.Placemark([myMap.getCenter()[0] + Math.random(),myMap.getCenter()[1] + Math.random()], {
+                }, options);
+                collection.add(myPlacemark[i]);
+                collectionCircle.add(new ymaps.Circle([
+                    coords[i],
+                    20000
+                ], null, {opacity: 0 }));
+            }
+
+            var objects = ymaps.geoQuery(collection).addToMap(myMap);
+            setTimeout(function(){
+                collectionCircle.each(function (obj) {
+                    // Объекты, попадающие в круг, будут становиться красными.
+                    var objectsInsideCircle = objects.searchInside(obj);
+                    if(!objectsInsideCircle.getLength()) myMap.destroy();
+                });
+                myMap.setCenter([55.751574, 37.573856], 13);
+                alert("вы молодцы")
+            },200000);
+
+            collectionCircle.each(function (obj) {
+                obj.events.add('mouseenter', function () {
+                    obj.options.set('opacity', 1);
+                });
+            });
+            myMap.geoObjects.add(collectionCircle);
+
+
+
+            // Создаем собственный класс.
+            CustomControlClass = function (options) {
+                CustomControlClass.superclass.constructor.call(this, options);
+                this._$content = null;
+                this._geocoderDeferred = null;
+            };
+            // И наследуем его от collection.Item.
+            ymaps.util.augment(CustomControlClass, ymaps.collection.Item, {
+                onAddToMap: function (map) {
+                    CustomControlClass.superclass.onAddToMap.call(this, map);
+                    this._lastCenter = null;
+                    this.getParent().getChildElement(this).then(this._onGetChildElement, this);
+                },
+
+                onRemoveFromMap: function (oldMap) {
+                    this._lastCenter = null;
+                    if (this._$content) {
+                        this._$content.remove();
+                        this._mapEventGroup.removeAll();
+                    }
+                    CustomControlClass.superclass.onRemoveFromMap.call(this, oldMap);
+                },
+
+                _onGetChildElement: function (parentDomContainer) {
+                    // Создаем HTML-элемент с текстом.
+                    this._$content = $('<form><input id=timespent size=9 name=timespent></form>').appendTo(parentDomContainer);
+                    this._mapEventGroup = this.getMap().events.group();
+                    getSecs();
+                }
+            });
+
+
+            var customControl = new CustomControlClass();
+            myMap.controls.add(customControl, {
+                float: 'none',
+                position: {
+                    top: 10,
+                    right: 10
+                }
+            });
+            startday = new Date();
+            clockStart = startday.getTime();
+
+            var timeEnd = new Date().getTime() + 200000;
+            function initStopwatch()
+            {
+                var myTime = new Date();
+                var timeNow = myTime.getTime();
+                var timeDiff = timeEnd - timeNow;
+                this.diffSecs = timeDiff/1000;
+                return(this.diffSecs);
+            }
+
+            function getSecs()
+            {
+                var mySecs = initStopwatch();
+                var mySecs1 = ""+mySecs;
+                mySecs1= mySecs1.substring(0,mySecs1.indexOf(".")) + " с";
+                document.getElementById("timespent").value = mySecs1;
+                window.setTimeout(function(){getSecs()},1000);
+            }
+
+
+        }
+    </script>
+
+    <style>
+        html, body, #map {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+    </style>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map">
+    </div>
+</body>
+</html>

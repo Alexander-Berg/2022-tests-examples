@@ -1,0 +1,40 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - naumbi4
+      groups: []
+labels:
+  order: '00000001'
+config_mode: easy2
+---
+l7_upstream_macro:
+  version: 0.2.1
+  id: test-s3
+  matcher:
+    path_re: '/(.*)\.js?'
+  rewrite:
+    - target: URL
+      pattern:
+        re: '^(.*)\.js?$'
+      replacement: 'https://yastatic.net/s3/kinopoisk-frontend/mda-www/release/114/dist%2'
+  response_headers:
+    - create: {target: Location, func: url}
+  flat_scheme:
+    balancer:
+      compat:
+        method: WEIGHTED2
+        watermark_policy:
+          lo: 0.1
+          hi: 0.1
+      attempts: 3
+      retry_http_responses:
+        codes: [5xx]
+      connect_timeout: 100ms
+      backend_timeout: 180s
+    backend_ids:
+      - test_s3
+    on_error:
+      static:
+        status: 504
+        content: 'Service unavailable'

@@ -1,0 +1,203 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Кластер: отключаем опции показа хинта
+
+Description:
+Проверка отключения опции открытия балуна.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+clusterer
+
+Estimated time:
+90000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан центрального федерального округа.
+  В районе Москвы несколько кластерных меток(метка со значением больше 100, метка со значением от 10 до 100, метка со значением до 10), также на спане может быть метка коллекции.
+  Сверху слева кнопки "object hint", "disable hint".
+
+Step:
+  Action:
+  Навести курсор на кластерные метки, метку коллекции.
+
+  Expectation:
+  При наведении курсора на метку коллекции хинт - номер метки.
+  При наведении курсора на метку кластера со значением больше 100 хинт - "Меток навалом".
+  При наведени нкурсора на метку кластера со значением от 10 до 100 хинт - "Нормально так меток".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "object hint".
+  Навести курсор на метки кластера.
+
+  Expectation:
+  Под контейнером с картой появляется текст: "geoObjectHasHint: false".
+  При наведении курсора на метку кластера со значением больше 100 хинт - "Меток навалом".
+  При наведени нкурсора на метку кластера со значением от 10 до 100 хинт - "Нормально так меток".
+
+Step:
+  Action:
+  Скролом мыши выполнить призум карты на три значения.
+
+  Expectation:
+  Происходит корректный призум карты. Кластерные метки распадаются на метки с меньшим значением(преимущественно до 10) и метки коллекций.
+
+Step:
+  Action:
+  Навести курсор на кластерные метки, метки коллекции.
+
+  Expectation:
+  При наведении курсора хинт отсуствует.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "object hint".
+  Выполнить клик в кнопку "disable hint".
+  Навести курсор на кластерные метки, метки коллекции.
+
+  Expectation:
+  Под контейнером с картой появляется текст: "geoObjectHasHint: true".
+  Под контейнером с картой появляется текст: "hasHint: false".
+  При наведении курсора на кластерные метки хинт отсуствует.
+  При наведении курсора на метки коллекции хинт - номер метки.
+
+Step:
+  Action:
+  Скролом мыши выполнить отзум карты на три значения.
+
+  Expectation:
+  Происходит корректный отзум карты. Кластерные метки схлопываются в метки с большим значением(могут оставаться и метки коллекций).
+
+Step:
+  Action:
+  Навести курсор на кластерные метки, метки коллекции.
+
+  Expectation:
+  При наведении курсора на кластерные метки хинт отсуствует.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 10,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+
+            log.info('Placemarks and clusters have to have hints by default.');
+            log.info('Buttons change option "hasHint" in clusterer and geoobjects');
+
+            var clusterer = new ymaps.Clusterer({
+                preset: 'islands#redClusterIcons',
+                disableClickZoom: true
+            });
+            var placemarksNumber = 200;
+            var bounds = map.getBounds();
+            var newPlacemarks = createGeoObjects(placemarksNumber, bounds);
+
+            clusterer.createCluster = function (center, geoObjects) {
+                var clusterPlacemark = ymaps.Clusterer.prototype.createCluster.call(this, center, geoObjects),
+                        geoObjectsLength = clusterPlacemark.getGeoObjects().length,
+                        hintContent;
+                if (geoObjectsLength < 10) {
+                    hintContent = '';
+                } else if (geoObjectsLength < 100) {
+                    hintContent = 'Нормально так меток';
+                } else {
+                    hintContent = 'Меток навалом';
+                }
+                clusterPlacemark.properties.set('hintContent', hintContent);
+                return clusterPlacemark;
+            };
+
+            // add 200 placemarks
+            clusterer.add(newPlacemarks);
+            map.geoObjects.add(clusterer);
+
+            var hintButton = new ymaps.control.Button({data: {content: 'disable hint'}, options: {
+                selectOnClick: true,
+                maxWidth: 160
+            }});
+            var geoHintButton = new ymaps.control.Button({data: {content: 'object hint'}, options: {
+                selectOnClick: true,
+                maxWidth: 160
+            }});
+
+            hintButton.events
+                    .add('select', function () {
+                        clusterer.options.set('hasHint', false);
+                        log.info('hasHint: ' + clusterer.options.get('hasHint'))
+                    })
+                    .add('deselect', function () {
+                        clusterer.options.set('hasHint', true);
+                        log.info('hasHint: ' + clusterer.options.get('hasHint'))
+                    });
+
+            geoHintButton.events
+                    .add('select', function () {
+                        clusterer.options.set('geoObjectHasHint', false);
+                        log.info('geoObjectHasHint: ' + clusterer.options.get('geoObjectHasHint'))
+                    })
+                    .add('deselect', function () {
+                        clusterer.options.set('geoObjectHasHint', true);
+                        log.info('geoObjectHasHint: ' + clusterer.options.get('geoObjectHasHint'))
+                    });
+
+            map.controls
+                    .add(hintButton)
+                    .add(geoHintButton);
+
+            // change map zoom
+            setTimeout(function () {
+                map.setZoom(7)
+            }, 1000);
+
+            function createGeoObjects(number, bounds) {
+                var placemarks = [];
+                // Создаем нужное количество меток
+                for (var i = 0; i < number; i++) {
+                    // Генерируем координаты метки случайным образом.
+                    var coordinates = getRandomCoordinates(bounds);
+                    // Создаем метку со случайными координатами.
+                    var myPlacemark = new ymaps.Placemark(coordinates, {
+                        balloonContent: i, hintContent: i, clusterCaption: i}, {});
+                    placemarks.push(myPlacemark);
+                }
+                return placemarks;
+            }
+
+            function getRandomCoordinates(bounds) {
+                var size = [bounds[1][0] - bounds[0][0], bounds[1][1] - bounds[0][1]];
+                return [Math.random() * size[0] + bounds[0][0], Math.random() * size[1] + bounds[0][1]];
+            }
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

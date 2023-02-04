@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+       http://www.springframework.org/schema/beans/spring-beans.xsd"
+       default-autowire="byName" default-lazy-init="true">
+
+    <import resource="classpath:ext-data-service-types.xml"/>
+
+    <bean name="operationalSupport" class="ru.yandex.auto.app.OperationalSupport"/>
+
+    <bean name="extDataHttpClientFactory" class="ru.yandex.auto.extdata.AutoExtDataClientFactory">
+        <constructor-arg name="ops" ref="operationalSupport"/>
+        <constructor-arg name="storagePath" value="${auto.ext.data.fs.storage.dir}"/>
+        <constructor-arg name="dataTypeRegistry" ref="dataTypeRegistry"/>
+        <constructor-arg name="s3url" value="${auto.s3edr.s3.url}"/>
+        <constructor-arg name="s3key" value="${auto.s3edr.s3.auth.key}"/>
+        <constructor-arg name="s3secret" value="${auto.s3edr.s3.auth.secret}"/>
+        <constructor-arg name="s3bucket" value="${auto.s3edr.s3.bucket}"/>
+        <constructor-arg name="s3keyPrefix" value="${auto.s3edr.key-prefix}"/>
+        <constructor-arg name="replicatePeriodInMinutes" value="5"/>  <!-- Replication period is 5 minutes -->
+        <constructor-arg name="maxConcurrentReplicates" value="1"/>
+        <constructor-arg name="maxWarningSilenceInMinutes" value="40"/> <!-- Time in minutes to avoid warnings -->
+        <constructor-arg name="maxErrorSilenceInMinutes" value="80"/> <!-- Time in minutes to avoid errors -->
+    </bean>
+
+    <bean name="extDataClient" factory-bean="extDataHttpClientFactory" factory-method="build"/>
+
+    <!--main bean, which is imported to other modules-->
+    <bean name="extDataService" class="ru.yandex.auto.extdata.ExtDataServiceProxy">
+        <property name="edsClient" ref="extDataClient"/>
+    </bean>
+
+    <bean id="fieldPersistenceManager" class="ru.yandex.auto.core.dictionary.FieldPersistenceManagerImpl">
+        <property name="loader">
+            <bean class="ru.yandex.extdata.provider.loader.ExtDataLoader">
+                <property name="service" ref="extDataService"/>
+                <property name="type" ref="verbaDataType"/>
+            </bean>
+        </property>
+    </bean>
+
+<!--                                               CATALOG CARD GROUPING                                     -->
+
+    <bean id="catalogCardGroupingService"
+          class="ru.yandex.auto.core.catalog.grouping.CatalogCardGroupingCachingImpl">
+        <property name="yoctoSearchTemplate" ref="catalogCardYoctoSearchTemplate"/>
+    </bean>
+
+    <bean id="trucksCatalogCardGroupingService"
+          class="ru.yandex.auto.core.catalog.grouping.trucks.TrucksCatalogCardGroupingCachingImpl">
+        <property name="yoctoSearchTemplate" ref="trucksCatalogCardYoctoSearchTemplate"/>
+    </bean>
+
+    <bean id="motoCatalogCardGroupingService"
+          class="ru.yandex.auto.core.catalog.grouping.moto.MotoCatalogCardGroupingCachingImpl">
+        <property name="yoctoSearchTemplate" ref="motoCatalogCardYoctoSearchTemplate"/>
+    </bean>
+
+
+
+<!--                                               SEARCH TEMPLATE                                           -->
+
+
+    <bean id="catalogCardYoctoSearchTemplate"
+          factory-bean="yoctoCatalogCardUpdateListener" factory-method="buildSearcher"/>
+
+    <bean id="trucksCatalogCardYoctoSearchTemplate"
+          factory-bean="yoctoTrucksCatalogCardUpdateListener" factory-method="buildSearcher"/>
+
+    <bean id="motoCatalogCardYoctoSearchTemplate"
+          factory-bean="yoctoMotoCatalogCardUpdateListener" factory-method="buildSearcher"/>
+
+    <bean id="initialCatalogCardPhaser"
+          class="java.util.concurrent.Phaser">
+        <constructor-arg value="1"/>
+    </bean>
+
+    <bean id="initialTrucksCatalogCardPhaser"
+          class="java.util.concurrent.Phaser">
+        <constructor-arg value="1"/>
+    </bean>
+
+    <bean id="initialMotoCatalogCardPhaser"
+          class="java.util.concurrent.Phaser">
+        <constructor-arg value="1"/>
+    </bean>
+
+    <bean id="yoctoDocumentConverter"
+          class="ru.yandex.auto.core.search2.conversion.yocto.CatalogCardYoctoEntityConverter"/>
+
+    <bean id="trucksYoctoDocumentConverter"
+          class="ru.yandex.auto.core.search2.conversion.yocto.TrucksCatalogCardYoctoConverter"/>
+
+    <bean id="motoYoctoDocumentConverter"
+          class="ru.yandex.auto.core.search2.conversion.yocto.MotoCatalogCardYoctoConverter"/>
+
+    <bean id="yoctoCatalogCardUpdateListener"
+          class="ru.yandex.auto.indexer.yocto.handler.catalog.CatalogCardUpdateListener">
+        <constructor-arg name="catalogDataType" ref="catalogDataType"/>
+        <constructor-arg name="converter" ref="yoctoDocumentConverter"/>
+        <constructor-arg name="extDataService" ref="extDataService"/>
+        <constructor-arg name="phaser" ref="initialCatalogCardPhaser"/>
+        <constructor-arg name="catalogCardsRootDirectory" value="${auto-searcher.catalog-dir}"/>
+    </bean>
+
+    <bean id="yoctoTrucksCatalogCardUpdateListener"
+          class="ru.yandex.auto.indexer.yocto.handler.catalog.TrucksCatalogCardUpdateListener">
+        <constructor-arg name="catalogDataType" ref="trucksCatalogDataType"/>
+        <constructor-arg name="converter" ref="trucksYoctoDocumentConverter"/>
+        <constructor-arg name="extDataService" ref="extDataService"/>
+        <constructor-arg name="phaser" ref="initialTrucksCatalogCardPhaser"/>
+        <constructor-arg name="catalogCardsRootDirectory" value="${auto-searcher.trucks.catalog-dir}"/>
+    </bean>
+
+    <bean id="yoctoMotoCatalogCardUpdateListener"
+          class="ru.yandex.auto.indexer.yocto.handler.catalog.MotoCatalogCardUpdateListener">
+        <constructor-arg name="catalogDataType" ref="motoCatalogDataType"/>
+        <constructor-arg name="converter" ref="motoYoctoDocumentConverter"/>
+        <constructor-arg name="extDataService" ref="extDataService"/>
+        <constructor-arg name="phaser" ref="initialMotoCatalogCardPhaser"/>
+        <constructor-arg name="catalogCardsRootDirectory" value="${auto-searcher.moto.catalog-dir}"/>
+    </bean>
+
+
+    <bean id="dataTypeRegistry"
+          class="ru.yandex.extdata.common.meta.DataTypeRegistry">
+        <constructor-arg>
+            <list>
+                <ref bean="rawVerbaType"/>
+                <ref bean="rawVerbaTrucksType"/>
+                <ref bean="rawVerbaMotoType"/>
+                <ref bean="rawVerbaCarServiceType"/>
+                <ref bean="rawCarsReviewsDataType"/>
+                <ref bean="rawMotoReviewsDataType"/>
+                <ref bean="rawTrucksReviewsDataType"/>
+                <ref bean="regionsDataType"/>
+                <ref bean="currencyDataType"/>
+                <ref bean="verbaDataType"/>
+                <ref bean="trucksVerbaDataType"/>
+                <ref bean="motoVerbaDataType"/>
+                <ref bean="carServiceVerbaDataType"/>
+                <ref bean="catalogDataType"/>
+                <ref bean="trucksCatalogDataType"/>
+                <ref bean="motoCatalogDataType"/>
+                <ref bean="catalogStatProxyDataType"/>
+                <ref bean="showcaseStatDataType"/>
+                <ref bean="newRelatedDataType"/>
+                <ref bean="dealersDataType"/>
+                <ref bean="carServiceDataType"/>
+                <ref bean="autoRuOffersStatDataType"/>
+                <ref bean="trucksOffersStatDataType"/>
+                <ref bean="motoOffersStatDataType"/>
+                <ref bean="verbaDictionariesDataType"/>
+                <ref bean="office7ClientsDataType"/>
+                <ref bean="zenDataType"/>
+                <ref bean="carsReviewsDataType"/>
+                <ref bean="motoReviewsDataType"/>
+                <ref bean="trucksReviewsDataType"/>
+                <ref bean="carsModificationCodesDataType"/>
+                <ref bean="nearestTechParamsDataType"/>
+            </list>
+        </constructor-arg>
+    </bean>
+
+</beans>

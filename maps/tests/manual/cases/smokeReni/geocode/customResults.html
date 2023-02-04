@@ -1,0 +1,157 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Собственный поиск
+
+Description:
+Собственное отображение результатов поиска.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+smoke
+
+Estimated time:
+150000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан с отображение городов центральной России. 
+  В верхнем правом углу поле ввода c подсказкой "Адрес или объект" и кнопка "Найти".
+  
+Step:
+  Action:
+  Вбить в поиск "Москва Кремль", нажать кнопку "Найти".  
+    
+  Expectation:
+  При вводе выпадает плашка с подсказками поисковых значений.
+  Спан меняется на спан с поисковым результатом - Московским Кремлем. 
+  На карте синяя метка коллекции.
+  
+Step:
+  Action:
+  Навести курсор на метку коллекции, после чего кликнуть в нее.
+  
+  Expectation:
+  При наведении курсор - палец, хинт: "Кремль".
+  При клике появляется балун с заголовком: "Кремль", телом: "Россия, Москва", в футере кнопка: "Исправить неточность".
+  У балуна есть кнопка закрытия - крестик.
+
+Step:
+  Action:
+  Клик в крестик балуна.
+    
+  Expectation:
+  Метка коллекции стала красного цвета.
+
+Step:
+  Action:
+  Вбить в поиск "Льва Толст", в выпавшем списке подсказок найти "Льва Толстого, 16 Москва", нажать "Найти".  
+    
+  Expectation:
+  При вводе выпадает плашка с подсказками поисковых значений.
+  Спан меняется на спан с поисковым результатом - Улица Льва Толстого, 16. 
+  На карте синяя метка коллекции.
+
+Step:
+  Action:
+  Навести курсор на метку коллекции, после чего кликнуть в нее.
+  
+  Expectation:
+  При наведении курсор - палец, хинт "Улица Льва Толстого, 16".
+  При клике появляется балун с заголовком: "Улица Льва Толстого, 16", телом: "Россия, Москва" и кнопкой "Организации в здании", в футере кнопка: "Исправить неточность".
+  У балуна есть кнопка закрытия - крестик.
+
+Step:
+  Action:
+  Клик в крестик балуна.
+    
+  Expectation:
+  Метка коллекции стала красного цвета.
+
+Step:
+  Action:
+  Вбить в поиск "Мост Золотые Ворота", нажать "Найти".  
+    
+  Expectation:
+  При вводе выпадает плашка с подсказками поисковых значений.
+  Спан меняется на спан с поисковым результатом - мост Золотые ворота. 
+  На карте синяя метка коллекции.
+
+Step:
+  Action:
+  Навести курсор на метку коллекции, после чего кликнуть в нее.
+  
+  Expectation:
+  При наведении курсор - палец, хинт "Мост Золотые Ворота".
+  При клике появляется балун с заголовком: "Мост Золотые Ворота", телом: "Соединенные Штаты Америки, Калифорния, округ Сан-Франциско"; в футере кнопка: "Исправить неточность".
+  У балуна есть кнопка закрытия - крестик.
+
+Step:
+  Action:
+  Клик в крестик балуна.
+    
+  Expectation:
+  Метка коллекции стала красного цвета.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            //ymaps = ym;
+            var myMap = new ymaps.Map('map', {
+                        center: [59.22, 39.89],
+                        zoom: 5,
+                        controls: []
+                    }, {
+                        backgroundVisible: false
+                    }),
+            // Создаем экземпляр класса ymaps.control.SearchControl
+                    mySearchControl = new ymaps.control.SearchControl({
+                        options: {
+                            noPlacemark: false
+                        }
+                    }),
+            // Результаты поиска будем помещать в коллекцию.
+                    mySearchResults = new ymaps.GeoObjectCollection(null, {
+                        hintContentLayout: ymaps.templateLayoutFactory.createClass('$[properties.name]')
+                    });
+            addGrid(myMap);
+            var log = new Log();
+            log.info("Test case: Кастомный поиск. Выбранные результаты поиска добавляются на карту.");
+            log.info(" При клике метки становятся красными. Результаты имеют кастомный хинт");
+
+            myMap.controls.add(mySearchControl);
+            myMap.geoObjects.add(mySearchResults);
+            // При клике по найденному объекту метка становится красной.
+            mySearchResults.events.add('click', function (e) {
+                e.get('target').options.set('preset', 'islands#redIcon');
+            });
+            // Выбранный результат помещаем в коллекцию.
+            mySearchControl.events.add('resultselect', function (e) {
+                var index = e.get('index');
+                mySearchControl.getResult(index).then(function (res) {
+                    mySearchResults.add(res);
+                });
+            }).add('submit', function () {
+                mySearchResults.removeAll();
+            })
+        }
+    </script>
+</head>
+<body>
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

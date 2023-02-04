@@ -1,0 +1,176 @@
+---
+regexp_section:
+  matcher:
+    match_and:
+      - match_fsm:
+            host: '(m\\.)?yandexsport\\.[^.]+'
+      - match_or:
+        - match_fsm:
+            uri: '/portal.*'
+        - match_fsm:
+            uri: '/efir.*'
+        - match_fsm:
+            uri: '/instant.*'
+        - match_fsm:
+            uri: '/service-workers.*'
+  modules:
+      - antirobot_macro:
+            attempts: 5
+      - geobase_macro: {}
+      - report: {ranges: default, uuid: yandexsport_efir}
+      - regexp:
+            sections:
+                service_workers:
+                    matcher:
+                        match_fsm:
+                            uri: '/service-workers.*'
+                    modules:
+                        - balancer2:
+                            attempts: 2
+                            attempts_file: ./controls/news.attempts
+                            watermark_policy:
+                                lo: 0.5
+                                hi: 0.6
+                                unique_policy: {}
+                            rr: {weights_file: ./controls/traffic_control.weights}
+                            backends:
+                                - weight: 1
+                                  name: service_workers_sas
+                                  modules:
+                                    - report: {ranges: default, uuid: requests_efir_service_workers_to_sas}
+                                    - balancer2:
+                                        attempts: !f count_backends()
+                                        attempts_rate_limiter:
+                                            limit: 0.2
+                                        weighted2: {}
+                                        timeout_policy:
+                                            timeout: 500ms
+                                            unique_policy: {}
+                                        generated_proxy_backends:
+                                            proxy_options:
+                                                backend_timeout: 5000ms
+                                                connect_timeout: 50ms
+                                                status_code_blacklist: ["204"]
+                                            include_backends:
+                                                type: BY_ID
+                                                ids: [service-workers-sas]
+                                - weight: 1
+                                  name: service_workers_man
+                                  modules:
+                                    - report: {ranges: default, uuid: requests_efir_service_workers_to_man}
+                                    - balancer2:
+                                        attempts: !f count_backends()
+                                        attempts_rate_limiter:
+                                            limit: 0.2
+                                        weighted2: {}
+                                        timeout_policy:
+                                            timeout: 500ms
+                                            unique_policy: {}
+                                        generated_proxy_backends:
+                                            proxy_options:
+                                                backend_timeout: 5000ms
+                                                connect_timeout: 50ms
+                                                status_code_blacklist: ["204"]
+                                            include_backends:
+                                                type: BY_ID
+                                                ids: [service-workers-man]
+                                - weight: 1
+                                  name: service_workers_vla
+                                  modules:
+                                    - report: {ranges: default, uuid: requests_efir_service_workers_to_vla}
+                                    - balancer2:
+                                        attempts: !f count_backends()
+                                        attempts_rate_limiter:
+                                            limit: 0.2
+                                        weighted2: {}
+                                        timeout_policy:
+                                            timeout: 500ms
+                                            unique_policy: {}
+                                        generated_proxy_backends:
+                                            proxy_options:
+                                                backend_timeout: 5000ms
+                                                connect_timeout: 50ms
+                                                status_code_blacklist: ["204"]
+                                            include_backends:
+                                                type: BY_ID
+                                                ids: [service-workers-vla]
+                            on_error:
+                                modules:
+                                    - errordocument:
+                                        status: 500
+                morda:
+                    matcher: {}
+                    modules:
+                        - balancer2:
+                            attempts: 2
+                            attempts_file: ./controls/news.attempts
+                            watermark_policy:
+                                lo: 0.5
+                                hi: 0.6
+                                unique_policy: {}
+                            rr: {weights_file: ./controls/traffic_control.weights}
+                            backends:
+                                - weight: 1
+                                  name: morda_sas
+                                  modules:
+                                    - report: {ranges: default, uuid: requests_efir_to_sas}
+                                    - balancer2:
+                                        attempts: !f count_backends()
+                                        attempts_rate_limiter:
+                                            limit: 0.2
+                                        weighted2: {}
+                                        timeout_policy:
+                                            timeout: 500ms
+                                            unique_policy: {}
+                                        generated_proxy_backends:
+                                            proxy_options:
+                                                backend_timeout: 5000ms
+                                                connect_timeout: 50ms
+                                                status_code_blacklist: ["204"]
+                                            include_backends:
+                                                type: BY_ID
+                                                ids: [morda-sas]
+                                - weight: 1
+                                  name: morda_man
+                                  modules:
+                                    - report: {ranges: default, uuid: requests_efir_to_man}
+                                    - balancer2:
+                                        attempts: !f count_backends()
+                                        attempts_rate_limiter:
+                                            limit: 0.2
+                                        weighted2: {}
+                                        timeout_policy:
+                                            timeout: 500ms
+                                            unique_policy: {}
+                                        generated_proxy_backends:
+                                            proxy_options:
+                                                backend_timeout: 5000ms
+                                                connect_timeout: 50ms
+                                                status_code_blacklist: ["204"]
+                                            include_backends:
+                                                type: BY_ID
+                                                ids: [morda-man]
+                                - weight: 1
+                                  name: morda_vla
+                                  modules:
+                                    - report: {ranges: default, uuid: requests_efir_to_vla}
+                                    - balancer2:
+                                        attempts: !f count_backends()
+                                        attempts_rate_limiter:
+                                            limit: 0.2
+                                        weighted2: {}
+                                        timeout_policy:
+                                            timeout: 500ms
+                                            unique_policy: {}
+                                        generated_proxy_backends:
+                                            proxy_options:
+                                                backend_timeout: 5000ms
+                                                connect_timeout: 50ms
+                                                status_code_blacklist: ["204"]
+                                            include_backends:
+                                                type: BY_ID
+                                                ids: [morda-vla]
+                            on_error:
+                                modules:
+                                    - errordocument:
+                                        status: 500

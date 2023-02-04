@@ -1,0 +1,118 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Геокод: пропуск результатов
+
+Description:
+Проверка опции пропуска результатов запроса геокодера.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+geocode
+
+Estimated time:
+180000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан мировой карты, в центре спана в районе Германии имеется голубая метка коллекции.
+  Сверху слева имеется кнопка "skip".
+  
+Step:
+  Action:
+  Выполнить призум спана карты к области метки. 
+
+  Expectation:
+  Происходит корректный призум спана карты.
+  На спане Берлина две метки коллекции.
+
+Step:
+  Action:
+  Выполнить клик в метку на спане карты.
+
+  Expectation:
+  По клику метка пропадает, на ее месте открывается балун с содержимым: "Берлин; Германия".
+
+Step:
+  Action:
+  Выполнить клик в кнопку закрытия балуна метки. 
+
+  Expectation:
+  Балун метки закрывается, метки коллекции не пропадают со спана карты.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "skip".
+
+  Expectation:
+  По клику две метки пропадают со спана карты, при этом на спане Берлина в другом месте появляются две голубые метки коллекции.
+
+Step:
+  Action:
+  Выполнить клик в метку на спане карты.
+
+  Expectation:
+  По клику метка пропадает, на ее месте открывается балун с топонимом содержащим с наименовании "Берлин", вида: "Ам Берлин Музойм; Германия, Берлин".
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            var map = myMap = new ymaps.Map('map', {
+                center: [55.753994, 0.622093],
+                zoom: 2,
+                behaviors: ['default', 'scrollZoom'],
+                controls: []
+            });
+            __log__("Поиск 'Берлин' с опцией skip и без");
+
+            rectangle = new ymaps.Rectangle([
+                [55.584031731101845, 20.21456126171876],
+                [46.584031731101845, 39.21456126171876]
+            ]);
+
+            var withSkip, withoutSkip;
+            ymaps.geocode('Берлин', {skip: 6, results: 2}).then(function (res) {
+                withSkip = res.geoObjects;
+            });
+            ymaps.geocode('Берлин', {results: 2}).then(function (res) {
+                withoutSkip = res.geoObjects;
+                map.geoObjects.add(withoutSkip);
+            });
+
+            var addButton = new ymaps.control.Button({data: {content: 'skip'}, options: {selectOnClick: true}});
+            addButton.events.add('select', function () {
+
+                map.geoObjects.remove(withoutSkip);
+                map.geoObjects.add(withSkip);
+            })
+                    .add('deselect', function () {
+                        map.geoObjects.remove(withSkip);
+                        map.geoObjects.add(withoutSkip);
+                    });
+
+            addGrid(myMap);
+            var log = new Log();
+            map.controls.add(addButton);
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

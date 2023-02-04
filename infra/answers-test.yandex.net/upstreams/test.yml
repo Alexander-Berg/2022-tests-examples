@@ -1,0 +1,87 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - panovav
+      groups: []
+labels:
+  order: '01700000'
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      url: '/thequestion/test/(.*)?'
+  modules:
+    - threshold:
+        lo_bytes: 262144
+        hi_bytes: 419430
+        pass_timeout: 10s
+        recv_timeout: 2s
+    - regexp:
+        sections:
+            post_method:
+                matcher:
+                    match_fsm:
+                        match: POST.*
+                modules:
+                - rewrite:
+                    actions:
+                    - regexp: '/thequestion/test'
+                      rewrite: '/api'
+                - balancer2:
+                    attempts: 1
+                    connection_attempts: !f count_backends()
+                    rr: {weights_file: ./controls/traffic_control.weights}
+                    backends:
+                    - weight: 1
+                      name: answers_sas
+                      modules:
+                        - report: {ranges: default, uuid: requests_thequestion_test_to_sas}
+                        - balancer2:
+                            attempts: 1
+                            connection_attempts: !f count_backends()
+                            weighted2: {}
+                            generated_proxy_backends:
+                              proxy_options:
+                                backend_timeout: 5s
+                                connect_timeout: 100ms
+                              include_backends:
+                                type: BY_ID
+                                ids: [test]
+                    on_error:
+                      modules:
+                      - errordocument: {content: "Gateway Timeout", status: 504}
+            default:
+                matcher: {}
+                modules:
+                - rewrite:
+                    actions:
+                    - regexp: '/thequestion/test'
+                      rewrite: '/api'
+                - balancer2:
+                    attempts: 2
+                    connection_attempts: !f count_backends()
+                    rr: {weights_file: ./controls/traffic_control.weights}
+                    backends:
+                    - weight: 1.0
+                      name: answers_sas
+                      modules:
+                        - report: {ranges: default, uuid: requests_thequestion_test_to_sas}
+                        - balancer2:
+                            attempts: 3
+                            attempts_rate_limiter:
+                              limit: 0.15
+                              coeff: 0.99
+                            connection_attempts: !f count_backends()
+                            weighted2: {}
+                            generated_proxy_backends:
+                              proxy_options:
+                                backend_timeout: 5s
+                                connect_timeout: 50ms
+                                keepalive_count: 3
+                              include_backends:
+                                type: BY_ID
+                                ids: [test]
+                    on_error:
+                      modules:
+                      - errordocument: {content: "Gateway Timeout", status: 504}

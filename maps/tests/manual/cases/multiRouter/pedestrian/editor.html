@@ -1,0 +1,219 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Мультимаршрут: тест с редактором пешеходного маршрута
+
+Description:
+Проверка теста с редактором пешеходного маршрута.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+multiRouter
+
+Estimated time:
+180000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  При загрузке первоначально загружается карта со спаном Москвы, затем происходит призум на спан с авто-маршрутом "A" - Москва, "B" - улица Льва Толстого, 16.
+  Сверху имеются кнопки "drawOver", "editor", снизу справа "pedestrian", "masstra...".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "pedestrian".
+
+  Expectation:
+  Смена режима маршрута на пешеходный маршрут, маршрутная нитка перестраивается, становится пунктирной, появляются пешеходные метки.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "editor".
+
+  Expectation:
+  Cпан карты без изменений, под контейнером с картой появляется строка "start".
+  Курсор на спане карты - палец с синей меткой "С".
+
+Step:
+  Action:
+  Выполнить клик в спан карты в районе Третьяковской галереи.
+
+  Expectation:
+  На спане карты появляется метка "С", к метке "С" прокладывается нитка маршрута, к курсору прилипает синяя метка "D".
+  Под контейнером с картой появляется строка: "beforewaypointadd" с координатами клика, строка "waypointadd" с координатами точки.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "drawOver".
+
+  Expectation:
+  Cпан карты без изменений.
+
+Step:
+  Action:
+  Навести курсор и выполнить клик в линию маршрута на участке между метками "B" и "C".
+
+  Expectation:
+  При наведении на нитку маршрута курсор с меткой "D" не пропадает.
+  На линии маршрута появляется метка "D", к курсору прилипает синяя метка "E".
+  Под контейнером с картой появляется строка: "beforewaypointadd" с координатами клика, строка "waypointadd" с координатами точки.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "drawOver", поводить курсором по линии маршрута.
+
+  Expectation:
+  При наведении на нитку маршрута курсор с меткой "E" пропадает, курсор на линии маршрута - палец.
+
+Step:
+  Action:
+  Выполнить даблклик в метку "D".
+
+  Expectation:
+  После первого клика открывается балун с расстоянием и временем маршрута.
+  Метка пропадает со спана карты, маршрут перестраивается.
+  Под контейнером с картой появляются строки: "beforewaypointremove; waypointremove".
+
+Step:
+  Action:
+  Выполнить даблклик в метку "В".
+
+  Expectation:
+  После первого клика открывается балун с расстоянием и временем маршрута.
+  Метка пропадает со спана карты, маршрут перестраивается.
+  Под контейнером с картой появляются строки: "beforewaypointremove; waypointremove".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "editor".
+
+  Expectation:
+  Cпан карты без изменений, под контейнером с картой появляется строка "stop".
+  Курсор на спане карты - рука.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "pedestrian".
+
+  Expectation:
+  Происходит смена режима маршрута на маршрут авто, маршрутная линия - сплошная.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            //TODO: написать тест
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 10,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl','rulerControl']
+            });
+
+            addGrid(map);
+            var log = new Log();
+
+            __log__('Basic editor test - all options enabled');
+
+            var events = ['beforeviapointremove', 'beforewaypointadd', 'beforewaypointremove', 'viapointremove', 'optionschange',
+                'waypointadd', 'waypointremove', 'viapointadd', 'beforemidpointadd', 'midpointadd', 'start', 'stop'];
+
+            var callback = function (e) {
+                log.info('--------' + e.get('type') + '--------');
+                console.log('--------' + e.get('type') + '--------');
+                if (e.get('type') == 'waypointadd' ||
+                        e.get('type') == 'beforewaypointadd' ||
+                        e.get('type') == 'midpointadd') {
+                    log.info(e.get('coords'))
+                } else if (e.get('type') == 'beforewaypointadd') {
+                    e.callMethod('setCoords', [0, 0])
+                }
+            };
+
+            var multiRoute = new ymaps.multiRouter.MultiRoute({
+                referencePoints: ["москва", "москва льва толстого 16"]
+            }, {
+                boundsAutoApply: true,
+                preset: "islands#multiRouterSmall"
+            });
+
+            map.geoObjects.add(multiRoute);
+            multiRoute.editor.events.add(events, callback);
+
+            var clearButton = new ymaps.control.Button('clear');
+            var editorButton = new ymaps.control.Button('editor');
+            var drawOverButton = new ymaps.control.Button('drawOver');
+
+            editorButton.events
+                    .add('select', function () {
+                        multiRoute.editor.start({
+                            addWayPoints: true,
+                            dragWayPoints: true,
+                            dragViaPoints: true,
+                            removeWayPoints: true,
+                            removeViaPoints: true
+                        })
+                    })
+                    .add('deselect', function () {
+                        multiRoute.editor.stop()
+                    });
+
+            clearButton.events.add('click', function () {
+                log.clear();
+            });
+
+            drawOverButton.events
+                    .add('select', function () {
+                        multiRoute.options.set('editorDrawOver', true)
+                    })
+                    .add('deselect', function () {
+                        multiRoute.options.set('editorDrawOver', false)
+                    });
+
+            map.controls
+                    .add(editorButton)
+                    .add(drawOverButton)
+                    .add(clearButton, {float: 'none', position: {right: 10, bottom: 35}});
+
+            var modeButton = new ymaps.control.Button('masstransit');
+            modeButton.events
+                    .add('select', function () {
+                        multiRoute.model.setParams({routingMode: 'masstransit'}, true);
+                    })
+                    .add('deselect', function () {
+                        multiRoute.model.setParams({routingMode: 'auto'}, true);
+                    });
+            map.controls.add(modeButton, {position: {bottom: 35, left: 5}});
+
+            var mode2Button = new ymaps.control.Button('pedestrian');
+            mode2Button.events
+                    .add('select', function () {
+                        multiRoute.model.setParams({routingMode: 'pedestrian'}, true);
+                    })
+                    .add('deselect', function () {
+                        multiRoute.model.setParams({routingMode: 'auto'}, true);
+                    });
+            map.controls.add(mode2Button, {position: {bottom: 65, left: 5}});
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

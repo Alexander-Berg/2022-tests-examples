@@ -1,0 +1,114 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Util: перенос объекта на карту
+
+Description:
+Проверка переноса объекта на карту.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components:
+util
+
+Estimated time:
+120000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть страницу и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно со спаном стран Ближнего Востока.
+  В левом верхнем углу спана белый квадрат.
+
+Step:
+  Action:
+  Навести курсор на белый квадрат, зажать ЛКМ и переместить курсор выставив квадрат на спан карты. 
+
+  Expectation:
+  Происходит захват и драг белого квадрата, после установки на спан квадрат пропадает, на спане в месте остановки синяя метка коллекции.
+  Под контейнером с картой появляются строки события начала драга, движения, остановки: "start; move; stop".
+  
+Step:
+  Action:
+  Выполнить клик в метку на спане карты. 
+
+  Expectation:
+  Открывается балун с координатами метки.
+-->
+<html>
+<head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../helper.js"></script>
+    <style>
+        .drag {
+            position: absolute;
+            width: 32px;
+            height: 32px;
+            background-color: #FFFFFF;
+            top: 0;
+            left: 0;
+        }
+
+        .white {
+            background-color: #FFFFFF;
+            top: 0;
+            border: 1px solid black;
+        }
+    </style>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            var myMap = new ymaps.Map('map', {center: [35.76, 37.67], zoom: 5, controls: ['fullscreenControl']}),
+                    elementWhite = document.getElementById('w'),
+                    dragger = new ymaps.util.Dragger({
+                        autoStartElement: elementWhite
+                    }),
+                    draggerEventsGroup = dragger.events.group();
+
+            var log = new Log();
+
+            draggerEventsGroup
+                    .add('start', function (event) {
+                        var pos = event.get('position');
+                        positionElement(pos[0], pos[1]);
+                        log.info('start');
+                    })
+                    .add('move', function (event) {
+                        var pos = event.get('position');
+                        positionElement(pos[0], pos[1]);
+                        log.info('move');
+                    })
+                    .add('stop', function (event) {
+                        draggerEventsGroup.removeAll();
+                        elementWhite.parentElement.removeChild(elementWhite);
+                        // Получаем географические координаты по точке окончания работы драггера.
+                        var placemarkPosition = myMap.options.get('projection').fromGlobalPixels(
+                                myMap.converter.pageToGlobal(event.get('position')),
+                                myMap.getZoom()
+                        );
+                        myMap.geoObjects.add(
+                                new ymaps.Placemark(placemarkPosition, {balloonContent: placemarkPosition})
+                        );
+                        log.info('stop');
+                    });
+
+            function positionElement(x, y) {
+                elementWhite.style.left = x + 'px';
+                elementWhite.style.top = y + 'px';
+            }
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+<div class="drag white" id="w"></div>
+</body>
+</html>

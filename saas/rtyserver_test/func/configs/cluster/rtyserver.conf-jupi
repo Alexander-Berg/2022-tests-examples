@@ -1,0 +1,158 @@
+<DaemonConfig>
+    LoggerType : ${LOG_PATH or "."}/current-global-rtyserver${LOG_POSTFIX or ".log"}
+    StdErr: ${LOG_PATH or "."}/current-refresh-stderr${LOG_POSTFIX or ".log"}
+    StdOut: ${LOG_PATH or "."}/current-refresh-stdout${LOG_POSTFIX or ".log"}
+    AccessLog : ${LOG_PATH or "."}/current-loadlog-rtyserver${LOG_POSTFIX or ".log"}
+    IndexLog : ${LOG_PATH or "."}/current-index-base${LOG_POSTFIX or ".log"}
+
+    <!-- library/cpp/logger/priority.h:
+         TLOG_EMERG       = 0,   /* system is unusable */
+         TLOG_ALERT       = 1,   /* action must be taken immediately */
+         TLOG_CRIT        = 2,   /* critical conditions */
+         TLOG_ERR         = 3,   /* error conditions */
+         TLOG_WARNING     = 4,   /* warning conditions */
+         TLOG_NOTICE      = 5,   /* normal but significant condition */
+         TLOG_INFO        = 6,   /* informational */
+         TLOG_DEBUG       = 7    /* debug-level messages */
+    -->
+    LogLevel: 7
+    LogRotation : false
+    <Controller>
+        Port : ${BACKEND_CONTROLLER_PORT or (BasePort and (BasePort +3)) or 15003}
+
+        MaxConnections : 0
+        MaxQueue : 0
+        ClientTimeout : 200
+        Threads : 20
+
+        StartServer : 1
+        ConfigPath : ${CONF_PATH}/
+    </Controller>
+</DaemonConfig>
+
+<Server>
+    IndexDir : ${INDEX_PATH or "./index"}
+    IsPrefixedIndex : false
+    VerificationPolicy : Testing
+    PruneAttrSort: oxy
+    Components : OXY,JUPI,DDK
+    IndexGenerator : OXY
+    SearchersCountLimit : 1 <!-- Required for preparates -->
+    WatchdogOptionsFile: non_existing_file
+    <ModulesConfig>
+    </ModulesConfig>
+    <Searcher>
+        AccessLog : ${LOG_PATH or "."}/current-loadlog-rtyserver${LOG_POSTFIX or ".log"}
+        ArchiveType : AT_FLAT
+
+        LockIndexFiles : false
+        FiltrationModel : WEB
+        KeepAllDocuments : 0
+        ReArrangeOptions :
+        UseRTYExtensions : false
+
+        ExternalSearch : freshsearch
+        WildcardSearch : infix
+        <HttpOptions>
+            ClientTimeout : 200
+            MaxConnections : 0
+            MaxQueue : 0
+            Port : ${BACKEND_SEARCH_PORT or BasePort or 15000}
+            Threads : 32
+        </HttpOptions>
+        EnableUrlHash : true
+        DefaultBaseSearchConfig : ${CONF_PATH}/RefreshBaseSearch.conf
+    </Searcher>
+    <BaseSearchersServer>
+        ClientTimeout : 200
+        MaxConnections : 0
+        MaxQueue : 0
+        Port : ${BACKEND_BASESEARCH_PORT or (BasePort and (BasePort +1)) or 15001}
+        Threads : 8
+    </BaseSearchersServer>
+    <Repair>
+        Enabled : false
+        Threads : 4
+    </Repair>
+    <Merger>
+        <!-- Enabled : true -->
+        MaxDocumentsToMerge : 10000000
+        MaxSegments : 1
+        MergerCheckPolicy : TIME
+        Threads : 4
+        <!-- TimingCheckIntervalMilliseconds : 300000 -->
+    </Merger>
+    <Logger>
+    </Logger>
+    <Monitoring>
+        Enabled : false
+    </Monitoring>
+    <Indexer>
+        <Common>
+            DefaultCharset : utf-8
+            DefaultLanguage : rus
+            DefaultLanguage2 : eng
+            Groups : $docid$:1
+            RecognizeLibraryFile : NOTSET
+            OxygenOptionsFile : ${CONF_PATH}/RefreshOxygenOptions.cfg
+            UseSlowUpdate : true
+            <HttpOptions>
+                ClientTimeout : 200
+                MaxConnections : 0
+                MaxQueue : 0
+                Port : ${BACKEND_INDEXER_PORT or (BasePort and (BasePort +2)) or 15002}
+                Threads : 4
+            </HttpOptions>
+
+            IndexLog : ${LOG_PATH or "."}/current-index-base${LOG_POSTFIX or ".log"}
+        </Common>
+        <Disk>
+            SearchEnabled : false
+            <!-- SearchObjectsDirectory: ${RTINDEX_DIRECTORY} -->
+            ConnectionTimeout : 100
+            DocumentsQueueSize : 10000
+            MaxDocuments : 10000
+            Threads : 1
+            PreparatesMode : true
+        </Disk>
+        <Memory>
+            TimeToLiveSec: 300
+            MaxDocuments: 30000
+            ConnectionTimeout : 100
+            DocumentsQueueSize : 10000
+            Enabled : false
+            GarbageCollectionTime : 50
+            MaxDocumentsReserveCapacityCoeff : 3
+            RealTimeFeatureConfig : +useBinaryErf +useUtfNavigate
+            RealTimeLoadC2P : geo geoa
+            PreparatesMode : true
+        </Memory>
+    </Indexer>
+    <ComponentsConfig>
+        <DDK>
+            ExtendedMetrics : true
+        </DDK>
+        <FULLARC>
+            ActiveLayers: full,merge
+            <Layers>
+                <full>
+                     PartSizeLimit: 1073741824
+                     PartSizeDeviation: 0.5
+                     MaxUndersizedPartsCount: 64
+                </full>
+                <merge>
+                     PartSizeLimit: 1073741824
+                     PartSizeDeviation: 0.5
+                     MaxUndersizedPartsCount: 64
+                </merge>
+            </Layers>
+        </FULLARC>
+        <OXY>
+            ArchiveLayersFilteredForIndex: full
+            ArchiveLayersFilteredForMerge: merge
+            AdditionalRequiredMergeTuples: DssmEmbedding DssmMainContentKeywordsEmbedding TitleNormalizedUTF8 FactorAnnKeyInv FactorAnnArray4DPortions FactorAnnSent refarc refcaw QueryClicksUserDataCompressed MainRobotUrl Title
+        </OXY>
+    </ComponentsConfig>
+</Server>
+
+

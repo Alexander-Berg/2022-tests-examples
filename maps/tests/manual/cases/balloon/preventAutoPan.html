@@ -1,0 +1,121 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Открытие балуна в заданной точке
+
+Description:
+Проверяем открытие балуна в программно заданных точках.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components:
+balloon
+
+Estimated time:
+90000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась.
+  На карте спан Москвы.
+  Сверху слева имеются кнопки "false" и "true". 
+
+Step:
+  Action:
+  Выполнить клик в кнопку "true".
+
+  Expectation:
+  Происходит смещение спана, на спан Санкт-Петербурга, при этом в верхнем левом углу виден открытый пустой балун.
+  У балуна отсуствует кнопка закрытия.
+  Под контейнером с картой при начале движения появляется текст: "autopanbegin", по окончании перемещения текст "autopanend".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "false".
+
+  Expectation:
+  Спан карты не перемещается. Со спана карты пропадает открытый балун.
+ 
+Step:
+  Action:
+  Зажав и удерживания на спане карты ЛКМ, переместить область видимости южнее, примерно на размер одного контейнера с картой(географически в сторону Великого Новгорода).
+  
+  Expectation:
+  В области видимости между СПб и Великим Новгородом (ближе к Великому Новгороду) открыт пустой балун. 
+  У балуна отсуствует кнопка закрытия.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "true".
+
+  Expectation:
+  Происходит смещение спана, на спан Санкт-Петербурга, при этом в верхнем левом углу виден открытый пустой балун.
+  У балуна отсуствует кнопка закрытия.
+  Под контейнером с картой при начале движения появляется текст:
+  autopanbegin
+  autopanend
+  autopanbegin
+  autopanend.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 9,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            addGrid(map);
+            var log = new Log();
+
+            var balloon,
+                    newPos1 = [60, 30],
+                    newPos2 = [59, 31],
+                    options1 = { closeButton: false, shadow: false, autoPan: true},
+                    options2 = { closeButton: false, shadow: false, autoPan: false};
+            window.balloon = balloon = new ymaps.Balloon(map);
+
+            balloon.events.add(['autopanbegin', 'autopanend'], function (e) {
+                log.info(e.get('type'))
+            });
+
+            var preventTrueButton = new ymaps.control.Button({data: {content: 'true'}, options: {selectOnClick: false}});
+            var preventFalseButton = new ymaps.control.Button({data: {content: 'false'}, options: {selectOnClick: false}});
+
+            preventTrueButton.events.add('click', function () {
+                balloon.options.set(options1).setParent(map.options);
+                balloon.open(newPos1);
+            });
+            preventFalseButton.events.add('click', function () {
+                balloon.options.set(options2).setParent(map.options);
+                balloon.open(newPos2);
+            });
+
+            myMap.controls
+                    .add(preventTrueButton)
+                    .add(preventFalseButton);
+        }
+
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

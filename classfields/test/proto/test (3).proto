@@ -1,0 +1,238 @@
+syntax = "proto3";
+
+package vertis.anubis.api.test;
+
+import "broker/broker_options.proto";
+import "google/protobuf/timestamp.proto";
+import "another_test.proto";
+
+option java_package = "vertis.anubis.api.test";
+option java_multiple_files = true;
+
+message IllegalPartitioningMessage {
+    option (.broker.config) = {
+        name: "anubis/illegal_partitioning/events",
+        yt: {
+            partition: BY_MONTH,
+            spawn: {
+                days_to_watch: 1
+            },
+            repartition: {
+                timestamp_field: "event_timestamp"
+                name: "anubis/illegal_partitioning/events"
+            }
+        }
+    };
+
+    google.protobuf.Timestamp timestamp = 1;
+    google.protobuf.Timestamp event_timestamp = 2;
+}
+
+message NotASnakeCaseMessage {
+    option (.broker.config) = {
+        name: "anubis/not_a_snake_case"
+    };
+
+    string camelCase = 1;
+    bool snake_1case = 2;
+    google.protobuf.Timestamp timestamp = 3;
+}
+
+message SomeMessage {
+    AnotherMessage msg = 1;
+}
+
+message CorrectClickhouseConfigMessage {
+    option (.broker.config) = {
+        name: "anubis/correct_ch_config",
+        clickhouse: {
+            cluster: "test"
+            db: "stats"
+            table: "event3"
+            expire_in_days: 180
+        }
+        yt: {
+            partition: BY_DAY
+            expire_in_days: 90
+        }
+    };
+    google.protobuf.Timestamp timestamp = 1;
+}
+
+message InvalidMaxLagMessage {
+    option (.broker.config) = {
+        name: "anubis/invalid_max_lag",
+        max_lag: 60,
+        yt: {
+            partition: BY_DAY
+            expire_in_days: 30
+        }
+    };
+    google.protobuf.Timestamp timestamp = 1;
+}
+
+message InvalidMaxLagMonthMessage {
+    option (.broker.config) = {
+        name: "anubis/invalid_max_lag_month",
+        max_lag: 2,
+        yt: {
+            partition: BY_MONTH
+            expire_in_days: 30
+        }
+    };
+    google.protobuf.Timestamp timestamp = 1;
+}
+
+message InvalidMaxLagYearMessage {
+    option (.broker.config) = {
+        name: "anubis/invalid_max_lag_year",
+        max_lag: 1,
+        yt: {
+            partition: BY_YEAR
+            expire_in_days: 300
+        }
+    };
+    google.protobuf.Timestamp timestamp = 1;
+}
+
+message MaxLagNoExpireMessage {
+    option (.broker.config) = {
+        name: "anubis/max_lag_no_expire",
+        max_lag: 30
+        yt: {
+            partition: BY_DAY
+        }
+    };
+    google.protobuf.Timestamp timestamp = 1;
+}
+
+message SortByUnknownFieldMessage {
+    option (.broker.config) = {
+        name: "anubis/sort_by_unknown",
+        yt: {
+            sort_by: "foo"
+        }
+    };
+
+    string bar = 1;
+    google.protobuf.Timestamp timestamp = 2;
+}
+
+message DeepNameMessage {
+    option (.broker.config) = {
+        name: "anubis/i/am/too/deep/for/this"
+    };
+    google.protobuf.Timestamp timestamp = 1;
+}
+
+message NonUniqueNameMessage {
+    option (.broker.config) = {
+        name: "anubis/non_unique"
+    };
+    google.protobuf.Timestamp timestamp = 1;
+}
+
+message NonUniqueNameMessage2 {
+    option (.broker.config) = {
+        name: "anubis/non_unique"
+    };
+    google.protobuf.Timestamp timestamp = 1;
+}
+
+message NonUniqueTableMessage {
+    option (.broker.config) = {
+        name: "anubis/non_unique_table",
+        clickhouse: {
+            cluster: "test",
+            db: "stats",
+            table: "non_unique"
+        };
+    };
+    google.protobuf.Timestamp timestamp = 1;
+}
+
+message NonUniqueTableMessage2 {
+    option (.broker.config) = {
+        name: "anubis/non_unique_table2",
+        clickhouse: {
+            cluster: "test",
+            db: "stats",
+            table: "non_unique"
+        };
+    };
+    google.protobuf.Timestamp timestamp = 1;
+}
+
+message NonUniqueRepartitionPath {
+    option (.broker.config) = {
+        name: "anubis/non_unique_rep",
+        yt: {
+            repartition: {
+                timestamp_field: "event_timestamp"
+                name: "anubis/repartition/events"
+            }
+        }
+    };
+    google.protobuf.Timestamp timestamp = 1;
+}
+
+message NonUniqueRepartitionPath2 {
+    option (.broker.config) = {
+        name: "anubis/non_unique_rep2",
+        yt: {
+            repartition: {
+                timestamp_field: "event_timestamp"
+                name: "anubis/repartition/events"
+            }
+        }
+    };
+    google.protobuf.Timestamp timestamp = 1;
+}
+
+message NoNameMessage {
+    option (.broker.config) = {
+        clickhouse: {
+            db: "realty",
+            expire_in_days: 60
+        },
+        yt: {
+            partition: BY_DAY,
+            repartition: {
+                timestamp_field: "ts",
+                name: "anubis/no-name/events"
+            }
+        }
+    };
+
+    google.protobuf.Timestamp timestamp = 1;
+    google.protobuf.Timestamp ts = 2;
+}
+
+message CustomTimestampMessage {
+    option (.broker.config) = {
+        name: "anubis/custom-timestamp"
+    };
+
+    google.protobuf.Timestamp custom_timestamp = 1[(.broker.is_timestamp) = true];
+}
+
+message IllegalServiceMessage {
+    option (.broker.config) = {
+        name: "anubis/illegal-service"
+        services: [
+            "anubis-api",
+            "wubba-lubba-dub-dub",
+            "not-a-service"
+        ]
+    };
+
+    google.protobuf.Timestamp timestamp = 1 [(.broker.is_timestamp) = true];
+}
+
+message MultipleTsEvent {
+  option (.broker.config) = {
+    name: "anubis/multiple-ts-event",
+  };
+  google.protobuf.Timestamp a_timestamp = 1[(.broker.is_timestamp) = true];
+  google.protobuf.Timestamp new_timestamp = 2[(.broker.is_timestamp) = true];
+}

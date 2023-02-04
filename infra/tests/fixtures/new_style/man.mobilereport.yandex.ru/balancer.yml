@@ -1,0 +1,55 @@
+---
+instance_macro:
+  buffer: 1048576
+  workers: 3
+  sections:
+    admin:
+      ips: [127.0.0.1, '::1']
+      ports: [15860]
+      modules:
+        - http: {}
+        - admin: {}
+    http_section:
+      ips: ['2a02:6b8:0:3400::1:2', '213.180.205.2']
+      ports: [80]
+      local_ips: [local_v4_addr, local_v6_addr]
+      local_ports: [15860]
+      extended_http_macro:
+        port: 15860
+        modules:
+          - headers:
+              create_func:
+                X-Start-Time: starttime
+                X-Req-Id: reqid
+                X-Source-Port-Y: realport
+                X-Yandex-RandomUID: yuid
+              create_func_weak:
+                X-Forwarded-For-Y: realip
+                X-Forwarded-For: realip
+          - response_headers:
+              create_weak:
+                X-XSS-Protection: '1; mode=block'
+                X-Content-Type-Options: nosniff
+          - regexp:
+              include_upstreams:
+                filter:
+                  id_prefix_in:
+                    - 'ext_'
+                order:
+                  label:
+                    name: order
+    fake_section:
+      ips: [127.0.0.44]
+      ports: [15860]
+      modules:
+        - http: {}
+        - shared:
+            uuid: int_upstreams
+        - regexp:
+            include_upstreams:
+              filter:
+                id_prefix_in:
+                  - 'int_'
+              order:
+                label:
+                  name: order

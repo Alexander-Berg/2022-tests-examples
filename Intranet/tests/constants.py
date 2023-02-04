@@ -1,0 +1,4 @@
+COUNTERS_MONGO_COLLECTION = 'test_counters'
+GAPS_MONGO_COLLECTION = 'test_gaps'
+PERIODIC_GAPS_MONGO_COLLECTION = 'test_periodic_gaps'
+TEMPLATES_MONGO_COLLECTION = 'test_templates'

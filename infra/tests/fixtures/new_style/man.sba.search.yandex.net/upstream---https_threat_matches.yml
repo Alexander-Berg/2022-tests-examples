@@ -1,0 +1,65 @@
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      url: '/v4/threatMatches(.*)?'
+  modules:
+    - shared:
+        uuid: threatmatches
+    - report: {uuid: threatmatches, ranges: default}
+    - balancer2:
+        attempts: !f count_backends()
+        rr: {weights_file: ./controls/traffic_control.weights}
+        backends:
+        - weight: 1
+          name: sba_sas
+          modules:
+            - report: {ranges: default, uuid: requests_to_sas}
+            - balancer2:
+                attempts: 2
+                weighted2: {}
+                generated_proxy_backends:
+                  proxy_options:
+                    backend_timeout: 150ms
+                    connect_timeout: 40ms
+                    keepalive_count: 1
+                  include_backends:
+                    type: BY_ID
+                    ids: [sba_sas]
+        - weight: 1
+          name: sba_man
+          modules:
+            - report: {ranges: default, uuid: requests_to_man}
+            - balancer2:
+                attempts: 2
+                weighted2: {}
+                generated_proxy_backends:
+                  proxy_options:
+                    backend_timeout: 150ms
+                    connect_timeout: 40ms
+                    keepalive_count: 1
+                  include_backends:
+                    type: BY_ID
+                    ids: [sba_man]
+        - weight: 1
+          name: sba_vla
+          modules:
+            - report: {ranges: default, uuid: requests_to_vla}
+            - balancer2:
+                attempts: 2
+                weighted2: {}
+                generated_proxy_backends:
+                  proxy_options:
+                    backend_timeout: 150ms
+                    connect_timeout: 40ms
+                    keepalive_count: 1
+                  include_backends:
+                    type: BY_ID
+                    ids: [sba_vla]
+        on_error:
+            modules:
+              - report:
+                  uuid: onerror
+                  ranges: 1ms
+              - errordocument:
+                  status: 204

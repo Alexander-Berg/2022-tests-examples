@@ -1,0 +1,43 @@
+receivers:
+  jaeger:
+    protocols:
+      thrift_compact:
+
+  # Dummy receiver that's never used, because a pipeline is required to have one.
+  otlp/spanmetrics:
+    protocols:
+      grpc:
+        endpoint: "localhost:12345"
+
+exporters:
+  jaeger:
+    endpoint: spirit-test.c.jaeger.yandex-team.ru:14250
+    insecure: true
+
+  prometheus/spanmetrics:
+    endpoint: "localhost:8889"
+    namespace: tracing-span
+    metric_expiration: 10m
+
+processors:
+  spanmetrics:
+    metrics_exporter: prometheus/spanmetrics
+    latency_histogram_buckets: [5ms, 10ms, 25ms, 50ms, 75ms, 100ms, 250ms, 500ms, 750ms, 1s, 2.5s, 5s, 7.5s, 10s, 12.5s, 15s, 17.5s, 20s, 25s, 30s, 60s]
+    dimensions:
+      - name: http.status_code
+
+extensions:
+  health_check:
+
+service:
+  extensions: [health_check]
+  pipelines:
+    traces:
+      receivers: [jaeger]
+      exporters: [jaeger]
+      processors: [spanmetrics]
+
+    # The exporter name must match the metrics_exporter name.
+    metrics/spanmetrics:
+      receivers: [otlp/spanmetrics]
+      exporters: [prometheus/spanmetrics]

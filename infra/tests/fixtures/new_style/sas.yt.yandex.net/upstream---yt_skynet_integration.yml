@@ -1,0 +1,45 @@
+---
+# yt_skynet_integration
+regexp_section:
+  matcher:
+    match_fsm:
+      host: 'skynet-manager\\.yt\\.yandex(\\.net|-team\\.ru)(:\\d+)?'
+  modules:
+    - report:
+        uuid: yt_skynet_integration
+        ranges: default
+        events:
+          stats: report  
+    - headers:
+        create_func_weak:
+          X-Forwarded-For: 'realip'
+          X-Scheme: 'scheme'
+          X-Source-Port: 'realport'
+        create:
+          x-yt-omit-trailers: 'true'
+    - balancer2:
+        attempts: 2
+        timeout_policy:
+          timeout: 60s
+          unique_policy: {}
+        weighted2:
+          min_weight: 0.05
+          max_weight: 5.0
+          plus_diff_per_sec: 0.05
+          minus_diff_per_sec: 0.05
+          history_time: 60s
+          feedback_time: 30s
+          slow_reply_time: 1s
+        generated_proxy_backends:
+          proxy_options:
+            backend_timeout: 60s
+            connect_timeout: 1s
+            keepalive_count: 16
+            fail_on_5xx: false
+          include_backends:
+            type: BY_ID
+            ids: [yt_skynet_integration]
+        on_error:
+          errordocument:
+            content: 'Service unavailable'
+            status: 504

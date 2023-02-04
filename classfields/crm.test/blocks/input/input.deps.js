@@ -1,0 +1,9 @@
+({
+    shouldDeps : [
+        {
+            mods: {
+                type : 'digital'
+            }
+        }
+    ]
+});

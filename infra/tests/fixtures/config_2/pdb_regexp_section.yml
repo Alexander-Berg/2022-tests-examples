@@ -1,0 +1,82 @@
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      host: pdb\\.test-cplb\\.yandex\\.ru
+  modules:
+    - headers:
+        create:
+          X-Forwarded-Proto: https
+        create_func:
+          X-Real-IP: realip
+        create_func_weak:
+          X-Forwarded-For-Y: realip
+          X-Req-Id: reqid
+          X-Scheme: scheme
+          X-Source-Port: realport
+    - geobase_macro: {}
+    - regexp:
+        sections:
+          pdb_backend_test:
+            matcher:
+              match_fsm:
+                uri: /(api|picture)(/.*)?
+            balancer2:
+              rr: {}
+              attempts: 3
+              backends:
+                - weight: 100
+                  balancer2:
+                    attempts: 3
+                    weighted2:
+                      min_weight: 0.05
+                      max_weight: 5.0
+                      plus_diff_per_sec: 0.05
+                      minus_diff_per_sec: 0.05
+                      history_time: 20s
+                      feedback_time: 10s
+                      slow_reply_time: 1s
+                    on_error:
+                      errordocument:
+                        status: 504
+                    generated_proxy_backends:
+                      proxy_options:
+                        backend_timeout: 5s
+                        buffering: false
+                        connect_timeout: 999ms
+                        fail_on_5xx: false
+                        keepalive_count: 3
+                        watch_client_close: true
+                      nanny_snapshots:
+                        - service_id: pdb_backend_test
+                          snapshot_id: feef7e66d11d09d25e2174c180da470aed4f1018
+          pururum:
+            matcher: {}
+            balancer2:
+              rr: {}
+              attempts: 3
+              backends:
+                - weight: 100
+                  balancer2:
+                    attempts: 3
+                    weighted2:
+                      min_weight: 0.05
+                      max_weight: 5.0
+                      plus_diff_per_sec: 0.05
+                      minus_diff_per_sec: 0.05
+                      history_time: 20s
+                      feedback_time: 10s
+                      slow_reply_time: 1s
+                    on_error:
+                      errordocument:
+                        status: 504
+                    generated_proxy_backends:
+                      proxy_options:
+                        backend_timeout: 5s
+                        buffering: false
+                        connect_timeout: 999ms
+                        fail_on_5xx: false
+                        keepalive_count: 3
+                      nanny_snapshots:
+                        - service_id: pdb_nodejs_test
+                          snapshot_id: de9fbd5c63350256cc7d56e2a29aef2f8d489e32

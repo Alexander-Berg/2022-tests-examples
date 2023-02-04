@@ -1,0 +1,100 @@
+<!DOCTYPE HTML>
+<!--(skip)(description)
+Hint: open(), close(), isOpen(), destroy(), getOverlaySync()
+-->
+<!--(version)
+2.1.0
+-->
+<!--(commands)
+sleep(1000);
+sleep(1000);
+test();
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var constructor = function () {
+                        var layer = new ym.Layer('http://mt.gmapuploader.com/tiles/zDtAlUfaDe/');
+                        layer.getTileUrl = function (tile, zoom) {
+                            var tile = this.restrict(tile, zoom);
+                            return tile ? "http://mt.gmapuploader.com/tiles/zDtAlUfaDe/tile-" + zoom + "-" +
+                                    (tile[1] * Math.pow(2, zoom) + tile[0]) + ".jpg" : null;
+                        }
+                        return layer;
+                    },
+                    lineageMap = new ym.MapType('LineageMap', [constructor]),
+                    map = myMap = new ym.Map('map', {
+                        center: [20, 20],
+                        zoom: 1,
+                        type: null
+                    }, {
+                        projection: new ym.projection.Cartesian([
+                            [-100, -100],
+                            [140, 140]
+                        ]),
+                        geoObjectStrokeWidth: 4
+                    }), i = 0;
+
+            ym.mapType.storage.add('lineage#map', lineageMap);
+            map.setType("lineage#map");
+            addGrid(map);
+
+            addGrid(myMap);
+            var log = new Log();
+
+            __log__('Script: open, close, open, setPosition, destroy');
+
+            var hint,
+                    pos1 = [20, 20],
+                    pos2 = [50, 50],
+                    pos3 = [0, 0],
+                    projection = new ym.projection.Cartesian([
+                        [-100, -100],
+                        [140, 140]
+                    ]),
+                    contentLayout = ymaps.templateLayoutFactory.createClass('$[hintContent]hint'),
+                    data = { a: 'b' },
+                    options = { contentLayout: contentLayout, closeTimeout: 300 };
+            window.hint = hint = new ymaps.Hint(myMap);
+            hint.options.set(options).setParent(myMap.options);
+
+            hint.events.add(['open', 'close'], function (e) {
+                __log__('event: ' + e.get('type') + ', overlay: ' + hint.getOverlaySync().getMap() + ', isOpen: ' + hint.isOpen());
+            });
+
+            hint.events.add(['beforedestroy', 'destroy'], function () {
+                __log__(e.get('type'))
+            });
+
+            hint.open(pos1, {projection: projection}).then(function () {
+                hint.close().then(function () {
+                    hint.open(pos2, {projection: projection}).then(function () {
+                        setTimeout(function () {
+                            hint.setPosition(pos3)
+                        }, 800)
+
+                    });
+                })
+            });
+
+            setTimeout(function () {
+                hint.destroy();
+                __log__('hint destroyed')
+            }, 2500)
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

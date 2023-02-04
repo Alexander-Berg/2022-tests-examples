@@ -1,0 +1,171 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Контрол: базовая проверка поиска
+
+Description:
+Проверка работы поведения поиска.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+control
+
+Estimated time:
+300000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Дождаться загрузки и осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась корректно.
+  При загрузке сначала загружается пустой спан Москвы, сверху контейнера поисковый инпут с желтой кнопкой "Найти", кнопки "remove", "show++", "hide".
+  Через 2 секунды в поисковый инпут подставляется значение "льва толстого", под инпутом выпадает панель со сниппетами результатов поиска. 
+  Под контейнером появляются строка с поиском, по окончании поиска "Ready".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "show++".
+
+  Expectation:
+  Cпан карты меняется, на карте спан Калужской области, в центре спана открывается балун топонима "село имени Льва Толстого".
+  Под контейнером с картой появляется текст(с номером выбранной организации): "resultselect 0, resultshow 0". 
+
+Step:
+  Action:
+  Выполнить клик в кнопку "hide".
+
+  Expectation:
+  Балун топонима пропадает, спан карты без изменений.
+  Под контейнером с картой появляется текст(с номером скрытого топонима): "resulthide 0".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "hide".
+
+  Expectation:
+  На спане появляется балун топонима "село имени Льва Толстого" скрытый на прошлом шаге.
+  Под контейнером с картой появляется текст(с номером показанной панели организации): "resultselect 0; resultshow 0".
+
+Step:
+  Action:
+  Выполнить клик в кнопку закрытия балуна - крестик.
+
+  Expectation:
+  Балун топонима закрывается, на спане остается метка коллекции.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "remove".
+
+  Expectation:
+  Со спана карты пропадает метка коллекции, поисковый инпут, остаются только кнопки "remove", "show++", "hide". 
+
+Step:
+  Action:
+  Выполнить клик в кнопку "remove".
+
+  Expectation:
+  На спане карты появляется метка коллекции, поисковый инпут с введенным значением "льва толстого" и панелью со сниппетами по запросу. 
+
+Step:
+  Action:
+  Найти в панели сниппет "Улица Льва Толстого; Россия, Санкт-Петербург", выполнить клик в него.
+
+  Expectation:
+  Спан карты меняется на спан СПб, в центре спана появляется балун топонима "Улица Льва Толстого; Россия, Санкт-Петербург".
+  Под контейнером с картой появляется текст(с номером показанного топонима): "resultselect (номер); resultshow (номер)".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "hide".
+
+  Expectation:
+  Балун топонима пропадает, спан карты без изменений.
+  Под контейнером с картой появляется текст(с номером скрытого топонима): "resulthide (номер)".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "hide".
+
+  Expectation:
+  Спан карты сменяется на спан Калужской области, в центре спана появляется балун топонима "село имени Льва Толстого".
+  Под контейнером с картой появляется текст: "resultselect 0; resultshow 0".
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 10,
+                behaviors: ['default', 'scrollZoom'],
+                controls: []
+            }), i = 0;
+
+            addGrid(myMap);
+            var log = new Log();
+            __log__("Автозум на метку");
+            var search1 = new ymaps.control.SearchControl({
+                options: {
+                    float: 'left',
+                    size: 'large'
+                }
+            });
+            map.controls.add(search1);
+            __log__('Waiting 2 seconds...');
+
+            setTimeout(function () {
+                __log__('Searching "льва толстого"... Должен появиться попап');
+                search1.search('льва толстого').then(function () {
+                    __log__('Ready.')
+                });
+            }, 2000);
+
+            var hideResult = new ymaps.control.Button('hide');
+            hideResult.events
+                    .add('select', function () {
+                        search1.hideResult();
+                    })
+                    .add('deselect', function () {
+                        search1.showResult(0);
+                    });
+            map.controls.add(hideResult);
+            var showResult = new ymaps.control.Button({data: {content: 'show++'}, options: {selectOnClick: false}});
+            showResult.events
+                    .add('click', function () {
+                        search1.showResult(i);
+                    });
+            map.controls.add(showResult);
+            search1.events.add(['clear', 'resulthide', 'resultshow', 'resultselect'], function (e) {
+                __log__(e.get('type') + " " + e.get('index'));
+            });
+            var removeButton = new ymaps.control.Button('remove');
+            removeButton.events
+                    .add('select', function () {
+                        map.controls.remove(search1);
+                    })
+                    .add('deselect', function () {
+                        map.controls.add(search1);
+                    });
+            map.controls.add(removeButton);
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 612px;">
+</div>
+</body>
+</html>

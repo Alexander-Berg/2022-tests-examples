@@ -1,0 +1,180 @@
+annotations: {}
+labels:
+  deploy_engine: env_controller
+  migration_from: bm.bmapi-ql.test
+  migration_type: qloud
+  notifications_last_timestamp: 1607414101966713000
+  stagectl_epoch: 408
+  stagectl_vcs:
+    svn_branch: stage_controller/stable-99-1
+    svn_revision: 7635566
+    svn_tag: stage_controller/stable-99-1
+meta:
+  account_id: abc:service:5163
+  acl:
+  - action: allow
+    permissions:
+    - read
+    - write
+    - create
+    - ssh_access
+    - root_ssh_access
+    - read_secrets
+    subjects:
+    - k-zaitsev
+  effective_account_id: null
+  id: bmapi-test
+  inherit_acl: true
+  project_id: bm
+spec:
+  account_id: abc:service:5163
+  deploy_units:
+    backend:
+      endpoint_sets:
+      - port: 80
+      images_for_boxes:
+        backend:
+          name: catalogia/bm-qloud
+          registry_host: registry.yandex.net
+          tag: '1.6'
+      multi_cluster_replica_set:
+        replica_set:
+          clusters:
+          - cluster: sas
+            spec:
+              constraints:
+                antiaffinity_constraints:
+                - key: rack
+                  max_pods: 1
+              replica_count: 2
+          - cluster: vla
+            spec:
+              constraints:
+                antiaffinity_constraints:
+                - key: rack
+                  max_pods: 1
+              replica_count: 2
+          deployment_strategy:
+            max_unavailable: 4
+          pod_template_spec:
+            spec:
+              disk_volume_requests:
+              - id: infra
+                labels:
+                  used_by_infra: true
+                quota_policy:
+                  capacity: 225485783040
+                storage_class: hdd
+              pod_agent_payload:
+                spec:
+                  boxes:
+                  - id: backend
+                    init:
+                    - command_line: "bash -c '\nif [ ! -d /tmpfs ]; then\n    mkdir\
+                        \ /tmpfs\n    portoctl vcreate /tmpfs backend=tmpfs space_limit=1G\n\
+                        fi\n'"
+                    rootfs: {}
+                    static_resources:
+                    - mount_point: /opt/broadmatching/secrets/tokens
+                      resource_ref: .opt.broadmatching.secrets.tokens
+                    - mount_point: /home/broadmatching/.zoracl
+                      resource_ref: .home.broadmatching..zoracl
+                    - mount_point: /opt/catalogia_publish
+                      resource_ref: catalogia_publish
+                    volumes:
+                    - mode: read_write
+                      mount_point: /ephemeral
+                      volume_ref: ephemeral
+                  mutable_workloads:
+                  - workload_ref: backend
+                  resources:
+                    static_resources:
+                    - id: catalogia_publish
+                      url: rbtorrent:6ae18beecf54bcb68740bdaa7c24ff694501180a
+                      verification:
+                        check_period_ms: 180000
+                        checksum: MD5:6cb233ba5ef1c4879455ef456d3f3f5c
+                    - files:
+                        files:
+                        - file_name: solomon_oauth_token
+                          secret_data:
+                            alias: QLOUD_DUMP
+                            id: secret.solomon-token
+                        - file_name: yt_plato
+                          secret_data:
+                            alias: QLOUD_DUMP
+                            id: secret.yt-plato
+                      id: .opt.broadmatching.secrets.tokens
+                      verification:
+                        checksum: 'EMPTY:'
+                    - files:
+                        files:
+                        - file_name: tvm_clientid
+                          secret_data:
+                            alias: QLOUD_DUMP
+                            id: secret.bmapi-zoracl-clientid
+                        - file_name: tvm_secret
+                          secret_data:
+                            alias: QLOUD_DUMP
+                            id: secret.bmapi-zoracl-secret
+                      id: .home.broadmatching..zoracl
+                      verification:
+                        checksum: 'EMPTY:'
+                  volumes:
+                  - id: ephemeral
+                  workloads:
+                  - box_ref: backend
+                    env:
+                    - name: BM_HOSTINFO_JSON
+                      value:
+                        literal_env:
+                          value: '{"crontab_name": "bmapi-qloud", "role": "bmapi-qloud-test",
+                            "number_of_fcgi_processes": 8}'
+                    - name: TZ
+                      value:
+                        literal_env:
+                          value: Europe/Moscow
+                    - name: BM_HOSTINFO_STRING
+                      value:
+                        literal_env:
+                          value: crontab_name => "bmapi-qloud", number_of_fcgi_processes
+                            => 8
+                    - name: BM_HOSTROLE
+                      value:
+                        literal_env:
+                          value: bmapi-qloud-test
+                    - name: QLOUD_HTTP_PORT
+                      value:
+                        literal_env:
+                          value: '80'
+                    - name: BM_QLOUD_SETTINGS_NAME
+                      value:
+                        literal_env:
+                          value: bmapi-qloud
+                    id: backend
+                    init:
+                    - command_line: tar xzvf /opt/catalogia_publish/catalogia_publish.tgz
+                        -C /opt/catalogia_publish/
+                    readiness_check:
+                      http_get:
+                        any: true
+                        path: /ping
+                        port: 80
+                        time_limit:
+                          max_execution_time_ms: 1000
+                    transmit_logs: true
+              resource_requests:
+                memory_guarantee: 51539607552
+                memory_limit: 51539607552
+                vcpu_guarantee: 8000
+                vcpu_limit: 8000
+              secrets:
+                QLOUD_DUMP:
+                  delegation_token: OQmMGjwa5OVDoCboRo3ZdQ7krBMe1PXVcJLrH5Mc6QQ.1.eb36b0e43518326c
+                  secret_id: sec-01ercdz3zx9x3ety6dt5377110
+                  secret_version: ver-01es0nc8jsrtx6ycq826h139qt
+      network_defaults:
+        network_id: _BMNETS_
+      revision: 9
+  revision: 9
+

@@ -1,0 +1,81 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - frenz
+      groups: []
+labels:
+  order: '00001200'
+---
+regexp_section:
+  matcher:
+    match_and:
+      - match_fsm:
+          host: 'mc-test.yandex.ru'
+      - match_or:
+        - match_fsm:
+            uri: '/cc'
+  modules:
+    - report:
+        uuid: "itp_cc"
+        ranges: "default"
+    - headers:
+        delete: "Connection"
+        create_func:
+          Host: host
+        create_func_weak:
+          X-Real-IP: realip
+        append_func:
+          X-Forwarded-For: realip
+    - balancer2:
+        attempts: 2
+        rr: {}
+        backends:
+          - weight: 1
+            name: phantom2d_itp_sas
+            modules:
+            - balancer2:
+                attempts: 1
+                attempts_rate_limiter:
+                  limit: 0.1
+                  coeff: 0.99
+                connection_attempts: 2
+                dynamic:
+                  max_pessimized_share: 0.3
+                  active:
+                    request: 'GET /ping HTTP/1.1\nHost: localhost\nUser-agent: l7-balancer\n\n'
+                    weight_normalization_coeff: 1
+                    delay: 5s
+                generated_proxy_backends:
+                  proxy_options:
+                    backend_timeout: 5s
+                    keepalive_count: 1
+                    connect_timeout: 70ms
+                  include_backends:
+                    type: BY_ID
+                    ids:
+                      - phantom2d-itp-testing-sas
+          - weight: 1
+            name: phantom2d_itp_vla
+            modules:
+            - balancer2:
+                attempts: 1
+                attempts_rate_limiter:
+                  limit: 0.1
+                  coeff: 0.99
+                connection_attempts: 2
+                dynamic:
+                  max_pessimized_share: 0.3
+                  active:
+                    request: 'GET /ping HTTP/1.1\nHost: localhost\nUser-agent: l7-balancer\n\n'
+                    weight_normalization_coeff: 1
+                    delay: 5s
+                generated_proxy_backends:
+                  proxy_options:
+                    backend_timeout: 5s
+                    keepalive_count: 1
+                    connect_timeout: 70ms
+                  include_backends:
+                    type: BY_ID
+                    ids:
+                      - phantom2d-itp-testing-vla

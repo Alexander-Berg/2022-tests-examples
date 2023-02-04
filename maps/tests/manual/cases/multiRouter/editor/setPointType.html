@@ -1,0 +1,113 @@
+<!DOCTYPE HTML>
+<!--(skip)(description)
+
+-->
+<!--(version)
+
+-->
+<!--(commands)
+
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            //TODO: написать тест
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 10,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            addGrid(map);
+            var log = new Log();
+
+            __log__('setPointType method in called on beforemidpointadd event, if insertIndex > 2');
+
+            var events = ['beforeviapointremove', 'beforewaypointadd', 'beforewaypointremove', 'viapointremove', 'optionschange',
+                'waypointadd', 'waypointremove', 'viapointadd','midpointadd', 'start', 'stop', 'beforemidpointadd'];
+
+            var callback = function (e) {
+                log.info(e.get('type'));
+                if (e.get('type') == 'waypointadd' ||
+                        e.get('type') == 'beforewaypointadd' ||
+                        e.get('type') == 'midpointadd' ||
+                        e.get('type') == 'beforemidpointadd') {
+                    log.info(e.get('coords'))
+                }
+                if ((e.get('type') == 'beforemidpointadd') && (e.get('insertIndex') > 2)) {
+                    e.callMethod('setPointType', 'via')
+                }
+            };
+
+            var multiRoute = new ymaps.multiRouter.MultiRoute({
+                referencePoints: ['Москва, Ленинский проспект', 'москва, ,jkmifz zrbvfyrf','Кулаков переулок'],
+                params: {
+                    viaIndexes: [1]
+                }
+            }, {
+                boundsAutoApply: true
+            });
+
+            map.geoObjects.add(multiRoute);
+            multiRoute.editor.events.add(events, callback);
+
+            var defaultButton = new ymaps.control.Button('default');
+            var drawOverButton = new ymaps.control.Button('drawOver');
+            var midTypeButton = new ymaps.control.Button('mid');
+
+            defaultButton.events
+                    .add('select', function() {multiRoute.editor.start()})
+                    .add('deselect', function() {multiRoute.editor.stop()});
+
+
+            drawOverButton.events
+                    .add('select', function () {
+                        multiRoute.options.set('editorDrawOver', true)
+                    })
+                    .add('deselect', function () {
+                        multiRoute.options.set('editorDrawOver', false)
+                    });
+
+            midTypeButton.events
+                    .add('select', function () {
+                        multiRoute.editor.options.set('midPointsType', 'way')
+                    })
+                    .add('deselect', function () {
+                        multiRoute.editor.options.set('midPointsType', 'via')
+                    });
+
+
+            map.controls
+                    .add(defaultButton)
+                    .add(drawOverButton, {float: 'none', position: {right: 10, bottom: 65}})
+                    .add(midTypeButton, {float: 'none', position: {right: 10, bottom: 95}});
+
+            var modeButton = new ymaps.control.Button('mode');
+            modeButton.events
+                    .add('select', function () {
+                        multiRoute.model.setParams({routingMode: 'masstransit'}, true);
+                    })
+                    .add('deselect', function () {
+                        multiRoute.model.setParams({routingMode: 'auto'}, true);
+                    });
+            map.controls.add(modeButton, {position: {bottom: 35, left: 5}});
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

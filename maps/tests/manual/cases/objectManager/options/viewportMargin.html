@@ -1,0 +1,162 @@
+<!doctype html>
+<!--
+Title:
+Менеджер объектов: опция viewportMargin менеджера объектов
+
+Description:
+Проверка опции viewportMargin менеджера объектов. 
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+objectManager
+
+Estimated time:
+90000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась корректно со спаном с водной поверхностью и метками кластеров.
+  Сверху имеются кнопки "check", "128", "64", "0".
+  
+Step:
+  Action:
+  Выполнить клик в кнопку "check".
+
+  Expectation:
+  Под контейнером с картой появляется строка: "Cейчас показано (количество) кластеров."(значение около 100).
+
+Step:
+  Action:
+  Выполнить клик в кнопку "128", затем клик в "check".
+
+  Expectation:
+  Под контейнером с картой появляется строка: "Cейчас показано (количество) кластеров."(значение аналогично первому шагу).
+
+Step:
+  Action:
+  Выполнить клик в кнопку "64", затем клик в "check".
+
+  Expectation:
+  Под контейнером с картой появляется строка: "Cейчас показано (количество) кластеров."(значение меньше чем в первых двух шагах, около 70).
+
+Step:
+  Action:
+  Выполнить клик в кнопку "0", затем клик в "check".
+
+  Expectation:
+  Под контейнером с картой появляется строка: "Cейчас показано (количество) кластеров."(значение меньше чем в предыдущем шаге, около 50).
+-->
+<html>
+<head>
+    <title>API 2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type="text/javascript">
+        Api('init');
+        function init(ymaps) {
+            ym = ymaps;
+
+            var map = myMap = new ym.Map('map', {
+                center: [59.936708, 30.046006],
+                zoom: 12,
+                controls: []
+            }, {
+                // avoidFractionalZoom: true
+            });
+            var bounds = map.getBounds();
+
+            var log = new Log();
+            addGrid(map);
+
+            __log__("Проверяем опцию viewportMargin. Опция работает только если включен кластеризатор.");
+            __log__("Обратить внимание на число кластеров, которые возвращается по кнопке check.");
+
+            var x = map.getCenter()[0], y = map.getCenter()[1], i = 0;
+
+            // одна иконка и не указываем массив
+            var objectManager = new ym.ObjectManager({clusterize: true, minClusterSize: 1});
+            // add 200 placemarks
+            var placemarksNumber = 500;
+            var newPlacemarks = createGeoObjects(placemarksNumber, bounds);
+
+            objectManager.objects.add(newPlacemarks);
+            map.geoObjects.add(objectManager);
+
+            setTimeout(function () {
+                map.setZoom(14)
+            }, 500);
+
+            var button1 = new ym.control.Button({data: {content: '0'}, options: {selectOnClick: false}});
+            var button2 = new ym.control.Button({data: {content: '64'}, options: {selectOnClick: false}});
+            var button3 = new ym.control.Button({data: {content: '128'}, options: {selectOnClick: false}});
+            var button4 = new ym.control.Button({data: {content: 'check'}, options: {selectOnClick: false}});
+
+            button1.events.add("click", function (e) {
+                objectManager.options.set('viewportMargin', 0);
+            });
+            button2.events.add("click", function (e) {
+                objectManager.options.set('viewportMargin', 64)
+            });
+            button3.events.add("click", function (e) {
+                objectManager.options.set('viewportMargin', 128)
+            });
+            button4.events.add("click", function (e) {
+                map.setZoom(13).then(function () {
+                    map.setZoom(14).then(function () {
+                        var clusters = objectManager.clusters.getLength();
+                        __log__('Cейчас показано ' + clusters + ' кластеров.');
+                    })
+                })
+            });
+
+            map.controls
+                    .add(button1)
+                    .add(button2)
+                    .add(button3)
+                    .add(button4);
+
+            function createGeoObjects(number, bounds) {
+                var placemarks = [];
+                // Создаем нужное количество меток
+                for (var i = 0; i < number; i++) {
+                    // Генерируем координаты метки случайным образом.
+                    var coordinates = getRandomCoordinates(bounds);
+                    // Создаем метку со случайными координатами.
+                    var myPlacemark = {
+                        "type": "Feature",
+                        "id": i,
+                        "geometry": {
+                            "type": "Point",
+                            "coordinates": coordinates
+                        },
+                        "properties": {
+                            "balloonContent": i,
+                            "clusterCaption": i,
+                            "hintContent": i
+                        }
+                    };
+                    placemarks.push(myPlacemark);
+                }
+                return placemarks;
+            }
+
+            function getRandomCoordinates(bounds) {
+                var size = [bounds[1][0] - bounds[0][0], bounds[1][1] - bounds[0][1]];
+                return [Math.random() * size[0] + bounds[0][0], Math.random() * size[1] + bounds[0][1]];
+            }
+        }
+
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;">
+</div>
+</body>
+</html>

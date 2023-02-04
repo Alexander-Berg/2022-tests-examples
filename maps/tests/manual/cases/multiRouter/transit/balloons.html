@@ -1,0 +1,167 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Мультимаршрут-ОТ: опция открытия балуна маршрута
+
+Description:
+Проверка работы опции открытия балуна маршрута. 
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+multiRouter
+
+Estimated time:
+120000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  При загрузке первоначально загружается карта со спаном Москвы, затем спан меняется на спан СПб с маршртуом на общественном транспорте.
+  В контейнере контрол фулскрин. 
+  На спане карты маршрут: "A"- Ольховая улица, 22, "B"- Московский пр. 24-26/49,"C"- Пискаревский проспект 2к2Щ. На маршруте метки общественного транспорта, могут быть альтернативные линии. 
+
+Step:
+  Action:
+  Выполнить клик в основную маршрутную нитку маршрута.
+
+  Expectation:
+  Маршрут на спане карты без изменений, в месте клика открывается балун с временем и расстоянием маршрута, а также иконками общественного траснпорта маршрута.
+
+Step:
+  Action:
+  Выполнить клик в альтернативную маршрутную нитку.
+
+  Expectation:
+  Альтернативная нитка становится основной, основная - альтернативной, в месте клика открывается балун с временем и расстоянием маршрута, а также иконками общественного траснпорта маршрута.
+  Предыдущий балун маршрута закрылся.
+
+Step:
+  Action:
+  Выполнить клик в маршрутную метку "A".
+
+  Expectation:
+  Метка пропадает, на ее месте открывается балун с содержимым: "Ольховая улица, 22; Россия, Санкт-Петербург; Координаты: 60.016771,30.252824".
+  Предыдущий балун маршрута закрылся.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 10,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            addGrid(map);
+            var log = new Log();
+
+            __log__('getRoutes, getWayPoints, getPaths, getSegments, getSegmentMarkers');
+            __log__('Клик по части маршрута открывает балун с информацией');
+
+            var multiRoute = new ymaps.multiRouter.MultiRoute({
+                referencePoints: ['питер, ольховая 22', 'питер, московский 26', 'питер, пискаревский 2к2'],
+                params: {
+                    routingMode: 'masstransit'
+                }
+            }, {
+                wayPointDraggable: true,
+                boundsAutoApply: true,
+                zoomMargin: 30
+            });
+
+            map.geoObjects.add(multiRoute);
+
+            setTimeout(function() {
+                var routes, paths, segments;
+                var wayPoints = multiRoute.getWayPoints();
+
+                routes = multiRoute.getRoutes();
+                paths = routes.get(0).getPaths();
+
+                wayPoints.each(function(waypoint) {
+                    waypoint.events.add('click', function (e) {
+                        var coords = e.get('target').geometry.getCoordinates();
+                        e.get('target').options.set('visible', false);
+
+                        if(e.get('target').properties.get('name') != undefined) {
+                            map.balloon.open(coords, {
+                                contentBody: '<b>' + e.get('target').properties.get('name') + '</b><br/>' +
+                                        e.get('target').properties.get('description'),
+                                contentFooter: 'Координаты: ' + coords});
+                        } else {
+                            map.balloon.open(coords, {content: coords});
+                        }
+
+                        map.events.once('balloonclose', function() {
+                            e.get('target').options.set('visible', true)
+                        });
+                    });
+                });
+
+                paths.each(function(path) {
+                    var markers = path.getSegmentMarkers();
+
+                    markers.each(function(marker) {
+                        marker.events.add('click', function(e) {
+                            var coords = e.get('target').geometry.getCoordinates();
+
+                            // транспортный сегмент
+                            if(marker.model.properties.get('type') == 'transport') {
+                                if (marker.model.properties.get('transports')[0].type == 'suburban') {
+                                    map.balloon.open(coords, {
+                                        contentBody: '<b>' + marker.model.properties.get('text') + '</b><br/>' +
+                                                'Время в пути: ' + marker.model.properties.get('duration').text + '<br/>' +
+                                                'Остановок: ' + (marker.model.getStops().length - 1) + '<br/>' +
+                                                'Расписание электричек: <a href=\"' + marker.model.properties.get('links')[0].href + '\">перейти</a>',
+                                        contentFooter: 'Координаты: ' + coords});
+                                } else {
+                                    map.balloon.open(coords, {
+                                        contentBody: '<b>' + marker.model.properties.get('text') + '</b><br/>' +
+                                                'Время в пути: ' + marker.model.properties.get('duration').text + '<br/>' +
+                                                'Остановок: ' + (marker.model.getStops().length - 1),
+                                        contentFooter: 'Координаты: ' + coords});
+                                }
+
+                            // пешеходный сегмент
+                            } else if (marker.model.properties.get('type') == 'walk') {
+                                map.balloon.open(coords, {
+                                    contentBody: '<b>' + marker.model.properties.get('text') + '</b><br/>',
+                                    contentFooter: 'Координаты: ' + coords});
+
+                            // переход на другую ветку метро
+                            } else if (marker.model.properties.get('type') == 'transfer') {
+                                map.balloon.open(coords, {
+                                    contentBody: '<b>' + marker.model.properties.get('text') + '</b><br/>',
+                                    contentFooter: 'Координаты: ' + coords});
+
+                            } else {
+                                map.balloon.open(coords, {content: coords});
+                            }
+                        })
+                    })
+                })
+            }, 3000);
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

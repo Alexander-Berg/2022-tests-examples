@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<!--
+Title:
+Область просмотра результатов запроса
+
+Description:
+Проверка области просмотра результатов запроса.
+Памятка по терминам:https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+smoke, regress
+
+Estimated time: 
+180000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно.
+  На карте метки коллекций, в районе Москвы множество меток.
+  Сверху слева имеется кнопка "geodesic", справа кнопки "bounds", "zoomRange".
+
+Step:
+  Action:
+  Драгом переместить спан карты в стороны Северной Америки, затем выполнить клик в кнопку "bounds".  
+  
+  Expectation:
+  Драг карты корректный, карта не пропадает, нет странных визуальных эффектов.
+  По клику в кнопку происходит возвращение к исходному спану с метками коллекций.
+
+Step:
+  Action:
+  Скролом мыши максимально отзумить спан карты, затем выполнить клик в кнопку "zoomRange".  
+  
+  Expectation:
+  Отзум карты корректный, карта не пропадает, нет странных визуальных эффектов.
+  По клику в кнопку происходит возвращение к исходному спану с метками коллекций.
+
+Step:
+  Action:
+  Выполнить клик в метку коллекции в районе Санкт-Петербурга.
+  
+  Expectation:
+  Спан карты смещается, на месте метки открывается балун с содержимым "Офис Яндекса в Санкт-Петербурге Санкт-Петербург, Cвердловская набережная, 44, бизнес-центр «Бенуа» (4-6 эт.)".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "geodesic", затем, драгом переместить спан карты в стороны Северной Америки, затем выполнить клик в кнопку "bounds".  
+  
+  Expectation:
+  Драг карты корректный, карта не пропадает, нет странных визуальных эффектов.
+  По клику в кнопку происходит возвращение к исходному спану с метками коллекций.
+
+Step:
+  Action:
+  Скролом мыши максимально призумить спан карты, затем выполнить клик в кнопку "zoomRange".  
+  
+  Expectation:
+  Отзум карты корректный, карта не пропадает, нет странных визуальных эффектов.
+  По клику в кнопку происходит возвращение к исходному спану с метками коллекций.
+-->
+<html>
+<head>
+    <title>API 2.0</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <script src="../helper.js"></script>
+    <script src="wgs84MercatorSource.js"></script>
+    <script type=text/javascript>
+        Api('init');
+        function init(ymaps) {
+            var myMap = new ymaps.Map('map', {
+                center: [55.5541584321358, 37.93061981201168],
+                zoom: 9,
+                behaviors: ['default', 'scrollZoom']
+            });
+            wgs84MercatorSource(ymaps, myMap, this);
+            
+            // add objects and applies new bounds to myMap
+            var result = ymaps.geoQuery(geoQueryResult).then(function () {
+                result.addToMap(myMap);
+                result.applyBoundsToMap(myMap);
+            });
+            
+            // geodesic button sets 'true' value to geodesic option of objects
+            var geodesicButton = new ymaps.control.Button({data: {content: 'geodesic'}}, {selectOnClick: true});
+            var applyBoundsButton = new ymaps.control.Button({data: {content: 'bounds'}}, {selectOnClick: false});
+            var checkZoomRangeButton = new ymaps.control.Button({data: {content: 'zoomRange'}}, {selectOnClick: false});
+            geodesicButton.events
+                    .add('select', function () {
+                        result.setOptions('geodesic', true);
+                        console.log('geodesic mode enabled.');
+                    })
+                    .add('deselect', function () {
+                        result.setOptions('geodesic', false);
+                        console.log('geodesic mode disabled.');
+                    });
+            // (for geodesic option check) applyBoundsButton applies new bounds to myMap
+            applyBoundsButton.events
+                    .add('click', function () {
+                        result.setOptions('visible', true);
+                        result.applyBoundsToMap(myMap);
+                    });
+            checkZoomRangeButton.events
+                    .add('click', function () {
+                        result.setOptions('visible', true);
+                        result.applyBoundsToMap(myMap, {checkZoomRange: true});
+                    });
+            myMap.controls
+                    .add(geodesicButton, {right: 425, top: 5})
+                    .add(applyBoundsButton, {right: 5, top: 5})
+                    .add(checkZoomRangeButton, {right: 5, top: 35});
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+<p><a href="https://tech.yandex.ru/maps/archive/doc/jsapi/2.0/ref/reference/geoQuery-docpage/" target="_blank">Docs</a></p>
+</body>
+</html>

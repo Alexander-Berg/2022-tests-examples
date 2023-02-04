@@ -1,0 +1,154 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Карта: методы возвращают promise вместо карты
+
+Description:
+Проверка возвращения promises методами map.setCenter, map.panTo, map.setBounds, map.setGlobalPixelCenter, map.setZoom.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+map
+
+Estimated time:
+120000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+  
+  Expectation:
+  Карта отобразилась корректно, со спаном материков Евразии и Африки.
+  Сверху имеются кнопки "get center", "promise".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "promise". 
+  
+  Expectation:
+  Происходит смена спана(сначала может промигнуть спан с синим многоугольником), затем на карте появялется спан с гибридной картой "1-я ул. Измайловского Зверинца".
+  Под контейнером с картой появляются строки выводов методов: "55.77...., 37.74..."; "55.77...., 37.74..."; "55.67...,37.57...,55.87...,37.92..."; "317118.87...,164305.87..."; "18"; "18".  
+
+Step:
+  Action:
+  Выполнить клик в кнопку "get center". 
+  
+  Expectation:
+  Спан карты без изменений.
+  Под контейнером с картой появляется строка "Center: 55.77...,37.74.... Zoom equals 18".
+-->
+<html>
+<head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.73259667357658, 37.70153663432529],
+                zoom: 2,
+                behaviors: ['default', 'scrollZoom'],
+                controls: []
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+
+            log.info('promise: setCenter, panTo, setBounds, setGlobalPixelCenter, setZoom, setType');
+
+            var geoObjectPolygon = new ymaps.GeoObject({
+                geometry: { type: "Polygon", coordinates: [
+                    [
+                        [55.787092634473694, 37.667663574218096],
+                        [55.68797724922255, 37.666976928710035],
+                        [55.68754896639797, 37.57658996581947],
+                        [55.78474860376539, 37.57684020996037],
+                        [55.787092634473694, 37.667663574218096]
+                    ],
+                    [
+                        [55.78709263446105, 37.71984863281182],
+                        [55.68797724922255, 37.666976928710035],
+                        [55.68599735621169, 37.78258361816322],
+                        [55.78709263446105, 37.71984863281182]
+                    ]
+                ]}});
+
+            myMap.geoObjects.add(geoObjectPolygon);
+
+            var centerpromiseButton = new ymaps.control.Button({data: {content: 'promise'}, options: {selectOnClick: false}});
+            var getMapCenterButton = new ymaps.control.Button({data: {content: "get center"}}, {selectOnClick: false});
+
+            centerpromiseButton.events.add('click', function () {
+                myMap.setCenter(
+                        [55.716901946294286, 37.30336807048247], 7, {
+                            checkZoomRange: true,
+                            duration: 500
+                        }).then(function () {
+                            this.info(myMap.getCenter());
+                        }, function (err) {
+                            this.info('error message (setCenter): ' + err)
+                        }, log);
+
+                myMap.panTo([60, 30], {flying: true, duration: 1000, delay: 10
+                }).then(function () {
+                    this.info(myMap.getCenter());
+                }, function (err) {
+                    this.info('error message (panTo): ' + err)
+                }, log);
+
+                myMap.setBounds(geoObjectPolygon.geometry.getBounds(), {
+                    duration: 500,
+                    zoomMargin: [200, 200, 0, 0],
+                    preciseZoom: true
+                }).then(function () {
+                    this.info(myMap.getBounds());
+                }, function (err) {
+                    this.info('error message (setBounds): ' + err)
+                }, log);
+
+                myMap.setGlobalPixelCenter(
+                        [450.3885745801663, 295.00097479375603], 3, {
+                            checkZoomRange: true,
+                            duration: 500
+                        }).then(function () {
+                            this.info(myMap.getGlobalPixelCenter());
+                        }, function (err) {
+                            this.info('error message (setGlobalPixelCenter): ' + err)
+                        }, log);
+
+                myMap.setZoom(18, {checkZoomRange: true}).then(function () {
+                    this.info(myMap.getZoom());
+                }, function (err) {
+                    this.info('error message (setZoom): ' + err)
+                }, log);
+
+                myMap.setType('yandex#hybrid', {checkZoomRange: true}).then(function () {
+                    this.info(myMap.getZoom());
+                }, function (err) {
+                    this.info('error message (setType): ' + err)
+                }, log);
+            });
+
+            getMapCenterButton.events.add('click', function () {
+                var center = myMap.getCenter();
+                var zoom = myMap.getZoom();
+                log.info('Center: ' + center + '. Zoom equals ' + zoom);
+            });
+
+            myMap.controls.add(centerpromiseButton);
+            myMap.controls.add(getMapCenterButton);
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

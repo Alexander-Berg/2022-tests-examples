@@ -1,4 +1,0 @@
-OWNER(
-    nkodosov
-    kuptservol
-)

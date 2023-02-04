@@ -1,0 +1,50 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - velom
+      groups: []
+labels:
+  order: '001300'
+---
+regexp_section:
+  matcher:
+    match_and:
+      - match_or:
+        - match_fsm:
+            host: 'test\\.api\\.appmetrica\\.metrika\\.yandex\\.net'
+        - match_fsm:
+            host: 'api-appmetrica\\.metrika-test\\.haze\\.yandex\\.ru'
+      - match_fsm:
+          uri: '/logs/v1/import/.*'
+  modules:
+    - rewrite:
+        actions:
+            - regexp: '.*'
+              header_name: Host
+              rewrite: 'logs-api-import-server.appmetrica.yandex.ru'
+            - regexp: '/logs/v1/import/(.*)'
+              rewrite: '/%1'
+    - report:
+        uuid: "logs_v1_import"
+        ranges: "default"
+    - balancer2:
+        connection_attempts: 2
+        attempts: 2
+        unique_policy: {}
+        dynamic:
+          max_pessimized_share: 0.2
+        attempts_rate_limiter:
+          limit: 0.15
+        generated_proxy_backends:
+          proxy_options:
+            backend_timeout: 3602s
+            connect_timeout: 70ms
+          include_backends:
+            type: BY_ID
+            ids: [mobile-logs-api-import-server-testing]
+        on_error:
+          errordocument:
+            status: 504
+            content: "Service unavailable"
+

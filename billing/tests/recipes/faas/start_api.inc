@@ -1,0 +1,1 @@
+INCLUDE(${ARCADIA_ROOT}/billing/hot/faas/python/faas/tests/recipes/faas/recipe/recipe.inc)

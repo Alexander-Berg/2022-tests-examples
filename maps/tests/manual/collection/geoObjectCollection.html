@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<!--
+Title:
+Коллекция: коллекция геообъектов
+
+Description:
+Проверка добавления коллекции геообъектов на карту.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+regress
+
+Estimated time:
+60000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась корректно.
+  На карте метка коллекции, два треугольника, прямоугольник, круг, красная линия.
+  Объекты треугольников, круг и прямоугольник имеют красную обводку.
+  Сверху имеется кнопка "outline".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "outline".
+
+  Expectation:
+  У объектов треугольников, круга и прямоугольника пропадает обводка.
+-->
+<html>
+<head>
+    <title>API 2.0</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <script src="../helper.js"></script>
+    <script type="text/javascript">
+        Api('init');
+        function init(ymaps) {
+            var myMap = new ymaps.Map('map', {
+                        center: [61.5078, 74.2802],
+                        zoom: 3
+                    }, {
+                        geoObjectStrokeColor: "#FF000088",
+                        geoObjectStrokeWidth: 2,
+                        balloonAutoPan: false,
+                        geoObjectDraggable: true
+                    }),
+                    
+                    collection = new ymaps.GeoObjectCollection(),
+                    polygon = new ymaps.Polygon([
+                        [
+                            [50, 50],
+                            [50, 60],
+                            [60, 55]
+                        ],
+                        [],
+                        [
+                            [49, 49],
+                            [49, 39],
+                            [39, 44]
+                        ]
+                    ]),
+                    rectangle = new ymaps.Rectangle([
+                        [70, 85],
+                        [60, 95]
+                    ]),
+                    polyline = new ymaps.Polyline([
+                        [60, 77],
+                        [50, 77]
+                    ]),
+                    circle = new ymaps.Circle([
+                        [46.1313, 99.7685],
+                        1000000
+                    ]),
+                    point = new ymaps.Placemark([70, 60]);
+            
+            myMap.controls.add("smallZoomControl", {
+                top: 6
+            });
+            myMap.geoObjects.add(collection);
+            collection.add(polygon);
+            collection.add(rectangle);
+            collection.add(polyline);
+            collection.add(circle);
+            collection.add(point);
+            console.log("length: " + collection.getLength());
+            collection.add(point);
+            console.log("length: " + collection.getLength());
+            collection.events.add('geometrychange', function (e) { // задает содержимое балунов
+                e.get('target').options.set("iconShadow", false);
+                e.get('target').properties.set("balloonContent", e.get('target').geometry.getType());
+            }).add('propertieschange', function (e) { // меняет цвет обводки и отключает кнопку закрытия балун
+                e.get('target').options.set("strokeColor", "#00FFFF88");
+                e.get('target').options.set("balloonCloseButton", false);
+            }).add('pixelgeometrychange', function (e) { // меняет толщину обводки и вет метки
+                e.get('target').options.set("strokeWidth", 6);
+                e.get('target').options.set("preset", "twirl#greenIcon");
+            });
+            var button = new ymaps.control.Button('outline');
+            button.select();
+            button.events.add('click', function (e) {
+                myMap.options.set('geoObjectOutline', !e.get('target').isSelected())
+            });
+            myMap.controls.add(button, {top: 3, right: 3});
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;">
+</div>
+<p><a href="https://tech.yandex.ru/maps/archive/doc/jsapi/2.0/ref/reference/Collection-docpage/" target="_blank">Docs</a></p>
+</body>
+</html>

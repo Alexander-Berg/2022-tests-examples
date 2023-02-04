@@ -1,0 +1,244 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <title>GPX geoXml.load</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+
+    <!-- YUI -->
+    <script type="text/javascript" src="../../../../../test/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../../../../test/yui3combo/combo.css" />
+    <script type="text/javascript" src="../../../../../test/run-test-case.js"></script>
+    <!-- Code -->
+    <script type="text/javascript">
+        initAPI({
+            lang: "ru-RU",
+            load: "package.full,geoXml.load",
+            mode: "debug",
+            ns: "ym",
+            coordorder: "longlat"
+        });
+    </script>
+    <!-- Compare objects -->
+    <script type="text/javascript" src="../compare-objects.js"></script>
+
+    <style type="text/css">
+        #container { width: 800px; height: 600px; background: #ccc; }
+    </style>
+
+</head>
+
+<body class="yui3-skin-sam">
+    <div id="container"></div>
+</body>
+
+<script type="text/javascript" charset="utf-8">
+    function getTestCase(Y) { return {
+        name: "geoXml.load",
+        testGeoXmlLoad: function () {
+            var xmlUrls = [
+                    this.getUrl('/gpx1.0_test_data.xml'),
+                    this.getUrl('/gpx1.1_test_data.xml'),
+                    this.getUrl('/user_gpx_test_data1.xml'),
+                    this.getUrl('/user_gpx_test_data2.xml'),
+                    this.getUrl('/user_gpx_test_data3.xml'),
+                    this.getUrl('/user_gpx_test_data4.xml')
+                ],
+                testCase = this;
+
+            // Тестирование на визуальное представление
+            for (var i = 0, l = xmlUrls.length; i < l; i++) {
+                ym.geoXml.load(xmlUrls[i]).then(function (res) {
+                        Y.assert(typeof res.geoObjects != 'undefined', "Невозможно создать объект.geoObjects.");
+//                        res.geoObjects.options.set('preset', 'gpx#plain');
+                        if (res.geoObjects) {
+                            res.geoObjects.options.set('graphicsStrokeColor', 'ff0000ff')
+                                                       .set('graphicsStrokeWidth', 5);
+                            map.geoObjects.add(res.geoObjects);
+                        }
+                    },
+
+                    function (error) {
+                        testCase.resume(function () {
+                            Y.assert(error === null, "Ошибка при загрузке xml-файла.");
+                        });
+                    }
+                );
+            }
+            
+            // Тестирование на парсинг геообъектов
+            var testParseUrl = this.getUrl('/gpx_simple_test_data.xml'),
+                sameCollection = [];
+            this.getSameCollection().each(function (geoObject) {
+                sameCollection.push(geoObject)
+            });
+
+            ym.geoXml.load(testParseUrl).then(function (res) {
+                    var f = function () {
+                        Y.assert(typeof res.geoObjects != 'undefined', "Невозможно создать объект.geoObjects.");
+
+                        var collection = [];
+                        if (res.geoObjects) {
+                            res.geoObjects.each(function (geoObject) {
+                                   collection.push(geoObject);
+                            });
+
+                            for (var i = 0, l = collection.length; i < l; i++) {
+                                var options1 = collection[i].options._data,
+                                    options2 = sameCollection[i].options._data,
+                                    props1 = collection[i].properties._data,
+                                    props2 = sameCollection[i].properties._data,
+                                    coords1 = collection[i].geometry ? collection[i].geometry.getCoordinates() : null,
+                                    coords2 = sameCollection[i].geometry ? sameCollection[i].geometry.getCoordinates() : null;
+
+                                Y.assert(
+                                     areSame(options1, options2),
+                                    'Разные опции у геообъектов'
+                                );
+                                Y.assert(
+                                    areSame(props1, props2),
+                                    'Разные свойства у геообъектов'
+                                );
+                                Y.assert(
+                                    areSame(coords1, coords2),
+                                    'Разные координаты у геообъектов'
+                                );
+                            }
+                        }
+                    };
+                    testCase.resume(f);
+                },
+
+                function (error) {
+                    testCase.resume(function () {
+                        Y.assert(error === null, "Ошибка при загрузке xml-файла.");
+                    });
+                }
+            );
+
+            testCase.wait(function () {
+                Y.Assert.fail("Время ожидания истекло.");
+            }, 10000);
+        },
+
+        getSameCollection: function () {
+            //  Объявляем геообъекты
+            var collection = new ym.GeoObjectCollection({
+                        properties: {
+                            name: 'GPX1.1 test xml',
+                            description: 'Описание GPX1.1 test xml',
+                            boundedBy: [[37.057164, 55.402082], [38.281116, 56.215607]]
+                        }
+                    }, {
+                    preset: 'twirl#gpx'
+                }),
+                wpt = new ym.GeoObject({
+                    properties: {
+                        name: 'деревня Гавриково GPX1.1',
+                        description: 'Россия, Московская область, Ленинский район',
+                        metaDataProperty: {
+                            sym: 'Tunnel',
+                            gpxTagName: 'wpt'
+                        },
+                        hintContent: 'деревня Гавриково GPX1.1'
+                    },
+                    geometry: {
+                        type: 'Point',
+                        coordinates: [37.502876, 55.548985]
+                    }
+                }, {
+                    showHintOnHover: true
+                }),
+                rte = new ym.GeoObject({
+                    properties: {
+                        name: 'Маршрут GPX1.1',
+                        description: 'Такой маршрут GPX1.1',
+                        metaDataProperty: {
+                            gpxTagName: 'rte',
+                            gpxPoints: [{
+                                name: 'садовое товарищество Тихая Поляна GPX1.1',
+                                desc: 'Россия, Московская область, Подольский район',
+                                sym: 'Tunnel',
+                                lat: '55.38593',
+                                lon: '37.325035'
+                            }, {
+                                name: 'садовое товарищество Медицинский Деловой Союз GPX1.1',
+                                desc: 'Россия, Московская область, Подольский район',
+                                sym: 'Tunnel',
+                                lat: '55.360122',
+                                lon: '37.149254'
+                            }]
+                        },
+                        hintContent: 'Маршрут GPX1.1'
+                    },
+                    geometry: {
+                        type: 'LineString',
+                        coordinates: [[37.325035, 55.38593], [37.149254, 55.360122]]
+                    }
+                }, {
+                    showHintOnHover: true
+                }),
+                trk = new ym.GeoObjectCollection({
+                    properties: {
+                        name: 'Трэк GPX1.1',
+                        description: 'Описание трэка GPX1.1',
+                        metaDataProperty: {
+                            gpxTagName: 'trk'
+                        }
+                    }
+                }),
+                trkseg = new ym.GeoObject({
+                    properties: {
+                        name: 'Трэк GPX1.1',
+                        description: 'Описание трэка GPX1.1',
+                        metaDataProperty: {
+                            gpxTagName: 'trkseg',
+                            gpxPoints: [{
+                                name: 'садовое товарищество Вейна GPX1.1',
+                                desc: 'Россия, Московская область, Рузский район',
+                                sym: 'Tunnel',
+                                lat: '55.803375',
+                                lon: '36.414747'
+                            }, {
+                                name: 'Истринский район GPX1.1',
+                                desc: 'Россия, Московская область',
+                                sym: 'Tunnel',
+                                lat: '55.973938',
+                                lon: '36.613025'
+                            }]
+                        },
+                        hintContent: 'Трэк GPX1.1'
+                    }
+                }, {
+                    type: 'LineString',
+                    coordinates: [[36.414747, 55.803375], [36.613025, 55.973938]]
+                }, {
+                    showHintOnHover: true
+                });
+            
+            trk.add(trkseg);
+            collection.add(wpt);
+            collection.add(rte);
+            collection.add(trk);
+            return collection;
+        },
+
+        getUrl: function (url) {
+            return window.location.href.replace(/\/[^\/]+$/, url);
+        }
+    }}
+    var map;
+    ym.ready(function () {
+        //  подготавливаем карту
+        map = new ym.Map('container', {
+            center: [37.62708, 55.750625],
+            type: "yandex#map",
+            zoom: 10
+        });
+        map.controls.add('zoomControl');
+        map.controls.add('mapTools');
+        map.setBounds([[43.95603, 56.253578], [44, 56.354598]]);
+        runTestCase();
+    });
+</script>
+</html>

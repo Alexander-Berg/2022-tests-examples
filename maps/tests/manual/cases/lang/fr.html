@@ -1,0 +1,112 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Язык карты: карта на французском
+
+Description:
+Проверка применения французского языка на карте.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+lang
+
+Estimated time:
+120000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+  
+  Expectation:
+  Карта отобразилась корректно. 
+  На карте спан Парижа, после загрузки спан карты меняется, на отображение маршрута по Франции с тремя метками "A", "B", "C"(и виа-точками), фиолетовой ниткой. 
+  Подписи топонимов на карте на французском языке(Genève, Orlèans). 
+
+Step:
+  Action:
+  Выполнить 8 кликов в контрол зума "+".
+  
+  Expectation:
+  Происходит корректный зум карты: карта не мигает цветами, нет странных визуальных эффектов.
+  Во время и по окончании зума на спане подписи улиц и топонимов выполнены на французском языке.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <script src="../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init', '', 'fr_FR');
+
+        function init(ymaps) {
+            var map = new ymaps.Map('map', {
+                center: [48.85881433688557, 2.347059999999959],
+                zoom: 10,
+                behaviors: ['default', 'scrollZoom']
+            }),
+            placemark1 = new ymaps.Placemark([48.85881433688557,2.347059999999959]),
+            placemark2 = new ymaps.Placemark([48.16532585401737,-1.6953308621722987]),
+            placemark3 = new ymaps.Placemark([47.23084694991343,-1.563494924672285]),
+            placemark4 = new ymaps.Placemark([43.66123109758033,1.4958047634941178]),
+            placemark5 = new ymaps.Placemark([45.79119558998399,4.835648513494138]),
+
+            multiRoute = new ymaps.multiRouter.MultiRoute({
+                referencePoints: [placemark1.geometry, placemark2.geometry, placemark5.geometry, placemark3.geometry, placemark4.geometry],
+                params: {
+                    viaIndexes: [1, 2]
+                }
+            }, {
+                boundsAutoApply: true,
+                preset: "islands#multiRouterSmall"
+            });
+
+            map.geoObjects.add(multiRoute);
+
+            var editorButton = new ymaps.control.Button('editor');
+            editorButton.events
+                    .add('select', function () {
+                        multiRoute.editor.start({
+                            addWayPoints: true,
+                            dragWayPoints: true,
+                            dragViaPoints: true,
+                            removeWayPoints: true,
+                            removeViaPoints: true
+                        })
+                    })
+                    .add('deselect', function () {
+                        multiRoute.editor.stop()
+                    });
+
+            map.controls.add(editorButton);
+
+            var modeButton = new ymaps.control.Button('masstransit');
+            modeButton.events
+                    .add('select', function () {
+                        multiRoute.model.setParams({routingMode: 'masstransit'}, true);
+                    })
+                    .add('deselect', function () {
+                        multiRoute.model.setParams({routingMode: 'auto'}, true);
+                    });
+
+            map.controls.add(modeButton, {position: {bottom: 35, left: 5}});
+
+            var mode2Button = new ymaps.control.Button('pedestrian');
+            mode2Button.events
+                    .add('select', function () {
+                        multiRoute.model.setParams({routingMode: 'pedestrian'}, true);
+                    })
+                    .add('deselect', function () {
+                        multiRoute.model.setParams({routingMode: 'auto'}, true);
+                    });
+            map.controls.add(mode2Button, {position: {bottom: 65, left: 5}});
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

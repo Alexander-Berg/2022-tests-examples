@@ -1,0 +1,108 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Контрол пробок: состояние провайдера
+
+Description:
+Проверка состояния провайдера контрола пробок.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+control
+
+Estimated time:
+60000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан водной поверхности, сверху слева имеются контрол местоположения, кнопка "info", справа контрол пробок, контрол фулскрин.
+  
+Step:
+  Action:
+  Выполнить клик в контрол пробок.
+
+  Expectation:
+  Спан карты без изменений.
+  Контрол пробок активен: фон окрашен желтым, появляется шестеренка настроек.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "info".
+
+  Expectation:
+  Под контейнером с картой появляется блок с состоянием провайдера контрола пробок.
+  isInited - признак, готов ли провайдер предоставлять данные; 
+  level - уровень загруженности дорог в баллах - от 0 до 10;
+  iconStyle - цвет иконки светофора;
+  timestamp - текущее время во временной зоне UTC+0 в секундах;
+  localtime - локальное время, для которого сервер в текущий момент отдает данные, в формате 'ЧЧ:ММ';
+  isotime - строка, содержащая текущую дату в формате "YYYY-MM-DDThh:mm:ss±hhmm".
+
+Step:
+  Action:
+  С помощью отзума карты скролом мыши и драга карты переместить спан карты для отображения спана Санкт-Петербурга.
+
+  Expectation:
+  Отзум/зум и драг карты корректный: карта не пропадает, не мигает цветами.
+  На спане Санкт-Петербурга отображаются разноцветные пробочные линии.
+  После смены спана контрол расширяется в нем появляется: иконка светофора(окрашен в цвет уровня пробок); бал пробок и время; шестеренка настроек. 
+
+Step:
+  Action:
+  Выполнить клик в кнопку "info".
+
+  Expectation:
+  Под контейнером с картой появляется блок с состоянием провайдера контрола пробок,в блоке появляется "regionIds -> 2,10174".
+  Проверить соотвествие отображаемых данных с информацией в логах под контейнером с картой.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var myMap = new ym.Map('map', {
+                center: [43.14377234385919, -25.547926780816155],
+                zoom: 10,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl', 'geolocationControl']
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+
+            var traffic = new ym.control.TrafficControl();
+
+            var infoButton = new ymaps.control.Button({data: {content: 'info'}, options: {selectOnClick: false}});
+            infoButton.events.add('click', function () {
+                var provider = traffic.getProvider();
+                log.info('------------- provider.state: ------------');
+                for (var key in provider.state.getAll()) {
+                    log.info(key + ' -> ' + provider.state.get(key));
+                }
+            });
+
+            myMap.controls
+                    .add(traffic)
+                    .add(infoButton)
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

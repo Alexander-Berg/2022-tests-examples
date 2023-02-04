@@ -1,0 +1,41 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - nanny-robot
+      - mrmlnc
+      groups:
+      - svc_tms
+config_transport:
+  nanny_static_file:
+    service_id: rtc_balancer_testpalm-testing-d_yandex-team_ru_sas
+    instance_tags:
+      ctype: prod
+      itype: balancer
+      prj: testpalm-testing-d.yandex-team.ru
+mode: EASY_MODE
+---
+l7_macro:
+  version: 0.3.12
+  core:
+    trust_x_forwarded_for_y: true
+  http: {}
+  https: {}
+  announce_check_reply:
+    url_re: /ping
+  health_check_reply: {}
+  monitoring:
+    enable_total_signals: true
+  headers:
+    - create: {target: x-testpalm-user-ip, keep_existing: true, func: realip}
+    - create: {target: x-testpalm-user-port, keep_existing: true, func: realport}
+    - create: {target: X-Forwarded-For, keep_existing: false, func: realip}
+    - copy: {source: X-Req-Id, target: X-Request-Id, keep_existing: true}
+    - create: {target: X-Request-Id, func: reqid, keep_existing: true}
+    - log: {target_re: X-Request-Id|User-Agent, cookie_fields: [yandexuid]}
+    - uaas: {service_name: testpalm}
+  response_headers:
+    - delete: {target_re: /X-Testpalm-User-IP/i}
+    - delete: {target_re: /X-Testpalm-User-Port/i}
+    - create: {target: X-Content-Type-Options, value: nosniff}
+  include_domains: {}

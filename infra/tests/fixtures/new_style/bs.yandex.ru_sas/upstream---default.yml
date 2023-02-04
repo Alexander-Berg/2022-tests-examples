@@ -1,0 +1,533 @@
+---
+regexp_section:
+  matcher: {}
+  modules:
+    - report:
+        uuid: "default"
+        ranges: default
+    - shared:
+        uuid: common
+    - headers:
+        create_func:
+          X-Request-Origin-IP: realip
+          X-Request-Origin-Port: realport
+          X-Yabs-Balancer-Ja3: ja3
+          X-Forwarded-Proto-Version: proto
+          X-Real-Port: realport
+        create_func_weak:
+          X-Real-IP: realip
+          X-Forwarded-Proto: scheme
+    - response_headers:
+        create:
+          Timing-Allow-Origin: "*"
+          X-XSS-Protection: "1; mode=block"
+          Strict-Transport-Security: "max-age=31536000"
+    - compressor:
+        enable_compression: true
+        enable_decompression: false
+        compression_codecs: [gzip]
+    - request_replier:
+        rate: 0.01
+        enable_failed_requests_replication: true
+        sink:
+          modules:
+            - report: {ranges: default, uuid: bs_mirrors}
+            - cookie_hasher:
+                cookie: yandexuid
+            - balancer2:
+                attempts: 3
+                watermark_policy:
+                  lo: 0.1
+                  hi: 0.15
+                  unique_policy: {}
+                rendezvous_hashing:
+                  weights_file: ./controls/traffic_control.weights
+                backends:
+                  - name: mirror_sas1
+                    weight: 1
+                    modules:
+                    - report:
+                        uuid: mirror_sas1
+                        ranges: default
+                        backend_time_ranges: 100ms,150ms,200ms,300ms,500ms
+                        events: {stats: report}
+                    - balancer2:
+                        attempts: 1
+                        active_policy:
+                            unique_policy: {}
+                        rendezvous_hashing: {}
+                        generated_proxy_backends:
+                          proxy_options:
+                            backend_timeout: 10s
+                            connect_timeout: 50ms
+                            keepalive_count: 1
+                            keepalive_timeout: 60s
+                            # use_only_ipv6: true
+                            fail_on_5xx: true
+                          include_backends:
+                            type: BY_ID
+                            ids: [mirror_sas1]
+    - hdrcgi:
+        hdr_from_cgi:
+          X-Yandex-Retry: X-Yandex-Retry
+    - regexp:
+        sections:
+          client_retry:
+            matcher:
+              match_fsm:
+                header:
+                  name: X-Yandex-Retry
+                  value: '.*'
+            modules:
+              - report: {uuid: "client_retries", ranges: default}
+              - hasher:
+                  mode: random
+              - shared:
+                  uuid: yabs_frontend_backends
+              - balancer2:
+                  connection_attempts: 2
+                  attempts: 1
+                  unique_policy: {}
+                  rendezvous_hashing:
+                    weights_file: ./controls/traffic_control.weights
+                  backends:
+                    - name: bs_iva32_meta
+                      weight: 1
+                      modules:
+                        - report:
+                            uuid: bs_iva32_meta
+                            ranges: default
+                            backend_time_ranges: 100ms,150ms,200ms,300ms,500ms
+                            events: {stats: report}
+                        - balancer2:
+                            attempts: 1
+                            active_policy:
+                              unique_policy: {}
+                            rendezvous_hashing: {}
+                            generated_proxy_backends:
+                              proxy_options:
+                                backend_timeout: 10s
+                                connect_timeout: 50ms
+                                keepalive_count: 1
+                                keepalive_timeout: 60s
+                                # use_only_ipv6: true
+                                fail_on_5xx: true
+                              include_backends:
+                                type: BY_ID
+                                ids: [bs_iva32_meta]
+                    - name: bs_iva_experiment1
+                      weight: 1
+                      modules:
+                        - report:
+                            uuid: bs_iva_experiment1
+                            ranges: default
+                            backend_time_ranges: 100ms,150ms,200ms,300ms,500ms
+                            events: {stats: report}
+                        - balancer2:
+                            attempts: 1
+                            active_policy:
+                              unique_policy: {}
+                            rendezvous_hashing: {}
+                            generated_proxy_backends:
+                              proxy_options:
+                                backend_timeout: 10s
+                                connect_timeout: 50ms
+                                keepalive_count: 1
+                                keepalive_timeout: 60s
+                                # use_only_ipv6: true
+                                fail_on_5xx: true
+                              include_backends:
+                                type: BY_ID
+                                ids: [bs_iva_experiment1]
+                    - name: bs_iva_newruntime1
+                      weight: 1
+                      modules:
+                        - report:
+                            uuid: bs_iva_newruntime1
+                            ranges: default
+                            backend_time_ranges: 100ms,150ms,200ms,300ms,500ms
+                            events: {stats: report}
+                        - balancer2:
+                            attempts: 1
+                            active_policy:
+                              unique_policy: {}
+                            rendezvous_hashing: {}
+                            generated_proxy_backends:
+                              proxy_options:
+                                backend_timeout: 10s
+                                connect_timeout: 50ms
+                                keepalive_count: 1
+                                keepalive_timeout: 60s
+                                # use_only_ipv6: true
+                                fail_on_5xx: true
+                              include_backends:
+                                type: BY_ID
+                                ids: [bs_iva_newruntime1]
+                    - name: bs_iva_prestable1
+                      weight: 1
+                      modules:
+                        - report:
+                            uuid: bs_iva_prestable1
+                            ranges: default
+                            backend_time_ranges: 100ms,150ms,200ms,300ms,500ms
+                            events: {stats: report}
+                        - balancer2:
+                            attempts: 1
+                            active_policy:
+                              unique_policy: {}
+                            rendezvous_hashing: {}
+                            generated_proxy_backends:
+                              proxy_options:
+                                backend_timeout: 10s
+                                connect_timeout: 50ms
+                                keepalive_count: 1
+                                keepalive_timeout: 60s
+                                # use_only_ipv6: true
+                                fail_on_5xx: true
+                              include_backends:
+                                type: BY_ID
+                                ids: [bs_iva_prestable1]
+                    - name: bs_iva_stable1
+                      weight: 1
+                      modules:
+                        - report:
+                            uuid: bs_iva_stable1
+                            ranges: default
+                            backend_time_ranges: 100ms,150ms,200ms,300ms,500ms
+                            events: {stats: report}
+                        - balancer2:
+                            attempts: 1
+                            active_policy:
+                              unique_policy: {}
+                            rendezvous_hashing: {}
+                            generated_proxy_backends:
+                              proxy_options:
+                                backend_timeout: 10s
+                                connect_timeout: 50ms
+                                keepalive_count: 1
+                                keepalive_timeout: 60s
+                                # use_only_ipv6: true
+                                fail_on_5xx: true
+                              include_backends:
+                                type: BY_ID
+                                ids: [bs_iva_stable1]
+                    - name: bs_man56_meta
+                      weight: 1
+                      modules:
+                        - report:
+                            uuid: bs_man56_meta
+                            ranges: default
+                            backend_time_ranges: 100ms,150ms,200ms,300ms,500ms
+                            events: {stats: report}
+                        - balancer2:
+                            attempts: 1
+                            active_policy:
+                              unique_policy: {}
+                            rendezvous_hashing: {}
+                            generated_proxy_backends:
+                              proxy_options:
+                                backend_timeout: 10s
+                                connect_timeout: 50ms
+                                keepalive_count: 1
+                                keepalive_timeout: 60s
+                                # use_only_ipv6: true
+                                fail_on_5xx: true
+                              include_backends:
+                                type: BY_ID
+                                ids: [bs_man56_meta]
+                    - name: bs_man80_meta
+                      weight: 1
+                      modules:
+                        - report:
+                            uuid: bs_man80_meta
+                            ranges: default
+                            backend_time_ranges: 100ms,150ms,200ms,300ms,500ms
+                            events: {stats: report}
+                        - balancer2:
+                            attempts: 1
+                            active_policy:
+                              unique_policy: {}
+                            rendezvous_hashing: {}
+                            generated_proxy_backends:
+                              proxy_options:
+                                backend_timeout: 10s
+                                connect_timeout: 50ms
+                                keepalive_count: 1
+                                keepalive_timeout: 60s
+                                # use_only_ipv6: true
+                                fail_on_5xx: true
+                              include_backends:
+                                type: BY_ID
+                                ids: [bs_man80_meta]
+                    - name: bs_myt32_meta
+                      weight: 1
+                      modules:
+                        - report:
+                            uuid: bs_myt32_meta
+                            ranges: default
+                            backend_time_ranges: 100ms,150ms,200ms,300ms,500ms
+                            events: {stats: report}
+                        - balancer2:
+                            attempts: 1
+                            active_policy:
+                              unique_policy: {}
+                            rendezvous_hashing: {}
+                            generated_proxy_backends:
+                              proxy_options:
+                                backend_timeout: 10s
+                                connect_timeout: 50ms
+                                keepalive_count: 1
+                                keepalive_timeout: 60s
+                                # use_only_ipv6: true
+                                fail_on_5xx: true
+                              include_backends:
+                                type: BY_ID
+                                ids: [bs_myt32_meta]
+                    - name: bs_myt56_meta
+                      weight: 1
+                      modules:
+                        - report:
+                            uuid: bs_myt56_meta
+                            ranges: default
+                            backend_time_ranges: 100ms,150ms,200ms,300ms,500ms
+                            events: {stats: report}
+                        - balancer2:
+                            attempts: 1
+                            active_policy:
+                              unique_policy: {}
+                            rendezvous_hashing: {}
+                            generated_proxy_backends:
+                              proxy_options:
+                                backend_timeout: 10s
+                                connect_timeout: 50ms
+                                keepalive_count: 1
+                                keepalive_timeout: 60s
+                                # use_only_ipv6: true
+                                fail_on_5xx: true
+                              include_backends:
+                                type: BY_ID
+                                ids: [bs_myt56_meta]
+                    - name: bs_myt_infra1
+                      weight: 1
+                      modules:
+                        - report:
+                            uuid: bs_myt_infra1
+                            ranges: default
+                            backend_time_ranges: 100ms,150ms,200ms,300ms,500ms
+                            events: {stats: report}
+                        - balancer2:
+                            attempts: 1
+                            active_policy:
+                              unique_policy: {}
+                            rendezvous_hashing: {}
+                            generated_proxy_backends:
+                              proxy_options:
+                                backend_timeout: 10s
+                                connect_timeout: 50ms
+                                keepalive_count: 1
+                                keepalive_timeout: 60s
+                                # use_only_ipv6: true
+                                fail_on_5xx: true
+                              include_backends:
+                                type: BY_ID
+                                ids: [bs_myt_infra1]
+                    - name: bs_sas32_meta
+                      weight: 1
+                      modules:
+                        - report:
+                            uuid: bs_sas32_meta
+                            ranges: default
+                            backend_time_ranges: 100ms,150ms,200ms,300ms,500ms
+                            events: {stats: report}
+                        - balancer2:
+                            attempts: 1
+                            active_policy:
+                              unique_policy: {}
+                            rendezvous_hashing: {}
+                            generated_proxy_backends:
+                              proxy_options:
+                                backend_timeout: 10s
+                                connect_timeout: 50ms
+                                keepalive_count: 1
+                                keepalive_timeout: 60s
+                                # use_only_ipv6: true
+                                fail_on_5xx: true
+                              include_backends:
+                                type: BY_ID
+                                ids: [bs_sas32_meta]
+                    - name: bs_sas56_meta
+                      weight: 1
+                      modules:
+                        - report:
+                            uuid: bs_sas56_meta
+                            ranges: default
+                            backend_time_ranges: 100ms,150ms,200ms,300ms,500ms
+                            events: {stats: report}
+                        - balancer2:
+                            attempts: 1
+                            active_policy:
+                              unique_policy: {}
+                            rendezvous_hashing: {}
+                            generated_proxy_backends:
+                              proxy_options:
+                                backend_timeout: 10s
+                                connect_timeout: 50ms
+                                keepalive_count: 1
+                                keepalive_timeout: 60s
+                                # use_only_ipv6: true
+                                fail_on_5xx: true
+                              include_backends:
+                                type: BY_ID
+                                ids: [bs_sas56_meta]
+                    - name: bs_sas80_meta
+                      weight: 1
+                      modules:
+                        - report:
+                            uuid: bs_sas80_meta
+                            ranges: default
+                            backend_time_ranges: 100ms,150ms,200ms,300ms,500ms
+                            events: {stats: report}
+                        - balancer2:
+                            attempts: 1
+                            active_policy:
+                              unique_policy: {}
+                            rendezvous_hashing: {}
+                            generated_proxy_backends:
+                              proxy_options:
+                                backend_timeout: 10s
+                                connect_timeout: 50ms
+                                keepalive_count: 1
+                                keepalive_timeout: 60s
+                                # use_only_ipv6: true
+                                fail_on_5xx: true
+                              include_backends:
+                                type: BY_ID
+                                ids: [bs_sas80_meta]
+                    - name: bs_vla104_meta
+                      weight: 1
+                      modules:
+                        - report:
+                            uuid: bs_vla104_meta
+                            ranges: default
+                            backend_time_ranges: 100ms,150ms,200ms,300ms,500ms
+                            events: {stats: report}
+                        - balancer2:
+                            attempts: 1
+                            active_policy:
+                              unique_policy: {}
+                            rendezvous_hashing: {}
+                            generated_proxy_backends:
+                              proxy_options:
+                                backend_timeout: 10s
+                                connect_timeout: 50ms
+                                keepalive_count: 1
+                                keepalive_timeout: 60s
+                                # use_only_ipv6: true
+                                fail_on_5xx: true
+                              include_backends:
+                                type: BY_ID
+                                ids: [bs_vla104_meta]
+                    - name: bs_vla56_meta
+                      weight: 1
+                      modules:
+                        - report:
+                            uuid: bs_vla56_meta
+                            ranges: default
+                            backend_time_ranges: 100ms,150ms,200ms,300ms,500ms
+                            events: {stats: report}
+                        - balancer2:
+                            attempts: 1
+                            active_policy:
+                              unique_policy: {}
+                            rendezvous_hashing: {}
+                            generated_proxy_backends:
+                              proxy_options:
+                                backend_timeout: 10s
+                                connect_timeout: 50ms
+                                keepalive_count: 1
+                                keepalive_timeout: 60s
+                                # use_only_ipv6: true
+                                fail_on_5xx: true
+                              include_backends:
+                                type: BY_ID
+                                ids: [bs_vla56_meta]
+                    - name: bs_vla64_meta
+                      weight: 1
+                      modules:
+                        - report:
+                            uuid: bs_vla64_meta
+                            ranges: default
+                            backend_time_ranges: 100ms,150ms,200ms,300ms,500ms
+                            events: {stats: report}
+                        - balancer2:
+                            attempts: 1
+                            active_policy:
+                              unique_policy: {}
+                            rendezvous_hashing: {}
+                            generated_proxy_backends:
+                              proxy_options:
+                                backend_timeout: 10s
+                                connect_timeout: 50ms
+                                keepalive_count: 1
+                                keepalive_timeout: 60s
+                                # use_only_ipv6: true
+                                fail_on_5xx: true
+                              include_backends:
+                                type: BY_ID
+                                ids: [bs_vla64_meta]
+                    - name: bs_vla80_meta
+                      weight: 1
+                      modules:
+                        - report:
+                            uuid: bs_vla80_meta
+                            ranges: default
+                            backend_time_ranges: 100ms,150ms,200ms,300ms,500ms
+                            events: {stats: report}
+                        - balancer2:
+                            attempts: 1
+                            active_policy:
+                              unique_policy: {}
+                            rendezvous_hashing: {}
+                            generated_proxy_backends:
+                              proxy_options:
+                                backend_timeout: 10s
+                                connect_timeout: 50ms
+                                keepalive_count: 1
+                                keepalive_timeout: 60s
+                                # use_only_ipv6: true
+                                fail_on_5xx: true
+                              include_backends:
+                                type: BY_ID
+                                ids: [bs_vla80_meta]
+          adfox:
+            matcher:
+              match_fsm:
+                path: '/+adfox.*'
+            modules:
+              - report: {uuid: "adfox_requests", ranges: default}
+              - hasher:
+                  mode: random
+              - shared:
+                  uuid: yabs_frontend_backends
+          balance_by_yandexuid:
+            matcher:
+              match_fsm:
+                cookie: 'yandexuid=.*'
+            modules:
+              - report: {uuid: "yandexuid_requests", ranges: default}
+              - cookie_hasher:
+                  cookie: yandexuid
+              - shared:
+                  uuid: yabs_frontend_backends
+          other_requests:
+            matcher: {}
+            modules:
+              - report: {uuid: "other_requests", ranges: default}
+              - hdrcgi:
+                  hdr_from_cgi:
+                    X-Ad-Session-Id: ad-session-id
+              - headers_hasher:
+                  header_name: X-Ad-Session-Id
+                  randomize_empty_match: true
+              - shared:
+                  uuid: yabs_frontend_backends

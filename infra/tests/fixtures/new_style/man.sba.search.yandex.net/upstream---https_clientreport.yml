@@ -1,0 +1,72 @@
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      url: '/clientreport/download.*'
+  modules:
+    - report: {uuid: clientreport, ranges: default}
+    - threshold:
+        lo_bytes: 768000
+        hi_bytes: 2097152
+        pass_timeout: 1s
+        recv_timeout: 1s
+        on_pass_timeout_failure:
+          modules:
+            - shared:
+                uuid: on_failure
+            - errordocument:
+                status: 200
+                base64: 'CAI='
+    - balancer2:
+        attempts: 1
+        rr: {weights_file: ./controls/traffic_control.weights}
+        by_name_policy:
+          name: !f get_geo("sba_", "random")
+          unique_policy: {}
+        backends:
+        - weight: 1
+          name: sba_sas
+          modules:
+            - report: {ranges: default, uuid: requests_to_sas}
+            - balancer2:
+                attempts: 1
+                weighted2: {}
+                generated_proxy_backends:
+                  proxy_options:
+                    backend_timeout: 3s
+                    keepalive_count: 1
+                  include_backends:
+                    type: BY_ID
+                    ids: [sba_sas]
+        - weight: 1
+          name: sba_man
+          modules:
+            - report: {ranges: default, uuid: requests_to_man}
+            - balancer2:
+                attempts: 1
+                weighted2: {}
+                generated_proxy_backends:
+                  proxy_options:
+                    backend_timeout: 3s
+                    keepalive_count: 1
+                  include_backends:
+                    type: BY_ID
+                    ids: [sba_man]
+        - weight: 1
+          name: sba_vla
+          modules:
+            - report: {ranges: default, uuid: requests_to_vla}
+            - balancer2:
+                attempts: 1
+                weighted2: {}
+                generated_proxy_backends:
+                  proxy_options:
+                    backend_timeout: 3s
+                    keepalive_count: 1
+                  include_backends:
+                    type: BY_ID
+                    ids: [sba_vla]
+        on_error:
+          modules:
+            - shared:
+                uuid: on_failure

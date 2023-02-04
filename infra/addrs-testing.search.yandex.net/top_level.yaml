@@ -1,0 +1,61 @@
+---
+instance_macro:
+  maxconn: 10000
+  sections:
+    admin:
+      ips: [127.0.0.1, '::1']
+      ports: [14580]
+      modules:
+        - http: {}
+        - admin: {}
+    http_section:
+      ips: ['2a02:6b8:0:3400::1055']
+      ports: [80, 17140]
+      local_ips: [local_v4_addr, local_v6_addr]
+      local_ports: [14580]
+      extended_http_macro:
+        port: 14580
+        maxlen: 716800
+        maxreq: 716800
+        modules:
+          - headers:
+              create:
+                X-Start-Time: starttime
+                X-Req-Id: reqid
+                X-Forwarded-For-Y: realip
+                X-Source-Port-Y: realport
+          - regexp:
+              include_upstreams:
+                type: BY_ID
+                ids:
+                  {% for u in upstreams|sort(attribute='labels.order') %}
+                  - {{ u.id }}
+                  {% endfor %}
+    https_section:
+      ips: ['2a02:6b8:0:3400::1055']
+      ports: [443]
+      extended_http_macro:
+        port: 14580
+        maxlen: 716800
+        maxreq: 716800
+        enable_ssl: true
+        disable_sslv3: true
+        force_ssl: true
+        ssl_sni_contexts:
+          addrs-clickdaemon:
+            servername_regexp: default
+            disable_ocsp: true
+        modules:
+          - headers:
+              create:
+                X-Start-Time: starttime
+                X-Req-Id: reqid
+                X-Forwarded-For-Y: realip
+                X-Source-Port-Y: realport
+          - regexp:
+              include_upstreams:
+                type: BY_ID
+                ids:
+                  {% for u in upstreams|sort(attribute='labels.order') %}
+                  - {{ u.id }}
+                  {% endfor %}

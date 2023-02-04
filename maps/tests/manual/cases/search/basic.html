@@ -1,0 +1,86 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Поиск: базовый тест поиска и выдачи резултатов на карте
+
+Description:
+Проверка поиска и выдачи результатов на карте.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components:
+search
+
+Estimated time:
+120000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно, при загрузке на спане появляются метки коллекций.
+  Под контейнером с картой появляется множество строк "[object Object]".
+
+Step:
+  Action:
+  Открыть инструменты разработчика командами Windows: Ctrl + Shift + I если у вас MacOS: ⌥ + ⌘ + I, вкладку Console.
+
+  Expectation:
+  В консоли отсуствуют сообщения об ошибках, имеются чередующиеся строки раскрывающихся объектов "Object; GeoObject".
+
+Step:
+  Action:
+  Выполнить клик в первый объект "Object", внутри объекта клик в строку "responseMetaData:"
+
+  Expectation:
+  В раскрытой строке "responseMetaData:" имеется блок "SearchRequest:" с запросом "кафе" и количеством найденных организаций в свойстве "result".
+
+Step:
+  Action:
+  Осмотреть спан карты, а также посчитать количество пар объектов "Object", "GeoObject"(начиная со второй строки).
+  (адреса меток можно посмотреть раскрывая в консоли "Object").
+
+  Expectation:
+  Количество результатов в свойстве "result" должно соответствовать количеству меток на спане карты и пар объектов "Object", "GeoObject" в консоли.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 7,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+            __log__("Поиск кафе должен возвращать значения");
+            ymaps.search('кафе', {provider: 'yandex#search'}).then(function (res) {
+                __log__(res);
+                res.geoObjects.each(function (obj) {
+                    __log__(obj);
+                    __log__(obj.properties.getAll())
+                });
+                map.geoObjects.add(res.geoObjects)
+            });
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

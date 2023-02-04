@@ -1,0 +1,40 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - next0
+      - shashkin
+      - kigan
+      groups: []
+labels:
+  order: '02000000'
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      uri: '/wizard/crowd-avatars-mds/(get-uac-test|get-google-play-app-icon|get-itunes-icon)/.*'
+  modules:
+    - rewrite:
+        actions:
+          - regexp: '.*'
+            header_name: Host
+            rewrite: 'avatars.mds.yandex.net'
+          - regexp: '/wizard/crowd-avatars-mds/(.*)'
+            rewrite: '/%1'
+    - balancer2:
+        rr: {}
+        attempts: 2
+        attempts_rate_limiter:
+          limit: 0.1
+          coeff: 0.99
+        generated_proxy_backends:
+          proxy_options:
+            connect_timeout: 100ms
+            backend_timeout: 10s
+          instances:
+            - host: avatars.mds.yandex.net
+              port: 80
+              weight: 1
+        on_error:
+          modules:
+          - errordocument: {content: Gateway Timeout, status: 504}

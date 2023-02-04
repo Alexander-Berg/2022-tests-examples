@@ -1,0 +1,53 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - zolotarevden
+      groups: []
+labels:
+  order: '10000000'
+config_mode: easy2
+---
+l7_upstream_macro:
+  by_dc_scheme:
+    balancer:
+      attempts: 2
+      backend_timeout: 10s
+      connect_timeout: 70ms
+      retry_http_responses:
+        codes: [5xx]
+      fast_attempts: 2
+      max_pessimized_endpoints_share: 0.5
+      max_reattempts_share: 0.15
+      retry_non_idempotent: false
+      health_check:
+        request: 'GET /ping HTTP/1.1\nHost: kp-graphql-api.tst.kp.yandex.net\n\n'
+        delay: 5s
+    dc_balancer:
+      attempts: 2
+      method: LOCAL_THEN_BY_DC_WEIGHT
+      weights_section_id: bygeo
+    dcs:
+    - backend_ids:
+      - kp-graphql-api_testing_kp-graphql-api-web_sas
+      name: sas
+    - backend_ids:
+      - kp-graphql-api_testing_kp-graphql-api-web_iva
+      name: iva
+    on_error:
+      static:
+        content: Service unavailable
+        status: 504
+  id: kp-graphql-api_testing_kp-graphql-api-web
+  matcher:
+    and_:
+        - host_re: (kp-graphql-api\.tst\.kp\.yandex\.net)|(kp-graphql-api-deploy\.tst\.kp\.yandex\.net)|(kp-graphql-api\.testing\.kinopoisk\.yandex\.ru)|(kp-graphql-api\.testing\.kinopoisk\.ru)
+        - header: {name: 'Service-Id', re: '25'}
+  rewrite:
+    - target: 'PATH'
+      pattern:
+        re: '/graphql-ma(/.*)?'
+      replacement: '/graphql%1'
+  monitoring:
+    uuid: kp-graphql-api_testing_kp-graphql-api-web
+  version: 0.0.1

@@ -1,0 +1,118 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Util: маппер событий
+
+Description:
+Проверка маппера событий.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components:
+util
+
+Estimated time:
+180000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть страницу и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно со спаном Москвы, на спане два ряда объектов синего и зеленого цвета(метка, линия, многоугольник, прямоугольник, круг).
+  Имеется контрол зума, контрол слоев.
+
+Step:
+  Action:
+  Выполнить клик в контрол зума "-". 
+
+  Expectation:
+  Происходит корректный отзум спана карты, на спане отображаются все объекты.
+  
+Step:
+  Action:
+  Последовательно прокликать все объекты на спане карты. 
+
+  Expectation:
+  При наведении на объект появляется хинт "text", по клику на объекте открывается балун "text".
+  При каждом клике под контейнером появляются строки: "geoobjectclick; click".
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../helper.js"></script>
+    <script src="../../js/geoCS.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            //ymaps = ym;
+            //Запубличить event.Mapper MAPSAPI-10132
+            var map = myMap = new ym.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 10,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['typeSelector', 'zoomControl']
+            }, {
+                avoidFractionalZoom: false,
+                geoObjectInteractivityModel: 'default#transparent'
+            });
+
+            geoCSSource(ym, myMap, this);
+            addGrid(myMap);
+            var log = new Log();
+            __log__("При клике по геообъектам должно проскакивать событие geoobjectclick");
+            var collection = new ymaps.GeoObjectCollection();
+
+            collection
+                    .add(geoObjectPlacemark)
+                    .add(geoObjectPolyline)
+                    .add(geoObjectPolygon)
+                    .add(geoObjectRectangle)
+                    .add(geoObjectRectangle)
+                    .add(geoObjectCircle)
+                    .add(placemark)
+                    .add(polyline)
+                    .add(polygon)
+                    .add(rectangle)
+                    .add(circle);
+
+            collection.each(function (obj) {
+                obj.properties.set('balloonContent', 'text');
+                obj.properties.set('hintContent', 'text');
+            });
+
+            myMap.geoObjects
+                    .add(collection);
+
+            var domevents = ['click', "geoobjectclick"];
+            // Создаем и устанавливаем маппер событий, который преобразует событие "click" корневой
+// коллекции геообъектов в событие "geoobjectclick" самой карты.
+            var mapper = new ymaps.event.Mapper(map.events, {
+                "*": false,
+                "click": function (event) {
+                    return new ymaps.Event({
+                        type: "geoobjectclick",
+                        target: map,
+                        originalTarget: event.get("target")
+                    }, event);
+                }
+            });
+            myMap.events.add(domevents, function (e) {
+                __log__(e.get('type'));
+            });
+
+            myMap.geoObjects.events.setParent(mapper);
+
+        }
+    </script>
+</head>
+<body>
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

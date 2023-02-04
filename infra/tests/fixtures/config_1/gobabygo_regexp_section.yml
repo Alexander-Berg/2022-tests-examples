@@ -1,0 +1,91 @@
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      uri: /gobabygo(/.*)?
+      case_insensitive: false
+      surround: false
+  modules:
+    - rewrite:
+        actions:
+          - split: url
+            regexp: /gobabygo/?(.*)
+            rewrite: /%1
+    - headers:
+        create_func:
+          X-Real-IP: realip
+        create_func_weak:
+          X-Forwarded-For: realip
+          X-Req-Id: reqid
+          X-Scheme: scheme
+          X-Source-Port: realport
+    - cookie_hasher:
+        cookie: yandexuid
+    - stats_eater: {}
+    - balancer2:
+        by_hash_policy:
+          unique_policy: {}
+        active:
+          request: 'GET /ping HTTP/1.1\nHost: test.yandex.ru\n\n'
+          delay: '1s'
+          quorum: !f get_total_weight_percent(33)
+          hysteresis: !f get_total_weight_percent(0)
+        attempts: 3
+        backends:
+          - weight: 100
+            balancer2:
+              attempts: 3
+              retry_non_idempotent: false
+              use_on_error_for_non_idempotent: true
+              weighted2:
+                min_weight: 0.05
+                max_weight: 5.0
+                plus_diff_per_sec: 0.05
+                minus_diff_per_sec: 0.05
+                history_time: 20s
+                feedback_time: 10s
+                slow_reply_time: 1s
+              on_error:
+                errordocument:
+                  status: 504
+              generated_proxy_backends:
+                proxy_options:
+                  backend_timeout: 5s
+                  buffering: false
+                  connect_timeout: 999ms
+                  fail_on_5xx: false
+                  keepalive_count: 3
+                  keepalive_timeout: 10s
+                  status_code_blacklist: [4xx, 5xx]
+                  status_code_blacklist_exceptions: [403]
+                nanny_snapshots:
+                  - service_id: gobabygo
+                    snapshot_id: d3724027b76bc20ace297dc2a8397d2b71dfcb4a
+          - weight: 100.000000001
+            balancer2:
+              attempts: 3
+              retry_non_idempotent: False
+              weighted2:
+                min_weight: 0.05
+                max_weight: 5.0
+                plus_diff_per_sec: 0.05
+                minus_diff_per_sec: 0.05
+                history_time: 20s
+                feedback_time: 10s
+                slow_reply_time: 1s
+              on_error:
+                errordocument:
+                  status: 504
+              generated_proxy_backends:
+                proxy_options:
+                  backend_timeout: 5s
+                  buffering: false
+                  connect_timeout: 999ms
+                  fail_on_5xx: false
+                  keepalive_count: 3
+                  keepalive_timeout: 10s
+                  status_code_blacklist: [4xx, 5xx]
+                  status_code_blacklist_exceptions: [403]
+                nanny_snapshots:
+                  - service_id: gobabygo
+                    snapshot_id: e54ffe7a0f14a2127c05dd01ff24c0c64847b789

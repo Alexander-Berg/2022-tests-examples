@@ -1,0 +1,44 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - remnev
+      groups:
+      - svc_yabadge_development
+labels:
+  order: '10000000'
+---
+regexp_section:
+  matcher:
+    match_and:
+      - match_fsm:
+          host: badgepay-terminal\\.test\\.yandex\\.net
+  modules:
+    - headers:
+        create:
+          Host: frontend.s3.mds.yandex.net
+    - rewrite:
+        actions:
+          - split: path
+            regexp: ^/(.+)
+            rewrite: /badgepay-www/v0.15.3/%1
+          - split: path
+            regexp: ^/(.+/)?([^.]+)?$
+            rewrite: /badgepay-www/v0.15.3/index.html
+    - balancer2:
+        attempts: 1
+        rr: {}
+        generated_proxy_backends:
+          proxy_options:
+            connect_timeout: 70ms
+            backend_timeout: 10s
+            fail_on_5xx: false
+          instances:
+            - host: frontend.s3.mds.yandex.net
+              port: 80
+              weight: 1
+        on_error:
+          modules:
+            - errordocument:
+                status: 504
+                content: Service unavailable

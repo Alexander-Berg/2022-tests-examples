@@ -1,0 +1,39 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - dodev
+      groups: []
+labels:
+  order: '10000000'
+config_mode: easy2
+---
+l7_upstream_macro:
+  version: 0.2.1
+  id: maps-front-parking-int
+  matcher:
+    host_re: 'parking-int\.tst\.c\.maps\.yandex\.net'
+  flat_scheme:
+    balancer:
+      attempts: 2
+      max_reattempts_share: 0.2
+      max_pessimized_endpoints_share: 0.5
+      health_check:
+        delay: 5s
+        request: >-
+          GET /ping HTTP/1.1\nHost:
+          front-testing.slb.maps.yandex.net\nUser-agent: l7-balancer\n\n
+      retry_http_responses:
+        codes:
+          - 5xx
+      backend_timeout: 5s
+      connect_timeout: 0.5s
+    backend_ids:
+     # - maps-front-parking-int_testing_man
+     # for testing purposes we use only vla
+     # - maps-front-parking-int_testing_sas
+      - maps-front-parking-int_testing_vla
+    on_error:
+      static:
+        status: 504
+        content: Service unavailable

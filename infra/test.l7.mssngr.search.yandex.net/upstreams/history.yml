@@ -1,0 +1,171 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - chmerev
+      groups: []
+labels:
+  order: '2000004'
+---
+regexp_section:
+  matcher:
+    match_and:
+      - match_fsm:
+            uri: '/messenger/api/history'
+      - match_and:
+        - match_fsm:
+            match: 'POST.*'
+        - match_fsm:
+            header:
+              name: Content-Type
+              value: application/json
+  modules:
+    - report:
+        ranges: default
+        uuid: history
+    - report:
+        ranges: default
+        uuid: history_no_origin
+    - threshold:
+        lo_bytes: 307200
+        hi_bytes: 716800
+        pass_timeout: 10s
+        recv_timeout: 1s
+    - shared:
+        uuid: history
+    - stats_eater: {}
+    - balancer2:
+        attempts: 2
+        rr: {weights_file: ./controls/traffic_control.weights}
+        backends:
+        - weight: 1
+          name: fanout_man
+          modules:
+            - report: {ranges: default, uuid: requests_to_man}
+            - rewrite:
+                actions:
+                  - regexp: '/messenger/api/history'
+                    rewrite: '/history'
+            - balancer2:
+                attempts: 2
+                connection_attempts: 5
+                attempts_rate_limiter:
+                  limit: 0.2 
+                active:
+                  delay: '5s'
+                  request: 'GET /admin?action=ping&from=slb HTTP/1.1\r\nHost: test.l7.mssngr.search.yandex.net\r\n\r\n'
+                generated_proxy_backends:
+                  proxy_options:
+                    backend_timeout: 400ms
+                    connect_timeout: 50ms
+                    keepalive_count: 5
+                    keepalive_timeout: "60s"
+                    https_settings:
+                        ca_file: !f get_ca_cert_path("allCAs.pem", "./")
+                        sni_on: true
+                        verify_depth: 3
+                  include_backends:
+                    type: BY_ID
+                    ids: [mans]
+                on_error:
+                  modules:
+                    - report:
+                        ranges: default
+                        uuid: requests_to_devnull
+                    - report:
+                        ranges: default
+                        uuid: requests_to_devnull_man
+                    - shared:
+                        uuid: history_devnull
+        - weight: 1
+          name: fanout_vla
+          modules:
+            - report: {ranges: default, uuid: requests_to_vla}
+            - rewrite:
+                actions:
+                  - regexp: '/messenger/api/history'
+                    rewrite: '/history'
+            - balancer2:
+                attempts: 2
+                connection_attempts: 5
+                attempts_rate_limiter:
+                  limit: 0.2 
+                active:
+                  delay: '5s'
+                  request: 'GET /admin?action=ping&from=slb HTTP/1.1\r\nHost: test.l7.mssngr.search.yandex.net\r\n\r\n'
+                generated_proxy_backends:
+                  proxy_options:
+                    backend_timeout: 400ms
+                    connect_timeout: 50ms
+                    keepalive_count: 5
+                    keepalive_timeout: "60s"
+                    https_settings:
+                        ca_file: !f get_ca_cert_path("allCAs.pem", "./")
+                        sni_on: true
+                        verify_depth: 3
+                  include_backends:
+                    type: BY_ID
+                    ids: [vlas]
+                on_error:
+                  modules:
+                    - report:
+                        ranges: default
+                        uuid: requests_to_devnull
+                    - report:
+                        ranges: default
+                        uuid: requests_to_devnull_vla
+                    - shared:
+                        uuid: history_devnull
+        - weight: 1
+          name: fanout_sas
+          modules:
+            - report: {ranges: default, uuid: requests_to_sas}
+            - rewrite:
+                actions:
+                  - regexp: '/messenger/api/history'
+                    rewrite: '/history'
+            - balancer2:
+                attempts: 2
+                connection_attempts: 5
+                attempts_rate_limiter:
+                  limit: 0.2 
+                active:
+                  delay: '5s'
+                  request: 'GET /admin?action=ping&from=slb HTTP/1.1\r\nHost: test.l7.mssngr.search.yandex.net\r\n\r\n'
+                generated_proxy_backends:
+                  proxy_options:
+                    backend_timeout: 400ms
+                    connect_timeout: 50ms
+                    keepalive_count: 5
+                    keepalive_timeout: "60s"
+                    https_settings:
+                        ca_file: !f get_ca_cert_path("allCAs.pem", "./")
+                        sni_on: true
+                        verify_depth: 3
+                  include_backends:
+                    type: BY_ID
+                    ids: [sass]
+                on_error:
+                  modules:
+                    - report:
+                        ranges: default
+                        uuid: requests_to_devnull
+                    - report:
+                        ranges: default
+                        uuid: requests_to_devnull_sas
+                    - shared:
+                        uuid: history_devnull
+        - weight: -1
+          name: fanout_devnull
+          modules:
+            - report:
+                ranges: default
+                uuid: requests_to_devnull
+            - report:
+                ranges: default
+                uuid: requests_to_devnull_devnull
+            - shared:
+                uuid: history_devnull
+            - errordocument:
+                status: 200
+                content: '{\"Ttl\":65}'

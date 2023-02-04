@@ -1,0 +1,291 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Кластер: события кластеров
+
+Description:
+Проверка событий кластеров.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components:
+clusterer
+
+Estimated time:
+360000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  При загрузке карты сначала отображается спан Москвы с множеством кластерных меток, через секунду происходит смена спана и отзум, на конечном спане несколько кластерных меток(могут быть метки коллекций).
+  Имеются кнопки "DOM", "move", "remove", "option", "ignore". 
+  Снизу справа кнопка "freeze", "clear log".
+
+Step:
+  Action:
+  Навести курсор на метку кластера с большим значением кластеризации, после появления хинта увести курсор с метки.
+
+  Expectation:
+  При наведении на кластерную метку появляется хинт "Меток навалом".
+  При наведении под контейнером появляются строки событий кластера и геообъекта "hintopen", при уводе курсора хинт пропадает, появляются строки событий "hintclose".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "clear log", клик в "DOM".
+  Навести курсор на метку, затем выполнить клик в метку кластера.
+
+  Expectation:
+  При наведении на кластерную метку появляется хинт "Меток навалом", по клику открывается балун кластера.
+  Под контейнером появляются строки событий кластера и геообъекта ("mouseenter", "hintopen", "hintclose", "click", "balloonopen").
+
+Step:
+  Action:
+  Закрыть балун кластера.
+
+  Expectation:
+  Под контейнером появляются строки событий кластера и геообъекта "balloonclose".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "DOM", клик в "clear log", затем клик в "move".
+  Поводить курсором по кластерным меткам.
+
+  Expectation:
+  При наведении по кластерным метку под контейнером появляются строки событий кластера "mousemove".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "move", клик в "clear log", затем клик в "remove".
+
+  Expectation:
+  По клику в "remove" кластерные метки пропадают со спана.
+  Под контейнером с картой появляются события кластера "mapchange", "optionschange", "parentchange".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "remove".
+
+  Expectation:
+  По клику на спане снова появляются кластерные метки.
+  Под контейнером с картой появляются события кластера "mapchange", "optionschange", "parentchange".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "clear log", затем клик в "option".
+  Навести курсор на метку, затем выполнить клик в метку кластера.
+
+  Expectation:
+  По клику в "option" под контейнером с картой появляются событие кластера "optionschange".
+  По клику в кластер на метке открывается балун, метка кластера при этом не пропадает.
+
+Step:
+  Action:
+  Закрыть балун кластера.
+  Выполнить клик в кнопку "clear log", затем клик в "option".
+  Навести курсор на метку, затем выполнить клик в метку кластера.
+
+  Expectation:
+  По клику в "option" под контейнером с картой появляются событие кластера "optionschange".
+  По клику в кластер на метке открывается балун, метка кластера при этом пропадает.
+
+Step:
+  Action:
+  Закрыть балун кластера.
+  Выполнить клик в кнопку "clear log", затем клик в "ignore".
+  Навести курсор на метку, затем выполнить клик в метку кластера.
+
+  Expectation:
+  При наведении курсора появляется хинт, по клику открывается балун.
+  Под контейнером с картой появляются события геообъекта geoObjects: hintopen, geoObjects: hintclose, geoObjects: balloonopen.
+
+Step:
+  Action:
+  Закрыть балун кластера.
+  Выполнить клик в кнопку "clear log", клик в "ignore".
+  Выполнить клик в "freeze", затем клик в "option".
+
+  Expectation:
+  По клику в "option" кнопка активна, событий под контейнером не появляются.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 10,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+
+            var clusterer = new ymaps.Clusterer({preset: 'islands#redClusterIcons', disableClickZoom: true});
+            var placemarksNumber = 200;
+            var bounds = map.getBounds();
+            var newPlacemarks = createGeoObjects(placemarksNumber, bounds);
+
+            var events = ['balloonclose', 'balloonopen', 'hintclose', 'hintopen', 'mapchange', 'optionschange', 'parentchange'];
+            var domevents = ['click', 'contextmenu', 'dblclick', 'mousedown', 'mouseenter', 'mouseleave', 'mouseup', 'multitouchend',
+                'multitouchstart', 'wheel'];
+            var moveevents = ['mousemove', 'multitouchmove'];
+            var callback = function (e) {
+                log.info('clusterer: ' + e.get('type'));
+                console.log('clusterer: ' + e.get('type'));
+                console.log('cluster');
+                console.log(e.get('cluster'));
+                console.log('target');
+                console.log(e.get('target'))
+            };
+
+            // change cluster hints
+            clusterer.createCluster = function (center, geoObjects) {
+                var clusterPlacemark = ymaps.Clusterer.prototype.createCluster.call(this, center, geoObjects),
+                        geoObjectsLength = clusterPlacemark.getGeoObjects().length,
+                        hintContent;
+                if (geoObjectsLength < 10) {
+                    hintContent = '';
+                } else if (geoObjectsLength < 100) {
+                    hintContent = 'Нормально так меток';
+                } else {
+                    hintContent = 'Меток навалом';
+                }
+                clusterPlacemark.properties.set('hintContent', hintContent);
+                return clusterPlacemark;
+            };
+
+            // add 200 placemarks
+            clusterer.add(newPlacemarks);
+            map.geoObjects.add(clusterer);
+
+            // add event listeners
+            clusterer.events.add(events, callback);
+            map.geoObjects.events.add(events, function (e) {
+                log.info('geoObjects: ' + e.get('type'));
+                console.log('geoObjects: ' + e.get('type'))
+            });
+
+            var listenerButton = new ymaps.control.Button({data: {content: 'ignore'}, options: {selectOnClick: true}});
+            var optionButton = new ymaps.control.Button({data: {content: 'option'}, options: {selectOnClick: true}});
+            var removeButton = new ymaps.control.Button({data: {content: 'remove'}, options: {selectOnClick: true}});
+            var freezeButton = new ymaps.control.Button({data: {content: 'freeze'}, options: {selectOnClick: true}});
+            var domButton = new ymaps.control.Button({data: {content: 'DOM'}, options: {selectOnClick: true}});
+            var moveButton = new ymaps.control.Button({data: {content: 'move'}, options: {selectOnClick: true}});
+            var clearButton = new ymaps.control.Button({data: {content: 'clear log'}, options: {selectOnClick: false}});
+
+            listenerButton.events
+                    .add('select', function () {
+                        log.info('Events will be ignored.');
+                        clusterer.events.remove(events, callback);
+                    })
+                    .add('deselect', function () {
+                        log.info('Waiting for events...');
+                        clusterer.events.add(events, callback);
+                    });
+
+            optionButton.events
+                    .add('select', function () {
+                        clusterer.options.set('hideIconOnBalloonOpen', false);
+                    })
+                    .add('deselect', function () {
+                        clusterer.options.set('hideIconOnBalloonOpen', true);
+                    });
+
+            removeButton.events
+                    .add('select', function () {
+                        map.geoObjects.remove(clusterer);
+                    })
+                    .add('deselect', function () {
+                        map.geoObjects.add(clusterer);
+                    });
+
+            freezeButton.events
+                    .add('select', function () {
+                        clusterer.options.freeze();
+                    })
+                    .add('deselect', function () {
+                        clusterer.options.unfreeze();
+                    });
+
+            domButton.events
+                    .add('select', function () {
+                        log.info('Waiting for DOM events...');
+                        clusterer.events.add(domevents, callback);
+                    })
+                    .add('deselect', function () {
+                        log.info('DOM events will be ignored.');
+                        clusterer.events.remove(domevents, callback);
+                    });
+
+            moveButton.events
+                    .add('select', function () {
+                        log.info('Waiting for move events...');
+                        clusterer.events.add(moveevents, callback);
+                    })
+                    .add('deselect', function () {
+                        log.info('Move events will be ignored.');
+                        clusterer.events.remove(moveevents, callback);
+                    });
+
+
+            clearButton.events.add('click', function () {
+                log.clear();
+            });
+
+            map.controls
+                    .add(listenerButton, {float: 'left'})
+                    .add(optionButton, {float: 'left'})
+                    .add(removeButton, {float: 'left'})
+                    .add(freezeButton, {float: 'none', position: {bottom: 55, right: 10}})
+                    .add(clearButton, {float: 'none', position: {bottom: 25, right: 10}})
+                    .add(moveButton, {float: 'left'})
+                    .add(domButton, {float: 'left'});
+
+            setTimeout(function () {
+                map.setZoom(6)
+            }, 500);
+
+            function createGeoObjects(number, bounds) {
+                var placemarks = [];
+                // Создаем нужное количество меток
+                for (var i = 0; i < number; i++) {
+                    // Генерируем координаты метки случайным образом.
+                    coordinates = getRandomCoordinates(bounds);
+                    // Создаем метку со случайными координатами.
+                    if (Math.random() > 0.5) {
+                        myPlacemark = new ymaps.Placemark(coordinates, {
+                            balloonContent: i, hintContent: i, clusterCaption: i}, {});
+                    } else {
+                        myPlacemark = new ymaps.Placemark(coordinates, {
+                            balloonContent: i, hintContent: i, iconContent: 'point', clusterCaption: 'point ' + i}, {preset: 'islands#greenStretchyIcon'});
+                    }
+                    placemarks.push(myPlacemark);
+                }
+                return placemarks;
+            }
+
+            function getRandomCoordinates(bounds) {
+                var size = [bounds[1][0] - bounds[0][0], bounds[1][1] - bounds[0][1]];
+                return [Math.random() * size[0] + bounds[0][0], Math.random() * size[1] + bounds[0][1]];
+            }
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

@@ -1,0 +1,151 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Менеджер объектов: опция алфавитного порядка менеджера объектов
+
+Description:
+Проверка опции алфавитного порядка менеджера объектов. 
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+objectManager
+
+Estimated time:
+90000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась корректно со спаном с кластерными метками.
+  Сверху имеется кнопка "!order".
+  
+Step:
+  Action:
+  Выполнить клик в кнопку "!order", клик в кластерную метку.
+
+  Expectation:
+  Вместо метки на спане открывается балун с двумя колонками.
+  В левой колонке список меток, метки в списке расположены без порядка.
+  Под контейнером с картой строка: "showInAlphabeticalOrder: false".
+
+Step:
+  Action:
+  Закрыть балун кластера, выполнить клик в кнопку "!order", клик в кластерную метку.
+
+  Expectation:
+  Вместо метки на спане открывается балун с двумя колонками.
+  В левой колонке список меток, метки в списке сначала цифры в порядке по первому разряду, затем метки point также в порядке увеличения первого разряда номера метки.
+  Под контейнером с картой строка: "showInAlphabeticalOrder: true". 
+-->
+<html>
+<head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script src="https://yandex.st/jquery/1.6.4/jquery.min.js" type="text/javascript"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            var map = myMap = new ymaps.Map('map', {
+                center: [59.96343157514998, 30.317977733422868],
+                zoom: 7,
+                // Добавим к стандартным поведениям карты зум колесом мыши.
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl', 'zoomControl']
+            });
+
+            addGrid(map);
+            var log = new Log();
+
+            // TODO: почему балун не открывается по клику по кластеру
+
+            var objectManager = new ym.ObjectManager({clusterize: true, clusterOpenBalloonOnClick: true,
+                clusterDisableClickZoom: true, showInAlphabeticalOrder: true});
+            // add 200 placemarks
+            var placemarksNumber = 500;
+            var bounds = map.getBounds();
+            var newPlacemarks = createGeoObjects(placemarksNumber, bounds);
+
+            objectManager.objects.add(newPlacemarks);
+            map.geoObjects.add(objectManager);
+
+            var alphabeticalButton = new ymaps.control.Button({data: {content: '!order'}, options: {selectOnClick: true}});
+            alphabeticalButton.events
+                    .add('select', function () {
+                        objectManager.options.set('showInAlphabeticalOrder', false);
+                        log.info('showInAlphabeticalOrder: ' + objectManager.options.get('showInAlphabeticalOrder'))
+                    })
+                    .add('deselect', function () {
+                        objectManager.options.set('showInAlphabeticalOrder', true);
+                        log.info('showInAlphabeticalOrder: ' + objectManager.options.get('showInAlphabeticalOrder'))
+                    });
+
+            map.controls.add(alphabeticalButton, {top: 5, left: 5});
+
+            // change map zoom
+            setTimeout(function () {
+                map.setZoom(4)
+            }, 1000);
+
+            function createGeoObjects(number, bounds) {
+                var placemarks = [];
+                // Создаем нужное количество меток
+                for (var i = 0; i < number; i++) {
+                    // Генерируем координаты метки случайным образом.
+                    var coordinates = getRandomCoordinates(bounds);
+                    // Создаем метку со случайными координатами.
+                    if (Math.random() > 0.5) {
+                        var myPlacemark = {
+                            "type": "Feature",
+                            "id": i,
+                            "geometry": {
+                                "type": "Point",
+                                "coordinates": coordinates
+                            },
+                            "properties": {
+                                "balloonContent": i,
+                                "clusterCaption": i,
+                                "hintContent": i
+                            }
+                        };
+                    } else {
+                        var myPlacemark = {
+                            "type": "Feature",
+                            "id": i,
+                            "geometry": {
+                                "type": "Point",
+                                "coordinates": coordinates
+                            },
+                            "properties": {
+                                "balloonContent": "point " + i,
+                                "clusterCaption": "point " + i,
+                                "hintContent": "point " + i
+                            }
+                        };
+                    }
+                    placemarks.push(myPlacemark);
+                }
+                return placemarks;
+            }
+
+            function getRandomCoordinates(bounds) {
+                var size = [bounds[1][0] - bounds[0][0], bounds[1][1] - bounds[0][1]];
+                return [Math.random() * size[0] + bounds[0][0], Math.random() * size[1] + bounds[0][1]];
+            }
+
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

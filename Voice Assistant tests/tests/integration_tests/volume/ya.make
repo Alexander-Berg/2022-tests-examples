@@ -1,5 +1,0 @@
-OWNER(
-    nkodosov
-    makatunkin
-    tolyandex
-)

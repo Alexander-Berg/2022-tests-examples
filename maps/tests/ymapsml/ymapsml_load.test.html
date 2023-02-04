@@ -1,0 +1,232 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <title>YmapsML geoXml.load</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+
+    <!-- YUI -->
+    <script type="text/javascript" src="../../../../../test/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../../../../test/yui3combo/combo.css" />
+    <script type="text/javascript" src="../../../../../test/run-test-case.js"></script>
+    <!-- Code -->
+    <script type="text/javascript">
+        initAPI({
+            lang: "ru-RU",
+            load: "package.full,geoXml.load",
+            mode: "debug",
+            ns: "ym",
+            coordorder: "longlat"
+        });
+    </script>
+    <!-- Compare objects -->
+    <script type="text/javascript" src="../compare-objects.js"></script>
+
+    <style type="text/css">
+        #container { width: 800px; height: 600px; background: #ccc; }
+    </style>
+</head>
+
+<body class="yui3-skin-sam">
+    <div id="container"></div>
+</body>
+
+<script type="text/javascript" charset="utf-8">
+    function getTestCase(Y) { return {
+        name: "geoXml.load",
+        testGeoXmlLoad: function () {
+            var xmlUrl = 'ymapsml_test_data.xml',
+                testCase = this,
+                sameCollection = [];
+
+            ym.geoXml.load(xmlUrl).then(function (res) {
+                    testCase.getSameCollection(testCase.getUrl('/' + xmlUrl)).each(function (geoObject) {
+                        sameCollection.push(geoObject)
+                    });
+
+                    var f = function () {
+                        Y.assert(typeof res.geoObjects != 'undefined', "Невозможно создать объект geoObjectCollection.");
+
+                        var collection = [];
+                        if (res.geoObjects) {
+                            map.geoObjects.add(res.geoObjects);
+                            res.geoObjects.each(function (geoObject) {
+                               collection.push(geoObject);
+                            });
+                        }
+                        if (res.mapState) {
+                            res.mapState.applyToMap(map);
+                        }
+
+                        for (var i = 0, l = collection.length; i < l; i++) {
+                            var options1 = collection[i].options._data,
+                                options2 = sameCollection[i].options._data,
+                                props1 = collection[i].properties._data,
+                                props2 = sameCollection[i].properties._data,
+                                coords1 = collection[i].geometry ? collection[i].geometry.getCoordinates() : null,
+                                coords2 = sameCollection[i].geometry ? sameCollection[i].geometry.getCoordinates() : null;
+
+                            Y.assert(
+                                 areSame(options1, options2),
+                                'Разные опции у геообъектов'
+                            );
+                            Y.assert(
+                                areSame(props1, props2),
+                                'Разные свойства у геообъектов'
+                            );
+                            Y.assert(
+                                areSame(coords1, coords2),
+                                'Разные координаты у геообъектов'
+                            );
+                        }
+                    };
+
+                    testCase.resume(f);
+                },
+                function (error) {
+                    testCase.resume(function () {
+                        Y.assert(error === null, "Ошибка при загрузке xml-файла.");
+                    });
+                }
+            );
+
+            testCase.wait(function () {
+                Y.Assert.fail("Время ожидания истекло.");
+            }, 3000);
+        },
+
+        getSameCollection: function (prefix) {
+            //  Объявляем геообъекты
+            var collection = new ym.GeoObjectCollection({
+                    properties: {
+                        id: 'top-collection'
+                    }
+                }),
+                geoObject1 = new ym.GeoObject({
+                    properties: {
+                        id: 'some-object',
+                        name: 'Просто точка',
+                        description: 'Описание точки',
+                        balloonContentBody: '<h3>Просто точка</h3><p>Описание точки</p>',
+                        boundedBy: [
+                            [37.537473, 55.70935],
+                            [37.730401, 55.796488]
+                        ]
+                    },
+                    geometry: {
+                        type: 'Point',
+                        coordinates: [37.6209, 55.7754916]
+                    }
+                }, {
+                    preset: prefix + '#with-shadow'
+                }),
+                geoObjectCollection = new ym.GeoObjectCollection({
+                    properties: {
+                        id: 'inner-collection'
+                    }
+                }),
+                geoObject2 = new ym.GeoObject({
+                    properties: {
+                        name: 'Еще точка',
+                        description: 'Еще описание точки',
+                        balloonContentBody: '<h3>Еще точка</h3><p>Еще описание точки</p>',
+                        metaDataProperty: {
+                            xss: "10px; background: url('javascript:alert(1)');"
+                        }
+                    },
+                    geometry: {
+                        type: 'Point',
+                        coordinates: [37.588441, 55.734081]
+                    }
+                }, {
+                    preset: prefix + '#some-style'
+                }),
+                lineString = new ym.GeoObject({
+                    properties: {
+                        name: 'Полилиния',
+                        description: 'Описание полилинии',
+                        balloonContentBody: '<h3>Полилиния</h3><p>Описание полилинии</p>'
+                    },
+                    geometry: {
+                        type: 'LineString',
+                        coordinates: [[37.393621, 55.870492], [37.706731, 55.913324], [37.908605, 55.818573]]
+                    }
+                }, {
+                    preset: prefix + '#linestyle'
+                }),
+                linearRing = new ym.GeoObject({
+                    properties: {
+                        name: 'Кольцо',
+                        description: 'Описание кольца',
+                        balloonContentBody: '<h3>Кольцо</h3><p>Описание кольца</p>'
+                    },
+                    geometry: {
+                        type: 'LineString',
+                        coordinates: [
+                            [37.636693, 55.690789], [37.528203, 55.715604], [37.53095, 55.787634],
+                            [37.671025, 55.804654], [37.734197, 55.759767], [37.702611, 55.7063],
+                            [37.636693, 55.690789]
+                        ]
+                    }
+                }, {
+                    preset: prefix + '#linestyle',
+                    showHintOnHover: true,
+                    openBalloonOnClick: true
+                }),
+                polygon = new ym.GeoObject({
+                    properties: {
+                        name: 'Полигон',
+                        description: 'Описание полигона',
+                        balloonContentBody: '<h3>Полигон</h3><p>Описание полигона</p>',
+                        metaDataProperty: {
+                            prop: 'Какое-то свойство.'
+                        }
+                    },
+                    geometry: {
+                        type: 'Polygon',
+                        coordinates: [
+                            [
+                                [37.581762, 55.76751], [37.626394, 55.776412], [37.660039, 55.768671],
+                                [37.660726, 55.74389], [37.646993, 55.729168], [37.594121, 55.725293],
+                                [37.581762, 55.76751]
+                            ], [
+                                [37.610429, 55.756393], [37.622274, 55.760361], [37.632058, 55.758619],
+                                [37.637208, 55.752036], [37.633947, 55.74584], [37.608369, 55.746711],
+                                [37.610429, 55.756393]
+                            ]
+                        ]
+                    }
+                }, {
+                    preset: prefix + '#polystyle'
+                });
+
+
+            geoObjectCollection.add(geoObject1);
+            collection.add(geoObjectCollection);
+            collection.add(geoObject2);
+            collection.add(lineString);
+            collection.add(linearRing);
+            collection.add(polygon);
+
+            return collection;
+        },
+
+        getUrl: function (url) {
+            return window.location.href.replace(/\/[^\/]+$/, url);
+        }
+    }}
+    var map;
+    ym.ready(function () {
+        //  подготавливаем карту
+        map = new ym.Map('container', {
+            center: [37.62708, 55.750625],
+            type: "yandex#map",
+            zoom: 10,
+            behaviors: ['drag', 'scrollZoom']
+        });
+        map.controls.add('zoomControl');
+        map.controls.add('mapTools');
+        runTestCase();
+    });
+</script>
+</html>

@@ -1,0 +1,49 @@
+---
+instance_macro:
+  workers: !f get_workers()
+  maxconn: 5000
+  unistat:
+    addrs:
+      - ip: '*'
+        port: !f get_port_var('port', 2)
+  sd: {}
+  sections:
+    admin:
+      ips: [127.0.0.1, '::1']
+      ports:
+        - !f get_port_var('port')
+      modules:
+        - http: {}
+        - admin: {}
+    http_section:
+      ips: ['*']
+      ports:
+        - 80
+        - !f get_port_var('port')
+      extended_http_macro:
+        modules:
+          - regexp:
+              include_upstreams:
+                filter:
+                  any: true
+                order:
+                  label:
+                    name: order
+    https_section:
+      ips: ['*']
+      ports: [443]
+      extended_http_macro:
+        enable_ssl: true
+        ssl_sni_contexts:
+          yasmbiller.yandex-team.ru:
+            cert: !c yasmbiller_cert
+            servername_regexp: default
+            secondary_cert: !c new-yasmbiller.yandex-team.ru
+        modules:
+          - regexp:
+              include_upstreams:
+                filter:
+                  any: true
+                order:
+                  label:
+                    name: order

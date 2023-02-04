@@ -1,0 +1,102 @@
+source news7
+{
+    type = mysql
+    sql_host = 127.0.0.1
+    sql_user = auto
+    sql_pass = KiX1euph
+    sql_db =
+    sql_port = 1401
+
+    sql_query_pre = SET NAMES utf8
+    sql_query_pre = SET wait_timeout=30
+    sql_query_pre = SET interactive_timeout=30
+
+    sql_query_range = SELECT MIN(id), MAX(id) FROM news7.items
+    sql_range_step = 20000
+
+
+    sql_query = SELECT SQL_NO_CACHE \
+                    items.id, items.id as i, \
+                    date_publication, \
+                    date_publication as time, \
+                    UNIX_TIMESTAMP(date_publication) as timestamp, \
+                    title, \
+                    slug, \
+                    announce, \
+                    category_id, \
+                    author_id, \
+                    status, \
+                    alias, \
+                    short_html, \
+                    news7.categories.name as cat_name \
+                FROM news7.items as items \
+                LEFT JOIN news7.categories ON category_id = categories.id \
+                WHERE \
+                    items.id >= $start AND \
+                    items.id <= $end AND \
+                    items.date_publication < now() AND \
+                    (items.date_publication_expire > now() OR items.date_publication_expire = "0000-00-00 00:00:00") AND \
+                    items.status = 1 AND \
+                    categories.type != "commerce" AND \
+                    categories.format_id > 0
+
+    sql_attr_uint       = i
+    sql_attr_uint       = author_id
+    sql_attr_uint       = status
+    sql_attr_uint       = category_id
+    sql_field_string    = title
+    sql_field_string    = alias
+    sql_field_string    = slug
+    sql_field_string    = announce
+    sql_field_string  = date_publication
+    sql_attr_timestamp  = time
+    sql_attr_timestamp  = timestamp
+    sql_field_string    = short_html
+    sql_field_string    = cat_name
+
+#    sql_query_info = SELECT id FROM news7.items WHERE id = $id
+}
+
+index news7
+{
+    type          = plain
+    source = news7
+
+    path = /opt/sphinx_news7/news/
+
+    docinfo         = extern
+    html_strip      = 1
+    charset_type    = utf-8
+    charset_table    = 0..9, A..Z->a..z, _, a..z, U+410..U+42F->U+430..U+44F, U+430..U+44F, U+0401->U+0435, U+0451->U+0435
+
+}
+
+indexer
+{
+    mem_limit       = 2047M
+    write_buffer    = 160M
+    max_file_field_buffer = 128M
+}
+
+searchd
+{
+    listen          = 21561
+    listen          = 21570:mysql41
+
+    log             = /var/log/sphinx/searchd_news7.log
+#    query_log       = /var/log/sphinx/query_news7.log
+    pid_file        = /var/run/sphinx/searchd_news7.pid
+    binlog_path     = /var/log/sphinx/news7
+    read_timeout    = 2
+    max_children    = 0
+    max_matches     = 10000
+    unlink_old      = 1
+
+    seamless_rotate = 1
+    preopen_indexes = 1
+
+    #query_log_format = sphinxql
+    workers = threads
+    read_buffer = 98M
+    read_unhinted = 98M
+}

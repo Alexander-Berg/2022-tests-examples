@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<project name="AUTO.RU" default="build">
+
+    <property environment="env"/>
+
+    <property name="code" value="${basedir}/../../.."/>
+    <property name="curbuild" value="${code}/build"/>
+
+    <echo>${basedir}</echo>
+
+    <target name="build" depends="prepare,pdepend,phpunit,phpunit_all7,phploc,lint,phpcb,phpmd-ci,phpcs"/>
+
+    <target name="clean" description="Cleanup build artifacts">
+        <delete dir="${basedir}/api"/>
+        <delete dir="${basedir}/code-browser"/>
+        <delete dir="${basedir}/coverage"/>
+        <delete dir="${basedir}/logs"/>
+        <delete dir="${basedir}/pdepend"/>
+        <delete dir="${basedir}/phpdox"/>
+
+        <delete dir="${curbuild}/api"/>
+        <delete dir="${curbuild}/code-browser"/>
+        <delete dir="${curbuild}/coverage"/>
+        <delete dir="${curbuild}/logs"/>
+        <delete dir="${curbuild}/pdepend"/>
+        <delete dir="${curbuild}/phpdox"/>
+    </target>
+
+    <target name="prepare" depends="clean" description="Prepare for build">
+        <mkdir dir="${basedir}/api"/>
+        <mkdir dir="${basedir}/code-browser"/>
+        <mkdir dir="${basedir}/coverage"/>
+        <mkdir dir="${basedir}/logs"/>
+        <mkdir dir="${basedir}/pdepend"/>
+        <mkdir dir="${basedir}/phpdox"/>
+
+        <mkdir dir="${curbuild}/api"/>
+        <mkdir dir="${curbuild}/code-browser"/>
+        <mkdir dir="${curbuild}/coverage"/>
+        <mkdir dir="${curbuild}/logs"/>
+        <mkdir dir="${curbuild}/pdepend"/>
+        <mkdir dir="${curbuild}/phpdox"/>
+    </target>
+
+    <target name="lint">
+        <apply executable="php" failonerror="true">
+            <arg value="-l"/>
+
+            <fileset dir="${code}/users8">
+                <include name="**/*.php"/>
+                <modified/>
+            </fileset>
+        </apply>
+    </target>
+
+    <target name="phploc" description="Measure project size using PHPLOC">
+        <exec executable="phploc">
+            <arg value="--log-csv"/>
+            <arg value="${basedir}/build/logs/phploc.csv"/>
+            <arg path="${code}/users8"/>
+        </exec>
+    </target>
+
+    <target name="pdepend" description="Calculate software metrics using PHP_Depend">
+        <exec executable="pdepend">
+            <arg value="--jdepend-xml=${basedir}/build/logs/jdepend.xml" />
+            <arg value="--jdepend-chart=${curbuild}/pdepend/dependencies.svg" />
+            <arg value="--overview-pyramid=${curbuild}/pdepend/overview-pyramid.svg" />
+            <arg path="${code}/users8" />
+        </exec>
+    </target>
+
+    <target name="phpdox" description="Generate API documentation using phpDox">
+        <exec executable="phpdox" />
+    </target>
+
+    <target name="phpunit" description="Run unit tests with PHPUnit">
+        <exec executable="phpunit" failonerror="false">
+            <arg value="--configuration" />
+            <arg path="${basedir}/phpunit.xml"/>
+        </exec>
+    </target>
+
+    <target name="phpunit_all7" description="Run unit tests with PHPUnit">
+        <exec executable="phpunit" failonerror="false">
+            <arg value="--configuration" />
+            <arg path="${basedir}/phpunit_all7.xml"/>
+        </exec>
+    </target>
+
+    <target name="phpcb" description="Aggregate tool output with PHP_CodeBrowser">
+        <exec executable="phpcb">
+            <arg value="--log" />
+            <arg path="${basedir}/build/logs" />
+            <arg value="--source" />
+            <arg path="${code}/users8" />
+            <arg value="--output" />
+            <arg path="${basedir}/build/code-browser" />
+        </exec>
+    </target>
+
+    <target name="phpmd-ci"
+            description="Perform project mess detection using PHPMD creating a log file for the continuous integration server">
+        <exec executable="phpmd" failonerror="false">
+            <arg path="${code}/users8"/>
+            <arg value="xml"/>
+            <arg value="${code}/build/phpmd.xml"/>
+            <arg value="--reportfile"/>
+            <arg value="${basedir}/logs/pmd.xml"/>
+            <arg value="--exclude"/>
+            <arg value="views"/>
+        </exec>
+    </target>
+
+    <target name="phpcs"
+            description="Find coding standard violations using PHP_CodeSniffer and print human readable output. Intended for usage on the command line before committing.">
+        <exec executable="phpcs">
+            <arg value="--report=checkstyle"/>
+            <arg value="--report-file=${basedir}/build/logs/checkstyle.xml"/>
+            <arg value="--standard=${code}/.hooks/codesnifferRules/AUTORU/ruleset.xml"/>
+            <arg value="-p" />
+            <arg value="--ignore=nodejs,views"/>
+            <arg path="${code}/users8"/>
+        </exec>
+    </target>
+
+</project>

@@ -1,0 +1,84 @@
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      uri: '(/collections)?/api/top(/.*)?'
+  modules:
+    - report:
+        uuid: api_top
+        ranges: default
+    - balancer2:
+        attempts: 2
+        rr: {weights_file: ./controls/traffic_control.weights}
+        timeout_policy:
+          timeout: 300ms
+          unique_policy: {}
+        backends:
+        - weight: 1
+          name: topreader_sas
+          modules:
+            - report: {ranges: default, uuid: requests_api_top_to_sas}
+            - balancer2:
+                attempts: 2
+                active: {
+                    steady: false,
+                    request: 'GET /health HTTP/1.1\r\nHost: pdb.yandex.ru\r\n\r\n',
+                    delay: 500ms
+                }
+                generated_proxy_backends:
+                  proxy_options:
+                    backend_timeout: 200ms
+                    connect_timeout: 100ms
+                    keepalive_count: 1
+                  include_backends:
+                    type: BY_ID
+                    ids: [pdb_top_reader_prod_sas]
+        - weight: 1
+          name: topreader_man
+          modules:
+            - report: {ranges: default, uuid: requests_api_top_to_man}
+            - balancer2:
+                attempts: 2
+                active: {
+                    steady: false,
+                    request: 'GET /health HTTP/1.1\r\nHost: pdb.yandex.ru\r\n\r\n',
+                    delay: 500ms
+                }
+                generated_proxy_backends:
+                  proxy_options:
+                    backend_timeout: 200ms
+                    connect_timeout: 100ms
+                    keepalive_count: 1
+                  include_backends:
+                    type: BY_ID
+                    ids: [pdb_top_reader_prod_man]
+        - weight: 1
+          name: topreader_vla
+          modules:
+            - report: {ranges: default, uuid: requests_api_top_to_vla}
+            - balancer2:
+                attempts: 2
+                active: {
+                    steady: false,
+                    request: 'GET /health HTTP/1.1\r\nHost: pdb.yandex.ru\r\n\r\n',
+                    delay: 500ms
+                }
+                generated_proxy_backends:
+                  proxy_options:
+                    backend_timeout: 200ms
+                    connect_timeout: 100ms
+                    keepalive_count: 1
+                  include_backends:
+                    type: BY_ID
+                    ids: [pdb_top_reader_prod_vla]
+        - weight: -1
+          name: topreader_devnull
+          modules:
+            - report:
+                uuid: requests_api_top_to_devnull
+                ranges: 1ms
+            - errordocument:
+                status: 204
+        on_error:
+          modules:
+          - errordocument: {content: Gateway Timeout, status: 504}

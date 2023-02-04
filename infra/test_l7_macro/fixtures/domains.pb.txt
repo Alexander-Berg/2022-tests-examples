@@ -1,0 +1,257 @@
+instance_macro {
+  maxconn: 9999
+  f_workers {
+    type: GET_WORKERS
+    get_workers_params {
+    }
+  }
+  sections {
+    key: "admin"
+    value {
+      ips {
+        value: "127.0.0.1"
+      }
+      ips {
+        value: "::1"
+      }
+      ports {
+        f_value {
+          type: GET_PORT_VAR
+          get_port_var_params {
+            var: "port"
+          }
+        }
+      }
+      nested {
+        http {
+          nested {
+            admin {
+            }
+          }
+        }
+      }
+    }
+  }
+  sections {
+    key: "http_section"
+    value {
+      ips {
+        value: "*"
+      }
+      ports {
+        value: 4444
+      }
+      nested {
+        extended_http_macro {
+          maxlen: 65536
+          maxreq: 65536
+          nested {
+            modules {
+              regexp {
+                sections {
+                  key: "awacs-balancer-health-check"
+                  value {
+                    matcher {
+                      match_fsm {
+                        uri: "/awacs-balancer-health-check"
+                      }
+                    }
+                    nested {
+                      errordocument {
+                        status: 200
+                      }
+                    }
+                  }
+                }
+                sections {
+                  key: "slbping"
+                  value {
+                    matcher {
+                      match_fsm {
+                        url: "/ping"
+                      }
+                    }
+                    nested {
+                      slb_ping_macro {
+                        errordoc: true
+                      }
+                    }
+                  }
+                }
+                sections {
+                  key: "default"
+                  value {
+                    matcher {
+                    }
+                    nested {
+                      regexp_host {
+                        sections {
+                          key: "domain1"
+                          value {
+                            pattern: "(http_and_https_1)|(http_and_https_2)"
+                            nested {
+                              regexp {
+                                include_upstreams {
+                                  type: ALL
+                                }
+                              }
+                            }
+                          }
+                        }
+                        sections {
+                          key: "domain2"
+                          value {
+                            pattern: "(http_only_1)|(http_only_2)"
+                            nested {
+                              regexp {
+                                include_upstreams {
+                                  type: BY_ID
+                                  filter {
+                                    id_prefix: "prefix"
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  sections {
+    key: "https_section"
+    value {
+      ips {
+        value: "*"
+      }
+      ports {
+        value: 5555
+      }
+      nested {
+        extended_http_macro {
+          enable_ssl: true
+          ssl_sni_contexts {
+            key: "cert1"
+            value {
+              servername_regexp: "(http_and_https_1)|(http_and_https_2)"
+              c_cert {
+                id: "cert1"
+              }
+            }
+          }
+          ssl_sni_contexts {
+            key: "cert2"
+            value {
+              servername_regexp: "(https_only_1)"
+              c_cert {
+                id: "cert2"
+              }
+              c_secondary_cert {
+                id: "cert3"
+              }
+            }
+          }
+          ssl_sni_contexts {
+            key: "default"
+            value {
+              servername_regexp: "default"
+              c_cert {
+                id: "cert2"
+              }
+              c_secondary_cert {
+                id: "cert3"
+              }
+            }
+          }
+          maxlen: 65536
+          maxreq: 65536
+          nested {
+            modules {
+              regexp {
+                sections {
+                  key: "awacs-balancer-health-check"
+                  value {
+                    matcher {
+                      match_fsm {
+                        uri: "/awacs-balancer-health-check"
+                      }
+                    }
+                    nested {
+                      errordocument {
+                        status: 200
+                      }
+                    }
+                  }
+                }
+                sections {
+                  key: "slbping"
+                  value {
+                    matcher {
+                      match_fsm {
+                        url: "/ping"
+                      }
+                    }
+                    nested {
+                      slb_ping_macro {
+                        errordoc: true
+                      }
+                    }
+                  }
+                }
+                sections {
+                  key: "default"
+                  value {
+                    matcher {
+                    }
+                    nested {
+                      regexp_host {
+                        sections {
+                          key: "domain1"
+                          value {
+                            pattern: "(http_and_https_1)|(http_and_https_2)"
+                            nested {
+                              regexp {
+                                include_upstreams {
+                                  type: ALL
+                                }
+                              }
+                            }
+                          }
+                        }
+                        sections {
+                          key: "domain3"
+                          value {
+                            pattern: "(https_only_1)"
+                            nested {
+                              regexp {
+                                include_upstreams {
+                                  type: ALL
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  tcp_listen_queue: 128
+  unistat {
+  }
+  sd {
+  }
+}

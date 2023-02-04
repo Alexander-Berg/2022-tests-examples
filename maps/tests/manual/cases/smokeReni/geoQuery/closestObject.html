@@ -1,0 +1,164 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Поиск ближайшего объекта
+
+Description:
+Поиск по объектам ближайшим к клику на карте.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+smoke
+
+Estimated time: 
+180000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан Москвы.
+  На спане открыт балун "Кафе "Кирпич" - крепкий кофе для крепких парней".
+
+Step:
+  Action:
+  Закрыть открытый балун кликом в крестик.  
+  
+  Expectation:
+  Балун закрывается, на спане карты метка коллекции.
+
+Step:
+  Action:
+  Выполнить небольшой отзум карты, после чего зажав ЛКМ перетащить карту так, чтобы в центре спана были видны все три метки коллекций.
+  
+  Expectation:
+  Отзум и перемещение карты корректное.
+  На спане карты три метки коллекций в виде синих запятых.
+
+Step:
+  Action:
+  Выполнить клик ЛКМ слева от крайней левой метки коллекции.
+  
+  Expectation:
+  После клика открывается балун крайней левой метки "Кофейня "Дарт Вейдер" - у нас есть печеньки!".
+
+Step:
+  Action:
+  Закрыть открытый балун кликом в крестик.  
+  
+  Expectation:
+  Балун закрывается, на спане карты три метки коллекции.
+
+Step:
+  Action:
+  Выполнить клик ЛКМ под центральной меткой.
+  
+  Expectation:
+  После клика открывается балун крайней левой метки "Кафе "Горлум" - пирожные прелесть.".
+
+Step:
+  Action:
+  Закрыть открытый балун кликом в крестик.  
+  
+  Expectation:
+  Балун закрывается, на спане карты три метки коллекции.
+
+Step:
+  Action:
+  Выполнить клик ЛКМ справа от крайней правой метки.  
+
+  Expectation:
+  Спан карты может сместится для открытия балуна.
+  После клика открывается балун крайней правой метки "Кафе "Кирпич" - крепкий кофе для крепких парней".
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            //ymaps = ym;
+            var myMap = new ymaps.Map("map", {
+                        center: [55.73, 37.75],
+                        zoom: 12
+                    }, {
+                        backgroundVisible: false
+                    }),
+                    cafe, metro;
+            addGrid(myMap);
+            var log = new Log();
+            log.info("Test case: При клике на карту будет открываться балун ближайшей к месту клика метки");
+
+            function findClosestObjects() {
+                // Найдем в выборке кафе, ближайшее к найденной станции метро,
+                // и откроем его балун.
+                //TODO: кажется что здесь ненужное дублирование кода, наверно нужно закомитить в песочнице
+                cafe.getClosestTo(metro.get(0)).balloon.open();
+
+                // Будем открывать балун кафе, который ближе всего к месту клика
+                myMap.events.add('click', function (event) {
+                    cafe.getClosestTo(event.get('coords')).balloon.open();
+                });
+            }
+
+            // Описания кафе можно хранить в формате JSON, а потом генерировать
+            // из описания геообъекты с помощью ymaps.geoQuery.
+            cafe = ymaps.geoQuery({
+                type: 'FeatureCollection',
+                features: [
+                    {
+                        type: 'Feature',
+                        properties: {
+                            balloonContent: 'Кофейня "Дарт Вейдер" - у нас есть печеньки!'
+                        },
+                        geometry: {
+                            type: 'Point',
+                            coordinates: [55.724166, 37.545849]
+                        }
+                    },
+                    {
+                        type: 'Feature',
+                        properties: {
+                            balloonContent: 'Кафе "Горлум" - пирожные прелесть.'
+                        },
+                        geometry: {
+                            type: 'Point',
+                            coordinates: [55.717495, 37.567886]
+                        }
+                    },
+                    {
+                        type: 'Feature',
+                        properties: {
+                            balloonContent: 'Кафе "Кирпич" - крепкий кофе для крепких парней.'
+                        },
+                        geometry: {
+                            type: 'Point',
+                            coordinates: [55.7210180, 37.631057]
+                        }
+                    }
+                ]
+                // Сразу добавим точки на карту.
+            }).addToMap(myMap);
+
+            // С помощью обратного геокодирования найдем метро "Кропоткинская".
+            metro = ymaps.geoQuery(ymaps.geocode([55.744828, 37.603423], {kind: 'metro'}))
+                // Нужно дождаться ответа от сервера и только потом обрабатывать полученные результаты.
+                    .then(findClosestObjects);
+
+        }
+    </script>
+</head>
+<body>
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

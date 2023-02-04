@@ -1,0 +1,113 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Кластер: появление и перемещение хинта кластерной метки 
+
+Description:
+Проверка появления и перемещения хинта кластерной метки.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+clusterer
+
+Estimated time:
+120000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан Ленинградской области, имеются кластерные метки в виде зеленых стоп-знаков, метки коллекций.
+
+Step:
+  Action:
+  Навести курсор на кластерную метку и перемещать курсор внутри иконки кластерной метки.
+
+  Expectation:
+  При наведении на кластерную метку курсор меняется на палец, появляется хинт - "хинт кластера".
+  При перемещении курсора внутри иконки хинт перемещается за курсором.
+
+Step:
+  Action:
+  Навести курсор на метку коллекции и перемещать курсор внутри иконки метки.
+
+  Expectation:
+  При наведении на метку коллекции курсор меняется на палец, появляется хинт с номером метки.
+  При перемещении курсора внутри иконки хинт перемещается за курсором.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            var map = myMap = new ymaps.Map('map', {
+                center: [59.96343157514998, 30.317977733422868],
+                zoom: 7,
+                behaviors: ['default'],
+                controls: ['fullscreenControl']
+            });
+            addGrid(myMap);
+            var log = new Log();
+            __log__("Проверь, что хинт кластера появляется и следует за курсором");
+            var clusterer = new ymaps.Clusterer({
+                clusterIcons: [
+                    {
+                        href: 'https://png.findicons.com/files/icons/766/base_software/128/minus_circle_green.png',
+                        size: [39, 38],
+                        offset: [-20, -38]
+                    }
+                ],
+                clusterHintContentLayout: ymaps.templateLayoutFactory.createClass("хит кластера"),
+                openBalloonOnClick: false,
+                clusterDisableClickZoom: true
+            });
+
+            var placemarksNumber = 200;
+            var bounds = map.getBounds();
+            var newPlacemarks = createGeoObjects(placemarksNumber, bounds);
+            var i = 0;
+
+            map.geoObjects.add(clusterer);
+            clusterer.add(newPlacemarks);
+
+            function createGeoObjects(number, bounds) {
+                var placemarks = [];
+                // Создаем нужное количество меток
+                for (var i = 0; i < number; i++) {
+                    // Генерируем координаты метки случайным образом.
+                    coordinates = getRandomCoordinates(bounds);
+                    // Создаем метку со случайными координатами.
+                    if (Math.random() > 0.5) {
+                        myPlacemark = new ymaps.Placemark(coordinates, {
+                            balloonContent: i, hintContent: i, clusterCaption: i}, {});
+                    } else {
+                        myPlacemark = new ymaps.Placemark(coordinates, {
+                            balloonContent: i, hintContent: i, iconContent: 'point', clusterCaption: 'point ' + i}, {preset: 'islands#greenStretchyIcon'});
+                    }
+                    placemarks.push(myPlacemark);
+                }
+                return placemarks;
+            }
+
+            function getRandomCoordinates(bounds) {
+                var size = [bounds[1][0] - bounds[0][0], bounds[1][1] - bounds[0][1]];
+                return [Math.random() * size[0] + bounds[0][0], Math.random() * size[1] + bounds[0][1]];
+            }
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

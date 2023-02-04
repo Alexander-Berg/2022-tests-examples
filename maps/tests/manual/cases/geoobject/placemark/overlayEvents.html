@@ -1,0 +1,148 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Геообъект: отлов событий оверлеем метки
+
+Description:
+Проверка отлова событий оверлеем метки.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+geoobject
+
+Estimated time:
+180000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+  
+  Expectation:
+  Карта отобразилась корректно. 
+  На карте спан Московской области, в центре спана оранжевая метка коллекции, снизу справа кнопка "clear".
+  (кнопка "clear" очищает содержимое под контейнером с картой, после выполнения каждого шага выполнять клик в кнопку)   
+
+Step:
+  Action:
+  Навести курсор на метку коллекции на спане карты. 
+  Увести курсор с метки коллекции.
+  
+  Expectation:
+  При наведении, покидании, кликах и других действиях внутри контейнера с картой(не на метке) под контейнером появляются события с приставкой "map". 
+  При наведении курсора на метку под контейнером с картой появлется событие: "overlay: mouseenter".
+  При покидании курсора метки, появляется событие: "overlay: mouseleave".
+
+Step:
+  Action:
+  Выполнить клик в метку коллекции на спане карты. 
+  
+  Expectation:
+  При наведении, покидании, кликах и других действиях внутри контейнера с картой(не на метке) под контейнером появляются события с приставкой "map". 
+  При клике в метку под контейнером с картой появляется событие: "overlay: mousedown; overlay: mouseup; overlay: click".
+
+Step:
+  Action:
+  Выполнить даблклик в метку коллекции на спане карты. 
+  
+  Expectation:
+  При наведении, покидании, кликах и других действиях внутри контейнера с картой(не на метке) под контейнером появляются события с приставкой "map". 
+  При даблклике в метку под контейнером с картой появляется событие: "overlay: dblclick".
+
+Step:
+  Action:
+  Выполнить клик ПКМ в метку коллекции на спане карты. 
+  
+  Expectation:
+  При наведении, покидании, кликах и других действиях внутри контейнера с картой(не на метке) под контейнером появляются события с приставкой "map". 
+  При клике ПКМ в метку под контейнером с картой появляется событие: "overlay: contextmenu".
+
+Step:
+  Action:
+  Навести курсор на метку и выполнить скрол колесиком мыши. 
+  
+  Expectation:
+  При наведении, покидании, кликах и других действиях внутри контейнера с картой(не на метке) под контейнером появляются события с приставкой "map". 
+  При скроле на метке, под контейнером с картой появляется событие: "overlay: wheel".
+
+Step:
+  Action:
+  При наличии возможности проверить отлов меткой событий выполняя действия при помощи тачпада.  
+  При отсутствии возможности повторить выполнение действий используя мышь.
+  
+  Expectation:
+  При наведении, покидании, кликах и других действиях внутри контейнера с картой(не на метке) под контейнером появляются события с приставкой "map". 
+  При выполнении действий на метке, под контейнером с картой появляются соответствующие выполняемым действиям события.
+
+Step:
+  Action:
+  При наличии возможности мультисенсорного дисплея проверить отлов меткой событий выполнив пинчзум на метке.
+  
+  Expectation:
+  При наведении, покидании, кликах и других действиях внутри контейнера с картой(не на метке) под контейнером появляются события с приставкой "map". 
+  При выполнении пинчзума на метке, под контейнером с картой появляется событие: "overlay: multitouchstart".
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+//TODO: написать тест
+            var map = myMap = new ym.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 6,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+
+            var domevents = ['click', 'contextmenu', 'dblclick', 'mousedown', 'mouseenter', 'mouseleave', 'mouseup', 'multitouchend',
+                'multitouchstart', 'wheel'];
+
+            var callback1 = function (e) {
+                log.info('overlay: ' + e.get('type'));
+            };
+
+            var callback2 = function (e) {
+                log.info('map: ' + e.get('type'));
+            };
+            var center = new ymaps.GeoObject({
+                geometry: { type: "Point", coordinates: map.getCenter() }, properties: {custom: true}
+            }, {id: 'geoObjectPlacemark', preset: 'islands#darkorangeDotIcon'});
+
+            map.geoObjects
+                    .add(center);
+
+
+            var overlay = center.getOverlay().then(function (obj) {
+                obj.events.add(domevents, callback1);
+                console.log('layout: ' + obj.options.get('layout'))
+            });
+
+            var clearButton = new ymaps.control.Button({data: {content: 'clear'}, options: {selectOnClick: false}});
+            clearButton.events.add('click', function () {
+                log.clear();
+            });
+
+            myMap.events.add(domevents, callback2);
+            myMap.controls.add(clearButton, {float: 'none', position: {bottom: 40, right: 10}});
+
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

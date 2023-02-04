@@ -1,0 +1,37 @@
+---
+
+- name: Role for deploy vertis_test_back_nonrt group
+  hosts: 'vertis_test_back_nonrt'
+  become: true
+
+  vars:
+    group: "vertis_test_back_nonrt"
+    locale_lang: en_US.UTF-8
+    dp_environment: testing
+
+  pre_tasks:
+    - name: Install libticket
+      apt:
+        name: "{{ packages }}"
+        state: present
+        update_cache: yes
+      vars:
+        packages:
+        - libticket-parser2-java=2.2.3
+        - libticket-parser2
+      tags: libticket
+
+  roles:
+    - { role: common-role }
+    - { role: push-client }
+    - { role: consul-dns, tags: "consul-dns" }
+    - { role: vertis-datasources-secrets }
+    - { role: deploy-primary-secret }
+    # becouse of cloudera and st/VERTISADMIN-22709
+    - { role: nat64 }
+    - { role: cloudera-repo-install, tags: cloudera }
+
+  post_tasks:
+  - include: tasks/conductor-package-install.yml
+    when: ansible_pull is not defined
+

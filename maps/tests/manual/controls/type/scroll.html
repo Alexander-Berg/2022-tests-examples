@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<!--
+Title:
+Контрол слоев: множество значений контрола
+
+Description:
+Проверка добавления множества значений в контрол.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+smoke, regress
+
+Estimated time:
+120000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась корректно, на спане развернутый контрол слоев.
+  В контроле значения: "Схема", "Спутник", "Гибрид", и множество значений "Мой тип карты (номер)".
+  Справа кнопка "remove control".
+
+Step:
+  Action:
+  Навести курсор на значения в списке, выполнить скролл значений, затем увести курсор со списка значений.
+
+  Expectation:
+  Скрола значений не происходит, при наведении на значение в списке курсор меняется на палец, фон значения желтый.
+  Через несколько секунд список значений сворачивается на спане контрол "Схема".
+
+Step:
+  Action:
+  Выполнить клик в контрол "Схема", затем выполнить клик в кнопку "remove control".
+
+  Expectation:
+  По клику в "Схема" выпадает список значений аналогичный первому шагу.
+  По клику в "remove control" список значений и контрол пропадают.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "remove control".
+
+  Expectation:
+  В контейнере появляется контрол "Схема" с развернутым списком значений.  
+
+Step:
+  Action:
+  Выполнить клик в значение в списке "Мой тип карты 5".
+
+  Expectation:
+  В контроле подпись "Мой тип карты 5", вместо карты отображаются серый фон с подписью об отсуствии данных.  
+
+Step:
+  Action:
+  Выполнить клик в контрол "Мой тип карты 5", в списке значений выбрать "Гибрид".
+
+  Expectation:
+  По клику в контрол выпадает список значений, по клику в "Гибрид", отображение карты меняется, отображается гибридная карты.
+  Подпись контрола "Гибрид".
+-->
+<html>
+<head>
+    <title>API 2.0</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <script src="../../helper.js"></script>
+    <script type="text/javascript">
+        Api('init');
+        function init(ymaps) {
+            var myMap = new ymaps.Map('map', {
+                        center: [59.94, 30.33],
+                        zoom: 12,
+                        controls: ["fullscreenControl"]
+                    }),
+                    
+                    expanded = new ymaps.control.TypeSelector(), button = new ymaps.control.Button('remove control'),
+                    i = 0;
+            
+            button.events
+                    .add("select", function (e) {
+                        myMap.controls.remove(expanded);
+                    })
+                    .add("deselect", function (e) {
+                        myMap.controls.add(expanded);
+                    });
+            myMap.controls
+                    .add(expanded, {top: 5, left: 5})
+                    .add(button, {top: 5, right: 5});
+            for (i = 0; i < 20; i++) {
+                var Layer = function () {
+                    return new ymaps.Layer('');
+                };
+                ymaps.layer.storage.add('my#layer' + i, Layer);
+                var type = new ymaps.MapType('Мой тип карты ' + i, ['my#layer' + i]);
+                ymaps.mapType.storage.add('my#mapType' + i, type);
+                expanded.addMapType('my#mapType' + i);
+            }
+            expanded.expand();
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;">
+</div>
+<p><a href="https://tech.yandex.ru/maps/archive/doc/jsapi/2.0/ref/reference/control.TypeSelector-docpage/" target="_blank">Docs</a></p>
+</body>
+</html>

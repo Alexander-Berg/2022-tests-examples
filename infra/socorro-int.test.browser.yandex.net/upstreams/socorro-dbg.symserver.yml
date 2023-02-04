@@ -1,0 +1,46 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - stefan-nsk
+      groups: []
+labels:
+  order: '10000000'
+---
+regexp_section:
+  matcher:
+    match_or:
+     - match_fsm:
+         uri: '/get-symbol(.*)'
+     - match_fsm:
+         uri: '/symbolserver(.*)'
+     - match_fsm:
+         uri: '/get-non-processed-modules(.*)'
+     - match_fsm:
+         uri: '/module-version-processed(.*)'
+     - match_fsm:
+         uri: '/module-blacklisted(.*)'
+     - match_fsm:
+         uri: '/register-product(.*)'
+  modules:
+     - report:
+         uuid: browser_socorro_test_dbg_symserver
+         ranges: default
+     - balancer2:
+         connection_attempts: 2
+         attempts: 2
+         rr: {}
+         unique_policy: {}
+         attempts_rate_limiter:
+           limit: 0.15
+         generated_proxy_backends:
+           proxy_options:
+             backend_timeout: 300s
+             connect_timeout: 170ms
+           include_backends:
+             type: BY_ID
+             ids: [socorro-dbg.symserver]
+         on_error:
+           errordocument:
+             status: 504
+             content: "Service unavailable"

@@ -1,0 +1,153 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Кластер: открытие балуна метки рядом с кластером из меток с одинаковыми координатами
+
+Description:
+Проверка открытия балуна метки рядом с кластером из меток с одинаковыми координатами в режиме groupByCoordinates.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+clusterer
+
+Estimated time:
+120000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась корректно.
+  На спане карты две кластерные метки со значением кластеризации "2" и одна метка коллекции.
+
+Step:
+  Action:
+  Выполнить клик в кластерную метку справа.
+
+  Expectation:
+  Происходит призум, при этом в центре нового спана кластерная метка со значением кластеризации "2".
+
+Step:
+  Action:
+  Выполнить клик в кластерную метку.
+
+  Expectation:
+  Происходит смещение спана для открытия балуна кластера.
+  Кластерная метка пропадает и открывается широкий балун с двумя колонками(в обоих колонках пусто).
+
+Step:
+  Action:
+  Скролом мыши отзумить карту на 4 значения.
+
+  Expectation:
+  Происходит корректный отзум: карта не мигает, не пропадает.
+  При начале отзума балун кластера пропадает, на спане карты кластерная метка.
+  После отзума на спане карты должны отображаться оба кластера на кластере расположенном слева метка коллекции.
+
+Step:
+  Action:
+  Выполнить клик метку коллекции.
+
+  Expectation:
+  Метка коллекции пропадает, открывается балун метки с содержимым "1", кнопкой закрытия балуна.
+  Метки класетров не пропадают со спана карты.
+
+Step:
+  Action:
+  Выполнить клик в кластерную метку, расположенную под балуном метки коллекции.
+
+  Expectation:
+  Происходит призум, при этом в центре нового спана кластерная метка со значением кластеризации "2".
+  Балун метки коллекции не пропадает, остается открытым на спане карты.
+
+Step:
+  Action:
+  Выполнить клик в кластерную метку.
+
+  Expectation:
+  Балун метки коллекции пропадает, вместо него на спане метки коллекции.
+  Происходит смещение спана для открытия балуна кластера.
+  Кластерная метка пропадает и открывается широкий балун с двумя колонками(в обоих колонках пусто).
+
+Step:
+  Action:
+  Выполнить клик в метку коллекции.
+
+  Expectation:
+  Балун кластера пропадает, вместо него на спане кластерная метка.
+  Происходит смещение спана для открытия балуна метки коллекции.
+  Метка коллекции пропадает и открывается балун с содержимым "1", кнопкой закрытия балуна.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+
+            ymaps = ym;
+
+            var pData = [
+                {"item_id": 1, "x": "43.581563332849466", "y": "39.743484724333014"},
+                {"item_id": 2, "x": "43.581263330849467", "y": "39.743444724303014"},
+                {"item_id": 3, "x": "43.581563336849468", "y": "39.743484724363014"},
+                {"item_id": 4, "x": "43.581993331849469", "y": "39.744884724313014"},
+                {"item_id": 5, "x": "43.581993331849469", "y": "39.744884724313014"}
+            ];
+            var myMap;
+            var myGeoObjects = [];
+            var myCluster;
+            myMap = new ymaps.Map('map', {
+                center: [43.581563331849466, 39.743484724313014],
+                zoom: 16,
+                behaviors: ["default", "scrollZoom"],
+                controls: ['fullscreenControl']
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+
+            myCluster = new ymaps.Clusterer({
+                clusterBalloonSidebarWidth: 10,
+                clusterBalloonWidth: 290,
+                clusterBalloonHeight: 145
+            });
+
+            for (n in pData) {
+                var placeMark = new ymaps.GeoObject({
+                    geometry: {type: "Point", coordinates: [pData[n].x, pData[n].y]},
+                    properties: {
+                        clusterCaption: pData[n].name
+                    }
+                });
+                placeMark.events.add('click', function (e) {
+                    id = e.get('target').properties.get('nbId');
+                    e.get('target').properties.set('balloonContentBody', getPlaceMarkHtml(id));
+                });
+
+
+                myGeoObjects.push(placeMark);
+            }
+            myCluster.add(myGeoObjects);
+            myCluster.options.set({groupByCoordinates: true});
+            myMap.geoObjects.add(myCluster);
+
+            function getPlaceMarkHtml() {
+                return '<b>1</b>';
+            }
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

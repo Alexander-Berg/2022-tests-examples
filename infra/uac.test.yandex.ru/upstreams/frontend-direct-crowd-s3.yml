@@ -1,0 +1,40 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - next0
+      - kigan
+      - alshashkin
+      groups: []
+labels:
+  order: '02000000'
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      uri: '/wizard/direct-crowd-s3/.*'
+  modules:
+    - rewrite:
+        actions:
+          - regexp: '.*'
+            header_name: Host
+            rewrite: 'direct-frontend-test.s3.mds.yandex.net'
+          - regexp: '/wizard/direct-crowd-s3/(.*)'
+            rewrite: '/uac/%1'
+    - balancer2:
+        rr: {}
+        attempts: 2
+        attempts_rate_limiter:
+          limit: 0.1
+          coeff: 0.99
+        generated_proxy_backends:
+          proxy_options:
+            connect_timeout: 100ms
+            backend_timeout: 10s
+          instances:
+            - host: direct-frontend-test.s3.mds.yandex.net
+              port: 80
+              weight: 1
+        on_error:
+          modules:
+          - errordocument: {content: Gateway Timeout, status: 504}

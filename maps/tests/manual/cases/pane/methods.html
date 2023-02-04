@@ -1,0 +1,140 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Пейн: методы менеджера пейна карты
+
+Description:
+Проверка методов менеджера пейна карты.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+pane
+
+Estimated time:
+90000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть страницу и элементы на ней. 
+
+  Expectation:
+  На странице контейнер с серым фоном вместо карты, под контейнером с картой появляются блок значений методов пейна.
+  Блок "append method:" со значениями  "append newpane1: success; append newpane2: success;". 
+  Блок "existing name error expected:" со значением "Error: map.pane.Manager.append: Для данной карты пейн с ключом "newpane1" уже существует".
+  Блок "insertBefore method newpane3: insertBefore newpane2: success".
+  Блок "existing name error expected: Error: map.pane.Manager.insertBefore: Для данной карты пейн с ключом "newpane3" уже существует".
+  Блок "setting newpane2 to geoobject: geoobject pane: newpane2".
+  Блок "getLower/getUpper methods" со значениями "lower (areas vs hint): newpane2; upper (areas vs hint): newpane3".
+  Блок "destroy methods" со значением "destroy: success".
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            //ymaps.load("package.map","map.pane.Manager","pane.StaticPane");
+            ymaps = ym;
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 10,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            var log = new Log();
+
+            // append
+
+            var pane1 = myMap.panes.get('ground');
+            var pane2 = myMap.panes.get('areas');
+
+            log.info('<b>append method:</b>');
+            try {
+                myMap.panes.append('newpane1', pane1);
+                log.info('append newpane1: success')
+            } catch (e) {
+                log.info(e)
+            }
+            try {
+                myMap.panes.append('newpane2', pane2);
+                log.info('append newpane2: success')
+            } catch (e) {
+                log.info(e)
+            }
+
+            log.info('<b>existing name error expected</b>');
+            var pane = myMap.panes.get('controls');
+            try {
+                myMap.panes.append('newpane1', pane);
+                log.info('append newpane1: success')
+            } catch (e) {
+                log.info(e)
+            }
+
+            // insertBefore
+            log.info('<b>insertBefore method</b>');
+            var pane3 = myMap.panes.get('hint');
+            try {
+                myMap.panes.insertBefore('newpane3', pane3, 'newpane2');
+                log.info('newpane3 insertBefore newpane2: success')
+            } catch (e) {
+                log.info(e)
+            }
+
+            var pane4 = myMap.panes.get('balloon');
+            log.info('<b>existing name error expected</b>');
+            try {
+                myMap.panes.insertBefore('newpane3', pane4, 'newpane2');
+                log.info('newpane3 insertBefore newpane2: success')
+            } catch (e) {
+                log.info(e)
+            }
+
+            //remove
+            myMap.panes.remove(pane1);
+
+            log.info('<b>setting newpane2 to geoobject</b>');
+            var geoobject = new ymaps.GeoObject({
+                geometry: {
+                    type: 'Point',
+                    coordinates: myMap.getCenter()
+                },
+                properties: {
+                    hintContent: 'hint'
+                }}, {
+                pane: 'newpane2'
+            });
+            myMap.geoObjects.add(geoobject);
+            log.info('geoobject pane: ' + geoobject.options.get('pane'));
+
+            // getLower, getUpper
+            log.info('<b>getLower/getUpper methods</b>');
+            log.info('lower (areas vs hint): ' + myMap.panes.getLower('newpane2', 'newpane3'));
+            log.info('upper (areas vs hint): ' + myMap.panes.getUpper('newpane2', 'newpane3'));
+
+            log.info('<b>destroy methods</b>');
+            try {
+                myMap.panes.destroy();
+                log.info('destroy: success')
+            } catch (e) {
+                log.info(e)
+            }
+
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

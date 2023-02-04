@@ -1,0 +1,63 @@
+package ru.auto.tests.desktopreviews.adbanners.moto;
+
+import com.carlosbecker.guice.GuiceModules;
+import com.carlosbecker.guice.GuiceTestRunner;
+import io.qameta.allure.Feature;
+import io.qameta.allure.Owner;
+import io.qameta.allure.Story;
+import io.qameta.allure.junit4.DisplayName;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.experimental.categories.Category;
+import org.junit.rules.RuleChain;
+import org.junit.runner.RunWith;
+import ru.auto.tests.desktop.categories.Regression;
+import ru.auto.tests.desktop.module.DesktopTestsModule;
+import ru.auto.tests.desktop.step.BasePageSteps;
+import ru.auto.tests.desktop.step.UrlSteps;
+
+import javax.inject.Inject;
+
+import static ru.auto.tests.desktop.consts.AutoruFeatures.BANNERS;
+import static ru.auto.tests.desktop.consts.AutoruFeatures.LISTING;
+import static ru.auto.tests.desktop.consts.Owners.NATAGOLOVKINA;
+import static ru.auto.tests.desktop.consts.Pages.ALL;
+import static ru.auto.tests.desktop.consts.Pages.MOTO;
+import static ru.auto.tests.desktop.consts.Pages.REVIEWS;
+import static ru.auto.tests.desktop.page.AdsPage.C3;
+import static ru.auto.tests.desktop.page.AdsPage.REVIEWS_NARROW_WINDOW;
+
+@DisplayName("Баннеры в листинге отзывов, «MOTO»")
+@Feature(BANNERS)
+@Story(LISTING)
+@GuiceModules(DesktopTestsModule.class)
+@RunWith(GuiceTestRunner.class)
+public class ListingClickNarrowTest {
+
+    @Rule
+    @Inject
+    public RuleChain defaultRules;
+
+    @Inject
+    public UrlSteps urlSteps;
+
+    @Inject
+    public BasePageSteps basePageSteps;
+
+    @Before
+    public void before() {
+        urlSteps.setWindowSize(REVIEWS_NARROW_WINDOW, 2000);
+        urlSteps.testing().path(REVIEWS).path(MOTO).path(ALL).open();
+    }
+
+    @Test
+    @Owner(NATAGOLOVKINA)
+    @Category({Regression.class})
+    @DisplayName("Узкий экран. Клик по баннеру")
+    public void shouldOpenBannerMoto() {
+        basePageSteps.onAdsPage().clickAtBanner(C3);
+
+        urlSteps.shouldSeeCertainNumberOfTabs(2);
+    }
+}

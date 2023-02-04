@@ -1,0 +1,177 @@
+<!DOCTYPE HTML>
+<!--(skip)(description)
+
+-->
+<!--(version)
+
+-->
+<!--(commands)
+
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            //TODO: написать тест
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 10,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            addGrid(map);
+            var log = new Log();
+
+            var events = ['beforeviapointremove', 'beforewaypointadd', 'beforewaypointremove', 'viapointremove', 'optionschange',
+                'waypointadd', 'waypointremove', 'viapointadd','midpointadd', 'start', 'stop'];
+
+            var callback = function (e) {
+                log.info('event: ' + e.get('type'));
+                if (e.get('type') == 'waypointadd' ||
+                        e.get('type') == 'beforewaypointadd' ||
+                        e.get('type') == 'midpointadd') {
+                    log.info(e.get('coords'))
+                } else if (e.get('type') == 'beforewaypointadd') {
+                    e.callMethod('setCoords', [0, 0])
+                }
+            };
+
+            var placemark1 = new ymaps.Placemark([55.71574031323344, 37.29753265380539]);
+            var placemark2 = new ymaps.Placemark([55.912150224943986, 37.29753265380539]);
+            var placemark3 = new ymaps.Placemark([56.16, 37.29753265380539]);
+            var placemark4 = new ymaps.Placemark([56.36, 37.29753265380539]);
+
+            var multiRoute = new ymaps.multiRouter.MultiRoute({
+                referencePoints: [placemark1.geometry, placemark2.geometry, placemark3.geometry, placemark4.geometry],
+                params: {
+                    viaIndexes: [1]
+                }
+            }, {
+                boundsAutoApply: true,
+                preset: "islands#multiRouterSmall"
+            });
+
+            map.geoObjects.add(multiRoute);
+
+            multiRoute.editor.events.add(events, callback);
+            multiRoute.editor.state.events.add('change', function () {
+                log.info('------------- editor.state changed: ------------');
+                for (var key in multiRoute.editor.state.getAll()) {
+                    log.info(key + ' -> ' + multiRoute.editor.state.get(key));
+                }
+                log.info('')
+            });
+
+            __log__('multiRoute editor started (all true)');
+            multiRoute.editor.start({
+                addWayPoints: true,
+                dragWayPoints: true,
+                dragViaPoints: true,
+                removeWayPoints: true,
+                removeViaPoints: true,
+                addMidPoints: true
+            });
+
+            setTimeout(function(){
+                __log__('multiRoute editor stopped');
+                multiRoute.editor.stop();
+                __log__('multiRoute editor started (all false)');
+                multiRoute.editor.start({
+                    addWayPoints: false,
+                    dragWayPoints: false,
+                    dragViaPoints: false,
+                    removeWayPoints: false,
+                    removeViaPoints: false,
+                    addMidPoints: false
+                })
+            }, 3000);
+
+            var clearButton = new ymaps.control.Button('clear');
+            var addWayButton = new ymaps.control.Button('addWay');
+            var dragWayButton = new ymaps.control.Button('dragWay');
+            var dragViaButton = new ymaps.control.Button('dragVia');
+            var removeWayButton = new ymaps.control.Button('remWay');
+            var removeViaButton = new ymaps.control.Button('remVia');
+            var addMidButton = new ymaps.control.Button('addMid');
+            var drawOverButton = new ymaps.control.Button('drawOver');
+            var defaultButton = new ymaps.control.Button('default');
+
+            addWayButton.events
+                    .add('select', function() {multiRoute.editor.state.set({addWayPoints: true})})
+                    .add('deselect', function() {multiRoute.editor.state.set({addWayPoints: false})});
+
+            dragWayButton.events
+                    .add('select', function() {multiRoute.editor.state.set({dragWayPoints: true})})
+                    .add('deselect', function() {multiRoute.editor.state.set({dragWayPoints: false})});
+
+            dragViaButton.events
+                    .add('select', function() {multiRoute.editor.state.set({dragViaPoints: true})})
+                    .add('deselect', function() {multiRoute.editor.state.set({dragViaPoints: false})});
+
+            removeWayButton.events
+                    .add('select', function() {multiRoute.editor.state.set({removeWayPoints: true})})
+                    .add('deselect', function() {multiRoute.editor.state.set({removeWayPoints: false})});
+
+            removeViaButton.events
+                    .add('select', function() {multiRoute.editor.state.set({removeViaPoints: true})})
+                    .add('deselect', function() {multiRoute.editor.state.set({removeViaPoints: false})});
+
+            addMidButton.events
+                    .add('select', function() {multiRoute.editor.state.set({addMidPoints: true})})
+                    .add('deselect', function() {multiRoute.editor.state.set({addMidPoints: false})});
+
+            clearButton.events.add('click', function() {
+                log.clear();
+            });
+
+            defaultButton.events
+                    .add('select', function() {multiRoute.editor.start()})
+                    .add('deselect', function() {multiRoute.editor.stop()});
+
+            drawOverButton.events
+                    .add('select', function () {
+                        multiRoute.options.set('editorDrawOver', true)
+                    })
+                    .add('select', function () {
+                        multiRoute.options.set('editorDrawOver', false)
+                    });
+
+            map.controls
+                    .add(addWayButton)
+                    .add(dragWayButton)
+                    .add(dragViaButton)
+                    .add(removeWayButton)
+                    .add(removeViaButton)
+                    .add(addMidButton)
+                    .add(clearButton, {float: 'none', position: {right: 10, bottom: 35}})
+                    .add(drawOverButton, {float: 'none', position: {right: 10, bottom: 65}})
+                    .add(defaultButton, {float: 'none', position: {right: 10, bottom: 95}});
+
+            var modeButton = new ymaps.control.Button('mode');
+            modeButton.events
+                    .add('select', function () {
+                        multiRoute.model.setParams({routingMode: 'masstransit'}, true);
+                    })
+                    .add('deselect', function () {
+                        multiRoute.model.setParams({routingMode: 'auto'}, true);
+                    });
+            map.controls.add(modeButton, {position: {bottom: 35, left: 5}});
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

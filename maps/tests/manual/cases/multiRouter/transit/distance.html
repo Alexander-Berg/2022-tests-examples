@@ -1,0 +1,97 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Мультимаршрут-ОТ: проверка корректности дистанции маршрута
+
+Description:
+Проверка корректности дистанции маршрута.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+multiRouter
+
+Estimated time:
+60000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  При загрузке первоначально загружается карта со спаном Москвы, затем на спане появляется маршрут ОТ "A" - метро Теплый стан, "B" - метро Речной вокзал.
+  На маршруте имеются метки общественного траспорта, пешеходная метка, основная и альтернативные нитки маршрута.
+  Под контейнером с картой отображается количество маршрутов на спане карты(с учетом альтернативных ниток), а также длина маршрутов. 
+
+Step:
+  Action:
+  Выполнить клик в основную маршрутную нитку.
+
+  Expectation:
+  На маршутной нитке открывается балун с иконками транспорта и человека, временем маршрута, расстоянием.
+  Дистанция маршрута должна соотвествовать указанной под контейнером с картой и быть соразмерной маршруту на карте.
+
+Step:
+  Action:
+  Последовательно выполнить клик в каждую альтернативную маршрутную нитку на спане.
+
+  Expectation:
+  Альтернативная нитка становится основной, основная - альтернативной, на маршутной нитке открывается балун с иконками транспорта и человека, временем маршрута, расстоянием.
+  Дистанция маршрута должна соотвествовать указанной под контейнером с картой и быть соразмерной маршруту на карте.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var map = myMap = new ymaps.Map("map", {
+                center: [55.76, 37.64],
+                zoom: 10,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            }, {
+                geoObjectClusterDisableClickZoom: true
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+
+            // Создаем модель мультимаршрута.
+            var multiRouteModel = new ymaps.multiRouter.MultiRouteModel(['Москва, метро теплый стан', 'Москва, метро речной вокзал'], {
+                routingMode: 'masstransit'
+            });
+
+            // Создаем отображение мультимаршрута на основе модели.
+            var multiRouteView = new ymaps.multiRouter.MultiRoute(multiRouteModel, {});
+            map.geoObjects.add(multiRouteView);
+
+            // Подписываемся на события модели мультимаршрута.
+            multiRouteView.model.events
+                    .add("requestsuccess", function (event) {
+                        __log__(multiRouteView.model.getRoutes());
+                        var routes = event.get("target").getRoutes();
+                        __log__("Найдено маршрутов: " + routes.length);
+                        for (var i = 0, l = routes.length; i < l; i++) {
+                            __log__("Длина маршрута " + (i + 1) + ": " + routes[i].properties.get("distance").text);
+                        }
+                    })
+                    .add("requestfail", function (event) {
+                        __log__("Ошибка: " + event.get("error").message);
+                    });
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

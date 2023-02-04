@@ -1,0 +1,113 @@
+
+
+calc:
+    begin: |
+        from math import log
+        from datetime import datetime
+        TODAY = int(datetime(2015,10,15).strftime('%s'))
+
+    exec: |
+        import yabs.matrixnet.factor
+        my_mapper = Mapper('''
+                    r.id = r.HitLogID
+                    r.new_id = int(r.EventID % 10 == 0)
+                    r.Cookies = r.HitCookies
+                    r.weight = r.HitWeight
+                    r.FDeviceType = r.HitDeviceType
+                    if (self.hit_weight == -1.0):
+                        r.weight = 1.0
+                    else:
+                        if (r.weight != 1.0):
+                            r.weight *= self.hit_weight
+
+                    if (self.age_weight != 1.0):
+                        r.weight *= self.age_weight ** ((TODAY - r.ShowTime) / 86400 - 1)
+                    if (self.bill_weight == 1):
+                        r.weight *= max(r.BillCost / 1e6, 0.05)
+                    if (self.bill_weight == 2):
+                        r.weight *= min(max(r.BillCost / 1e6, 0.05), 4)
+                    if (self.bill_weight == 3):
+                        r.weight *= r.BillCost / 1e6
+                    r.weight *= self.weight
+                    if (r.ExperimentBits & ((1 << 40) - (1 << 28))) in self.mobile_expement_bits:
+                        r.weight *= 0.15
+                    ''', add_fields=[('id', int), ('new_id', int), ('weight', float)]
+                )
+        my_mapper.age_weight = {task.data.age_weight}
+        my_mapper.hit_weight = {task.data.hit_weight}
+        my_mapper.bill_weight = {task.data.bill_weight}
+        my_mapper.weight = {task.data.weight}
+        my_mapper.mobile_expement_bits = set([899527213056, 899795648512, 900064083968, 889326665728, 889595101184, 889863536640, 899527213056, 899795648512, 900064083968, 901137825792, 901943132160])
+        bad_fields = [
+            'RelevFeatNavmx',
+            'RelevFeatWminone',
+            'RelevFeatGeov',
+            'RelevFeatIssoft',
+            'RelevFeatQr2r',
+            'RelevFeatCm2',
+            'RelevFeatSyq',
+            'RelevFeatIshum',
+            'RelevFeatIssite',
+        ]
+        fix_fields_mapper = Mapper('''
+            for field in self.bad_fields:
+                setattr(r, field, 0.0)
+        ''', add_fields=[(field, float) for field in bad_fields])
+        fix_fields_mapper.bad_fields = bad_fields
+        
+
+    mappers: |
+            [
+                Grep('r.FraudBits in (0,1) and r.ResourceNo != 44'),
+                Grep("((r.ExperimentBits & ((1 << 40) - (1 << 28))) != 292057776128)"),
+                Grep('r.PlaceID == 542'),
+                Grep('not r.UniqIDAge is None'),
+                Grep('not r.ProductType is None'),
+                fix_fields_mapper,
+                yabs.matrixnet.factor.F16Factors({task.matrixnet.formula_params}),
+                Mapper(
+                    '''
+                    r.FLM61 = 0.0
+                    r.FLM62 = 0.0
+                    r.FLM63 = 0.0
+                    r.FLM64 = 0.0
+                    r.FLM65 = 0.0
+                    r.FLM66 = 0.0
+                    r.FLM67 = 0.0
+                    r.FLM68 = 0.0
+                    r.FLM69 = 0.0
+                    r.FLM70 = 0.0
+                    r.FLM71 = 0.0
+                    r.FLM72 = 0.0
+                    r.FLM73 = 0.0
+                    r.FLM74 = 0.0
+                    r.FLM75 = 0.0
+                    r.FLM76 = 0.0
+                    r.FLM77 = 0.0
+                    r.FLM78 = 0.0
+                    r.FLM79 = 0.0
+                    r.FLM80 = 0.0
+                    r.FLM81 = 0.0
+                    r.FLM82 = 0.0
+                    r.FLM83 = 0.0
+                    r.FLM84 = 0.0
+                    r.FLM85 = 0.0
+                    r.FLM86 = 0.0
+                    r.FLM87 = 0.0
+                    r.FLM88 = 0.0
+                    r.FLM89 = 0.0
+                    r.FLM90 = 0.0
+                    r.FLM91 = 0.0
+                    r.FLM92 = 0.0
+                    r.FLM93 = 0.0
+                    r.FLM94 = 0.0
+                    r.FLM95 = 0.0
+                    r.FLM96 = 0.0
+                    r.FLM97 = 0.0
+                    r.FLM98 = 0.0
+                    r.FLM99 = 0.0
+                    r.FLM100 = 0.0
+                    '''),
+                
+                my_mapper
+            ]

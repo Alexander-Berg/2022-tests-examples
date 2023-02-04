@@ -1,0 +1,104 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Карта: событие балуна
+
+Description:
+Проверка события балуна на карте.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+map
+
+Estimated time:
+120000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан Москвы.
+
+Step:
+  Action:
+  Выполнить клик в спан карты. 
+
+  Expectation:
+  В месте клика открывается балун с координатами. 
+  Под контейнером появляются строки: "balloonopen; open".
+
+Step:
+  Action:
+  Выполнить клик в другое место на спане карты. 
+
+  Expectation:
+  Предыдущий балун закрылся, в месте клика открывается балун с координатами. 
+  Под контейнером появляются строки: "geometrychange".
+
+Step:
+  Action:
+  Выполнить клик в кнопку закрытия балуна. 
+
+  Expectation:
+  Балун закрылся. 
+  Под контейнером появляются строки: "balloonclose; close".
+
+Step:
+  Action:
+  Выполнить клик в спан карты. 
+
+  Expectation:
+  В месте клика открывается балун с координатами. 
+  Под контейнером появляются строки: "geometrychange; balloonopen; open".
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 10,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+
+            map.events.add(['balloonopen', 'balloonclose'], function(e) {
+                log.info(e.get('type'))
+            });
+
+            map.balloon.events.add(['open', 'close'], function(e) {
+                log.info(e.get('type'))
+            });
+
+            map.events.add('click', function(e) {
+                map.balloon.open(e.get('coords'), {content: e.get('coords')});
+                map.balloon.getOverlay().then(function(overlay) {
+                    overlay.events.once('geometrychange', function() {
+                        log.info('geometrychange')
+                    })
+                })
+            })
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

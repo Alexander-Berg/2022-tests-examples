@@ -1,0 +1,136 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - vkoorits
+      groups: []
+labels:
+  order: '010000001'
+---
+regexp_section:
+  matcher:
+    match_and:
+      - match_fsm:
+          uri: '/v23/search(.*)'
+  modules:
+    - report: {uuid: v23-apphost, ranges: default}
+    - exp_getter_macro:
+        _version: 3
+        service_name: vh
+        testing_mode: {}
+    - balancer2:
+        attempts: 2
+        rr: {weights_file: ./controls/traffic_control.weights}
+        backends:
+          - weight: 25
+            name: bygeo_man
+            modules:
+              - report: {uuid: v23-apphost-man, ranges: default}
+              - rewrite:
+                  actions:
+                    - regexp: '/v23/([%./a-zA-z0-9]+)[%?]*(.*)'
+                      rewrite: '/vh/stable-26?handler=public/%1&%2'
+              - balancer2:
+                  attempts: 3
+                  attempts_rate_limiter:
+                    limit: 0.15
+                    coeff: 0.99
+                  rr: {}
+                  timeout_policy:
+                    timeout: 5s
+                    unique_policy: {}
+                  generated_proxy_backends:
+                    proxy_options:
+                      backend_timeout: 2500ms
+                      connect_timeout: 50ms
+                      status_code_blacklist: ["408"]
+                      keepalive_count: 1
+                    include_backends:
+                      type: BY_ID
+                      ids:
+                        - production_vh_http_adapter_man_new
+          - weight: 25
+            name: bygeo_vla
+            modules:
+              - report: {uuid: v23-apphost-vla, ranges: default}
+              - rewrite:
+                  actions:
+                    - regexp: '/v23/([%./a-zA-z0-9]+)[%?]*(.*)'
+                      rewrite: '/vh/stable-26?handler=public/%1&%2'
+              - balancer2:
+                  attempts: 3
+                  attempts_rate_limiter:
+                    limit: 0.15
+                    coeff: 0.99
+                  rr: {}
+                  timeout_policy:
+                    timeout: 5s
+                    unique_policy: {}
+                  generated_proxy_backends:
+                    proxy_options:
+                      backend_timeout: 2500ms
+                      connect_timeout: 50ms
+                      status_code_blacklist: ["408"]
+                      keepalive_count: 1
+                    include_backends:
+                      type: BY_ID
+                      ids:
+                        - production_vh_http_adapter_vla_new
+          - weight: 25
+            name: bygeo_sas
+            modules:
+              - report: {uuid: v23-apphost-sas, ranges: default}
+              - rewrite:
+                  actions:
+                    - regexp: '/v23/([%./a-zA-z0-9]+)[%?]*(.*)'
+                      rewrite: '/vh/stable-26?handler=public/%1&%2'
+              - balancer2:
+                  attempts: 3
+                  attempts_rate_limiter:
+                    limit: 0.15
+                    coeff: 0.99
+                  rr: {}
+                  timeout_policy:
+                    timeout: 5s
+                    unique_policy: {}
+                  generated_proxy_backends:
+                    proxy_options:
+                      backend_timeout: 2500ms
+                      connect_timeout: 50ms
+                      status_code_blacklist: ["408"]
+                      keepalive_count: 1
+                    include_backends:
+                      type: BY_ID
+                      ids:
+                        - production_vh_http_adapter_sas_new
+                        
+          - weight: 25
+            name: apphost-test
+            modules:
+              - report: {uuid: v23-apphost-test, ranges: default}
+              - rewrite:
+                  actions:
+                    - regexp: '/v23/search[%?]*(.*)'
+                      rewrite: '/vh/search?synchronous_scheme=1&handler=public/search&%1'
+              - balancer2:
+                  attempts: 3
+                  attempts_rate_limiter:
+                    limit: 0.15
+                    coeff: 0.99
+                  rr: {}
+                  timeout_policy:
+                    timeout: 5s
+                    unique_policy: {}
+                  generated_proxy_backends:
+                    proxy_options:
+                      backend_timeout: 2500ms
+                      connect_timeout: 50ms
+                      status_code_blacklist: ["408"]
+                      keepalive_count: 1
+                    include_backends:
+                      type: BY_ID
+                      ids:
+                        - production_vh_http_adapter_sas_new
+                        - production_vh_http_adapter_vla_new
+                        - production_vh_http_adapter_man_new
+          

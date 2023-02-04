@@ -1,0 +1,56 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - sergeypeshkov
+      groups: []
+labels:
+  order: '046'
+---
+#{ "order": "046" }
+regexp_section:
+  matcher:
+    match_and:
+      - match_fsm:
+          uri: '/payment-api/.+'
+  modules:
+    - rewrite:
+        actions:
+          - regexp: '/payment-api/(.*)'
+            rewrite: '/%1'
+    - report:
+        uuid: 'to-payment-api'
+        ranges: 'default'
+    - balancer2:
+        rr: { }
+        attempts: 1
+        fast_attempts: 3
+        fast_503: true
+        backends:
+          - weight: 100
+            name: paymentapi_sas
+            modules:
+              - report:
+                  uuid: 'to-payment-api'
+                  ranges: 'default'
+              - balancer2:
+                  rr: { }
+                  attempts: 1
+                  fast_attempts: 3
+                  fast_503: true
+                  retry_policy:
+                    unique_policy: { }
+                  return_last_5xx: true
+                  status_code_blacklist: ["503"]
+                  generated_proxy_backends:
+                    proxy_options:
+                      resolve_timeout: '10ms'
+                      connect_timeout: '40ms'
+                      backend_timeout: '10s'
+                      keepalive_count: 0
+                      need_resolve: false
+                      fail_on_5xx: false
+                      buffering: false
+                    include_backends:
+                      type: BY_ID
+                      ids: [ payment-api-sas ]

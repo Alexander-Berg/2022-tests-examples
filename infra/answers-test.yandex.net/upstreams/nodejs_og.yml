@@ -1,0 +1,45 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - vkorbut
+      groups: []
+labels:
+  order: 00008350
+---
+regexp_section:
+  matcher: 
+    match_fsm:
+      uri: '(/q)?(/znatoki)?/og/(.*)?'
+  modules:
+  - rewrite:
+      actions:
+        - regexp: '(/q)?(/znatoki)?/og/(.*)?'
+          rewrite: '/%3'
+  - threshold:
+      lo_bytes: 262144
+      hi_bytes: 419430
+      pass_timeout: 10s
+      recv_timeout: 5s
+  - report: {ranges: default, uuid: requests_og_nodejs}
+  - balancer2:
+      attempts: 3
+      attempts_rate_limiter:
+        limit: 0.15
+        coeff: 0.99
+      rr: {}
+      active_policy:
+        unique_policy: {}
+      generated_proxy_backends:
+        proxy_options:
+          backend_timeout: 10s
+          connect_timeout: 100ms
+          keepalive_count: 1
+        include_backends:
+          type: BY_ID
+          ids: [answers_nodejs_og]
+      on_error:
+        modules:
+        - errordocument:
+            status: 504
+            content: 'Service unavailable!'

@@ -1,0 +1,49 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - avshev
+      groups: []
+labels:
+  order: '10000000'
+config_mode: easy2
+---
+l7_upstream_macro:
+  version: 0.0.1
+  id: lpc-proxy
+  matcher:
+    or_:
+      - path_re: '/welcome-update/?'
+      - path_re: '/beta-welcome-install(/.*)?'
+      - path_re: '/beta-welcome-update(/.*)?'
+      - path_re: '/promo/dark(/.*)?'
+      - path_re: '/promo/sync(/.*)?'
+      - path_re: '/welcome-install/old-browser(/.*)?'
+      - path_re: '/welcome-update/old-browser(/.*)?'
+      - path_re: '/promo/components(/.*)?'
+      - path_re: '/security(/.*)?'
+      - path_re: '/litebrowserntp(/.*)?'
+  headers:
+    - rewrite: {target: Host, pattern: { re: 'browser\.brpages-test\.yandex\.(ru|com|com\.tr|ua|by|kz|uz)$' }, replacement: browser.yandex.%1}
+  monitoring:
+    uuid: lpc-proxy
+  rewrite:
+    - {target: PATH, pattern: { re: '/promo/components(/?)' }, replacement: '/promo/components/' }
+    - {target: PATH, pattern: { re: '/welcome-update/old-browser(/?)' }, replacement: '/welcome-install/old-browser/' }
+  flat_scheme:
+    balancer:
+      compat:
+        method: RR
+      attempts: 1
+      max_reattempts_share: 0.15
+      fast_attempts: 2
+      do_not_retry_http_responses: true
+      retry_non_idempotent: false
+      connect_timeout: 100ms
+      backend_timeout: 5s
+    backend_ids:
+      - lpc-internal.yandex.net
+    on_error:
+      static:
+        status: 504
+        content: 'Service unavailable lpc-proxy'

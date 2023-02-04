@@ -1,0 +1,164 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Кнопка
+
+Description:
+Кнопки на карте.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+smoke
+
+Estimated time: 
+180000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан Санкт-Петербурга.
+  В верхнем правом углу кнопка "Кнопка".
+  В верхнем левом углу кнопка "Произошла ошибка".
+  Каждую секунду кнопка "Произошла ошибка" меняется(Ярлык - красная метка с крестом; Текст - "Произошла ошибка"; Кнопка  текстом и ярлыком).
+
+Step:
+  Action:
+  Навести курсор на кнопку "Кнопка".
+  Клик в кнопку "Кнопка".
+
+  Expectation:
+  При наведении курсор меняется на палец, появляется хинт "Нажмите для проверки".
+  Под картой появляется текст с координатами центра карты вида: "button clicked! Maps center is:59.937030891485584 30.309502126953124".
+
+Step:
+  Action:
+  Зажав ЛКМ переместить карту на спан Москвы.
+  Находясь на спане Москвы нажать кнопку "Кнопка".
+
+  Expectation:
+  Под картой появляется текст с координатами центра карты вида: "button clicked! Maps center is:55.72810582847428 37.60628935765331" (координаты не должны совпадать до каждой цифры);
+
+Step:
+  Action:
+  Клик в кнопку "Произошла ошибка".
+
+  Expectation:
+  Кнопка окрашивается в желтый цвет.
+  Под картой появляется текст: "Error button Selected".
+  Кнопка продолжает меняться раз в секунду.
+
+Step:
+  Action:
+  Клик в кнопку "Произошла ошибка".
+
+  Expectation:
+  Кнопка окрашивается в белый цвет.
+  Под картой появляется текст: "Error button Deselected".
+  Кнопка продолжает менять значения.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            var map = new ymaps.Map('map', {
+                        center: [59.93772, 30.313622],
+                        zoom: 10,
+                        controls: []
+                    }, {
+                        backgroundVisible: false
+                    }),
+                    firstButton = new ymaps.control.Button({
+                        data: {
+                            // Текст на кнопке.
+                            content: 'Кнопка',
+                            // Текст всплывающей подсказки.
+                            title: 'Нажмите для проверки'
+                        },
+                        options: {
+                            // Зададим опции для кнопки.
+                            selectOnClick: false
+                        }
+                    });
+
+            map.controls.add(firstButton, {float: 'right'});
+
+            firstButton.events.add('click', function(){
+                log.info('button clicked!  Maps center is:'+ map.getCenter()[0] + '  ' + map.getCenter()[1]);}
+            );
+
+            var secondButton = new ymaps.control.Button({
+                data: {
+                    // Зададим текст и иконку для кнопки.
+                    content: "Произошла ошибка",
+                    // Иконка имеет размер 16х16 пикселей.
+                    image: '../../../img/error.png'
+                },
+                options: {
+                    // Поскольку кнопка будет менять вид в зависимости от размера карты,
+                    // зададим ей три разных значения maxWidth в массиве.
+                    maxWidth: [28, 150, 178]
+                }
+            });
+            map.controls.add(secondButton);
+
+            secondButton.events
+                    .add(
+                    'select',
+                    function () {
+                        log.info('Error button Selected');
+                    }
+            )
+                    .add(
+                    'deselect',
+                    function () {
+                        log.info('Error button Deselected');
+                    }
+            )
+
+            // Будем искусственно переключать размеры кнопки каждую секунду, чтобы показать все варианты
+            // внешнего вида кнопки.
+            // При изменении размера карты эти перестроения будут происходить автоматически.
+            function changeSize() {
+                var oldSize = secondButton.options.get('size'),
+                        newSize;
+                switch (oldSize) {
+                    case 'small':
+                        newSize = 'medium';
+                        break;
+                    case 'medium':
+                        newSize = 'large';
+                        break;
+                    case 'large':
+                        newSize = 'small';
+                        break;
+                    default:
+                        newSize = 'small';
+                }
+                secondButton.options.set('size', newSize);
+            }
+
+            window.setInterval(changeSize, 1000);
+
+            addGrid(map);
+            var log = new Log();
+
+            log.info('Test script:');
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

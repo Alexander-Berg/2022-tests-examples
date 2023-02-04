@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<!--
+Title:
+Панорама: выбор уровня зума панорамы
+
+Description:
+Проверка выбор уровня зума панорамы.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+panorama
+
+Estimated time:
+90000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть страницу и элементы на ней. 
+
+  Expectation:
+  На странице отображается наземная панорама.
+  На панораме имеются контролы масштабирования "+/-", контрол разворачивания панорамы, контрол закрытия панорамного плеера - крестик, на наземной панораме имеются стрелки перехода к следующей панораме.
+  Панорама призумлена на одно или два значения зума, оба контрола "+"/"-".
+-->
+<html>
+<head>
+    <title>ymaps.panorama.* Test Stand</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <style>
+        html, body {
+            width: 100%;
+            height: 100%;
+            padding: 0;
+            margin: 0;
+        }
+
+        .wrapper {
+            position: relative;
+        }
+
+        .full, #panoPlayer {
+            width: 100%;
+            height: 100%;
+        }
+
+        #size {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+        }
+
+        #state {
+            position: absolute;
+            top: 25px;
+            left: 10px;
+        }
+
+        .svga {width: 800px; height: 600px;}
+        .vga  {width: 640px; height: 480px;}
+        .qvga {width: 320px; height: 240px;}
+        .cga  {width: 320px; height: 200px;}
+    </style>
+    <script src="../../helper.js"></script>
+    <script>
+        Api('init', 'panorama.createPlayer', '', '', 'release');
+
+        function init(ymaps) {
+            function onCreate(player) {
+                var wrapper = document.querySelector('.wrapper'),
+                    sizeControl = document.querySelector('#size'),
+                    stateGauge = document.querySelector('#state'),
+                    currentSize = sizeControl.value;
+
+                function toFixed2(x) {
+                    return x.toFixed(2);
+                }
+
+                function setState() {
+                    var dir = player.getDirection().map(toFixed2),
+                        spn = player.getSpan().map(toFixed2);
+                    stateGauge.firstChild.data = 'dir: ' + dir + '; spn: ' + spn;
+                }
+
+                player.events
+                    .add(['directionchange', 'spanchange'], setState);
+
+                sizeControl.addEventListener(
+                    'change',
+                    function () {
+                        var newSize = sizeControl.value;
+                        wrapper.className = wrapper.className.replace(currentSize, '');
+                        wrapper.className += newSize;
+                        currentSize = newSize;
+                    }
+                );
+
+                console.log(player);
+            }
+
+            function onError(err) {
+                console.error(err);
+            }
+            var promise = ymaps.ready(['panorama.createPlayer'])
+                .then(function () {
+                    return ymaps.panorama.createPlayer(
+                        'panoPlayer',
+                        [53.707086, 91.403768],
+                        {
+                            direction: [71, -4.7],
+                            span: [98.5, 46.56],
+                            renderer: location.search.slice(1) || 'gl'
+                        }
+                    );
+                })
+                .done(onCreate, onError);
+        }
+    </script>
+</head>
+<body>
+<div class="wrapper full">
+    <p>Должны загружаться тайлы панорамы 1 или 2 уровня зума</p>
+    <div id="panoPlayer"></div>
+    <select id="size" value="full">
+        <option>full</option>
+        <option>svga</option>
+        <option>vga</option>
+        <option>qvga</option>
+        <option>cga</option>
+    </select>
+    <pre id="state">undefined</pre>
+</div>
+</body>
+</html>

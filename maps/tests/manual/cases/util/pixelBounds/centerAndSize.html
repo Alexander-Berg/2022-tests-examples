@@ -1,0 +1,105 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Util: центр и размер прямоугольника
+
+Description:
+Проверка центра и размера прямоугольника.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components:
+util
+
+Estimated time:
+120000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть страницу и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно со спаном материков Евразии и Северная Америка.
+  Сверху слева кнопка "clear".
+
+Step:
+  Action:
+  Выполнить клик в спан карты в район Охотского моря, затем клик в центр Аляски. 
+
+  Expectation:
+  При клике на спане карты появляется синяя метка коллекции.
+  После второго клика на спане появляется область прямоугольника с вершинами - метками.
+  В центре прямоугольника красная метка коллекции, под контейнером с картой строки "bounds; center; size"  с координатами области, центра и размера.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            //ymaps = ym;
+            var myMap = new ymaps.Map("map", {
+                center: [50, -179],
+                zoom: 3,
+                controls: []
+            }, {
+                geoObjectInteractivityModel: 'default#silent'
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+            log.info("Построй bounds - проверь что метка по центру, проверь адекватное значение size");
+
+            var projection = myMap.options.get('projection'),
+                    resultRect,
+                    clearBtn = new ymaps.control.Button('clear'),
+                    coords = [];
+            myMap.controls.add(clearBtn);
+            clearBtn.events.add('click', clear);
+
+            myMap.events.add('click', function (e) {
+                if (coords.length == 2) {
+                    clear();
+                }
+
+                coords.push(e.get('globalPixels'));
+                myMap.geoObjects.add(new ymaps.Placemark(e.get('coords')));
+
+                if (coords.length == 2) {
+                    var bounds = ymaps.util.pixelBounds.fromPoints(coords, projection);
+                    var rect = new ymaps.Rectangle(ymaps.util.bounds.fromGlobalPixelBounds(bounds, myMap.getZoom(), myMap.options.get('projection')), {}, {
+                        opacity: 0.4
+                    });
+                    myMap.geoObjects.add(rect);
+
+                    var center = ymaps.util.pixelBounds.getCenter(bounds);
+                    var size = ymaps.util.pixelBounds.getSize(bounds);
+                    myMap.geoObjects.add(new ymaps.Placemark(myMap.options.get('projection').fromGlobalPixels(center, myMap.getZoom()), {}, {
+                        preset: 'islands#redIcon'
+                    }));
+                    __log__('bounds: ' + JSON.stringify(bounds));
+                    __log__('center: ' + JSON.stringify(center));
+                    __log__('size: ' + JSON.stringify(size));
+                    __log__('------------');
+                }
+            });
+
+            function clear() {
+                myMap.geoObjects.removeAll();
+                coords = [];
+                testBounds = [];
+            }
+        }
+    </script>
+</head>
+<body>
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

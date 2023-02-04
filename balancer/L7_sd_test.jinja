@@ -1,0 +1,63 @@
+
+{
+  "type": "panel",
+  "editors": [],
+  "charts": [
+    <% set main_layout = create_main_layout("vertical", default_height=1, default_width=1) %>
+    <% set geo_title = main_layout.sub("horizontal") %>
+    <% for geo in ('sas', 'man', 'vla') %>
+    { "type": "text",
+        "text": "<<geo>>",
+        <<geo_title.coords(width=5,height=0.2)>>,
+    },
+    <% endfor %>
+    <% for section in sections|default(['sd_test','']) %>
+    { "type": "text",
+        "text": "<<section>>",
+        <<main_layout.coords(width=15,height=0.2)>>,
+
+    },
+    <% set geo_layout = main_layout.sub("horizontal") %>
+    <% for geo in ('sas', 'man', 'vla') %>
+        <% set geo_alerts = list_alerts(name_pattern='L7_sd_test_alerts\.' + section + '\.' + geo + '\..+') %>
+        <% set alerts_layout = geo_layout.sub("flow", columns=5) %>
+        <% for alert in geo_alerts|sort(attribute='name') %>
+            {"type": "alert",
+             "name": "<<alert>>",
+             "title": "<<alert.name.split(".")[3:]|join(' ')|replace('_', ' ')>>",
+             <<alerts_layout.coords(height=0.25)>>,
+            },
+        <% endfor %>
+        <% if geo_alerts|length < 5 %>
+            <% for i in range(5 - geo_alerts|length) %>
+                { "type": "text",
+                   "text": "",
+                   <<alerts_layout.coords(height=0.25)>>,
+                },
+            <% endfor %>
+        <% endif %>
+   <% endfor %>
+   <% endfor %>
+
+
+    <% if not prj %>
+        { "type": "text",
+            "text": "global sd alerts",
+            <<main_layout.coords(width=15,height=0.2)>>,
+
+        },
+        <% set external_alerts = list_alerts(name_pattern='L7_sd_test_alerts.sd_global\.all\..+') %>
+        <% set external_alerts_layout = main_layout.sub("horizontal") %>
+        <% for alert in external_alerts|sort(attribute='name') %>
+            {"type": "alert",
+             "name": "<<alert>>",
+             "title": "<<alert.name.split(".")[1:]|join(' ')|replace('_', ' ')>>",
+             <<external_alerts_layout.coords(height=0.25)>>,
+            },
+       <% endfor %>
+   <% endif %>
+
+
+  ]
+}
+

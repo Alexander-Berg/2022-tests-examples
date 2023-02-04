@@ -1,0 +1,54 @@
+
+drop table xxxx_contract_signed_attr;
+
+create table xxxx_contract_signed_attr
+(
+  ID NUMBER,
+  contract_id number,
+  code VARCHAR2 (64 char),
+  q_plan NUMBER,
+  cl_dt  DATE,
+  constraint xxxx_contract_signed_attr primary key (id) enable
+);
+
+drop table xxxx_new_comm_contract_basic;
+create table xxxx_new_comm_contract_basic
+(
+  ID NUMBER,
+  TEST_CASE_ID NUMBER,
+  CONTRACT_ID NUMBER,
+  CONTRACT_EID VARCHAR2(16 BYTE),
+  CONTRACT_FROM_DT DATE,
+  CONTRACT_TILL_DT DATE,
+  CONTRACT_COMMISSION_TYPE NUMBER,
+  INVOICE_ID NUMBER,
+  INVOICE_EID VARCHAR2(16 BYTE),
+  INVOICE_DT DATE,
+  PAYMENT_TYPE NUMBER,
+  COMMISSION_PAYBACK_TYPE NUMBER,
+  COMMISSION_TYPE NUMBER,
+  DISCOUNT_TYPE NUMBER,
+  CURRENCY VARCHAR2(16 BYTE),
+  NDS NUMBER,
+  NDS_PCT NUMBER,
+  INVOICE_FIRST_PAYMENT DATE,
+  INVOICE_FIRST_ACT DATE,
+  ACT_ID NUMBER,
+  HIDDEN NUMBER,
+  ACT_DT DATE,
+  AMOUNT NUMBER,
+  AMOUNT_NDS NUMBER,
+  AMOUNT_NSP NUMBER,
+  CLIENT_ID NUMBER,
+  LOYAL_CLIENT NUMBER,
+  cfo varchar2(16 byte),
+  REGIONAL_PROGRAM NUMBER,
+  COMMISSION_PAYBACK_PCT NUMBER,
+  IS_LOYAL NUMBER,
+  ENDBUYER_ID NUMBER, 
+	ENDBUYER_INN NUMBER, 
+	AGENCY_INN NUMBER, 
+  PAYSYS_ID NUMBER,
+  EXCLUDE NUMBER,
+  constraint xxxx_new_comm_contract_basic primary key ( id ) enable
+);

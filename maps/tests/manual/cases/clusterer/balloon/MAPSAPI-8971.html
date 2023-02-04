@@ -1,0 +1,209 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Кластеризация и работа отделенных промисов
+
+Description:
+Проверка кластеризации объектов и работы промисов.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+clusterer
+
+Estimated time:
+120000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан Москвы, с метками кластеров и меток коллекций.
+  При загрузке на спане в центра имеется хинт "Мало меток".
+  По контейнером с картой текст: resolved: true, fulfilled: true, rejected: false, за ним три строки с надписью "Ок".
+  Сразу после этого на спане карты открывается широкий балун кластера состоящи из двух колонок.
+  В левой колонке список меток, в правой заголовок "Метка 2", тело: "балун метки 2".
+  При открытии балуна пол контейнером с картой появляется текст: resolved: true, fulfilled: true, rejected: false, за ним три строки с надписью "Ок", "then method - OK".
+
+Step:
+  Action:
+  Выполнить 2 клика в контрол масштабирования "-".
+
+  Expectation:
+  Балун кластера закрывается.
+  Происходит корректный отзум, карта не пропадает, не мигает, метки кластеров объединяются между собой в кластер с цифрой "50".
+
+Step:
+  Action:
+  Навести курсор на метку кластера.
+
+  Expectation:
+  Появляется хинт "Нормально так меток".
+  
+Step:
+  Action:
+  Выполнить клик в метки кластера.
+
+  Expectation:
+  Происходит корректный зум, карта не пропадает, не мигает.
+  Спан карты меняется на спан с распавшимися метками кластеров на метки коллекций и метки кластеров с меньшим числом.
+
+Step:
+  Action:
+  Навести курсор на метку кластера.
+
+  Expectation:
+  Появляется хинт "Мало меток".
+
+Step:
+  Action:
+  Выполнить клик метку коллекции на карте.
+  
+  Expectation:
+  В месте расположения метки открывается балун с содержимым "балун метки(номер)".
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            var myMap = new ymaps.Map('map', {
+                        center: [55.751574, 37.573856],
+                        zoom: 9
+                    }),
+                    clusterer = new ymaps.Clusterer(),
+                    getPointData = function (index) {
+                        return {
+                            balloonContentBody: 'балун <strong>метки ' + index + '</strong>',
+                            clusterCaption: 'метка <strong>' + index + '</strong>'
+                        };
+                    },
+                    points = [
+                        [55.831903, 37.411961],
+                        [55.763338, 37.565466],
+                        [55.763338, 37.565466],
+                        [55.744522, 37.616378],
+                        [55.780898, 37.642889],
+                        [55.793559, 37.435983],
+                        [55.800584, 37.675638],
+                        [55.716733, 37.589988],
+                        [55.775724, 37.560840],
+                        [55.822144, 37.433781],
+                        [55.874170, 37.669838],
+                        [55.716770, 37.482338],
+                        [55.780850, 37.750210],
+                        [55.810906, 37.654142],
+                        [55.865386, 37.713329],
+                        [55.847121, 37.525797],
+                        [55.778655, 37.710743],
+                        [55.623415, 37.717934],
+                        [55.863193, 37.737000],
+                        [55.866770, 37.760113],
+                        [55.698261, 37.730838],
+                        [55.633800, 37.564769],
+                        [55.639996, 37.539400],
+                        [55.690230, 37.405853],
+                        [55.775970, 37.512900],
+                        [55.775777, 37.442180],
+                        [55.811814, 37.440448],
+                        [55.751841, 37.404853],
+                        [55.627303, 37.728976],
+                        [55.816515, 37.597163],
+                        [55.664352, 37.689397],
+                        [55.679195, 37.600961],
+                        [55.673873, 37.658425],
+                        [55.681006, 37.605126],
+                        [55.876327, 37.431744],
+                        [55.843363, 37.778445],
+                        [55.875445, 37.549348],
+                        [55.662903, 37.702087],
+                        [55.746099, 37.434113],
+                        [55.838660, 37.712326],
+                        [55.774838, 37.415725],
+                        [55.871539, 37.630223],
+                        [55.657037, 37.571271],
+                        [55.691046, 37.711026],
+                        [55.803972, 37.659610],
+                        [55.616448, 37.452759],
+                        [55.781329, 37.442781],
+                        [55.844708, 37.748870],
+                        [55.723123, 37.406067],
+                        [55.858585, 37.484980]
+                    ],
+                    geoObjects = [];
+            __log__("Открывается хинт и балун с выбранной меткой, должно упасть два зарезолвленных промиса");
+
+            for (var i = 0, len = points.length; i < len; i++) {
+                geoObjects[i] = new ymaps.Placemark(points[i], getPointData(i));
+            }
+
+            clusterer.createCluster = function (center, geoObjects) {
+                var clusterPlacemark = ymaps.Clusterer.prototype.createCluster.call(this, center, geoObjects),
+                        geoObjectsLength = clusterPlacemark.getGeoObjects().length,
+                        hintContent;
+                if (geoObjectsLength < 10) {
+                    hintContent = 'Мало меток';
+                } else if (geoObjectsLength < 100) {
+                    hintContent = 'Нормально так меток';
+                } else {
+                    hintContent = 'Меток навалом';
+                }
+                clusterPlacemark.properties.set('hintContent', hintContent);
+                return clusterPlacemark;
+            };
+
+            clusterer.add(geoObjects);
+            myMap.geoObjects.add(clusterer);
+
+            // Откроем балун на третьей метке в массиве.
+            var objectState = clusterer.getObjectState(geoObjects[2]);
+            if (objectState.isClustered) {
+                // Если метка находится в кластере, выставим ее в качестве активного объекта.
+                // Тогда она будет "выбрана" в открытом балуне кластера.
+                objectState.cluster.state.set('activeObject', geoObjects[2]);
+                var hintPromise = clusterer.hint.open(objectState.cluster);
+                hintPromise.always(function () {
+                    __log__('resolved: ' + hintPromise.isResolved() + ', fulfilled: ' + hintPromise.isFulfilled() + ', ' +
+                            'rejected: ' + hintPromise.isRejected());
+                    validateValue(hintPromise.isResolved(), true);
+                    validateValue(hintPromise.isFulfilled(), true);
+                    validateValue(hintPromise.isRejected(), false);
+                });
+                var balloonPromise;
+                hintPromise.then(function () {
+                    setTimeout(function () {
+                        balloonPromise = clusterer.balloon.open(objectState.cluster);
+                        balloonPromise.always(function () {
+                            __log__('resolved: ' + balloonPromise.isResolved() + ', fulfilled: ' + balloonPromise.isFulfilled() + ', ' +
+                                    'rejected: ' + balloonPromise.isRejected());
+                            validateValue(balloonPromise.isResolved(), true);
+                            validateValue(balloonPromise.isFulfilled(), true);
+                            validateValue(balloonPromise.isRejected(), false);
+                        });
+                        balloonPromise.then(function () {
+                            __log__('then method - OK')
+                        });
+                    }, 2000)
+
+                });
+            } else if (objectState.isShown) {
+                // Если метка не попала в кластер и видна на карте, откроем ее балун.
+                geoObjects[2].balloon.open();
+            }
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

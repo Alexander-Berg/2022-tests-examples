@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<!--
+Title:
+Геокодирование: получение информации о точке 
+
+Description:
+Проверка получения информации о точке.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components:
+regress_v1.1
+
+Estimated time:
+120000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно, со спаном Москвы, в контейнере дефолтный набор контролов и кнопка "Информация".
+
+Step:
+  Action:
+  Навести курсор на контрол зума, затем клик в подсказку зума "Дом".
+
+  Expectation:
+  По клику происходит корректная смена спана карты с призумом.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "Информация", затем клик в здание на карте.
+
+  Expectation:
+  По клику в кнопку курсор на карте - стрелка со знаком вопроса.
+  По клику в здание на карте в месте клика появляется синяя метка, и открывается балун с адресом топонима, вида: "Сверчков переулок, 10; Россия, Москва".
+
+Step:
+  Action:
+  Выполнить клик в дорогу, водную поверхность(не в здание) на карте.
+
+  Expectation:
+  По клику на карте в месте клика появляется синяя метка.
+  На странице появляется диалоговое окно "Ничего не найдено!".
+
+Step:
+  Action:
+  Подтвердить действие в диалоговом окне, затем выполнить клик в метку на карте.
+
+  Expectation:
+  По клику на месте метки открывается балун с координатами точки, вида: "37.638069,55.758052".
+-->
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title>Примеры. Определение адреса по щелчку на карте.</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <script src="/1.1/index.xml?counters=all" type="text/javascript"></script>
+    <script type="text/javascript">
+        // Создание обработчика для события window.onLoad
+        YMaps.jQuery(function () {
+            // Создание экземпляра карты и его привязка к созданному контейнеру
+            var map = new YMaps.Map(YMaps.jQuery("#YMapsID")[0]);
+
+            // Установка для карты ее центра и масштаба
+            map.setCenter(new YMaps.GeoPoint(37.64, 55.76), 10);
+
+            // Создание элемента управления "Информация"
+            var informationControl = new InformationControl();
+            
+            // Создание новой кнопки
+            // Добавляем ее к стандартной группе кнопок на панеле инструментов
+            var buttonInformation = new YMaps.ToolBarRadioButton(YMaps.ToolBar.DEFAULT_GROUP, {
+                caption: "Информация"
+            });
+
+            // Включение/выключение инструмента "Информация"
+            YMaps.Events.observe(buttonInformation, buttonInformation.Events.Select, function () {
+                map.addControl(informationControl);
+            });
+
+            YMaps.Events.observe(buttonInformation, buttonInformation.Events.Deselect, function () {
+                map.removeControl(informationControl);
+            });
+
+            // Добавление элементов управления на карту
+            var toolBar = new YMaps.ToolBar();
+            toolBar.add(buttonInformation);
+            map.addControl(toolBar);
+            map.addControl(new YMaps.Zoom());
+            map.addControl(new YMaps.TypeControl());
+            map.enableScrollZoom();
+        });
+
+        // Элемент управления "Информация"
+        function InformationControl () {
+            var geoResult, clickPlace, listener, map;
+
+            // Вызывается при добавлении элемента управления на карту
+            this.onAddToMap = function (parentMap) {
+                map = parentMap;
+
+                map.addCursor(YMaps.Cursor.HELP);
+
+                // Создание обработчика кликов по карте
+                listener = YMaps.Events.observe(map, map.Events.Click, function (map, mEvent) {
+
+                    // Координаты клика мышью
+                    var clickPoint  = mEvent.getGeoPoint();
+
+                    // Удаляем предыдущие результаты (если они были добавлены на карту)
+                    if (geoResult) {
+                        map.removeOverlay(geoResult);
+                        result = null;
+                    }
+
+                    if (clickPlace) {
+                        map.removeOverlay(clickPlace);
+                        clickPlace = null;
+                    }
+
+                    // Отмечаем точку по которой щелкнул пользователь
+                    clickPlace = new YMaps.Placemark(clickPoint);
+                    clickPlace.description = clickPoint.toString();
+                    map.addOverlay(clickPlace);
+
+                    // Запуск процесса геокодирования
+                    this.geocode(clickPoint);
+                }, this);
+            }
+
+            // Геокодирует точку
+            this.geocode = function (clickPoint) {
+                // Выключаем обработчиков событий, чтобы к геокодеру ушло не более одного запроса
+                // (по окончанию геокодированияю включаем обработчик вновь)
+                listener.disable();
+
+                // Запуск процесса геокодирования
+                var geocoder = new YMaps.Geocoder(clickPoint);
+
+                // Обработчик успешного завершения геокодирования
+                YMaps.Events.observe(geocoder, geocoder.Events.Load, function (geocoder) {
+                    // Получение результата поиска
+                    geoResult = this.getResult(geocoder);
+
+                    if (geoResult) {
+
+                        // Задаем содержимое балуна
+                        var sep = ', ',
+                            names = (geoResult.text || '').split(sep),
+                            index = geoResult.kind === 'house' ? -2 : -1;
+                        geoResult.setBalloonContent("<b>" + names.slice(index).join(sep) + "</b><div>" + names.slice(0, index).join(sep) + "</div>");
+
+                        // Открываем балун
+                        map.addOverlay(geoResult);
+                        geoResult.openBalloon();
+                    } else {
+                        alert("Ничего не найдено!");
+                    }
+
+                    // Включаем обработчик кликов по карте
+                    listener.enable();
+                }, this);
+
+                // Обработчик неудачного геокодирования
+                YMaps.Events.observe(geocoder, geocoder.Events.Fault, function (geocoder, err) {
+                    alert("Произошла ошибка при геокодировании: " + err);
+
+                    // Включаем обработчик кликов по карте
+                    listener.enable();
+                });
+            }
+
+            // Возвращает результат различной точности в зависимости от масштаба
+            this.getResult = function (geocoder) {
+                // Точность: город, страна
+                function isOther (result) {
+                    return result.precision == "other";
+                }
+
+                // Точность: улица
+                function isStreet (result) {
+                    return result.precision == "street";
+                }
+
+                // Точность: дом
+                function isHouse (result) {
+                    return !isOther(result) && !isStreet(result);
+                };
+
+                // Выбор точности поиска
+                var filter = isHouse;
+                if (map.getZoom() < 10) {
+                    filter = isOther;
+                } else if (map.getZoom() < 15) {
+                    filter = isStreet;
+                }
+
+                // Возвращает первый найденный результат с нужной точностью
+                return geocoder.filter(filter)[0];
+            }
+
+            // Вызывается при удалении элемента управления с карты
+            this.onRemoveFromMap = function () {
+                map.removeCursor(YMaps.Cursor.HELP);
+
+                // Удаляем метки с карты, если они были добавлены
+                if (geoResult) {
+                    map.removeOverlay(geoResult);
+                }
+
+                if (clickPlace) {
+                    map.removeOverlay(clickPlace);
+                }
+
+                // Удаляем обработчик кликов по карте
+                listener.cleanup();
+
+                map = geoResult = clickPlace = listener = null;
+            }
+        }
+    </script>
+</head>
+
+<body>
+    <div id="YMapsID" style="width:600px;height:400px"></div>
+</body>
+
+</html>

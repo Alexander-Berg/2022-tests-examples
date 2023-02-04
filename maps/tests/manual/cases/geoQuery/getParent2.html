@@ -1,0 +1,90 @@
+<!doctype html>
+<!--
+Title:
+Гео запрос: получение и установка родительских свойств некоторым объектам выборки 
+
+Description:
+Проверка получения и установки родительских свойств некоторым объектам выборки.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+geoQuery
+
+Estimated time:
+90000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+  
+  Expectation:
+  Карта отобразилась корректно.
+  На спане карты появляются ряды объектов: узкий прямоугольник, круг, метка прямоугольник(шире первого), линия.
+  В первых двух наборах сверху слева на спане карты узкий прямоугольник, круг, прямоугольник(шире первого), имеют черную обводку, и сплошную заливку белым цветом.
+  В третьем сверху слева наборе обектов, круг имеет черную обводку и сплошную заливку белым цветом. Линии в трех наборах сверху слева - черного цвета.
+  Остальные фигуры на спане карты имеют синию обводку и прозрачную синиюю заливку, метки на спане синего цвета, под контейнером с картой 5 строк "OK".
+-->
+<html>
+<head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../helper.js"></script>
+    <script src="../../js/wgs84MercatorSource.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            // ymaps = ym;
+
+            var map = myMap = new ymaps.Map('map', {
+                center: [55.5541584321358, 37.93061981201168],
+                zoom: 9,
+                behaviors: ['default', 'scrollZoom'],
+                controls: []
+            });
+            var object = new ymaps.Circle([
+                [55.5541584321358, 37.93061981201168],
+                500
+            ]);
+            map.geoObjects.add(object);
+
+            wgs84MercatorSource(ymaps, myMap, this);
+            addGrid(myMap);
+            var log = new Log();
+
+            var result = ymaps.geoQuery(geoQueryResult);
+            result.then(function () {
+                result.addToMap(myMap);
+
+                var sorted = result.sortByDistance(object);
+                validateValue(sorted.getParent(), result);
+
+                var sliced = result
+                        .slice(0, 13)
+                        .setOptions('fillColor', '#FFFFFF');
+                validateValue(sliced.getParent(), result);
+
+                var reverse = result.reverse();
+                var undoReverse = reverse.reverse();
+                validateValue(reverse.getParent(), result);
+                validateValue(undoReverse.getParent(), reverse);
+
+                var intersected = result
+                        .intersect(sliced)
+                        .setOptions('strokeColor', '#000000');
+                validateValue(intersected.getParent(), result)
+            });
+
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

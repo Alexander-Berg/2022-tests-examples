@@ -1,0 +1,281 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Менеджер объектов: события объектов
+
+Description:
+Проверка прослушивания событий объектов. 
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+objectManager
+
+Estimated time:
+180000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась корректно, на спане множество меток коллекций, объекты в виде 2 линий, 2 прямоугольников, двух кругов, двух многоугольников(один с желтой заливкой).
+  Сверху, а также снизу справа имеются кнопки применения параметров. Кнопка "clear log" очищает содеримое под контейнером.
+  (выполнять клик в кнопку "clear log" после каждого шага кейса)
+  
+Step:
+  Action:
+  Поводить курсором по меткам коллекций, фигурам.
+
+  Expectation:
+  При наведении на метку/фигуру повляется хинт.
+  При наведении на метки/фигуру под контейнером появляются события: "mouseenter", при уводе курсора "mouseleave".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "DOM".
+  Поводить курсором по меткам коллекций, фигурам.
+
+  Expectation:
+  Под контейнером появляется строка "DOM events will be ignored".
+  При наведении на метку появляется хинт, под контейнером строки событий не появляются.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "DOM".
+  Выполнить клик в метку коллекции.
+
+  Expectation:
+  Под контейнером появляется строка "Waiting for DOM events...".
+  При клике в метку, на спане открывается балун с номером метки, под контейнером появляются строки событий клика.
+
+Step:
+  Action:
+  Закрыть балун кластера, выполнить клик в кнопку "move".
+  Навести курсор на метку коллекции.
+
+  Expectation:
+  Под контейнером появляется строка "Waiting for move events...".
+  При наведении на метку, появляется хинт, под контейнером появляются строки событий наведения курсора, а также строки "mousemove".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "move".
+  Навести курсор на фигуру прямоугольника.
+
+  Expectation:
+  Под контейнером появляется строка "Move events will be ignored.".
+  При наведении на фигуру, появляется хинт, под контейнером появляются строки событий наведения курсора.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "remove".
+
+  Expectation:
+  Под контейнером появляются строки "mapchange; optionschange; parentchange".
+  Со спана карты пропадают все объекты(метки коллекций, фигуры).
+
+Step:
+  Action:
+  Выполнить клик в кнопку "remove".
+
+  Expectation:
+  Под контейнером появляются строки "mapchange; optionschange; parentchange".
+  На спане карты вновь появляются объекты(метки коллекций, метки кластеров).
+
+Step:
+  Action:
+  Выполнить клик в кнопку "option".
+
+  Expectation:
+  Спан карты без изменений.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "option".
+
+  Expectation:
+  Под контейнером появляется строка "optionschange".
+  На спане карты пропадают фигуры, метки кластеризуются, появляются метки кластеров.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "ignore".
+  Навести курсор на метку коллекции.
+
+  Expectation:
+  Под контейнером появляется строка "Events will be ignored".
+  При наведении на меткe появляется хинт, под контейнером появляются события: "mouseenter", при уводе курсора "mouseleave".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "ignore".
+  Навести курсор на метку кластера.
+
+  Expectation:
+  Под контейнером появляется строка "Waiting for events...".
+  При наведении под контейнером появляются события: "mouseenter", при уводе курсора "mouseleave".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "option".
+
+  Expectation:
+  Под контейнером появляется строка "optionschange".
+  Со спана карты пропадают метки кластеров, остаются только метки коллекций.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../helper.js"></script>
+    <script src="../../js/objectSource.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var map = myMap = new ymaps.Map('map', {
+                center: [55.716901946294286, 37.30336807048247],
+                zoom: 15,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            objectManagerSource(ym, myMap, this);
+
+            addGrid(myMap);
+            var log = new Log();
+
+            var objectManager = new ym.ObjectManager({clusterize: false, clusterDisableClickZoom: false, clusterHasHint: true, clusterOpenEmptyHint: true});
+            var placemarksNumber = 50;
+            var bounds = map.getBounds();
+            var newPlacemarks = createGeoObjects(placemarksNumber, bounds);
+
+            var events = ['geometrychange', 'mapchange', 'optionschange', 'overlaychange', 'parentchange', 'propertieschange'];
+            var domevents = ['click', 'contextmenu', 'dblclick', 'mousedown', 'mouseenter', 'mouseleave', 'mouseup', 'multitouchend',
+                'multitouchstart', 'wheel'];
+            var moveevents = ['mousemove', 'multitouchmove'];
+            var callback = function (e) {
+                __log__(e.get('type'))
+            };
+
+            objectManager.events.add(events, callback);
+            objectManager.events.add(domevents, callback);
+
+            objectManager.add(newPlacemarks);
+            objectManager.objects.add(objectManagerArrayNonPointObjects);
+            objectManager.objects.add(objectManagerCollectionNonPointObjects);
+            objectManager.objects.add(objectManagerPolygon);
+            objectManager.objects.add(objectManagerPolyline);
+            objectManager.objects.add(objectManagerCircle);
+            objectManager.objects.add(objectManagerRectangle);
+            map.geoObjects.add(objectManager);
+
+            var listenerButton = new ymaps.control.Button({data: {content: 'ignore'}, options: {selectOnClick: true}});
+            var optionButton = new ymaps.control.Button({data: {content: 'option'}, options: {selectOnClick: true}});
+            var removeButton = new ymaps.control.Button({data: {content: 'remove'}, options: {selectOnClick: true}});
+            var domButton = new ymaps.control.Button({data: {content: 'DOM'}, options: {selectOnClick: true}});
+            var moveButton = new ymaps.control.Button({data: {content: 'move'}, options: {selectOnClick: true}});
+            var clearButton = new ymaps.control.Button({data: {content: 'clear log'}, options: {selectOnClick: false}});
+
+            listenerButton.events
+                    .add('select', function () {
+                        log.info('Events will be ignored.');
+                        objectManager.events.remove(events, callback);
+                    })
+                    .add('deselect', function () {
+                        log.info('Waiting for events...');
+                        objectManager.events.add(events, callback);
+                    });
+
+            optionButton.events
+                    .add('select', function () {
+                        objectManager.options.set('clusterize', false);
+                    })
+                    .add('deselect', function () {
+                        objectManager.options.set('clusterize', true);
+                    });
+
+            removeButton.events
+                    .add('select', function () {
+                        map.geoObjects.remove(objectManager);
+                    })
+                    .add('deselect', function () {
+                        map.geoObjects.add(objectManager);
+                    });
+
+            domButton.events
+                    .add('deselect', function () {
+                        log.info('Waiting for DOM events...');
+                        objectManager.events.add(domevents, callback);
+                    })
+                    .add('select', function () {
+                        log.info('DOM events will be ignored.');
+                        objectManager.events.remove(domevents, callback);
+                    });
+
+            moveButton.events
+                    .add('select', function () {
+                        log.info('Waiting for move events...');
+                        objectManager.events.add(moveevents, callback);
+                    })
+                    .add('deselect', function () {
+                        log.info('Move events will be ignored.');
+                        objectManager.events.remove(moveevents, callback);
+                    });
+
+            clearButton.events.add('click', function () {
+                log.clear();
+            });
+
+            map.controls
+                    .add(listenerButton, {float: 'left'})
+                    .add(optionButton, {float: 'left'})
+                    .add(removeButton, {float: 'left'})
+                    .add(clearButton, {float: 'none', position: {bottom: 25, right: 10}})
+                    .add(moveButton, {float: 'left'})
+                    .add(domButton, {float: 'left'});
+
+            function createGeoObjects(number, bounds) {
+                var placemarks = [];
+                // Создаем нужное количество меток
+                for (var i = 0; i < number; i++) {
+                    // Генерируем координаты метки случайным образом.
+                    var coordinates = getRandomCoordinates(bounds);
+                    // Создаем метку со случайными координатами.
+                    var myPlacemark = {
+                        "type": "Feature",
+                        "id": 500 + i,
+                        "geometry": {
+                            "type": "Point",
+                            "coordinates": coordinates
+                        },
+                        "properties": {
+                            "balloonContent": i,
+                            "clusterCaption": i,
+                            "hintContent": i
+                        }
+                    };
+                    placemarks.push(myPlacemark);
+                }
+                return placemarks;
+            }
+
+            function getRandomCoordinates(bounds) {
+                var size = [bounds[1][0] - bounds[0][0], bounds[1][1] - bounds[0][1]];
+                return [Math.random() * size[0] + bounds[0][0], Math.random() * size[1] + bounds[0][1]];
+            }
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

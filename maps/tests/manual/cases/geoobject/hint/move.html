@@ -1,0 +1,153 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Геообъект: перемещение хинта внутри объекта
+
+Description:
+Проверка перемещения хинта внутри объекта.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+geoobject
+
+Estimated time:
+180000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан Московской области, на спане два ряда объектов: метка "A", линия, многоугольник, прямоугольник, круг(верхний ряд синего цвета, нижний - зеленого).
+  
+Step:
+  Action:
+  Навести курсор на зеленый круг. 
+
+  Expectation:
+  При наведении курсор меняется на палец, появляется хинт "hint".
+
+Step:
+  Action:
+  Поперемещать курсор внутри объекта круга. 
+
+  Expectation:
+  При перемещения хинт "hint" перемещается вслед за курсором.
+
+Step:
+  Action:
+  Навести курсор на объект синего прямоугольника, после чего выполнить клик в нижний левый угол прямоугольника. 
+
+  Expectation:
+  При наведении курсор меняется на палец, появляется хинт "hint", по клику хинт перемещается внутри объекта.
+
+Step:
+  Action:
+  Переместить курсор внутри прямоугольника.
+
+  Expectation:
+  Хинт возвращается к курсору и перемещается за ним.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script src="../geoCS.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym; // hack
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.73259667357658, 37.70153663432529],
+                zoom: 9,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+            //TODO: разобраться почему работает не ожидаемо в яузере вин7
+            __log__("Хинт должен перемещаться по объекту во время движения курсора");
+            __log__("Клик по объекту должен перемещать хинт");
+            geoCSSource(ym, myMap, this);
+            addGrid(myMap);
+            var log = new Log();
+            var newPos1 = [60, 30],
+                    newPos2 = [59, 31];
+
+            myMap.geoObjects
+                    .add(geoObjectPlacemark)
+                    .add(geoObjectPolyline)
+                    .add(geoObjectPolygon)
+                    .add(geoObjectRectangle)
+                    .add(geoObjectCircle)
+                    .add(placemark)
+                    .add(polyline)
+                    .add(polygon)
+                    .add(rectangle)
+                    .add(circle);
+
+            addProperties(geoObjectPlacemark);
+            addProperties(geoObjectPolyline);
+            addProperties(geoObjectPolygon);
+            addProperties(geoObjectRectangle);
+            addProperties(geoObjectCircle);
+            addProperties(placemark);
+            addProperties(polyline);
+            addProperties(polygon);
+            addProperties(rectangle);
+            addProperties(circle);
+
+            hintOpen(geoObjectPlacemark);
+            hintOpen(geoObjectPolyline);
+            hintOpen(geoObjectPolygon);
+            hintOpen(geoObjectRectangle);
+            hintOpen(geoObjectCircle);
+            hintOpen(placemark);
+            hintOpen(polyline);
+            hintOpen(polygon);
+            hintOpen(rectangle);
+            hintOpen(circle);
+
+            function addProperties(obj) {
+                obj.properties.set('iconContent', 'A');
+                obj.properties.set('hintContent', 'hint');
+                obj.properties.set('balloonContent', 'balloon content');
+                obj.options.set('openBalloonOnClick', false);
+            }
+
+            function hintOpen(obj) {
+                obj.events.add('click', function (e) {
+                    var eventTarget = e.get('target');
+                    var type = eventTarget.geometry.getType();
+                    var coordinates = eventTarget.geometry.getCoordinates();
+                    switch (type) {
+                        case 'LineString':
+                        case 'Rectangle':
+                            coordinates = [coordinates[0][0], coordinates[0][1]];
+                            break;
+                        case 'Polygon':
+                            coordinates = [coordinates[0][0][0], coordinates[0][0][1]];
+                            break;
+                        default:
+                            coordinates = eventTarget.geometry.getCoordinates();
+                            break;
+                    }
+                    //var position = eventTarget.options.get('projection').toGlobalPixels(coordinates, myMap.getZoom());
+                    var position = coordinates;
+                    obj.hint.setPosition(position);
+                });
+            };
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

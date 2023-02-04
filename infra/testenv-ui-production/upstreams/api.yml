@@ -1,0 +1,35 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - mf49
+      groups: []
+labels:
+  order: '10000000'
+---
+regexp_section:
+    matcher:
+        match_fsm:
+            path: /api/.*
+    modules:
+        - headers:
+            create:
+              Host: testenv.yandex-team.ru
+        - balancer2:
+            attempts: 1
+            rr: {}
+            generated_proxy_backends:
+                proxy_options: 
+                    connect_timeout: 70ms
+                    backend_timeout: 10s
+                    https_settings:
+                        ca_file: !f get_ca_cert_path("allCAs.pem", "./")
+                        sni_on: true
+                        verify_depth: 3
+                include_backends:
+                    type: BY_ID
+                    ids: [api]
+            on_error:
+                errordocument:
+                    status: 504
+                    content: "API unavailable"

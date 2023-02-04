@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<!--
+Title:
+Геообъект: работа графики карты с объектом полигона и сменой спана
+
+Description:
+Проверка работы графики карты с объектом полигона и сменой спана.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+geoobject
+
+Estimated time:
+60000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+  
+  Expectation:
+  При загрузке страницы в контейнере появляется спна карты в центре которого выделен красный многоугольник.
+  Спустя секунду спан карты смещается и происходит призум.
+  Отображение карты корректное: при перемещении карты, карта не мигала цветами, не пропадала, отображение элементов(улиц, домов, меток ПОИ, подписей) на карте корректное.
+-->
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <style>
+        #map { width: 600px; height: 600px; box-sizing: border-box; overflow: hidden; }
+    </style>
+</head>
+<body>
+<h3>Ломалась графика</h3>
+<div id="map"></div>
+
+<script>
+
+    "use strict";
+
+    function _slicedToArray(arr, i) { return _arrayWithHoles(arr) || _iterableToArrayLimit(arr, i) || _nonIterableRest(); }
+
+    function _nonIterableRest() { throw new TypeError("Invalid attempt to destructure non-iterable instance"); }
+
+    function _iterableToArrayLimit(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"] != null) _i["return"](); } finally { if (_d) throw _e; } } return _arr; }
+
+    function _arrayWithHoles(arr) { if (Array.isArray(arr)) return arr; }
+
+    var options = {};
+
+    (function () {
+        var _iteratorNormalCompletion = true;
+        var _didIteratorError = false;
+        var _iteratorError = undefined;
+
+        try {
+            for (var _iterator = location.hash.replace(/^#/, '').split('&')[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
+                var kv = _step.value;
+
+                var _kv$split = kv.split('='),
+                    _kv$split2 = _slicedToArray(_kv$split, 2),
+                    k = _kv$split2[0],
+                    v = _kv$split2[1];
+
+                options[k] = v;
+            }
+        } catch (err) {
+            _didIteratorError = true;
+            _iteratorError = err;
+        } finally {
+            try {
+                if (!_iteratorNormalCompletion && _iterator.return != null) {
+                    _iterator.return();
+                }
+            } finally {
+                if (_didIteratorError) {
+                    throw _iteratorError;
+                }
+            }
+        }
+
+        options.api = options.api || '//api-maps.tst.c.maps.yandex.ru/2.1.73/';
+        options.fix = true;
+        options.debug = options.debug === 'true';
+        var s = document.createElement('script');
+        s.src = options.api + '?lang=ru_RU&onload=ymapsReady' + (options.debug ? '&mode=debug' : '');
+        document.head.appendChild(s);
+    })();
+
+    var map, polygon, vow;
+
+    async function ymapsReady() {
+        try {
+            await init();
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
+    async function init() {
+        vow = ymaps.vow;
+        map = new ymaps.Map('map', {
+            center: [55.023158, 82.942955],
+            zoom: 16,
+            controls: []
+        }, {
+            suppressMapOpenBlock: true,
+            geoObjectRenderType: 'SVG'
+        });
+        polygon = new ymaps.GeoObject({
+            geometry: {
+                type: "Polygon",
+                coordinates: [[[55.02243487457694, 82.941910453609], [55.023637694193, 82.941910453609], [55.023637694193, 82.94400871060277], [55.02243487457694, 82.94400871060277]]]
+            }
+        }, {
+            fillColor: '#FF0000',
+            strokeColor: '#101312',
+            stroke: false,
+            fillImageHref: 'https://domogis.ru/images/cadastre/cache/5b2c6ba2717f0.png',
+            renderType: 'SVG'
+        });
+        map.geoObjects.add(polygon);
+        map.action.events.addController({
+            onBeforeEventFiring: function onBeforeEventFiring(events, type) {
+                if (!type.endsWith('defaultaction')) {
+                    console.log("map.action.events@".concat(type));
+                }
+            }
+        });
+        await vow.delay(null, 1000);
+        await reproduce();
+    }
+
+    var raf = function raf() {
+        return new Promise(function (resolve) {
+            return requestAnimationFrame(resolve);
+        });
+    };
+
+    async function reproduce() {
+        var projection = map.options.get('projection');
+        var action = null;
+
+        var startAction = function startAction() {
+            if (!action) {
+                action = new ymaps.map.action.Continuous();
+                map.action.execute(action);
+            }
+        };
+
+        var endAction = function endAction() {
+            action.end();
+            action = null;
+        };
+
+        var panTo = async function panTo(target) {
+            startAction();
+            var start = map.action.getCurrentState().globalPixelCenter;
+            target = projection.toGlobalPixels(target, map.action.getCurrentState().zoom);
+            console.log(map.action.getCurrentState().zoom);
+
+            for (var step = 0; step < 1; step += 0.1) {
+                action.tick({
+                    globalPixelCenter: [start[0] + (target[0] - start[0]) * step, start[1] + (target[1] - start[1]) * step],
+                    zoom: map.getZoom(),
+                    duration: 1
+                });
+                await raf();
+            }
+
+            endAction();
+        };
+
+        var zoomTo = async function zoomTo(target) {
+            startAction();
+
+            for (var step = 0; step < 1; step += 0.1) {
+                var zoom = map.action.getCurrentState().zoom;
+                action.tick({
+                    pixelOffset: [0, 0],
+                    zoom: zoom + (target - zoom) * step,
+                    duration: 0.1
+                });
+                await raf();
+            }
+
+            endAction();
+        };
+
+        await panTo([55.01763765200392, 82.94272607277529]);
+        await zoomTo(19);
+    }
+</script>
+</body>
+</html>

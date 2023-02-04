@@ -1,0 +1,228 @@
+const dynamics = [
+    {
+        date: '2018-01-31T00:00:00Z',
+        building: 164615,
+        fifteenMin: 157278,
+        district: 91041,
+    },
+    {
+        date: '2018-02-28T00:00:00Z',
+        building: 168919,
+        fifteenMin: 125175,
+        district: 91986,
+    },
+    {
+        date: '2018-03-31T00:00:00Z',
+        building: 168919,
+        fifteenMin: 127139,
+        district: 92135,
+    },
+    {
+        date: '2018-04-30T00:00:00Z',
+        building: 168919,
+        fifteenMin: 125528,
+        district: 92577,
+    },
+    {
+        date: '2018-05-31T00:00:00Z',
+        building: 169842,
+        fifteenMin: 125760,
+        district: 93228,
+    },
+    {
+        date: '2018-06-30T00:00:00Z',
+        building: 168618,
+        fifteenMin: 139867,
+        district: 94372,
+    },
+    {
+        date: '2018-07-31T00:00:00Z',
+        building: 168618,
+        fifteenMin: 145572,
+        district: 94106,
+    },
+    {
+        date: '2018-08-31T00:00:00Z',
+        building: 170765,
+        fifteenMin: 132813,
+        district: 94640,
+    },
+    {
+        date: '2018-09-30T00:00:00Z',
+        building: 193301,
+        fifteenMin: 129500,
+        district: 94640,
+    },
+    {
+        date: '2018-10-31T00:00:00Z',
+        building: 182119,
+        fifteenMin: 129688,
+        district: 95331,
+    },
+    {
+        date: '2018-11-30T00:00:00Z',
+        building: 182119,
+        fifteenMin: 126588,
+        district: 96332,
+    },
+    {
+        date: '2018-12-31T00:00:00Z',
+        building: 177894,
+        fifteenMin: 123581,
+        district: 96483,
+    },
+    {
+        date: '2019-01-31T00:00:00Z',
+        building: 173529,
+        fifteenMin: 128001,
+        district: 97592,
+    },
+    {
+        date: '2019-02-28T00:00:00Z',
+        building: 182676,
+        fifteenMin: 133794,
+        district: 100469,
+    },
+    {
+        date: '2019-03-31T00:00:00Z',
+        building: 196339,
+        fifteenMin: 137164,
+        district: 101303,
+    },
+    {
+        date: '2019-04-30T00:00:00Z',
+        building: 196339,
+        fifteenMin: 136408,
+        district: 101491,
+    },
+    {
+        date: '2019-05-31T00:00:00Z',
+        building: 206906,
+        fifteenMin: 136716,
+        district: 101859,
+    },
+    {
+        date: '2019-06-30T00:00:00Z',
+        building: 196557,
+        fifteenMin: 137621,
+        district: 102427,
+    },
+    {
+        date: '2019-07-31T00:00:00Z',
+        building: 196339,
+        fifteenMin: 138295,
+        district: 103233,
+    },
+    {
+        date: '2019-08-31T00:00:00Z',
+        building: 196774,
+        fifteenMin: 138151,
+        district: 103570,
+    },
+    {
+        date: '2019-09-30T00:00:00Z',
+        building: 205882,
+        fifteenMin: 138309,
+        district: 104006,
+    },
+    {
+        date: '2019-10-31T00:00:00Z',
+        building: 205882,
+        fifteenMin: 142958,
+        district: 104897,
+    },
+    {
+        date: '2019-11-30T00:00:00Z',
+        building: 201111,
+        fifteenMin: 143234,
+        district: 105069,
+    },
+    {
+        date: '2019-12-31T00:00:00Z',
+        building: 205882,
+        fifteenMin: 141416,
+        district: 105005,
+    },
+    {
+        date: '2020-01-31T00:00:00Z',
+        building: 194547,
+        fifteenMin: 144593,
+        district: 104799,
+    },
+    {
+        date: '2020-02-29T00:00:00Z',
+        building: 196339,
+        fifteenMin: 150909,
+        district: 105326,
+    },
+    {
+        date: '2020-03-31T00:00:00Z',
+        building: 198387,
+        fifteenMin: 146579,
+        district: 106358,
+    },
+    {
+        date: '2020-04-30T00:00:00Z',
+        building: 198701,
+        fifteenMin: 149639,
+        district: 106428,
+    },
+    {
+        date: '2020-05-31T00:00:00Z',
+        building: 198701,
+        fifteenMin: 152983,
+        district: 106092,
+    },
+    {
+        date: '2020-06-30T00:00:00Z',
+        building: 198994,
+        fifteenMin: 149562,
+        district: 106750,
+    },
+    {
+        date: '2020-07-31T00:00:00Z',
+        building: 198544,
+        fifteenMin: 149096,
+        district: 107640,
+    },
+    {
+        date: '2020-08-31T00:00:00Z',
+        building: 198544,
+        fifteenMin: 149628,
+        district: 108615,
+    },
+    {
+        date: '2020-09-30T00:00:00Z',
+        building: 213796,
+        fifteenMin: 144849,
+        district: 110751,
+    },
+    {
+        date: '2020-10-31T00:00:00Z',
+        building: 218333,
+        fifteenMin: 153183,
+        district: 114004,
+    },
+    {
+        date: '2020-11-30T00:00:00Z',
+        building: 218333,
+        fifteenMin: 162128,
+        district: 118800,
+    },
+    {
+        date: '2020-12-31T00:00:00Z',
+        building: 218279,
+        fifteenMin: 167153,
+        district: 119991,
+    },
+];
+
+export const getStore = () => ({
+    yaDealValuation: {
+        network: {
+            priceSimilar: {
+                dynamics,
+            },
+        },
+    },
+});

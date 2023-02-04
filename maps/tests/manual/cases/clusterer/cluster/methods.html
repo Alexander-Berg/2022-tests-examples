@@ -1,0 +1,157 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Кластер: методы кластеризации.
+
+Description:
+Проверка работы методов кластеризации.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+clusterer
+
+Estimated time:
+90000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан Санкт-Петербурга и Ленинградской области.
+  На спане множество красных кластерных меток, также имеются синие метки коллекций и зеленые метки коллекций с надписью "Point".
+  Сверху имееется кнопка "bounds".
+  При загрузке карты открывается балун кластера с двумя колонками, в левой список меток, в правой отображается содержимое метки с заголовком и телом.
+  Под контейнером с картой появляется текстовый блок: 
+  getGeoObjects() - clusterCaptions expacted, getOverlay() must be equal to getOverlaySync()
+  getGeoObjects(): (ниже список меток из левой колонки открытого балуна кластера)
+  getOverlay() == getOverlaySync():
+  overlay: true
+
+Step:
+  Action:
+  Выполнить клик в кнопку "bounds".
+
+  Expectation:
+  Происходит смена спана с призумом карты к области кластерной метки на которой был открыт балун.
+  (при ховере на метках хинт с номером метки совпадающий с номерами меток из списка в левой колонке балуна на предыдущем шаге).
+  Под контейнером с картой появляются координаты области вида: new bounds: 60.78774308730424,32.46343316405734,61.0020234844403,32.89733531406429
+
+Step:
+  Action:
+  Выполнить клик в кнопку "bounds".
+
+  Expectation:
+  Происходит смена спана на другой спан с метками коллекций.
+  Под контейнером с картой появляются координаты области вида:
+  getBounds():
+  new bounds: 60.837387191235344,31.674755157491436,61.085425786135986,32.09929763625857
+-->
+<html>
+<head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script src="https://yandex.st/jquery/1.6.4/jquery.min.js" type="text/javascript"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            var map = myMap = new ymaps.Map('map', {
+                center: [59.96343157514998, 30.317977733422868],
+                zoom: 7,
+                // Добавим к стандартным поведениям карты зум колесом мыши.
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+
+            log.info('getGeoObjects() - clusterCaptions expacted, getOverlay() must be equal to getOverlaySync()');
+
+            var clusterer = new ymaps.Clusterer({
+                preset: 'islands#redClusterIcons'
+            });
+            var i = 0;
+            var placemarksNumber = 200;
+            var bounds = myMap.getBounds();
+            var newPlacemarks = createGeoObjects(placemarksNumber, bounds);
+
+            clusterer.add(newPlacemarks);
+            map.geoObjects.add(clusterer);
+
+            var object0State = clusterer.getObjectState(newPlacemarks[0]);
+            var object50State = clusterer.getObjectState(newPlacemarks[50]);
+
+            log.info('getGeoObjects():');
+            var array = object0State.cluster.getGeoObjects();
+            for (i = 0; i < array.length; i++) {
+                log.info(array[i].properties.get('clusterCaption'))
+            }
+            object0State.cluster.state.set('activeObject', newPlacemarks[0]);
+            clusterer.balloon.open(object0State.cluster);
+            log.info('');
+
+            //getOverlay
+            log.info('getOverlay() == getOverlaySync():');
+            object0State.cluster.getOverlay().then(function (overlay) {
+                log.info('overlay: ' + (overlay == object0State.cluster.getOverlaySync()))
+            });
+            object50State.cluster.getOverlay().then(function (overlay) {
+                log.info('overlay: ' + (overlay == object50State.cluster.getOverlaySync()))
+            });
+
+            var boundsButton = new ymaps.control.Button({data: {content: 'bounds'}, options: {selectOnClick: true}});
+            boundsButton.events
+                    .add('select', function () {
+                        log.info('getBounds():');
+                        var bounds = object0State.cluster.getBounds();
+                        map.setBounds(bounds);
+                        log.info('new bounds: ' + bounds);
+                    })
+                    .add('deselect', function () {
+                        log.info('getBounds():');
+                        var bounds = object50State.cluster.getBounds();
+                        map.setBounds(bounds);
+                        log.info('new bounds: ' + bounds);
+                    });
+            map.controls.add(boundsButton);
+
+            function createGeoObjects(number, bounds) {
+                var placemarks = [];
+                // Создаем нужное количество меток
+                for (var i = 0; i < number; i++) {
+                    // Генерируем координаты метки случайным образом.
+                    coordinates = getRandomCoordinates(bounds);
+                    // Создаем метку со случайными координатами.
+                    if (Math.random() > 0.5) {
+                        myPlacemark = new ymaps.Placemark(coordinates, {
+                            balloonContent: i, hintContent: i, clusterCaption: i}, {});
+                    } else {
+                        myPlacemark = new ymaps.Placemark(coordinates, {
+                            balloonContent: i, hintContent: i, iconContent: 'point', clusterCaption: 'point ' + i}, {preset: 'islands#greenStretchyIcon'});
+                    }
+                    placemarks.push(myPlacemark);
+                }
+                return placemarks;
+            }
+
+            function getRandomCoordinates(bounds) {
+                var size = [bounds[1][0] - bounds[0][0], bounds[1][1] - bounds[0][1]];
+                return [Math.random() * size[0] + bounds[0][0], Math.random() * size[1] + bounds[0][1]];
+            }
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

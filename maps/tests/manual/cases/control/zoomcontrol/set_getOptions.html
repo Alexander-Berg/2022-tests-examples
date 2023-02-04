@@ -1,0 +1,183 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Контрол зум: установка/получение опций контролом
+
+Description:
+Проверка установки/получения опций контролом.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+control
+
+Estimated time:
+180000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан Москвы, сверху вплотную к верхней стороне контейнера 3 контрола зума с кнопками "+/-", с линейкой и ползунком и 1 контрол зума в виде кнопок "+", "-".
+  Сверху слева имеются кнопка "unsetId", "unsetAll".
+  Под контейнером с картой блоки логов get и set методов, в скобках указано ожидаемое значение, вида: get id: (zoom + N); zoom1; zoom2; zoom3; zoom4.
+  
+Step:
+  Action:
+  Выполнить клик в кнопку "unsetId".
+
+  Expectation:
+  Под контейнером с картой появляется блок логов: "unset id: (undefined); undefined(у всех контролов)".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "unsetAll".
+
+  Expectation:
+  Все контролы смещаются ближе к центру карты, выравниваются с кнопками "unsetId", "unsetAll", со спана пропадает контрол в виде кнопок(без линейки), на его месте контрол зума с линейкой и ползунком.
+  Под контейнером с картой блоки логов get и set методов, в скобках указано ожидаемое значение, вида:get id: (zoom + N); zoom1; zoom2; zoom3; zoom4.
+-->
+<html>
+<head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            //Добавляем карту
+            var map = myMap = new ym.Map('map', {
+                        center: [55.73259667357658, 37.70153663432529],
+                        zoom: 9,
+                        behaviors: ['default', 'scrollZoom'],
+                        controls: ['fullscreenControl']
+                    }),
+                    log = new Log();
+
+            addGrid(myMap);
+
+            //создаём контролы
+            var zoom1 = new ymaps.control.ZoomControl({
+                                options: {id: 'zoom1',
+                                    position: {left: 50}}}
+                    ),
+                    zoom2 = new ymaps.control.ZoomControl({
+                                options: {size: 'auto',
+                                    id: 'zoom2',
+                                    position: {left: 100}}}
+                    ),
+                    zoom3 = new ymaps.control.ZoomControl({
+                                options: {size: 'small',
+                                    id: 'zoom3',
+                                    position: {left: 150}}}
+                    ),
+                    zoom4 = new ymaps.control.ZoomControl({
+                                options: {size: 'large',
+                                    id: 'zoom4',
+                                    position: {left: 200}}}
+                    ),
+
+                    unsetButton = new ymaps.control.Button({data: {content: 'unsetId'}, options: {selectOnClick: false}}),
+                    unsetAllButton = new ymaps.control.Button({data: {content: 'unsetAll'}, options: {selectOnClick: false}});
+
+            //убираем id всех зум контролов
+            unsetButton.events.add('click', function () {
+                zoom1.options.unset('id');
+                zoom2.options.unset('id');
+                zoom3.options.unset('id');
+                zoom4.options.unset('id');
+                log.info('unset id: (undefined)');
+                log.info(zoom1.options.get('id'));
+                log.info(zoom2.options.get('id'));
+                log.info(zoom3.options.get('id'));
+                log.info(zoom4.options.get('id'));
+            });
+            //
+            unsetAllButton.events.add('click', function () {
+                zoom1.options.unsetAll();
+                zoom2.options.unsetAll();
+                zoom3.options.unsetAll();
+                zoom4.options.unsetAll();
+                log.info(' ');
+                log.info('click unsetAll Button');
+                setTimeout(contLog, 100);
+            });
+
+            map.controls
+                    .add(zoom1)
+                    .add(zoom2)
+                    .add(zoom3)
+                    .add(zoom4)
+                    .add(unsetButton, { float: 'right'})
+                    .add(unsetAllButton, { float: 'right'});
+            //возвращаем id, name, Parent, map ; присваиваем новые значения; проверяем присваивание
+            var contLog = function () {
+                log.info('get id: (zoom + N)');
+                log.info(zoom1.options.get('id'));
+                log.info(zoom2.options.get('id'));
+                log.info(zoom3.options.get('id'));
+                log.info(zoom4.options.get('id'));
+                log.info('getName: (zoomControl)');
+                log.info(zoom1.options.getName());
+                log.info(zoom2.options.getName());
+                log.info(zoom3.options.getName());
+                log.info(zoom4.options.getName());
+                log.info('getParent: (object).getName()');
+                log.info(zoom1.options.getParent().getName());
+                log.info(zoom2.options.getParent().getName());
+                log.info(zoom3.options.getParent().getName());
+                log.info(zoom4.options.getParent().getName());
+                log.info('getMap: (object).getCenter()');
+                log.info(zoom1.getMap().getCenter());
+                log.info(zoom2.getMap().getCenter());
+                log.info(zoom3.getMap().getCenter());
+                log.info(zoom4.getMap().getCenter());
+                log.info(' ');
+
+                log.info('set id: (new + N):');
+                zoom1.options.set('id', 'new1');
+                zoom2.options.set('id', 'new2');
+                zoom3.options.set('id', 'new3');
+                zoom4.options.set('id', 'new4');
+                log.info(zoom1.options.get('id'));
+                log.info(zoom2.options.get('id'));
+                log.info(zoom3.options.get('id'));
+                log.info(zoom4.options.get('id'));
+
+                log.info('setName: (zoom)');
+                zoom1.options.setName('zoom1');
+                zoom2.options.setName('zoom2');
+                zoom3.options.setName('zoom3');
+                zoom4.options.setName('zoom4');
+                log.info(zoom1.options.getName());
+                log.info(zoom2.options.getName());
+                log.info(zoom3.options.getName());
+                log.info(zoom4.options.getName());
+
+                log.info('setParent: (object).getName()');
+                zoom1.options.setParent(zoom1.options.getParent());
+                zoom2.options.setParent(zoom2.options.getParent());
+                zoom3.options.setParent(zoom3.options.getParent());
+                zoom4.options.setParent(zoom4.options.getParent());
+                log.info(zoom1.options.getParent().getName());
+                log.info(zoom2.options.getParent().getName());
+                log.info(zoom3.options.getParent().getName());
+                log.info(zoom4.options.getParent().getName());
+            };
+
+            //Выводим начальный лог
+            setTimeout(contLog, 100);
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

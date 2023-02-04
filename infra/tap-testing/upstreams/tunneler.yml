@@ -1,0 +1,43 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - nodge
+      groups: []
+labels:
+  order: '20'
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      host: .+-tunneler\\.tap-tst\\.yandex\\.ru
+  modules:
+    - rewrite:
+        actions:
+          - regexp: '(.+)-tunneler\\.tap-tst\\.yandex\\.ru'
+            header_name: 'Host'
+            rewrite: '%1-ekb.ldev.yandex.ru'
+    - balancer2:
+        disable_attempts_rate_limiter: true
+        attempts: 5
+        simple_policy: {}
+        rr: {}
+        generated_proxy_backends:
+          proxy_options:
+            backend_timeout: 10s
+            connect_timeout: 50ms
+            fail_on_5xx: false
+            keepalive_count: 5
+            keepalive_timeout: "60s"
+            https_settings:
+              ca_file: !f get_ca_cert_path("allCAs.pem", "./")
+              sni_on: true
+              verify_depth: 3
+          instances:
+            - weight: 1
+              host: 'ekb.ldev.yandex.ru'
+              port: 443
+        on_error:
+          errordocument:
+            status: 503
+            content: 'Service unavailable'

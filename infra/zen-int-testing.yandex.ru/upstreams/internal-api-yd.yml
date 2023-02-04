@@ -1,0 +1,86 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - ihramtsov
+      groups: []
+labels:
+  order: '100'
+---
+#{ "order": "100" }
+regexp_section:
+  matcher:
+    match_fsm:
+      uri: '/.*'
+  modules:
+    - headers:
+        create:
+          X-Forwarded-Proto: 'https'
+        create_func:
+          X-Forwarded-Zen-Host: 'host'
+          Host: 'host'
+        append_func:
+          X-Forwarded-For: 'realip'
+          Zen-Forwarded-For: 'realip'
+    - report:
+        uuid: 'to-internal-api-yd'
+        ranges: 'default'
+    - balancer2:
+        rr: {}
+        attempts: 1
+        connection_attempts: 2
+        retry_policy:
+          unique_policy: {}
+        backends:
+          - weight: 33
+            name: internal-api-yd-sas
+            modules:
+              - report:
+                  uuid: 'to-internal-api-yd-sas'
+                  ranges: 'default'
+              - balancer2:
+                  rr: {}
+                  attempts: 1
+                  connection_attempts: 2
+                  retry_policy:
+                    unique_policy: {}
+                  return_last_5xx: true
+                  status_code_blacklist: ["503"]
+                  generated_proxy_backends:
+                    proxy_options:
+                      resolve_timeout: '10ms'
+                      connect_timeout: '70ms'
+                      backend_timeout: '10s'
+                      keepalive_count: 0
+                      need_resolve: false
+                      fail_on_5xx: false
+                      buffering: false
+                    include_backends:
+                      type: BY_ID
+                      ids: [internal-api-yd-sas]
+          - weight: 34
+            name: internal-api-yd-vla
+            modules:
+              - report:
+                  uuid: 'to-internal-api-yd-vla'
+                  ranges: 'default'
+              - balancer2:
+                  rr: {}
+                  attempts: 1
+                  connection_attempts: 2
+                  retry_policy:
+                    unique_policy: {}
+                  return_last_5xx: true
+                  status_code_blacklist: ["503"]
+                  generated_proxy_backends:
+                    proxy_options:
+                      resolve_timeout: '10ms'
+                      connect_timeout: '70ms'
+                      backend_timeout: '10s'
+                      keepalive_count: 0
+                      need_resolve: false
+                      fail_on_5xx: false
+                      buffering: false
+                    include_backends:
+                      type: BY_ID
+                      ids: [internal-api-yd-vla]

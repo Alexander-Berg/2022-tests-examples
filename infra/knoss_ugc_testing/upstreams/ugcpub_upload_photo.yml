@@ -1,0 +1,121 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - ankopeliovich
+      groups:
+      - svc_ugc_development
+labels:
+  order: '00003001'
+---
+regexp_section:
+  matcher:
+    match_and:
+      - match_fsm:
+          uri: '/ugcpub/upload-photo(/.*)?'
+      - match_fsm:
+          header:
+            name: 'X-Yandex-HTTPS'
+            value: 'yes'
+  modules:
+    - report:
+        uuid: ugcpub
+        ranges: default
+    - geobase_macro:
+        version: 0.0.3
+    - exp_getter_macro:
+        service_name: ugcpub
+        _version: 3
+    - balancer2:
+        attempts: 2
+        connection_attempts: 3
+        rr:
+          weights_file: ./controls/production.weights
+        on_error:
+          errordocument:
+            status: 500
+        retry_non_idempotent: false
+        backends:
+        - weight: -1
+          name: ugc_devnull
+          modules: 
+            - report:
+               ranges: default
+               uuid: ugcpub_upload_photo_requests_to_devnull
+            - errordocument:
+               status: 500
+        - weight: 1
+          name: ugc_vla
+          modules:
+            - report:
+                ranges: default
+                uuid: ugcpub_upload_photo_requests_to_vla
+            - balancer2:
+                attempts: 3
+                attempts_rate_limiter:
+                  limit: 0.34
+                dynamic: {
+                  max_pessimized_share: 0.2,
+                  min_pessimization_coeff: 0.1,
+                  weight_increase_step: 0.1,
+                  history_interval: "10s",
+                  backends_name: "ugcpub_https_to_vla",
+                }
+                retry_non_idempotent: false
+                generated_proxy_backends:
+                  proxy_options:
+                    backend_timeout: 60s
+                    connect_timeout: 70ms
+                  include_backends:
+                    type: BY_ID
+                    ids: [ugc_server_test_vla]
+        - weight: 1
+          name: ugc_sas
+          modules:
+            - report:
+                ranges: default
+                uuid: ugcpub_upload_photo_requests_to_sas
+            - balancer2:
+                attempts: 3
+                attempts_rate_limiter:
+                  limit: 0.34
+                dynamic: {
+                  max_pessimized_share: 0.2,
+                  min_pessimization_coeff: 0.1,
+                  weight_increase_step: 0.1,
+                  history_interval: "10s",
+                  backends_name: "ugcpub_https_to_sas",
+                }
+                retry_non_idempotent: false
+                generated_proxy_backends:
+                  proxy_options:
+                    backend_timeout: 60s
+                    connect_timeout: 70ms
+                  include_backends:
+                    type: BY_ID
+                    ids: [ugc_server_test_sas]
+        - weight: 1
+          name: ugc_man
+          modules:
+            - report:
+                ranges: default
+                uuid: ugcpub_upload_photo_requests_to_man
+            - balancer2:
+                attempts: 3
+                attempts_rate_limiter:
+                  limit: 0.34
+                dynamic: {
+                  max_pessimized_share: 0.2,
+                  min_pessimization_coeff: 0.1,
+                  weight_increase_step: 0.1,
+                  history_interval: "10s",
+                  backends_name: "ugcpub_https_to_man",
+                }
+                retry_non_idempotent: false
+                generated_proxy_backends:
+                  proxy_options:
+                    backend_timeout: 60s
+                    connect_timeout: 70ms
+                  include_backends:
+                    type: BY_ID
+                    ids: [ugc_server_test_man]

@@ -1,0 +1,147 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Активная область: получение объекта слоя в указанной точке на слое пробок
+
+Description:
+Проверка метода получения объекта слоя в указанной точке на слое пробок.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+hotspot
+
+Estimated time:
+90000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+  
+  Expectation:
+  Карта отобразилась корректно. 
+  На карте спан Москвы с включенным слоем пробок с показом дорожных событий, справа вверху контрол фулскрин. 
+  Под контейнером с картой через 3 секунды после загрузки появляется блок: "HotspotLayerObject undefined 139301(номер произвольный) Hotspot Object"; "getObjectInPosition() resolved: true; getObjectInPosition() fulfilled: true; getObjectInPosition() rejected: false".
+  
+Step:
+  Action:
+  Выполнить клик в линию пробок на спане карты(не в метку дорожных событий).
+  
+  Expectation:
+  При наведении на линию курсор меняется на палец.
+  Под контейнером с картой появляется блок: "HotspotLayerObject undefined 15184(номер произвольный) Hotspot Object"; "getObjectInPosition() resolved: true; getObjectInPosition() fulfilled: true; getObjectInPosition() rejected: false".
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.73259667357658, 37.70153663432529],
+                zoom: 10,
+                controls: ['fullscreenControl']
+            });
+            addGrid(myMap);
+            var log = new Log();
+
+            var actualProvider = new ymaps.traffic.provider.Actual({}, {infoLayerShown: true});
+            actualProvider.setMap(myMap);
+
+            var coords;
+            __log__('При непрерывном движении мышки по карте запрос не резолвился в версиях <2.1.46')
+            log.info('hotspotLayerObject + Geometry + Id + Hotspot + Properties');
+
+            actualProvider.getLayers().traffic.events.add('click', function (e) {
+                coords = e.get('coords');
+                var promise = actualProvider.getLayers().traffic.getObjectInPosition(coords).then(function (ex) {
+                    console.log(ex);
+                    if (ex) {
+                        log.info(getObjectClassName(ex) +
+                                ' ' + ex.getGeometry() +
+                                ' ' + ex.getId() +
+                                ' ' + getObjectClassName(ex.getHotspot()) +
+                                ' ' + getObjectClassName(ex.getProperties()));
+                    }
+                    else {
+                        log.info(' ');
+                        log.info('ALERT: вместо HotspotLayerObject вернулся undefined');
+                    }
+
+
+                });
+                promise.always(function () {
+                    log.info('getObjectInPosition() resolved: ' + promise.isResolved());
+                    log.info('getObjectInPosition() fulfilled: ' + promise.isFulfilled());
+                    log.info('getObjectInPosition() rejected: ' + promise.isRejected());
+                })
+            });
+            var coord = [
+                [55.89729849271632, 38.04073951518467],
+                [55.80382137165915, 38.04485938823154],
+                [55.74964055614385, 38.04211280620029],
+                [55.66046490706462, 38.039366224169044],
+                [55.622406210136944, 38.03387306010653],
+                [55.57108475785834, 38.03524635112215],
+                [55.564081153730875, 37.77157447612215],
+                [55.55863303897704, 37.609526136278404],
+                [55.564081153730875, 37.44610450541902],
+                [55.61852058132641, 37.38842628276279],
+                [55.71632053844502, 37.385679700731544],
+                [55.78834885710484, 37.3678269175284],
+                [55.83397502199781, 37.3952927378409],
+                [55.882635208223924, 37.44747779643467],
+                [55.911956213785366, 37.54635474955966],
+                [55.89498360716774, 37.67819068705965],
+                [55.88495083358548, 37.73037574565341],
+                [55.795312252615304, 37.63424537455967],
+                [55.78447976381938, 37.562834241747154],
+                [55.738795314012485, 37.535368421434654],
+                [55.71166896266243, 37.58618018901277],
+                [55.707792224581866, 37.6644577769034],
+                [55.72174667384083, 37.7084030894034],
+                [55.74964055614385, 37.70153663432529],
+                [55.78447976381938, 37.66995094096591]
+            ];
+            setTimeout(function () {
+                //запрашивание во много потоков работает криво
+                var i = 0;
+                //for (var i in coord) {
+                    var promise = actualProvider.getLayers().traffic.getObjectInPosition(coord[i]).then(function (ex) {
+                        console.log(ex);
+                        if (ex) {
+                            log.info(getObjectClassName(ex) +
+                                    ' ' + ex.getGeometry() +
+                                    ' ' + ex.getId() +
+                                    ' ' + getObjectClassName(ex.getHotspot()) +
+                                    ' ' + getObjectClassName(ex.getProperties()));
+                        }
+                        else {
+                            log.info(' ');
+                            log.info('ALERT: вместо HotspotLayerObject вернулся undefined');
+                        }
+                    });
+                    promise.always(function () {
+                        log.info('getObjectInPosition() resolved: ' + promise.isResolved());
+                        log.info('getObjectInPosition() fulfilled: ' + promise.isFulfilled());
+                        log.info('getObjectInPosition() rejected: ' + promise.isRejected());
+                    });
+                //}
+            }, 3000);
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

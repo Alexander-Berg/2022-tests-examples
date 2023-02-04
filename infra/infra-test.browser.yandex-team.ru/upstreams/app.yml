@@ -1,0 +1,45 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - kasharin
+      groups: []
+labels:
+  order: '10000000'
+config_mode: easy2
+---
+l7_upstream_macro:
+  version: 0.0.1
+  id: app
+  matcher:
+    and_:
+      - uri_re: '/(.*)?'
+      - not_:
+          uri_re: '/proxy/(.*)?'
+      - not_:
+          uri_re: '/cache/(.*)?'
+      - not_:
+          uri_re: '/utils/(.*)?'
+      - not_:
+          uri_re: /cache-ping
+      - not_:
+          uri_re: /proxy-ping
+  monitoring:
+    uuid: infra_browser_yandex-team_ru
+  flat_scheme:
+    balancer:
+      compat:
+        method: RR
+      attempts: 2
+      max_reattempts_share: 0.15
+      fast_attempts: 2
+      retry_http_responses:
+        codes: [5xx]
+      connect_timeout: 70ms
+      backend_timeout: 60s
+    backend_ids:
+      - app
+    on_error:
+      static:
+        status: 504
+        content: 'Service unavailable'

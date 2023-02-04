@@ -1,0 +1,202 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Геообъект: применение опций заливки геообъектов
+
+Description:
+Проверка применения опций заливки геообъектов.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+regress
+
+Estimated time:
+240000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+  
+  Expectation:
+  Карта отобразилась корректно, со спаном Московской области.
+  На карте два ряда объектов: многоугольник, прямоугольник, круг(верхний ряд с границей объектов синего цвета, нижний - зеленого).
+  Внутри объектов имеется изображение из серых прямоугольников.
+  Сверху кнопки "tile/stretch", "fillColor: red/unset", "fillOpacity: 0.5/1", "fill", "image".
+
+Step:
+  Action:
+  Выполнить два клика в кнопку "fill". 
+  
+  Expectation:
+  Из объектов пропадает изображение серых прямоугольников.  
+
+Step:
+  Action:
+  Выполнить клик в кнопку "fill". 
+  
+  Expectation:
+  В объектах на спане карты появляется изображение серых прямоугольников. 
+
+Step:
+  Action:
+  Выполнить два клика в кнопку "image". 
+  
+  Expectation:
+  Из объектов пропадает изображение серых прямоугольников, в объектах появляется полупрозрачная синяя заливка.  
+
+Step:
+  Action:
+  Выполнить клик в кнопку "image". 
+  
+  Expectation:
+  Из объектов пропадает полупрозрачная синяя заливка, снова появляются изображения серых прямоугольников.  
+  
+Step:
+  Action:
+  Выполнить клик в кнопку "fillOpacity: 0.5/1". 
+  
+  Expectation:
+  Изображение внутри объектов становится прозрачнее.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "fillOpacity: 0.5/1". 
+  
+  Expectation:
+  Изображение внутри объектов становится четче, опция прозрачности не применяется.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "tile/stretch". 
+  
+  Expectation:
+  В объектах появляется полупрозрачная синяя заливка, изображения прямоугольников не пропадают. 
+
+Step:
+  Action:
+  Выполнить клик в кнопку "fillColor: red/unset". 
+  
+  Expectation:
+  Цвет заливки в объектах меняется на красный, изображения прямоугольников не пропадают.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "fillColor: red/unset". 
+  
+  Expectation:
+  Цвет заливки в объектах меняется на синий, изображения прямоугольников не пропадают.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "tile/stretch". 
+  
+  Expectation:
+  Синяя заливка пропадает из объектов на карте.
+-->
+<html>
+<head>
+    <title>API 2.0</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <script src="../helper.js"></script>
+    <script src="geoCS.js"></script>
+    <script type=text/javascript>
+        Api('init');
+        function init(ymaps) {
+            
+            var myMap = new ymaps.Map('map', {
+                center: [55.73259667357658, 37.70153663432529],
+                zoom: 9,
+                behaviors: ['default', 'scrollZoom']
+            });
+            geoCSSource(ymaps, myMap, this);
+            var collection = new ymaps.GeoObjectCollection();
+            collection
+                    .add(geoObjectPolygon)
+                    .add(geoObjectRectangle)
+                    .add(geoObjectCircle)
+                    .add(polygon)
+                    .add(rectangle)
+                    .add(circle);
+            collection.each(function (obj) {
+                obj.options.unset('fillColor');
+                obj.options.set('fill', true);
+                obj.options.set('fillImageHref', 'https://png-1.findicons.com/files/icons/950/android/48/small_tiles.png');
+            });
+            var methodButton = new ymaps.control.Button('tile/stretch');
+            var colorButton = new ymaps.control.Button('fillColor: red/unset');
+            var opacityButton = new ymaps.control.Button('fillOpacity: 0.5/1');
+            var fillButton = new ymaps.control.Button('fill');
+            var imageButton = new ymaps.control.Button('image');
+            methodButton.events
+                    .add('select', function () {
+                        collection.each(function (obj) {
+                            obj.options.set('fillMethod', 'tile')
+                        })
+                    })
+                    .add('deselect', function () {
+                        collection.each(function (obj) {
+                            obj.options.set('fillMethod', 'stretch')
+                        })
+                    });
+            colorButton.events
+                    .add('select', function () {
+                        collection.each(function (obj) {
+                            obj.options.set('fillColor', '#FF0000')
+                        })
+                    })
+                    .add('deselect', function () {
+                        collection.each(function (obj) {
+                            obj.options.unset('fillColor')
+                        })
+                    });
+            opacityButton.events
+                    .add('select', function () {
+                        collection.each(function (obj) {
+                            obj.options.set('fillOpacity', 0.7)
+                        })
+                    })
+                    .add('deselect', function () {
+                        collection.each(function (obj) {
+                            obj.options.set('fillOpacity', 1)
+                        })
+                    });
+            fillButton.events
+                    .add('select', function () {
+                        collection.each(function (obj) {
+                            obj.options.set('fill', true)
+                        })
+                    })
+                    .add('deselect', function () {
+                        collection.each(function (obj) {
+                            obj.options.set('fill', false)
+                        })
+                    });
+            imageButton.events
+                    .add('select', function () {
+                        collection.each(function (obj) {
+                            obj.options.set('fillImageHref', 'https://png-1.findicons.com/files/icons/950/android/48/small_tiles.png');
+                        });
+                    })
+                    .add('deselect', function () {
+                        collection.each(function (obj) {
+                            obj.options.unset('fillImageHref');
+                        });
+                    });
+            myMap.geoObjects.add(collection);
+            myMap.controls
+                    .add(methodButton)
+                    .add(colorButton)
+                    .add(opacityButton)
+                    .add(fillButton)
+                    .add(imageButton);
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+<p><a href="https://tech.yandex.ru/maps/archive/doc/jsapi/2.0/ref/reference/GeoObject-docpage" target="_blank">Docs</a></p>
+</body>
+</html>

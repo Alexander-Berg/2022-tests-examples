@@ -1,0 +1,49 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - anoh
+      groups: []
+labels:
+  order: 00000900
+---
+regexp_section:
+  matcher:
+    match_fsm: {uri: '(/collections)?/api/v0\\..*'}
+  modules:
+    - antirobot_macro: {}
+    - icookie:
+        use_default_keys: true
+        domains: [".yandex.ru", ".yandex.by", ".yandex.com", ".yandex.com.tr", ".yandex.kz", ".yandex.ua"]
+    - report: {ranges: default, uuid: api_http_adapter}
+    - headers:
+        create_func_weak:
+          X-Start-Time: starttime
+    - balancer2:
+        attempts: 2
+        rr: {weights_file: ./controls/traffic_control.weights}
+        backends:
+        - weight: 1
+          name: api_http_adapter_sas
+          modules:
+            - report: {ranges: default, uuid: requests_api_http_adapter_to_sas}
+            - balancer2:
+                attempts: 1
+                weighted2: {}
+                generated_proxy_backends:
+                  proxy_options:
+                    backend_timeout: 15s
+                    keepalive_count: 1
+                    fail_on_5xx: false
+                  include_backends:
+                    type: BY_ID
+                    ids: [dev_http_adapter_imgs]
+        - weight: -1
+          name: api_http_adapter_devnull
+          modules:
+            - report: {ranges: 1ms, uuid: requests_api_http_adapter_to_devnull}
+            - errordocument:
+                status: 204
+        on_error:
+          modules:
+            - errordocument: {content: Gateway Timeout, status: 504}

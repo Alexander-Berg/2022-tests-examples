@@ -1,0 +1,174 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Мультимаршрут-ОТ: опция автоматического выбора активного маршрута с минимальным временем проезда
+
+Description:
+Проверка опции автоматического выбора в качестве активного маршрута ОТ с минимальным временем проезда.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+multiRouter
+
+Estimated time:
+120000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно со спаном Московской области.
+  Снизу слева кнопка "mode", сверху кнопки "remove", "events", "getActiv", "autoSel...".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "autoSel".
+
+  Expectation:
+  Происходит смена спана карты на спан Санкт-Петербурга, на спане маршрут "А"- Ольховая улица, 22, "B" - Пискаревский проспект 2к2щ.
+  Все линии маршрута - серые.
+
+Step:
+  Action:
+  Открыть инструменты разработчика командой Windows: Ctrl + Shift + I если у вас MacOS: ⌥ + ⌘ + I, вкладку Console, выполнить клик в кнопку "getActiv".
+
+  Expectation:
+  Спан карты без изменений, под контейнером с картой и в консоли появилась строка "null".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "remove", два клика в кнопку "events".
+
+  Expectation:
+  Маршрутные нитки и метки пропадают со спана карты.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "autoSel...".
+
+  Expectation:
+  На спане снова появляется маршрут "А"- Ольховая улица, 22, "B" - Пискаревский проспект 2к2щ на общественном транспорте - имеются метки общественного траснпорта.
+  Одна из линий маршрута - активная.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "getActiv".
+
+  Expectation:
+  Спан карты без изменений, под контейнером с картой появилась строка [object Object], в консоли появилась строка с объектом "Route".
+-->
+<html>
+<head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+
+            //TODO: написать тест
+            var map = myMap = new ym.Map('map', {
+                        center: [55.00718809437818, 38.094514924687026],
+                        zoom: 7,
+                        controls: ['fullscreenControl']
+                    }),
+                    log = new Log(),
+                    zoom = new ym.control.ZoomControl,
+                    button1 = new ym.control.Button({data: {content: 'autoSelection'}}, {selectOnClick: true}),
+                    button2 = new ym.control.Button({data: {content: 'getActive'}}, {selectOnClick: false}),
+                    button3 = new ym.control.Button({data: {content: 'events'}}, {selectOnClick: true}),
+                    button4 = new ym.control.Button({data: {content: 'remove'}}, {selectOnClick: true}),
+                    events = ['activeroutechange'],
+                    callback = function () {
+                        __log__("activeroutechange")
+                    },
+                    multiRoute;
+
+            __log__('Проверяем опцию activeRouteAutoSelection');
+            __log__('Перед изменением маршрута не забыть удалить подписку на события и удалить старый маршрут с карты!');
+
+            button1.events
+                    .add("select", function (e) {
+                        multiRoute = new ymaps.multiRouter.MultiRoute({
+                            referencePoints: ['питер, ольховая 22', 'пискаревский 2к2'],
+                            params: {
+                                results: 5,
+                                routingMode: 'masstransit'
+                            }
+                        }, {
+                            wayPointDraggable: true,
+                            viaPointDraggable: true,
+                            boundsAutoApply: true,
+                            zoomMargin: 30,
+                            preset: "islands#multiRouterSmall",
+                            activeRouteAutoSelection: false
+                        });
+                        myMap.geoObjects.add(multiRoute);
+                    })
+                    .add('deselect', function () {
+                        multiRoute = new ymaps.multiRouter.MultiRoute({
+                            referencePoints: ['питер, ольховая 22', 'пискаревский 2к2'],
+                            params: {
+                                results: 5,
+                                routingMode: 'masstransit'
+                            }
+                        }, {
+                            wayPointDraggable: true,
+                            viaPointDraggable: true,
+                            boundsAutoApply: true,
+                            zoomMargin: 30,
+                            preset: "islands#multiRouterSmall",
+                            activeRouteAutoSelection: true
+                        });
+                        myMap.geoObjects.add(multiRoute);
+
+                    });
+
+            button2.events.add('click', function () {
+                __log__(multiRoute.getActiveRoute());
+            });
+
+            button3.events
+                    .add('select', function () {
+                        multiRoute.events.add(events, callback);
+                    })
+                    .add('deselect', function () {
+                        multiRoute.events.remove(events, callback);
+                    });
+
+            button4.events.add('click', function () {
+                map.geoObjects.remove(multiRoute);
+            });
+
+            map.controls
+                    .add(zoom)
+                    .add(button1)
+                    .add(button2)
+                    .add(button3)
+                    .add(button4);
+
+            addGrid(map);
+
+            var modeButton = new ymaps.control.Button('mode');
+            modeButton.events
+                    .add('select', function () {
+                        multiRoute.model.setParams({routingMode: 'masstransit'}, true);
+                    })
+                    .add('deselect', function () {
+                        multiRoute.model.setParams({routingMode: 'auto'}, true);
+                    });
+            map.controls.add(modeButton, {position: {bottom: 35, left: 5}});
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

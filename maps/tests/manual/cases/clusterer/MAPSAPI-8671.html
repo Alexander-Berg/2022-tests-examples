@@ -1,0 +1,152 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Кластер: проверка удаления артефактов кластера
+
+Description:
+Проверка удаления артефактов кластера.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+clusterer
+
+Estimated time:
+90000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась корректно.
+  На спане карта множество кластерных меток(могут быть метки коллекций).
+  Сверху имеются кнопки "getBounds", "getClust...", "removeAll", "remove".
+  
+Step:
+  Action:
+  Выполнить клик в кнопку "getBounds", затем клик в "getClust...".
+
+  Expectation:
+  По клику в "getBounds" под контейнером появляется строка из 4 координат области вьюпорта, а также строка с указанием количества кластеров на карте.
+  По клику в  "getClust..." появляются множество строк [object Object]. 
+
+Step:
+  Action:
+  Выполнить клик в кнопку "remove", затем клик в "getBounds", затем клик в "getClust...".
+
+  Expectation:
+  По клику в "remove" со спана карты пропадают все метки кластеров.
+  По клику в "getBounds" под контейнером появляется строка из 4 координат области вьюпорта.
+  По клику в  "getClust..." появляется пустая строка. 
+
+Step:
+  Action:
+  Выполнить клик в кнопку "removeAll", затем клик в "getBounds", затем клик в "getClust...".
+
+  Expectation:
+  По клику в "getBounds" под контейнером появляется строка "null".
+  По клику в  "getClust..." появляется пустая строка.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 10,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl', 'zoomControl']
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+
+            log.info('Zoom in to show clusterer.getClusters().length');
+
+            var clusterer = new ymaps.Clusterer();
+            var placemarksNumber = 200;
+            var bounds = map.getBounds();
+            var clusterBounds;
+            var newPlacemarks = createGeoObjects(placemarksNumber, bounds);
+
+            // add 200 placemarks
+            clusterer.add(newPlacemarks);
+            map.geoObjects.add(clusterer);
+
+            map.events.add('boundschange', function () {
+                var clusters = clusterer.getClusters();
+                log.info('Cейчас показано ' + clusters.length + ' кластеров.');
+            });
+
+            var removeButton = new ymaps.control.Button('remove');
+            var removeAllButton = new ymaps.control.Button('removeAll');
+            var getClustersButton = new ymaps.control.Button('getClusters');
+            var getBoundsButton = new ymaps.control.Button('getBounds');
+
+            removeButton.events
+                    .add('select', function () {
+                        map.geoObjects.remove(clusterer);
+                    })
+                    .add('deselect', function () {
+                        map.geoObjects.add(clusterer);
+                    });
+
+            removeAllButton.events.add('select', function () {
+                clusterer.removeAll()
+            }).add('deselect', function () {
+                clusterer.add(newPlacemarks);
+            });
+
+            getClustersButton.events.add('click', function () {
+                __log__(clusterer.getClusters())
+            });
+
+            getBoundsButton.events.add('click', function () {
+                clusterBounds = clusterer.getBounds();
+                __log__(clusterBounds);
+                map.setBounds(clusterBounds);
+            });
+
+            map.controls
+                    .add(removeButton)
+                    .add(removeAllButton)
+                    .add(getClustersButton)
+                    .add(getBoundsButton);
+
+            function createGeoObjects(number, bounds) {
+                var placemarks = [];
+                // Создаем нужное количество меток
+                for (var i = 0; i < number; i++) {
+                    // Генерируем координаты метки случайным образом.
+                    var coordinates = getRandomCoordinates(bounds);
+                    // Создаем метку со случайными координатами.
+                    var myPlacemark = new ymaps.Placemark(coordinates, {
+                        balloonContent: i, hintContent: i, clusterCaption: i}, {});
+                    placemarks.push(myPlacemark);
+                }
+                return placemarks;
+            }
+
+            function getRandomCoordinates(bounds) {
+                var size = [bounds[1][0] - bounds[0][0], bounds[1][1] - bounds[0][1]];
+                return [Math.random() * size[0] + bounds[0][0], Math.random() * size[1] + bounds[0][1]];
+            }
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

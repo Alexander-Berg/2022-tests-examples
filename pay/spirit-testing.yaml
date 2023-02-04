@@ -1,0 +1,322 @@
+annotations:
+  stagectl_epoch: 647
+  stagectl_vcs:
+    svn_branch: stage_controller/stable-119-1
+    svn_revision: 8249430
+    svn_tag: stage_controller/stable-119-1
+labels:
+  deploy_engine: env_controller
+  du_sidecar_target_revision:
+    darkspirit:
+      logbrokerToolsLayer: 2249562029
+    dbstats:
+      podBin: 2186539855
+  notifications_last_timestamp: 1626599368904996000
+  tags:
+  - test
+meta:
+  account_id: abc:service:1646
+  acl:
+  - action: allow
+    permissions:
+    - read
+    - read_secrets
+    - write
+    - create
+    - ssh_access
+    - root_ssh_access
+    subjects:
+    - robot-drug-deploy
+  effective_account_id: null
+  id: spirit-testing
+  inherit_acl: true
+  project_id: spirit
+spec:
+  deploy_units:
+    darkspirit:
+      endpoint_sets:
+      - port: 80
+      - id: ssl
+        port: 443
+      images_for_boxes:
+        service:
+          digest: sha256:fd296f10ccaa45bb2d80f2680ede30d6cd5c9d492c9987e671aadb90fad63423
+          name: spirit/darkspirit
+          registry_host: registry.yandex.net
+          tag: '0.350'
+      logbroker_tools_sandbox_info:
+        revision: 2249562029
+      multi_cluster_replica_set:
+        replica_set:
+          clusters:
+          - cluster: sas
+            spec:
+              replica_count: 1
+          - cluster: vla
+            spec:
+              replica_count: 1
+          deployment_strategy:
+            max_tolerable_downtime_pods: 1
+            max_unavailable: 2
+          pod_template_spec:
+            spec:
+              disk_volume_requests:
+              - id: disk-0
+                labels:
+                  used_by_infra: true
+                quota_policy:
+                  bandwidth_guarantee: 2097152
+                  bandwidth_limit: 4194304
+                  capacity: 10737418240
+                storage_class: hdd
+              pod_agent_payload:
+                spec:
+                  boxes:
+                  - id: service
+                    rootfs: {}
+                  mutable_workloads:
+                  - workload_ref: main
+                  - workload_ref: nginx
+                  resources: {}
+                  workloads:
+                  - box_ref: service
+                    env:
+                    - name: FLASK_APP
+                      value:
+                        literal_env:
+                          value: yb_darkspirit.servant:app
+                    - name: WSGI_RUNNER
+                      value:
+                        literal_env:
+                          value: anything-but-not-unicorn
+                    - name: YANDEX_XML_CONFIG
+                      value:
+                        literal_env:
+                          value: /etc/yandex/yb-darkspirit/servant.deploy.nonprod.cfg.xml
+                    - name: DARKSPIRIT_S3_RECEIPTS
+                      value:
+                        secret_env:
+                          alias: robot-darkspirit-mds-s3-receipts-access-key.txt
+                          id: default_value
+                    - name: DARKSPIRIT_S3_DOCUMENTS
+                      value:
+                        secret_env:
+                          alias: robot-darkspirit-mds-s3-documents-access-key.txt
+                          id: default_value
+                    - name: DARKSPIRIT_OAUTH_TOKEN
+                      value:
+                        secret_env:
+                          alias: robot-darkspirit-darkspirit-oauth-token.txt
+                          id: default_value
+                    - name: DARKSPIRIT_7736207543_OFD_KEY
+                      value:
+                        secret_env:
+                          alias: darkspirit-tst
+                          id: ofd_7736207543_ofd_key
+                    - name: DARKSPIRIT_7736207543_YANDEX_KEY
+                      value:
+                        secret_env:
+                          alias: darkspirit-tst
+                          id: ofd_7736207543_yandex_key
+                    - name: DARKSPIRIT_DB_BACKENDS
+                      value:
+                        secret_env:
+                          alias: darkspirit-tst
+                          id: db-conn-darkspirit.cfg.xml
+                    - name: DARKSPIRIT_MDS
+                      value:
+                        secret_env:
+                          alias: darkspirit-tst
+                          id: darkspirit-mds.cfg.xml
+                    - name: USE_PROXY_FIX_FOR_HTTPS
+                      value:
+                        literal_env:
+                          value: 'on'
+                    id: main
+                    readiness_check:
+                      tcp_check:
+                        port: 18616
+                    start:
+                      command_line: /opt/entrypoint.sh gunicorn -p /var/run/yb/yb-darkspirit.pid
+                        -b [::1]:18616 -w 3 -t 50 --max-requests 500 --logger-class
+                        yb_darkspirit.gunicorn_conf.CustomLogger --config python:yb_darkspirit.gunicorn_conf
+                        yb_darkspirit.servant:app
+                  - box_ref: service
+                    env:
+                    - name: DARKSPIRIT_TLS_CERT
+                      value:
+                        secret_env:
+                          alias: darkspirit_ssl
+                          id: certificate
+                    - name: DARKSPIRIT_TLS_KEY
+                      value:
+                        secret_env:
+                          alias: darkspirit_ssl
+                          id: key
+                    id: nginx
+                    liveness_check:
+                      http_get:
+                        any: true
+                        path: /nginx_ping
+                        port: 80
+                    readiness_check:
+                      tcp_check:
+                        port: 80
+                    start:
+                      command_line: /opt/nginx-entrypoint.sh
+                    transmit_logs: true
+              resource_requests:
+                memory_guarantee: 2147483648
+                memory_limit: 2147483648
+                vcpu_guarantee: 1000
+                vcpu_limit: 1000
+              secrets:
+                darkspirit-tst:
+                  delegation_token: 
+                  secret_id: sec-01f9tws7ngcy9zx0bdesjwbr0r
+                  secret_version: ver-01f9v6mx0p5g4sfm7r8nz1sf0v
+                darkspirit_ssl:
+                  delegation_token: 
+                  secret_id: sec-01facth96zb8denjtpqnzhwes6
+                  secret_version: ver-01factrrk4tfs0qjkrk989nkbz
+                robot-darkspirit-darkspirit-oauth-token.txt:
+                  delegation_token: 
+                  secret_id: sec-01e9zsp22pzr1f0fasqayayx24
+                  secret_version: ver-01eh2aepep63xn47jx8hbysph5
+                robot-darkspirit-mds-s3-documents-access-key.txt:
+                  delegation_token: 
+                  secret_id: sec-01ec83y80t1tf5f58ptv4k9fs7
+                  secret_version: ver-01ec83y828sre7kk00eq0a3jvy
+                robot-darkspirit-mds-s3-receipts-access-key.txt:
+                  delegation_token: 
+                  secret_id: sec-01ec83t0wryy2g774fsx202gwg
+                  secret_version: ver-01ec83t0y7k8a39qrcfck4501c
+                tvm.secret.2000447:
+                  delegation_token: 
+                  secret_id: sec-01dq7ky0e973r92083e8naebng
+                  secret_version: ver-01dq7ky0mq2r1ttags7xcjq19z
+      network_defaults:
+        network_id: _SPIRIT_TEST_NETS_
+      patchers_revision: 2
+      revision: 96
+      tvm_config:
+        blackbox_environment: ProdYaTeam
+        clients:
+        - destinations:
+          - alias: darkspirit
+            app_id: 2000447
+          - alias: whitespirit
+            app_id: 2000423
+          - alias: fnsreg
+            app_id: 2025466
+          - alias: tracker
+            app_id: 177
+          secret_selector:
+            alias: tvm.secret.2000447
+            id: client_secret
+          source:
+            alias: yb-darkspirit
+            app_id: 2000447
+        mode: enabled
+    dbstats:
+      endpoint_sets:
+      - port: 8080
+      images_for_boxes:
+        service:
+          digest: EMPTY
+          name: spirit/darkspirit-dbstats
+          registry_host: registry.yandex.net
+          tag: svn.8422357-sandbox.1020253127
+        solomon-agent:
+          name: balance/solomon-agent
+          registry_host: registry.yandex.net
+          tag: svn.7858958-sandbox.0
+      logrotate_configs:
+        service:
+          run_period_millisecond: 600000
+      multi_cluster_replica_set:
+        replica_set:
+          clusters:
+          - cluster: sas
+            spec:
+              replica_count: 1
+          - cluster: vla
+            spec:
+              replica_count: 1
+          deployment_strategy:
+            max_tolerable_downtime_pods: 1
+            max_unavailable: 2
+          pod_template_spec:
+            spec:
+              disk_volume_requests:
+              - id: disk-0
+                labels:
+                  used_by_infra: true
+                quota_policy:
+                  bandwidth_guarantee: 5242880
+                  bandwidth_limit: 10485760
+                  capacity: 10737418240
+                storage_class: hdd
+              pod_agent_payload:
+                spec:
+                  boxes:
+                  - id: service
+                    rootfs: {}
+                  - id: solomon-agent
+                    rootfs: {}
+                    static_resources:
+                    - mount_point: /etc/solomon
+                      resource_ref: solomon.conf
+                    - mount_point: /etc/solomon-service
+                      resource_ref: service.conf
+                  mutable_workloads:
+                  - workload_ref: main
+                  - workload_ref: solomon-agent-workload
+                  resources:
+                    static_resources:
+                    - id: solomon.conf
+                      url: http://s3.mds.yandex.net/sandbox-469/2051891053/solomon.conf
+                      verification:
+                        check_period_ms: 180000
+                        checksum: MD5:3e409dc94318cad4d9966c6861ae4a51
+                    - id: service.conf
+                      url: http://s3.mds.yandex.net/sandbox-469/2154058352/service.conf
+                      verification:
+                        check_period_ms: 180000
+                        checksum: MD5:c0b6fae9c1e23f605468aed448baaf14
+                  workloads:
+                  - box_ref: service
+                    env:
+                    - name: APPLICATION_ENVIRONMENT
+                      value:
+                        literal_env:
+                          value: test
+                    - name: DB_PASSWORD
+                      value:
+                        literal_env:
+                          value: balalancing
+                    id: main
+                    readiness_check:
+                      tcp_check:
+                        port: 8080
+                    start:
+                      command_line: /opt/bin/startup.sh
+                  - box_ref: solomon-agent
+                    id: solomon-agent-workload
+                    readiness_check:
+                      tcp_check:
+                        port: 10050
+              resource_requests:
+                memory_guarantee: 2147483648
+                memory_limit: 2147483648
+                vcpu_guarantee: 1000
+                vcpu_limit: 1000
+      network_defaults:
+        network_id: _SPIRIT_TEST_NETS_
+      pod_agent_sandbox_info:
+        revision: 2186539855
+      revision: 37
+  revision: 130
+  revision_info:
+    description: Fix tvm config for darkspirit
+

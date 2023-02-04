@@ -1,0 +1,28 @@
+---
+
+- hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    host: sre_vertis_test_mdb_tableau
+    clusters:
+      - efdadf5c-c2e7-41ad-bccd-e4e8edf673d3
+    host_tags:
+      - vertis_sre
+      - vertis_sre_test
+
+  pre_tasks:
+    - juggler_facts: jserver_api={{ jserver_api }}
+
+  post_tasks:
+    - juggler_cleanup: jcheck_mark={{ host }}
+
+  tasks:
+    - name: 'Add unispace check'
+      juggler_check:
+      args: >
+        {{ mdb_check | 
+        mdb_add_clusters(clusters, 'vertis-mdb-mysql-unispace', 'vertis-mdb-postgresql-unispace') | 
+        combine(crit_disabled, {'service': 'vertis-mdb-unispace'}, recursive=True) }}
+
+

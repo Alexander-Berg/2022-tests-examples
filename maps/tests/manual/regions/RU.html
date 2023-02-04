@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<!--
+Title:
+Регионы: корректное отображение РФ
+
+Description:
+Проверка корректного отображения РФ.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+regress
+
+Estimated time:
+180000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно со спаном РФ.
+  Сверху имеются кнопки "3", "2", "1", "0", "be", "en", "uk", "ru".
+
+Step:
+  Action:
+  Призумить спан карты границы РФ в районе города Владивосток(граница с Китаем), затем выполнить клик в кнопку "0".  
+
+  Expectation:
+  Происходит корректный призум.
+  По клику "0", РФ выделяется полупрозрачным синим цветом, граница некорректно совпадает с линией границы на карте.
+
+Step:
+  Action:
+  Последовательно выполнить клик в "1", затем "2", "3", наблюдать за отображением линии границы на выделении. 
+
+  Expectation:
+  По клику "1", "2", "3" линия выделенной границы становится четче и почти совпадает с линией границы на карте. 
+
+Step:
+  Action:
+  Отзумить спан карты, для отображения РФ, поводить курсором по регионам.
+
+  Expectation:
+  При наведении появляется хинт на русском с наименованием региона.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "be", поводить курсором по регионам.
+
+  Expectation:
+  При наведении появляется хинт на английском с наименованием региона.
+
+Step:
+  Action:
+  Последовательно выполнить клик в кнопки "en", "uk", "ru", наводить курсор на регионы и проверять применение опции изменения языка хинта.
+
+  Expectation:
+  При наведении появляется хинт на английском языке, за исключением "ru" - на русском, с наименованием региона.
+-->
+<html>
+<head>
+    <title>API 2.0</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <script src="../helper.js"></script>
+    <script type="text/javascript">
+        Api('init');
+        function init(ymaps){
+            ymaps.load(['regions'], function() {
+                
+                var country = 'RU',
+                        radioGroupLangs = new ymaps.control.RadioGroup({
+                            items: [
+                                new ymaps.control.Button('ru'),
+                                new ymaps.control.Button('uk'),
+                                new ymaps.control.Button('en'),
+                                new ymaps.control.Button('be')
+                            ]
+                        }),
+                        radioGroupQuality = new ymaps.control.RadioGroup({
+                            items: [
+                                new ymaps.control.Button('0'),
+                                new ymaps.control.Button('1'),
+                                new ymaps.control.Button('2'),
+                                new ymaps.control.Button('3')
+                            ]
+                        }),
+                        myMap = new ymaps.Map('map', {
+                            center: [68.74128595883603, 103.59431688066606],
+                            zoom: 2,
+                            behaviors: ['default', 'scrollZoom']
+                        }), lang = 'ru', quality = 0, collection = new ymaps.GeoObjectCollection();
+                var regions = function() {
+                    ymaps.regions.load(country, {
+                        lang: lang,
+                        quality: quality
+                    }).then(function (result) {
+                                collection.removeAll();
+                                collection.add(result.geoObjects);
+                            });
+                };
+                radioGroupQuality.events.add('select', function(e) {
+                    quality = parseInt(e.get('target').data.get('content'));
+                    regions();
+                    setTimeout(function() {
+                        collection.each(function(obj) {
+                            console.log(obj.properties.get('quality'))
+                        })
+                    }, 1000)
+                });
+                radioGroupLangs.events.add('select', function(e) {
+                    lang = e.get('target').data.get('content');
+                    regions();
+                });
+                myMap.controls.add(radioGroupLangs).add(radioGroupQuality).add('zoomControl');
+                myMap.geoObjects.add(collection);
+            });
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;">
+</div>
+</body>
+</html>

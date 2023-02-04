@@ -1,0 +1,213 @@
+<!DOCTYPE HTML>
+<!--(skip)(description)
+GeoObjectCollection: methods
+-->
+<!--(version)
+2.1.0
+-->
+<!--(commands)
+click(4);
+click(6);
+click(13);
+click(15);
+click(2);
+test(); // добавление элементов, замена, итератор и получение границ коллекции
+click(239);
+click(223);
+click(7);
+test(); // each
+click(7);
+click(239);
+click(10);
+click(223);
+test(); // удаление
+-->
+<html>
+<head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script src="../geoCS.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym; // hack
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.73259667357658, 37.70153663432529],
+                zoom: 9,
+                behaviors: ['default', 'scrollZoom'],
+                controls: []
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+            geoCSSource(ym, myMap, this);
+
+            var collection = new ymaps.GeoObjectCollection({
+                properties: {
+                    hintContent: 'collection',
+                    balloonContent: 'collection'
+                },
+                children: [geoObjectPlacemark, geoObjectPolygon, geoObjectPolyline, geoObjectCircle, geoObjectRectangle, placemark, polygon, polyline, circle, rectangle]
+            }, {
+                preset: 'islands#redCircleIcon',
+                strokeColor: '#FF0000',
+                fillColor: '#FF0000',
+                fillOpacity: 0.3
+            });
+
+            var newPlacemark1 = new ymaps.GeoObject({
+                geometry: { type: "Point", coordinates: [55.71574031323344, 37.20] }, properties: {custom: true}
+            }, {id: 'newPlacemark1', preset: 'islands#yellowIcon'});
+            var newCircle1 = new ymaps.Circle([
+                [55.56, 38.097131347654376],
+                5000
+            ], {custom: true}, {id: 'newCircle1', strokeColor: '#007acd', fillColor: '#007acd'});
+            var newPlacemark2 = new ymaps.Placemark([55.912150224943986, 37.2], {custom: true}, {id: 'newPlacemark2', preset: 'islands#nightCircleIcon'});
+            var newPlacemark3 = new ymaps.Placemark([55.71574031323344, 37.45], {custom: true}, {id: 'newPlacemark3', preset: 'islands#oliveIcon'});
+            var newPlacemark4 = new ymaps.Placemark([55.71574031323344, 37.65], {custom: true}, {id: 'newPlacemark4', preset: 'islands#oliveIcon'});
+
+            map.geoObjects.add(collection);
+
+            var addButton = new ymaps.control.Button({data: {content: 'add'}, options: {selectOnClick: true}});
+            var visibleButton = new ymaps.control.Button({data: {content: 'each'}, options: {selectOnClick: true}});
+            var objectsButton = new ymaps.control.Button({data: {content: 'objects'}, options: {selectOnClick: false}});
+            var boundsButton = new ymaps.control.Button({data: {content: 'bounds'}, options: {selectOnClick: false}});
+            var iteratorButton = new ymaps.control.Button({data: {content: 'iterator'}, options: {selectOnClick: false}});
+            var removeAllButton = new ymaps.control.Button({data: {content: 'removeAll'}, options: {selectOnClick: false}});
+            var setButton = new ymaps.control.Button({data: {content: 'set'}, options: {selectOnClick: false}});
+            var spliceButton = new ymaps.control.Button({data: {content: 'splice'}, options: {selectOnClick: false}});
+            var clearButton = new ymaps.control.Button({data: {content: 'clear log'}, options: {selectOnClick: false}});
+
+            addButton.events
+                    .add('select', function () {
+                        collection.add(newPlacemark1);
+                        var addResult = collection.add(newCircle1, 4);
+                        for (var i = 0; i < addResult.getLength(); i++) {
+                            var element = addResult.get(i);
+                            log.info(i + ': ' + element.geometry.getType() + ' - ' + element.options.get('id'));
+                        }
+                    })
+                    .add('deselect', function () {
+                        var removeResult = collection.remove(newPlacemark1);
+                        for (var i = 0; i < removeResult.getLength(); i++) {
+                            var element = removeResult.get(i);
+                            log.info(i + ': ' + element.geometry.getType() + ' - ' + element.options.get('id'));
+                        }
+                    });
+
+            visibleButton.events
+                    .add('select', function () {
+                        collection.each(function (obj) {
+                            obj.options.set('visible', false)
+                        })
+                    })
+                    .add('deselect', function () {
+                        collection.each(function (obj) {
+                            obj.options.set('visible', true)
+                        })
+                    });
+
+            objectsButton.events
+                    .add('click', function () {
+                        for (var i = 0; i < collection.getLength(); i++) {
+                            var element = collection.get(i);
+                            log.info(i + ': ' + element.geometry.getType() + ' - ' + element.options.get('id'));
+                        }
+                    });
+
+            boundsButton.events
+                    .add('click', function () {
+                        myMap.setBounds(collection.getBounds());
+                        var bounds = new ymaps.GeoObject({
+                            geometry: { type: "Rectangle", coordinates: collection.getBounds()}, properties: {}
+                        }, {strokeColor: '#FF00FF', strokeWidth: 5, fillColor: '#00FF00', fillOpacity: 0});
+                        myMap.geoObjects.add(bounds)
+                    });
+
+            iteratorButton.events.add('click', function () {
+                testSearch(collection);
+            });
+
+            removeAllButton.events.add('click', function () {
+                var removeAllResult = collection.removeAll();
+                for (var i = 0; i < removeAllResult.getLength(); i++) {
+                    var element = removeAllResult.get(i);
+                    log.info(i + ': ' + element.geometry.getType() + ' - ' + element.options.get('id'));
+                }
+            });
+
+            setButton.events
+                    .add('click', function () {
+                        var setResult = collection.set(0, newPlacemark2);
+                        for (var i = 0; i < setResult.getLength(); i++) {
+                            var element = setResult.get(i);
+                            log.info(i + ': ' + element.geometry.getType() + ' - ' + element.options.get('id'));
+                        }
+                    });
+
+            spliceButton.events
+                    .add('click', function () {
+                        var spliceResult = collection.splice(1, 2, newPlacemark3, newPlacemark4);
+                        for (var i = 0; i < spliceResult.getLength(); i++) {
+                            var element = spliceResult.get(i);
+                            log.info(i + ': ' + element.geometry.getType() + ' - ' + element.options.get('id'));
+                        }
+                    });
+
+            clearButton.events.add('click', function () {
+                log.clear();
+            });
+
+            map.controls
+                    .add(addButton)
+                    .add(visibleButton)
+                    .add(boundsButton)
+                    .add(iteratorButton)
+                    .add(removeAllButton)
+                    .add(setButton)
+                    .add(spliceButton)
+                    .add(clearButton, {float: 'none', position: {bottom: 25, right: 10}})
+                    .add(objectsButton, {float: 'none', position: {bottom: 60, right: 10}});
+
+            log.info('map: ' + collection.getMap());
+            log.info('overlay: ' + collection.getOverlay());
+            log.info('overlay sync: ' + collection.getOverlaySync());
+            try {
+                log.info('overlay shape: ' + collection.getOverlaySync().getShape());
+            } catch (err) {
+                log.info('overlay shape - error. ' + err)
+            }
+            log.info('parent: ' + collection.getParent());
+            log.info('pixelbounds: ' + collection.getPixelBounds());
+            log.info('index of placemark (expected value 5:) ' + collection.indexOf(placemark));
+            log.info('index of newPlacemark1: ' + collection.indexOf(newPlacemark1));
+
+            function testSearch(initialData) {
+                initialData.options.unset(['preset', 'fillColor', 'fillOpacity', 'strokeColor']);
+
+                var iterator = initialData.getIterator(), obj;
+                var i = 1;
+                while (obj = iterator.getNext()) {
+                    if (obj == iterator.STOP_ITERATION) {
+                        return
+                    }
+                    obj.options.set('strokeColor', "#991199")
+                            .set('iconColor', "#991199")
+                            .set('fillColor', '#991199')
+                            .set('fillOpacity', 0.3)
+                }
+            };
+
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

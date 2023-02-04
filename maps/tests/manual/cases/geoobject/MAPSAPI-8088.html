@@ -1,0 +1,142 @@
+<!DOCTYPE HTML>
+<!--(skip)(description)
+GeoObject: MAPSAPI-8088
+-->
+<!--(version)
+2.1.7
+-->
+<!--(commands)
+sleep(1000);
+test();
+click(145);
+test();
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/2.4.1/lodash.min.js"></script>
+
+    <script src="../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        // Границы для полигонов
+        var bounds = [
+            [[[55.75, 37.80],[55.80, 37.90],[55.75, 38.00]],[]],
+            [[[55.75, 37.50],[55.80, 37.60],[55.75, 37.70]],[]],
+            [[[55.88, 37.69],[55.84, 37.61],[55.78, 37.68]],[]],
+            [[[55.59, 37.42],[55.54, 37.59],[55.62, 37.72]],[]],
+            [[[55.59, 37.90],[55.64, 37.81],[55.65, 37.96]],[]]];
+
+        // Кординаты точек
+        var points = [
+            [55.68, 37.65],
+            [55.76, 37.59],
+            [55.82, 37.40],
+            [55.85, 37.45],
+            [55.88, 37.65],
+            [55.70, 37.82],
+            [55.57, 37.95],
+            [55.67, 38.06],
+            [55.54, 37.50],
+            [55.59, 37.45],
+            [55.66, 37.71],
+            [55.76, 37.63]
+        ];
+
+        // Стиль точек которые за полигоном
+        var outter = {
+            preset: 'islands#redDotIcon'
+        };
+
+        // Стиль точек которые в полигоном
+        var inner = {
+            preset: 'islands#greenDotIcon'
+        };
+
+        // Карта
+        var map = null;
+        // Массивы полигонов и точек (Types: Yandex.Objects)
+        var polygons = [], placemarks = [];
+
+        function init(ymaps) {
+            ymaps = ym;
+            // Создаём карту
+            map = new ymaps.Map("map", {
+                center: [55.73, 37.75],
+                zoom: 10,
+                controls: ['fullscreenControl', 'zoomControl']
+            });
+
+            addGrid(map);
+
+            // Рисуем полигоны, и ложим в массив полигонов с типом (Polygon)
+            _.each(bounds, function(bound){
+                polygons.push(drawPolygon(bound));
+            });
+
+            // Рисуем точки, и ложим в массив полигонов с типом (Placemark)
+            _.each(points, function(point){
+                placemarks.push(drawPlacemark(point));
+            });
+
+            // Вызов функции которая поменяет цвета точек - вошедших в полигоны
+            filterPlacemarks();
+
+            function drawPolygon(bounds){
+                var polygon = new ymaps.Polygon(bounds, {}, {
+                    editorDrawingCursor: "crosshair",
+                    fillColor: '#000000',
+                    strokeColor: '#000000',
+                    strokeWidth: 2,
+                    fillOpacity: 0.2
+                });
+                // При изменении гометрии полигона - тоже запускаем функцию меняющую цвета точек вошедших в полигоны
+                polygon.editor.geometry.events.add('pixelgeometrychange', function(){
+                    filterPlacemarks();
+                });
+
+                map.geoObjects.add(polygon);
+                return polygon;
+            }
+
+            function drawPlacemark(point){
+                var placemark = new ymaps.Placemark(point, {}, outter);
+                map.geoObjects.add(placemark);
+                return placemark;
+            }
+
+            function filterPlacemarks(){
+                var objects = ymaps.geoQuery(placemarks);
+                _.each(polygons, function(polygon){
+                    var objsInPolygon = objects.searchInside(polygon);
+                    objsInPolygon.setOptions('preset', inner);
+                    objects = objects.remove(objsInPolygon);
+                    objects.setOptions('preset', outter);
+                });
+            }
+
+            function filterPlacemarks2(){
+                for(var i=0; i<placemarks.length; i++){
+                    var mark = placemarks[i];
+                    mark.options.set(outter);
+                    for(var j=0; j<polygons.length; j++){
+                        var poly = polygons[j];
+                        if(poly.geometry.contains(mark.geometry.getCoordinates())){
+                            mark.options.set(inner);
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

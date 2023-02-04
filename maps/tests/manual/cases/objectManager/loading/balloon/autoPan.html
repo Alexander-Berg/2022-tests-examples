@@ -1,0 +1,139 @@
+<!DOCTYPE HTML>
+<!--(skip)(description)
+
+-->
+<!--(version)
+
+-->
+<!--(commands)
+
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var center = [56, 34];
+            var map = myMap = new ymaps.Map('map', {
+                center: center,
+                zoom: 4,
+                type: 'yandex#map',
+                controls: ['fullscreenControl', 'typeSelector']
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+            log.info('Server: apps/loadingServerStatic.js, port: 4778');
+            log.info('autoPan button - autoPan Duration 100/2500');
+            log.info('get button - check getMetods');
+            log.info('isOpen button - check isOpen balloon geoObject №1390');
+            log.info('close button - open/close balloon geoObject №1390');
+            log.info('destroy button - open and destroy balloon geoObject №1390');
+            log.info('openClose button - open and close balloon geoObject №1390');
+
+            var loadingObjectManager = new ymaps.LoadingObjectManager('https://alexa.maps.dev.yandex.ru:4778/?bbox=%b', {
+                paddingTemplate: 'managerResponse_bbox_%b',
+                splitRequests: true
+            });
+            map.geoObjects.add(loadingObjectManager);
+
+            setTimeout(function () {
+                loadingObjectManager.objects.balloon.open(1054);
+            }, 1000);
+
+            var autoPanButton = new ymaps.control.Button({data: {content: 'autoPan'}, options: {selectOnClick: true}});
+            var getButton = new ymaps.control.Button({data: {content: 'get'}, options: {selectOnClick: false}});
+            var isOpenButton = new ymaps.control.Button({data: {content: 'isOpen'}, options: {selectOnClick: false}});
+            var closeButton = new ymaps.control.Button('close');
+            var destroyButton = new ymaps.control.Button({data: {content: 'destroy'}, options: {selectOnClick: false}});
+            var destroyHintButton = new ymaps.control.Button({data: {content: 'destroyHint'}, options: {selectOnClick: false}});
+            var openCloseButton = new ymaps.control.Button({data: {content: 'openClose'}, options: {selectOnClick: false}});
+
+            autoPanButton.events
+                    .add('select', function () {
+                        loadingObjectManager.options.set('balloonAutoPanDuration', 2500);
+                        loadingObjectManager.objects.options.set("balloonAutoPanMargin", 200);
+                        loadingObjectManager.clusters.options.set("balloonAutoPanMargin", 200);
+                        loadingObjectManager.objects.balloon.autoPan();
+                    })
+                    .add('deselect', function () {
+                        loadingObjectManager.objects.options.set('balloonAutoPanDuration', 100);
+                        loadingObjectManager.objects.options.set("balloonAutoPanMargin", 0);
+                        loadingObjectManager.clusters.options.set("balloonAutoPanMargin", 0);
+                        loadingObjectManager.objects.balloon.autoPan();
+                    });
+
+
+            getButton.events.add('click', function () {
+                __log__('getData: ' + loadingObjectManager.objects.balloon.getData());
+                validateValue(loadingObjectManager.objects.balloon.getData(), '[object Object]');
+                __log__('getOptions: ' + loadingObjectManager.objects.balloon.getOptions());
+                loadingObjectManager.objects.balloon.getOverlay().then(function (res) {
+                    __log__("getOverlay: " + res);
+                    validateValue(res, loadingObjectManager.objects.balloon.getOverlaySync())
+                });
+                validateValue('69.02225956553079,55.063456207280986', loadingObjectManager.objects.balloon.getPosition());
+            });
+
+            isOpenButton.events.add('click', function () {
+                __log__('isOpen: ' + loadingObjectManager.objects.balloon.isOpen(1054))
+            });
+
+            closeButton.events
+                    .add('select', function () {
+                        loadingObjectManager.objects.balloon.close()
+                    })
+                    .add('deselect', function () {
+                        loadingObjectManager.objects.balloon.open(1054)
+                    });
+
+            destroyButton.events.add('click', function () {
+                var promise = loadingObjectManager.objects.balloon.open(355);
+                loadingObjectManager.objects.balloon.destroy();
+                promise.always(function () {
+                    log.info('balloon.open() fulfilled: ' + promise.isFulfilled());
+                    log.info('balloon.open() rejected: ' + promise.isRejected());
+                })
+            });
+            destroyHintButton.events.add('click', function () {
+                var promise = loadingObjectManager.objects.hint.open(1007);
+                loadingObjectManager.objects.hint.destroy();
+                promise.always(function () {
+                    log.info('hint.open() fulfilled: ' + promise.isFulfilled());
+                    log.info('hint.open() rejected: ' + promise.isRejected());
+                })
+            });
+
+            openCloseButton.events.add('click', function () {
+                var promise = loadingObjectManager.objects.balloon.open(1054);
+                loadingObjectManager.objects.balloon.close();
+                promise.always(function () {
+                    log.info('balloon.open() fulfilled: ' + promise.isFulfilled());
+                    log.info('balloon.open() rejected: ' + promise.isRejected());
+                })
+            });
+
+            map.controls
+                    .add(autoPanButton)
+                    .add(getButton)
+                    .add(isOpenButton)
+                    .add(closeButton)
+                    .add(openCloseButton)
+                    .add(destroyButton)
+                    .add(destroyHintButton);
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

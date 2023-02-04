@@ -1,0 +1,44 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - nanny-robot
+      groups: []
+labels:
+  order: '99999999'
+---
+regexp_section:
+  matcher: {}
+  modules:
+    - shared:
+        uuid: backends
+    - headers:
+        append_func_weak:
+          X-Forwarded-For: realip
+        create_func_weak:
+          X-Forwarded-For: realip
+          X-Aab-Requestid: reqid
+          X-Forwarded-Proto: scheme
+    - log_headers:
+        name_re: 'X-Aab-Requestid'
+    - balancer2:
+        attempts: 2
+        unique_policy: {}
+        attempts_rate_limiter:
+          limit: 0.3
+        active:
+          delay: '15s'
+          request: 'GET /ping HTTP/1.1\nHost: cryprox-test.yandex.net\n\n'
+        generated_proxy_backends:
+          proxy_options:
+            backend_timeout: 60s
+            connect_timeout: 70ms
+            fail_on_5xx: false
+            status_code_blacklist: ["598"]
+          include_backends:
+            type: BY_ID
+            ids: [cryprox-test-vla, cryprox-test-sas, cryprox-test-man]
+        on_error:
+          errordocument:
+            status: 504
+            content: "Service unavailable"

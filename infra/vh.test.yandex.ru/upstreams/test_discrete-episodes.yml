@@ -1,0 +1,51 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - vkap
+      groups: []
+labels:
+  order: 09999999
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      uri: '/test_discrete/episodes(.*)?'
+  modules:
+    - report: {uuid: test_discrete_episodes, ranges: default}
+    - exp_getter_macro:
+        _version: 3
+        service_name: vh
+        testing_mode: {}
+    - balancer2:
+        attempts: 2
+        rr: {}
+        backends:
+          - weight: 1
+            name: discrete-episodes-man
+            modules:
+              - headers:
+                  create:
+                    X-Yandex-Internal-Request: "1"
+              - report: {uuid: vh-discrete-episodes-test-man, ranges: default}
+              - rewrite:
+                  actions:
+                    - regexp: '/test_discrete/([%./a-zA-z0-9]+)[%?]*(.*)'
+                      rewrite: '/?graph=testing_discrete-episodes-orbital&handler=public/%1&%2&srcrwr=DISPATCH:tlen.sas.yp-c.yandex.net:20203:10000&srcrwr=REQUEST_CONTEXT:tlen.sas.yp-c.yandex.net:9091:10000&srcrwr=SCHEDULE:tlen.sas.yp-c.yandex.net:8081:10000&srcrwr=TEMPLATER:tlen.sas.yp-c.yandex.net:9080:10000'
+              - balancer2:
+                  attempts: 3
+                  attempts_rate_limiter:
+                    limit: 0.25
+                  rr: {}
+                  timeout_policy:
+                    timeout: 5s
+                    unique_policy: {}
+                  generated_proxy_backends:
+                    proxy_options:
+                      backend_timeout: 2500ms
+                      connect_timeout: 50ms
+                      keepalive_count: 1
+                    include_backends:
+                      type: BY_ID
+                      ids:
+                        - man_vh_http_adapter_testing

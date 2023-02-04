@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<!--
+Title:
+Контрол списка: отображение событий в хинте
+
+Description:
+Проверка програмной работы с контролом списков.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+regress
+
+Estimated time:
+180000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась корректно.
+  Сверху в левом углу нажатый контрол "expand on click", также в контейнере контрол "child", контрол списка "Выбрать город", снизу слева контрол "collapse/expand".
+  На спане открыт хинт с текстом "false -add remove expand collapse".
+
+Step:
+  Action:
+  Выполнить клик в контрол "Выбрать город".
+
+  Expectation:
+  По клику в контрол выпадает список значений: Москва(стоит галка), Новосибирск, Нью-Йорк. 
+  Меняется содержимое хинта на спане, текст хинта: "expand".
+
+Step:
+  Action:
+  Выполнить клик в контрол "Выбрать город".
+
+  Expectation:
+  По клику выпавший список сворачивается, меняется содержимое хинта на спане, текст хинта: "collapse".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "child".
+
+  Expectation:
+  Меняется содержимое хинта на спане, текст хинта: "add".
+
+Step:
+  Action:
+  Выполнить клик в контрол "collapse/expand".
+
+  Expectation:
+  По клику в контрол выпадает список значений: Москва(стоит галка), Cаранск(стоит галка), Новосибирск, Нью-Йорк. 
+  Меняется содержимое хинта на спане, текст хинта: "expand".
+
+Step:
+  Action:
+  Выполнить клик в контрол "collapse/expand".
+
+  Expectation:
+  По клику выпавший список сворачивается, меняется содержимое хинта на спане, текст хинта: "collapse".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "child".
+
+  Expectation:
+  Меняется содержимое хинта на спане, текст хинта: "remove".
+
+Step:
+  Action:
+  Выполнить клик в контрол "collapse/expand".
+
+  Expectation:
+  По клику в контрол выпадает список значений: Москва(стоит галка), Новосибирск, Нью-Йорк. 
+  Меняется содержимое хинта на спане, текст хинта: "expand".
+
+Step:
+  Action:
+  Выполнить клик в контрол "collapse/expand".
+
+  Expectation:
+  По клику выпавший список сворачивается, меняется содержимое хинта на спане, текст хинта: "collapse".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "expand on click".
+
+  Expectation:
+  Меняется содержимое хинта на спане, текст хинта: "optionschange".
+
+Step:
+  Action:
+  Выполнить клик в контрол "Выбрать город".
+
+  Expectation:
+  По клику в контрол список не выпадает, меняется содержимое хинта на спане, текст хинта: "click".
+-->
+<html>
+<head>
+    <title>API 2.0</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <script src="../helper.js"></script>
+    <script type="text/javascript">
+        Api('init');
+        function init(ymaps) {
+            var myMap = new ymaps.Map('map', {
+                        center: [34.8006, -37.5181],
+                        zoom: 5},
+                    {
+                        hintShowTimeout: 0
+                    });
+            
+            // MAPSAPI-5824
+            var expandedListBox = new ymaps.control.ListBox({
+                data: {
+                    title: 'expand'
+                }
+            });
+            expandedListBox.expand();
+            var toolbarForRemove = new ymaps.control.ToolBar([expandedListBox]);
+            myMap.controls.add(toolbarForRemove);
+            myMap.controls.remove(toolbarForRemove);
+            var listBoxItem = new ymaps.control.ListBoxItem({data: {content: 'Саранск'}});
+            listBoxItem.select();
+            listBoxItem.deselect();
+            listBoxItem.select();
+            var listBox = new ymaps.control.ListBox({
+                data: {
+                    title: 'Выбрать город'
+                },
+                items: [
+                    new ymaps.control.ListBoxItem({data: {content: 'Москва'}}),
+                    new ymaps.control.ListBoxItem({data: {content: 'Новосибирск'}}),
+                    new ymaps.control.ListBoxSeparator(),
+                    new ymaps.control.ListBoxItem({data: {content: 'Нью-Йорк'}})
+                ]
+            });
+            listBox.get(listBox.indexOf(listBox.getAll()[1])).select();
+            listBox.get(listBox.indexOf(listBox.getAll()[1])).deselect(); // MAPSAPI-5334
+            listBox.get(listBox.indexOf(listBox.getAll()[0])).select();
+            listBox.events.add('add', function (e) {
+                showHint(myMap, 'add');
+            }).add('click', function (e) {
+                showHint(myMap, 'click');
+            }).add('collapse', function (e) {
+                showHint(myMap, 'collapse');
+            }).add('expand', function (e) {
+                showHint(myMap, 'expand');
+            }).add('optionschange', function (e) {
+                showHint(myMap, 'optionschange');
+            }).add('remove', function (e) {
+                showHint(myMap, 'remove');
+            });
+            // отключение разворота по клику
+            var button = new ymaps.control.Button("expand on click");
+            button.select();
+            button.events.add("select", function (e) {
+                listBox.options.set('expandOnClick', true);
+            }).add("deselect", function (e) {
+                listBox.options.set('expandOnClick', false);
+            });
+            // доавление ребенка
+            var button2 = new ymaps.control.Button("child");
+            button2.events.add("select", function (e) {
+                listBox.add(listBoxItem, 1);
+            }).add("deselect", function (e) {
+                listBox.remove(listBox.get(listBox.indexOf(listBoxItem)));
+            });
+            myMap.controls.add(button);
+            myMap.controls.add(button2, {top: 32, left: 5});
+            myMap.controls.add(listBox);
+            var i = 0, items = [];
+            listBox.each(function (e) {
+                i++;
+            });
+            listBox.setWidth(i * 50);
+            var iterator = listBox.getIterator(), item = iterator.getNext();
+            while (item != null) {
+                items.push(item);
+                item = iterator.getNext();
+            }
+            listBox.removeAll();
+            for (i = 0; i < items.length; i++) {
+                listBox.add(items[i]);
+            }
+            // свернуть/развернуть
+            var button3 = new ymaps.control.Button('collapse/expand');
+            button3.events.add("select", function (e) {
+                listBox.expand();
+            }).add("deselect", function (e) {
+                listBox.collapse();
+            });
+            myMap.controls.add(button3, {left: 3, bottom: 32});
+            // MAPSAPI-5763
+            var listBoxForEvents = new ymaps.control.ListBox({
+                data: {
+                    title: 'Выбрать город'
+                }}), hint = "", element = new ymaps.control.Button("e");
+            listBoxForEvents.events.add("add", function (e) {
+                hint += " add ";
+            }).add("collapse", function (e) {
+                hint += " collapse ";
+            }).add("expand", function (e) {
+                hint += " expand ";
+            }).add("remove", function (e) {
+                hint += " remove ";
+            });
+            listBoxForEvents.add(element);
+            listBoxForEvents.remove(element);
+            listBoxForEvents.expand();
+            listBoxForEvents.collapse();
+            showHint(myMap, listBox.isExpanded() ? "true - " + hint : "false - " + hint);
+
+            function showHint(map, text) {
+                myMap.hint.show(myMap.getCenter(), text);
+            }
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;">
+</div>
+<p><a href="https://tech.yandex.ru/maps/archive/doc/jsapi/2.0/ref/reference/control.ListBox-docpage/" target="_blank">Docs</a></p>
+</body>
+</html>

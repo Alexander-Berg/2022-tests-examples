@@ -1,0 +1,1 @@
+../bin/billing-tests.sh $*

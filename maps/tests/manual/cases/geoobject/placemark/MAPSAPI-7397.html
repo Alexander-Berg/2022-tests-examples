@@ -1,0 +1,157 @@
+<!DOCTYPE HTML>
+<!--(skip)(description)
+GeoObject: MAPSAPI-7397
+Info: "Элемент содержимого SVG меток не транслирует события в родительский макет"
+This case must be tested manually!
+-->
+<!--(version)
+2.1
+-->
+<!--(commands)
+sleep(1000);
+test();
+-->
+<html>
+<head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script src="https://yandex.st/jquery/1.6.4/jquery.min.js" type="text/javascript"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            var myMap = new ymaps.Map('map', {
+                center: [59.96343157514998, 30.317977733422868],
+                zoom: 11,
+                // Добавим к стандартным поведениям карты зум колесом мыши.
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+
+            // Создаем кластеризатор c красной иконкой (по умолчанию используются синия).
+            var clusterer = new ymaps.Clusterer({preset: 'islands#redClusterIcons'}),
+            // Создаем коллекцию геообъектов.
+                    collection = new ymaps.GeoObjectCollection();
+            var i = 0;
+            // Добавляем кластеризатор на карту.
+            myMap.geoObjects.add(clusterer);
+
+            // Добавляем коллекцию геообъектов на карту.
+            myMap.geoObjects.add(collection);
+
+            var addMarkersButton = new ymaps.control.Button({data: {content: 'add'}, options: {selectOnClick: false}});
+            var removeMarkersButton = new ymaps.control.Button({data: {content: 'remove'}, options: {selectOnClick: false}});
+            var clustererButton = new ymaps.control.Button({data: {content: 'clusterer'}, options: {selectOnClick: true}});
+
+            var htmlButton = new ymaps.control.Button({data: {content: 'html'}, options: {selectOnClick: false}});
+            var interactiveButton = new ymaps.control.Button({data: {content: 'interactive'}, options: {selectOnClick: false}});
+            var staticButton = new ymaps.control.Button({data: {content: 'static'}, options: {selectOnClick: false}});
+            htmlButton.events.add('click', function () {
+                i = 0;
+                collection.each(function (obj) {
+                    obj.options.set('pointOverlay', 'html#placemark');
+                    log.info(i + ': ' + obj.options.get('pointOverlay'));
+                    i++;
+                })
+            });
+            interactiveButton.events.add('click', function () {
+                i = 0;
+                collection.each(function (obj) {
+                    obj.options.set('pointOverlay', 'interactive#placemark');
+                    log.info(i + ': ' + obj.options.get('pointOverlay'));
+                    i++
+                })
+            });
+            staticButton.events.add('click', function () {
+                i = 0;
+                collection.each(function (obj) {
+                    obj.options.set('pointOverlay', 'static#placemark');
+                    log.info(i + ': ' + obj.options.get('pointOverlay'));
+                    i++
+                })
+            });
+
+            // Добавление меток с произвольными координатами.
+            addMarkersButton.events.add('click', function addMarkers() {
+                // Количество меток, которое нужно добавить на карту.
+                var placemarksNumber = 100,
+                        bounds = myMap.getBounds(),
+                // Флаг, показывающий, нужно ли кластеризовать объекты.
+                        useClusterer = clustererButton.state.get('selected');
+                log.info('Placemarks added. useClusterer state: ' + useClusterer);
+                // Генерируем нужное количество новых объектов.
+                var newPlacemarks = createGeoObjects(placemarksNumber, bounds);
+
+                // Если используется кластеризатор, то добавляем кластер на карту,
+                // если не используется - добавляем на карту коллекцию геообъектов.
+                if (useClusterer) {
+                    // Добавлеяем массив меток в кластеризатор.
+                    clusterer.add(newPlacemarks);
+                } else {
+                    for (var i = 0, l = newPlacemarks.length; i < l; i++) {
+                        collection.add(newPlacemarks[i]);
+                    }
+                }
+            });
+
+            // Функция, создающая необходимое количество геообъектов внутри указанной области.
+            function createGeoObjects(number, bounds) {
+                var placemarks = [];
+                // Создаем нужное количество меток
+                for (var i = 0; i < number; i++) {
+                    // Генерируем координаты метки случайным образом.
+                    coordinates = getRandomCoordinates(bounds);
+                    // Создаем метку со случайными координатами.
+                    if (Math.random() > 0.5) {
+                        myPlacemark = new ymaps.Placemark(coordinates, {
+                            balloonContent: i, hintContent: i}, {});
+                    } else {
+                        myPlacemark = new ymaps.Placemark(coordinates, {
+                            balloonContent: i, hintContent: i, iconContent: 'point'}, {preset: 'islands#yellowStretchyIcon'});
+                    }
+                    placemarks.push(myPlacemark);
+                }
+                return placemarks;
+            }
+
+            // Функция, генерирующая случайные координаты
+            // в пределах области просмотра карты.
+            function getRandomCoordinates(bounds) {
+                var size = [bounds[1][0] - bounds[0][0], bounds[1][1] - bounds[0][1]];
+                return [Math.random() * size[0] + bounds[0][0], Math.random() * size[1] + bounds[0][1]];
+            }
+
+            // Удаление всех меток с карты
+            removeMarkersButton.events.add('click', function removeMarkers() {
+                // Удаляем все  метки из кластеризатора.
+                clusterer.removeAll();
+                // Удаляем все метки из коллекции.
+                collection.removeAll();
+            });
+
+            var clearButton = new ymaps.control.Button({data: {content: 'clear log'}, options: {selectOnClick: false}});
+            clearButton.events.add('click', function () {
+                log.clear();
+            });
+
+            myMap.controls
+                    .add(addMarkersButton, {float: 'right'})
+                    .add(removeMarkersButton, {float: 'right'})
+                    .add(clustererButton, {float: 'right'})
+                    .add(htmlButton, {float: 'left'})
+                    .add(interactiveButton, {float: 'left'})
+                    .add(clearButton, {float: 'none', position: {bottom: 25, right: 10}})
+                    .add(staticButton, {float: 'left'})
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

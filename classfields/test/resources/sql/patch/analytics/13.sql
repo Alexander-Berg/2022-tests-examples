@@ -1,0 +1,1 @@
+ALTER TABLE `all_tasks` ADD INDEX (`create_time`);

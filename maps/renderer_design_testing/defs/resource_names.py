@@ -1,0 +1,1 @@
+COMPILED_MAP_ECSTATIC_DATASET = 'compiled_map_design_testing_ecstatic_dataset'

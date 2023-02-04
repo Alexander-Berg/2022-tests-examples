@@ -1,0 +1,233 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Геообъект: перемещение объектов в режиме рисования/редактирования 
+
+Description:
+Проверка опции перемещения объектов в режиме рисования/редактирования.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+geoobject
+
+Estimated time:
+240000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан Московской области, на спане два ряда объектов: метка, линия и многоугольник(верхний ряд синего цвета, нижний - зеленого).
+  Сверху имеются кнопки "polyline", "polygon", "placemark", "editor", "draggable", "drawOver", "hideLines".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "polyline". 
+
+  Expectation:
+  На объекте синей линии появляются метки редактирования, к курсору прилипает пунктирная линия рисования.
+
+Step:
+  Action:
+  Навести курсор на объект линии, зажать ЛКМ и переместить линию на спане карты. 
+
+  Expectation:
+  Происходит корректный захват объекта, линия перемещается на спане карты, по окончанию перемещения режим рисования не выключается к курсору прилипает пунктирная линия.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "draggable".
+  Навести курсор на объект линии, зажать ЛКМ и переместить линию на спане карты. 
+
+  Expectation:
+  После зажатия ЛКМ и попытке перемещения происходит драг спана карты, фигура линии не перемещается, при этом по окончанию драга режим рисования не выключается к курсору прилипает пунктирная линия.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "draggable".
+  Выполнить клик в кнопку "polygon". 
+
+  Expectation:
+  На объекте синего многоугольника появляются метки редактирования, к курсору прилипает пунктирные линия рисования от вершин многоугольника.
+
+Step:
+  Action:
+  Навести курсор на объект многоугольника, зажать ЛКМ и переместить объект на спане карты. 
+
+  Expectation:
+  Происходит корректный захват объекта, многоугольник перемещается на спане карты, по окончанию перемещения режим рисования не выключается к курсору прилипают пунктирные линии.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "draggable".
+  Навести курсор на объект многоугольника, зажать ЛКМ и переместить объект на спане карты. 
+
+  Expectation:
+  После зажатия ЛКМ и попытке перемещения происходит драг спана карты, фигура многоугольника не перемещается, при этом по окончанию драга режим рисования не выключается к курсору прилипают пунктирные линии.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "polygon".
+  Выполнить клик в кнопку "draggable".
+  Выполнить клик в кнопку "editor". 
+
+  Expectation:
+  По клику в "polygon" от курсора отлипают пунктирные линии синего многоугольника.
+  На объектах зеленой линии и зеленого многоугольника появляются метки редактирования. 
+
+Step:
+  Action:
+  Навести курсор на объект зеленого многоугольника, зажать ЛКМ и переместить объект на спане карты. 
+
+  Expectation:
+  Происходит корректный захват объекта, многоугольник перемещается на спане карты.
+
+Step:
+  Action:
+  Навести курсор на объект зеленой линии, зажать ЛКМ и переместить объект на спане карты. 
+
+  Expectation:
+  Происходит корректный захват объекта, линия перемещается на спане карты.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script src="../geoCS.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym; // hack
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.73259667357658, 37.70153663432529],
+                zoom: 9,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            geoCSSource(ym, map, this);
+            addGrid(map);
+            var log = new Log();
+
+            __log__('При рисовании и редактировании можно драгать объекты.');
+
+            var collection = new ymaps.GeoObjectCollection();
+            collection
+                    .add(geoObjectPlacemark)
+                    .add(geoObjectPolyline)
+                    .add(geoObjectPolygon)
+                    .add(placemark)
+                    .add(polyline)
+                    .add(polygon);
+
+            var editorButton = new ymaps.control.Button({data: {content: 'editor'}, options: {selectOnClick: true}});
+            var placemarkButton = new ymaps.control.Button({data: {content: 'placemark'}, options: {selectOnClick: true}});
+            var polylineButton = new ymaps.control.Button({data: {content: 'polyline'}, options: {selectOnClick: true}});
+            var polygonButton = new ymaps.control.Button({data: {content: 'polygon'}, options: {selectOnClick: true}});
+            var drawOverButton = new ymaps.control.Button({data: {content: 'drawOver'}, options: {selectOnClick: true}});
+            var draggableButton = new ymaps.control.Button({data: {content: 'draggable'}, options: {selectOnClick: true}});
+            var hideGuideLinesButton = new ymaps.control.Button({data: {content: 'hideLines'}, options: {selectOnClick: true}});
+            hideGuideLinesButton.events
+                    .add('select', function () {
+                        __log__('Направляющая линия не скрывается при наведении на вершины');
+                        collection.each(function (obj) {
+                            obj.options.set("editorHideGuideLinesOnVertexHover", false);
+                        });
+                    })
+                    .add('deselect', function () {
+                        __log__('Направляющая линия скрывается при наведении на вершины');
+                        collection.each(function (obj) {
+                            obj.options.set("editorHideGuideLinesOnVertexHover", true);
+                        });
+                    });
+            editorButton.events
+                    .add('select', function () {
+                        collection.each(function (obj) {
+                            obj.editor.startEditing();
+                        });
+                    })
+                    .add('deselect', function () {
+                        collection.each(function (obj) {
+                            obj.editor.stopEditing();
+                        });
+                    });
+            drawOverButton.events
+                    .add('select', function () {
+                        collection.each(function (obj) {
+                            obj.options.set('editorDrawOver', false);
+                        });
+                    })
+                    .add('deselect', function () {
+                        collection.each(function (obj) {
+                            obj.options.set('editorDrawOver', true);
+                        });
+                    });
+            draggableButton.events
+                    .add('select', function () {
+                        collection.each(function (obj) {
+                            obj.options.set('draggable', false);
+                        });
+                    })
+                    .add('deselect', function () {
+                        collection.each(function (obj) {
+                            obj.options.set('draggable', true);
+                        });
+                    });
+
+            placemarkButton.events
+                    .add('select', function () {
+                        placemark.editor.startDrawing();
+                    })
+                    .add('deselect', function () {
+                        placemark.editor.stopDrawing();
+                    });
+
+            polylineButton.events
+                    .add('select', function () {
+                        polyline.editor.startDrawing();
+                    })
+                    .add('deselect', function () {
+                        polyline.editor.stopDrawing();
+                    });
+
+            polygonButton.events
+                    .add('select', function () {
+                        polygon.editor.startDrawing();
+                    })
+                    .add('deselect', function () {
+                        polygon.editor.stopDrawing();
+                    });
+
+            collection.each(function (obj) {
+                obj.options.set('draggable', true);
+                obj.properties.set('balloonContent', 'balloon');
+                obj.properties.set('hintContent', 'hint')
+            });
+
+            map.geoObjects.add(collection);
+
+            map.controls
+                    .add(hideGuideLinesButton)
+                    .add(drawOverButton)
+                    .add(draggableButton)
+                    .add(editorButton)
+                    .add(placemarkButton)
+                    .add(polygonButton)
+                    .add(polylineButton);
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

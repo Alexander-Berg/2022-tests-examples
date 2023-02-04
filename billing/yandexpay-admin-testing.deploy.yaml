@@ -1,0 +1,611 @@
+annotations:
+  stagectl_epoch: 878
+  stagectl_vcs:
+    svn_branch: 41457a8f59dcc8278a562a1939d95da197a901e0
+    svn_revision: 9646045
+    svn_tag: ''
+labels:
+  deploy:
+    disabled_clusters:
+    - man
+  deploy_engine: env_controller
+  du_sidecar_target_revision:
+    api:
+      logbrokerToolsLayer: 3208805877
+      podBin: 3214891279
+    workers:
+      logbrokerToolsLayer: 3208805877
+      podBin: 3214891279
+  notifications_last_timestamp: 1657007204485235000
+meta:
+  account_id: abc:service:32444
+  acl:
+  - action: allow
+    permissions:
+    - read
+    - write
+    - create
+    - ssh_access
+    - root_ssh_access
+    - read_secrets
+    subjects:
+    - robot-drug-deploy
+  - action: allow
+    attributes:
+    - /access/deploy/box/default
+    permissions:
+    - read
+    - ssh_access
+    subjects:
+    - deploy:yandexpay-admin.yandexpay-admin-testing.DEVELOPER
+  - action: allow
+    attributes:
+    - ''
+    - /spec
+    - /labels
+    - /annotations
+    - /meta/project_id
+    permissions:
+    - read
+    - write
+    - create
+    subjects:
+    - deploy:yandexpay-admin.yandexpay-admin-testing.MAINTAINER
+  - action: allow
+    attributes:
+    - /access/deploy/box/default
+    permissions:
+    - ssh_access
+    - root_ssh_access
+    subjects:
+    - deploy:yandexpay-admin.yandexpay-admin-testing.MAINTAINER
+  id: yandexpay-admin-testing
+  inherit_acl: true
+  project_id: yandexpay-admin
+spec:
+  deploy_units:
+    api:
+      endpoint_sets:
+      - port: 443
+      images_for_boxes:
+        api:
+          digest: sha256:c0bf15fc00b5da446c62dbf575eda8159091ccce1f1bcc1c02f7b9ee5b8fa440
+          name: yandex-pay-admin/yandex_pay_admin
+          registry_host: registry.yandex.net
+          tag: '25'
+      logbroker_tools_sandbox_info:
+        revision: 3208805877
+      multi_cluster_replica_set:
+        replica_set:
+          clusters:
+          - cluster: man
+            spec:
+              constraints:
+                antiaffinity_constraints:
+                - key: rack
+                  max_pods: 1
+              replica_count: 1
+          - cluster: sas
+            spec:
+              constraints:
+                antiaffinity_constraints:
+                - key: rack
+                  max_pods: 1
+              replica_count: 1
+          - cluster: vla
+            spec:
+              constraints:
+                antiaffinity_constraints:
+                - key: rack
+                  max_pods: 1
+              replica_count: 1
+          deployment_strategy:
+            max_unavailable: 3
+          pod_template_spec:
+            spec:
+              disk_volume_requests:
+              - id: infra
+                labels:
+                  used_by_infra: true
+                quota_policy:
+                  bandwidth_guarantee: 5242880
+                  bandwidth_limit: 10485760
+                  capacity: 3221225472
+                storage_class: hdd
+              host_infra:
+                monitoring:
+                  unistats:
+                  - output_format: yasm_json
+                    path: /unistat
+                    port: 8080
+                    workload_id: api
+                  - output_format: yasm_json
+                    path: /unistat
+                    port: 8000
+                    workload_id: api
+                  - output_format: yasm_json
+                    path: /unistat
+                    port: 8009
+                    workload_id: goxcart
+              pod_agent_payload:
+                spec:
+                  boxes:
+                  - compute_resources:
+                      memory_guarantee: 1073741824
+                      memory_limit: 1073741824
+                      vcpu_guarantee: 300
+                      vcpu_limit: 300
+                    env:
+                    - name: YENV_TYPE
+                      value:
+                        literal_env:
+                          value: testing
+                    - name: DEPLOY_LOGS_SECRET
+                      value:
+                        literal_env:
+                          value: STATIC_SECRET
+                    id: api
+                    rootfs:
+                      layer_refs:
+                      - goxcart_layer_2194440677
+                    static_resources:
+                    - mount_point: /config/local
+                      resource_ref: ApplicationConfigOverride
+                    - mount_point: /etc/nginx/ssl
+                      resource_ref: YandexPayAdminInternalCaSSLKey
+                    - mount_point: /nginx
+                      resource_ref: NginxBinary
+                    - mount_point: /opt/bin
+                      resource_ref: PgPinger2007673887
+                    volumes:
+                    - mode: read_write
+                      mount_point: /ephemeral
+                      volume_ref: ephemeral
+                  - compute_resources:
+                      memory_guarantee: 268435456
+                      memory_limit: 268435456
+                      vcpu_guarantee: 100
+                      vcpu_limit: 100
+                    id: yandex_pay_unified_agent_box
+                    rootfs:
+                      layer_refs:
+                      - bionic-app
+                    static_resources:
+                    - mount_point: /unified_agent_config
+                      resource_ref: UnifiedAgentSettings
+                    - mount_point: /unified_agent_bin
+                      resource_ref: UnifiedAgentBinary
+                    volumes:
+                    - mode: read_write
+                      mount_point: /push-agent/logs
+                      volume_ref: push-agent-logs
+                  mutable_workloads:
+                  - workload_ref: api
+                  - workload_ref: unified_agent_workload
+                  - workload_ref: goxcart
+                  resources:
+                    layers:
+                    - checksum: 'EMPTY:'
+                      id: bionic-app
+                      url: sbr:2527306889
+                    - checksum: 'EMPTY:'
+                      id: goxcart_layer_2194440677
+                      url: rbtorrent:c2a30f14d83f6ae8da1a3e1eaf9c3ee84848d51b
+                    static_resources:
+                    - files:
+                        files:
+                        - file_name: settings.py
+                          secret_data:
+                            alias: yandexpay-admin-settings
+                            decode_base64: true
+                            id: testing
+                      id: ApplicationConfigOverride
+                      verification:
+                        check_period_ms: 180000
+                        checksum: 'EMPTY:'
+                    - id: NginxBinary
+                      url: sbr:2383206246
+                      verification:
+                        check_period_ms: 180000
+                        checksum: MD5:576f025c1f98e1688c4e254f35fdbf50
+                    - id: PgPinger2007673887
+                      url: sbr:2007673887
+                      verification:
+                        check_period_ms: 180000
+                        checksum: MD5:1f182d0e04d65b5b21285e80774a2002
+                    - files:
+                        files:
+                        - file_name: yandex_pay_admin_bundle.pem
+                          secret_data:
+                            alias: yandexpay-admin-ssl-internal
+                            id: 7F001C0FE9C4F5D677E68112D80002001C0FE9_certificate
+                        - file_name: yandex_pay_admin_key.pem
+                          secret_data:
+                            alias: yandexpay-admin-ssl-internal
+                            id: 7F001C0FE9C4F5D677E68112D80002001C0FE9_private_key
+                      id: YandexPayAdminInternalCaSSLKey
+                      verification:
+                        check_period_ms: 180000
+                        checksum: 'EMPTY:'
+                    - id: UnifiedAgentBinary
+                      url: rbtorrent:0f3b865e9eccccff41072e83e8a7e7ae25f0d596
+                      verification:
+                        check_period_ms: 180000
+                        checksum: MD5:482c5419fafdd9d3136626cafa2bb23a
+                    - id: UnifiedAgentSettings
+                      url: sbr:2487774257
+                      verification:
+                        check_period_ms: 180000
+                        checksum: 'EMPTY:'
+                  volumes:
+                  - id: ephemeral
+                  - id: push-agent-logs
+                  workloads:
+                  - box_ref: api
+                    id: api
+                    readiness_check:
+                      http_get:
+                        any: true
+                        path: /ping
+                        port: 80
+                        time_limit:
+                          max_execution_time_ms: 1000
+                    transmit_logs: true
+                  - box_ref: api
+                    id: goxcart
+                    readiness_check:
+                      container:
+                        command_line: /bin/bash -c "curl -6 --insecure 'https://[fdca:dfde:0001::1]:20001/ping'
+                          && curl -6 --insecure 'https://[fdca:dfde:0002::1]:20002/ping'"
+                    start:
+                      command_line: /bin/bash -c '/usr/local/sbin/goxcart -balancer-bin
+                        /usr/local/bin/balancer /etc/goxcart/$DEPLOY_STAGE_ID.yaml'
+                    transmit_logs: true
+                  - box_ref: yandex_pay_unified_agent_box
+                    destroy_policy:
+                      container:
+                        command_line: /bin/bash -c "/unified_agent_bin/unified_agent
+                          -c /unified_agent_config/config.yml & pid=$!; while true;
+                          do unified_agent_idle=$(curl localhost:22502/check_backlog
+                          2>/dev/null); if [ "$unified_agent_idle" = "IDLE" ]; then
+                          echo "Unified Agent is idle"; break; else echo "Unified
+                          Agent is busy '$unified_agent_idle', waiting..."; sleep
+                          1; fi; done; kill $pid"
+                      max_tries: 3
+                    env:
+                    - name: TVM_SECRET
+                      value:
+                        secret_env:
+                          alias: unified-agent-tvm-secret
+                          id: client_secret
+                    id: unified_agent_workload
+                    liveness_check:
+                      http_get:
+                        any: true
+                        path: /status
+                        port: 22502
+                        time_limit:
+                          initial_delay_ms: 150000
+                          max_execution_time_ms: 15000
+                          max_restart_period_ms: 30000
+                          min_restart_period_ms: 30000
+                    readiness_check:
+                      http_get:
+                        expected_answer: OK
+                        path: /ready
+                        port: 22502
+                        time_limit:
+                          max_execution_time_ms: 15000
+                          max_restart_period_ms: 10000
+                          min_restart_period_ms: 10000
+                    start:
+                      command_line: /unified_agent_bin/unified_agent -c /unified_agent_config/config.yml
+                    transmit_logs: true
+                    ulimit_soft:
+                    - name: core
+                      value: 805306368
+              resource_requests:
+                memory_guarantee: 1610612736
+                memory_limit: 1610612736
+                network_bandwidth_guarantee: 5242880
+                vcpu_guarantee: 400
+                vcpu_limit: 400
+              secret_refs:
+                secret-tvm:
+                  secret_id: sec-01f0bgsym3xtvzmjzkxfyha1kb
+                  secret_version: ver-01f0bgsyn1cqbr64gbsx2xvc4f
+                unified-agent-tvm-secret:
+                  secret_id: sec-01ex24m3j4pcj3yscvsz2njggx
+                  secret_version: ver-01ex24m3k1neaga73gvwndpwvr
+                yandexpay-admin-settings:
+                  secret_id: sec-01f26qakvabxp8z9523mnmr2cp
+                  secret_version: ver-01g7c08dmq0x5vhv5tbavrp3c4
+                yandexpay-admin-ssl-internal:
+                  secret_id: sec-01fztj0g57bpq1tgftd4j3tys8
+                  secret_version: ver-01fztj0g7j7ds3d8pjhzjgb1rh
+      network_defaults:
+        network_id: _YANDEXPAY_TEST_NETS_
+      patchers_revision: 11
+      pod_agent_sandbox_info:
+        revision: 3214891279
+      revision: 68
+      tvm_config:
+        blackbox_environment: Test
+        client_port: 2
+        clients:
+        - destinations:
+          - alias: blackbox
+            app_id: 224
+          - alias: yandex-pay-backend-sandbox
+            app_id: 2024739
+          - alias: yandex-pay-backend-production
+            app_id: 2024739
+          - alias: yandex-pay-plus-testing
+            app_id: 2029082
+          secret_selector:
+            alias: secret-tvm
+            id: client_secret
+          source:
+            abc_service_id: '32444'
+            alias: self
+            app_id: 2026748
+        mode: enabled
+    workers:
+      images_for_boxes:
+        workers:
+          digest: sha256:c0bf15fc00b5da446c62dbf575eda8159091ccce1f1bcc1c02f7b9ee5b8fa440
+          name: yandex-pay-admin/yandex_pay_admin
+          registry_host: registry.yandex.net
+          tag: '25'
+      logbroker_tools_sandbox_info:
+        revision: 3208805877
+      multi_cluster_replica_set:
+        replica_set:
+          clusters:
+          - cluster: sas
+            spec:
+              constraints:
+                antiaffinity_constraints:
+                - key: rack
+                  max_pods: 1
+              replica_count: 1
+          - cluster: vla
+            spec:
+              constraints:
+                antiaffinity_constraints:
+                - key: rack
+                  max_pods: 1
+              replica_count: 1
+          deployment_strategy:
+            max_unavailable: 2
+          pod_template_spec:
+            spec:
+              disk_volume_requests:
+              - id: infra
+                labels:
+                  used_by_infra: true
+                quota_policy:
+                  bandwidth_guarantee: 5242880
+                  bandwidth_limit: 10485760
+                  capacity: 3221225472
+                storage_class: hdd
+              host_infra:
+                monitoring:
+                  unistats:
+                  - output_format: yasm_json
+                    path: /unistat
+                    port: 8009
+                    workload_id: goxcart
+                  - output_format: yasm_json
+                    path: /unistat
+                    port: 8001
+                    workload_id: workers
+              pod_agent_payload:
+                spec:
+                  boxes:
+                  - compute_resources:
+                      memory_guarantee: 1073741824
+                      memory_limit: 1073741824
+                      vcpu_guarantee: 300
+                      vcpu_limit: 300
+                    env:
+                    - name: YENV_TYPE
+                      value:
+                        literal_env:
+                          value: testing
+                    - name: SKIP_NGINX
+                      value:
+                        literal_env:
+                          value: 'true'
+                    - name: DEPLOY_LOGS_SECRET
+                      value:
+                        literal_env:
+                          value: STATIC_SECRET
+                    id: workers
+                    rootfs:
+                      layer_refs:
+                      - goxcart_layer_2194440677
+                    static_resources:
+                    - mount_point: /config/local
+                      resource_ref: ApplicationConfigOverride
+                    - mount_point: /opt/bin
+                      resource_ref: PgPinger2007673887
+                    volumes:
+                    - mode: read_write
+                      mount_point: /ephemeral
+                      volume_ref: ephemeral
+                  - compute_resources:
+                      memory_guarantee: 268435456
+                      memory_limit: 268435456
+                      vcpu_guarantee: 100
+                      vcpu_limit: 100
+                    id: yandex_pay_unified_agent_box
+                    rootfs:
+                      layer_refs:
+                      - bionic-app
+                    static_resources:
+                    - mount_point: /unified_agent_config
+                      resource_ref: UnifiedAgentSettings
+                    - mount_point: /unified_agent_bin
+                      resource_ref: UnifiedAgentBinary
+                    volumes:
+                    - mode: read_write
+                      mount_point: /push-agent/logs
+                      volume_ref: push-agent-logs
+                  mutable_workloads:
+                  - workload_ref: workers
+                  - workload_ref: unified_agent_workload
+                  - workload_ref: goxcart
+                  resources:
+                    layers:
+                    - checksum: 'EMPTY:'
+                      id: bionic-app
+                      url: sbr:2527306889
+                    - checksum: 'EMPTY:'
+                      id: goxcart_layer_2194440677
+                      url: rbtorrent:c2a30f14d83f6ae8da1a3e1eaf9c3ee84848d51b
+                    static_resources:
+                    - files:
+                        files:
+                        - file_name: settings.py
+                          secret_data:
+                            alias: yandexpay-admin-settings
+                            decode_base64: true
+                            id: testing
+                      id: ApplicationConfigOverride
+                      verification:
+                        check_period_ms: 180000
+                        checksum: 'EMPTY:'
+                    - id: PgPinger2007673887
+                      url: sbr:2007673887
+                      verification:
+                        check_period_ms: 180000
+                        checksum: MD5:1f182d0e04d65b5b21285e80774a2002
+                    - id: UnifiedAgentBinary
+                      url: rbtorrent:0f3b865e9eccccff41072e83e8a7e7ae25f0d596
+                      verification:
+                        check_period_ms: 180000
+                        checksum: MD5:482c5419fafdd9d3136626cafa2bb23a
+                    - id: UnifiedAgentSettings
+                      url: sbr:2487774257
+                      verification:
+                        check_period_ms: 180000
+                        checksum: 'EMPTY:'
+                  volumes:
+                  - id: ephemeral
+                  - id: push-agent-logs
+                  workloads:
+                  - box_ref: workers
+                    id: workers
+                    readiness_check:
+                      http_get:
+                        any: true
+                        path: /ping
+                        port: 8001
+                        time_limit:
+                          max_execution_time_ms: 1000
+                    transmit_logs: true
+                  - box_ref: workers
+                    id: goxcart
+                    readiness_check:
+                      container:
+                        command_line: /bin/bash -c "curl -6 --insecure 'https://[fdca:dfde:0001::1]:20001/ping'
+                          && curl -6 --insecure 'https://[fdca:dfde:0002::1]:20002/ping'"
+                    start:
+                      command_line: /bin/bash -c '/usr/local/sbin/goxcart -balancer-bin
+                        /usr/local/bin/balancer /etc/goxcart/$DEPLOY_STAGE_ID.yaml'
+                    transmit_logs: true
+                  - box_ref: yandex_pay_unified_agent_box
+                    destroy_policy:
+                      container:
+                        command_line: /bin/bash -c "/unified_agent_bin/unified_agent
+                          -c /unified_agent_config/config.yml & pid=$!; while true;
+                          do unified_agent_idle=$(curl localhost:22502/check_backlog
+                          2>/dev/null); if [ "$unified_agent_idle" = "IDLE" ]; then
+                          echo "Unified Agent is idle"; break; else echo "Unified
+                          Agent is busy '$unified_agent_idle', waiting..."; sleep
+                          1; fi; done; kill $pid"
+                      max_tries: 3
+                    env:
+                    - name: TVM_SECRET
+                      value:
+                        secret_env:
+                          alias: unified-agent-tvm-secret
+                          id: client_secret
+                    id: unified_agent_workload
+                    liveness_check:
+                      http_get:
+                        any: true
+                        path: /status
+                        port: 22502
+                        time_limit:
+                          initial_delay_ms: 150000
+                          max_execution_time_ms: 15000
+                          max_restart_period_ms: 30000
+                          min_restart_period_ms: 30000
+                    readiness_check:
+                      http_get:
+                        expected_answer: OK
+                        path: /ready
+                        port: 22502
+                        time_limit:
+                          max_execution_time_ms: 15000
+                          max_restart_period_ms: 10000
+                          min_restart_period_ms: 10000
+                    start:
+                      command_line: /unified_agent_bin/unified_agent -c /unified_agent_config/config.yml
+                    transmit_logs: true
+                    ulimit_soft:
+                    - name: core
+                      value: 805306368
+              resource_requests:
+                memory_guarantee: 1610612736
+                memory_limit: 1610612736
+                network_bandwidth_guarantee: 5242880
+                vcpu_guarantee: 400
+                vcpu_limit: 400
+              secret_refs:
+                secret-tvm:
+                  secret_id: sec-01f0bgsym3xtvzmjzkxfyha1kb
+                  secret_version: ver-01f0bgsyn1cqbr64gbsx2xvc4f
+                unified-agent-tvm-secret:
+                  secret_id: sec-01ex24m3j4pcj3yscvsz2njggx
+                  secret_version: ver-01ex24m3k1neaga73gvwndpwvr
+                yandexpay-admin-settings:
+                  secret_id: sec-01f26qakvabxp8z9523mnmr2cp
+                  secret_version: ver-01g7c08dmq0x5vhv5tbavrp3c4
+      network_defaults:
+        network_id: _YANDEXPAY_TEST_NETS_
+      patchers_revision: 11
+      pod_agent_layer_sandbox_info: {}
+      pod_agent_sandbox_info:
+        revision: 3214891279
+      revision: 64
+      tvm_config:
+        blackbox_environment: Test
+        client_port: 2
+        clients:
+        - destinations:
+          - alias: blackbox
+            app_id: 224
+          - alias: yandex-pay-backend-sandbox
+            app_id: 2024739
+          - alias: yandex-pay-backend-production
+            app_id: 2024739
+          - alias: yandex-pay-plus-testing
+            app_id: 2029082
+          - alias: balance
+            app_id: 2000601
+          secret_selector:
+            alias: secret-tvm
+            id: client_secret
+          source:
+            abc_service_id: '32444'
+            alias: self
+            app_id: 2026748
+        mode: enabled
+      tvm_sandbox_info:
+        revision: 2728323868
+  revision: 71
+  revision_info: {}
+

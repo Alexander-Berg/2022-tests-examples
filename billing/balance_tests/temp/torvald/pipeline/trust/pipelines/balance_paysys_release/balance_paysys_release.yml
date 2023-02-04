@@ -1,0 +1,105 @@
+# +profile
+#
+
+INITIAL:
+  owner: torvald
+  edges:
+     DEVELOPMENT:
+#       notify: srg91
+       actions:
+         - get_version()
+         - update_ticket(description=DESCRIPTION, summary=SUMMARY)
+#         - get_responsibles()
+#         - fill_responsibles()
+
+DEVELOPMENT:
+  owner: srg91
+  edges:
+    DEPLOY_IN_PROGRESS:
+#      notify: torvald
+      conditions:
+        - get_changes()
+      actions:
+        - build(True)
+        - create_conductor_ticket()
+        - comment(CONDUCTOR_TICKETS)
+        - send('I am in DEPLOY_IN_PROGRESS stage', 'srg91')
+
+DEPLOY_IN_PROGRESS:
+  owner: srg91
+  edges:
+    DEPLOYED:
+#    notify: torvald
+      conditions:
+        - is_deployed(True)
+      actions:
+        - get_changes()
+        - comment(CHANGES)
+
+DEPLOYED:
+  owner: srg91
+  edges:
+    TEST_IN_PROGRESS:
+#      notify: torvald
+      conditions:
+        - has_status("open")
+      actions:
+        - start_teamcity(TEAMCITY_TEST_PACK)
+        - start_aqua(AQUA_TEST_PACK)
+        - comment(TESTS_LAUNCHED)
+
+    DEVELOPMENT:
+#      notify: torvald
+      conditions:
+        - has_status("closed")
+
+TEST_IN_PROGRESS:
+  owner: torvald
+  edges:
+    TEST_COMPLETE:
+      conditions:
+        - get_comment_values(TESTS_LAUNCHED)
+        - is_tasks_finished('teamcity', TEAMCITY_TEST_PACK)
+        - is_tasks_finished('aqua', AQUA_TEST_PACK)
+      actions:
+        - get_tasks_results('teamcity', TEAMCITY_TEST_PACK)
+        - get_tasks_results('aqua', AQUA_TEST_PACK)
+        - comment(TESTS_RESULTS)
+
+TEST_COMPLETE:
+  owner: torvald
+  edges:
+    TEST_SUCCESS:
+      conditions:
+        - get_comment_values(TESTS_LAUNCHED)
+        - is_tasks_passed('teamcity', TEAMCITY_TEST_PACK) # raise AlarmException if not
+        - is_tasks_passed('aqua', AQUA_TEST_PACK)
+      actions:
+        - comment('Результаты тестов проанализированы, изменения можно выкладывать. Подтвердите, пожалуйста')
+        - change_status('tested')
+
+TEST_SUCCESS:
+  owner: srg91
+  edges:
+    CONFIRMED:
+      conditions:
+        - has_status('confirmed')
+      actions:
+        - comment('Выложите, пожалуйста')
+        - telegram(admin, 'sfds')
+
+CONFIRMED:
+  owner: srg91
+  edges:
+    PROD_DEPLOYED:
+      conditions:
+        - get_comment_values(CONDUCTOR_TICKETS_TO_DEPLOY)
+        - is_deployed()
+      actions:
+        - change_status('deployed')
+        - create_new_version()
+        - create_new_branch()
+
+#PROD_DEPLOYED:
+#  owner: admin
+#  edges:

@@ -1,0 +1,122 @@
+locals:
+  service_id: &x-service-id 607
+  contract_type: &x-contract-type BnplIncomeContract
+
+  input:
+    processor:
+      valid_input: &x-valid-input
+        renderer_type: ProcessorBnplIncomeRenderer
+        contract_type: *x-contract-type
+        service_id: *x-service-id
+        template: commission.json
+        person_type: *x-person-type-ur
+        client_id: 12345678910
+        firm_id: *x-yandex-firm-id
+        event:
+          transaction_type: payment
+          transaction_amount: 100
+
+
+system_test_bundle:
+  endpoint: commission
+  
+  accounts: [ commissions ]
+
+  obfuscation:
+    obfuscate_term: canonized
+    processor_result_paths:
+      - event.transaction_dt
+      - event.billing_contract_id
+      - event.billing_client_id
+      - event.transaction_id
+      - event.tariffer_payload.common_ts
+      - event.tariffer_payload.external_id
+    accounts_balance_paths:
+      - dt
+      - loc.contract_id
+      - loc.client_id
+    accounts_event_paths:
+      - seq_id
+      - id
+      - event.account_id
+      - event.dt
+      - event.loc.client_id
+      - event.loc.contract_id
+      - event_batch.id
+      - event_batch.external_id
+      - event_batch.dt
+      - event_batch.info.transaction_dt
+      - event_batch.info.billing_contract_id
+      - event_batch.info.billing_client_id
+      - event_batch.info.transaction_id
+      - event_batch.info.tariffer_payload.common_ts
+      - event_batch.info.tariffer_payload.external_id
+    act_rows_paths:
+      - act_row_id
+      - accounter_client_id
+      - accounter_contract_id
+    acted_events_paths:
+      - act_row_id
+
+  act_o_tron_loc_attrs:
+    - client_id
+    - contract_id
+    - currency
+
+  loc_kwargs:
+    currency: RUB
+    product: ''
+
+  extract_external_ids_func: tariffer_payload_external_id
+
+  processor_input:
+    <<: *x-valid-input
+
+
+cases:
+  commission:
+    - description: Payment workflow
+
+      processor:
+        input:
+          <<: *x-valid-input
+          event:
+            transaction_type: payment
+            transaction_amount: 89900
+        expected:
+          response:
+            status: 200
+
+      accounts:
+        input:
+          accounts: [ commissions ]
+        expected:
+          response:
+            status: 200
+            data:
+              balances:
+                - loc: { type: commissions }
+                  debit: '89900.000000'
+
+    - description: Refund workflow
+
+      processor:
+        input:
+          <<: *x-valid-input
+          event:
+            transaction_type: refund
+            transaction_amount: 12001
+        expected:
+          response:
+            status: 200
+
+      accounts:
+        input:
+          accounts: [ commission_refunds ]
+        expected:
+          response:
+            status: 200
+            data:
+              balances:
+                - loc: { type: commission_refunds }
+                  credit: '12001.000000'

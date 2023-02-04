@@ -1,0 +1,42 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - ialand
+      groups: []
+labels:
+  order: '10000000'
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      uri: '/partner-strmchannels(/.*)?'
+  modules:
+    - report:
+        uuid: partner_strmchannels
+        ranges: default
+    - threshold:
+        lo_bytes: 153600
+        hi_bytes: 307200
+        pass_timeout: '2s'
+        recv_timeout: '0.05s'
+        on_pass_timeout_failure:
+          errordocument:
+            status: 413
+    - geobase_macro: {}
+    - exp_getter_macro:
+        _version: 3
+        service_name: 'morda'
+    - report: {ranges: default, uuid: partner_strmchannels_requests_to_sas}
+    - shared: {uuid: partner_strmchannels_sas}
+    - balancer2:
+        connection_attempts: 5
+        attempts: 1
+        retry_non_idempotent: true
+        attempts_file: './controls/partner_strmchannels.attempts'
+        rr: {}
+        generated_proxy_backends:
+          proxy_options: {}
+          include_backends:
+            type: BY_ID
+            ids: [backends_SAS_PORTAL_MORDA_RC,backends_VLA_PORTAL_MORDA_RC_YP,backends_SAS_PORTAL_MORDA_RC_YP]

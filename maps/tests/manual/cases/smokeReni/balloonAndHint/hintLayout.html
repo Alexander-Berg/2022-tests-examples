@@ -1,0 +1,125 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Кастомный хинт
+
+Description:
+Хинт в виде макета - плашки
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+smoke
+
+Estimated time: 
+90000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась.
+  Есть метка.
+
+Step:
+  Action:
+  Навести курсор на метку.
+
+  Expectation:
+  У метки появляется хинт в виде овальной плашки с жетлым фоном, с наименованием и адресом топонима.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <style>
+        html, body, #map {
+            width: 100%;
+            height: 100%;
+            padding: 0;
+            margin: 0;
+        }
+
+        .my-hint {
+            display: inline-block;
+            padding: 5px;
+            height: 35px;
+            position: relative;
+            left: -10px;
+            width: 195px;
+            font-size: 11px;
+            line-height: 17px;
+            color: #333333;
+            text-align: center;
+            vertical-align: middle;
+            background-color: #faefb6;
+            border: 1px solid #CDB7B5;
+            border-radius: 20px;
+            font-family: Arial;
+        }
+    </style>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            //ymaps = ym;
+
+            var myMap = new ymaps.Map("map", {
+                        center: [55.76, 37.64],
+                        zoom: 10
+                    }, {
+                        backgroundVisible: false
+                    }),
+            // Создание макета содержимого хинта.
+            // Макет создается через фабрику макетов с помощью текстового шаблона.
+                    HintLayout = ymaps.templateLayoutFactory.createClass("<div class='my-hint'>" +
+                                    "<b>{{ properties.object }}</b><br />" +
+                                    "{{ properties.address }}" +
+                                    "</div>", {
+                                // Определяем метод getShape, который
+                                // будет возвращать размеры макета хинта.
+                                // Это необходимо для того, чтобы хинт автоматически
+                                // сдвигал позицию при выходе за пределы карты.
+                                getShape: function () {
+                                    var el = this.getElement(),
+                                            result = null;
+                                    if (el) {
+                                        var firstChild = el.firstChild;
+                                        result = new ymaps.shape.Rectangle(
+                                                new ymaps.geometry.pixel.Rectangle([
+                                                    [0, 0],
+                                                    [firstChild.offsetWidth, firstChild.offsetHeight]
+                                                ])
+                                        );
+                                    }
+                                    return result;
+                                }
+                            }
+                    );
+            addGrid(myMap);
+            var log = new Log();
+            log.info("Test case: Кастомный хинт.");
+
+            var myPlacemark = new ymaps.Placemark([55.764286, 37.581408], {
+                address: "Москва, ул. Зоологическая, 13, стр. 2",
+                object: "Центр современного искусства"
+            }, {
+                hintLayout: HintLayout
+            });
+
+            myMap.geoObjects.add(myPlacemark);
+
+
+        }
+    </script>
+</head>
+<body>
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

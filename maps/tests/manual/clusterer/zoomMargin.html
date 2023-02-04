@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<!--
+Title:
+Кластер: отступы от границ карты, при клике на кластере
+
+Description:
+Проверка опции отступов от границ видимой области карты, которые соблюдаются при приближении карты после клика на кластере.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+regress
+
+Estimated time:
+120000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан с кластерной меткой со значением кластеризации "30".
+  Сверху имеется кнопки опции "clear", "100/0", "[60, 0]/ [0, 60]", "[61, 100, 0, 100]/[100, 0, 10, 32]", "[200, 200, 0, 0]/[0, 0, 200, 200]".
+
+Step:
+  Action:
+  Выполнить клик в кластерную метку.
+
+  Expectation:
+  Происходит призум и распад кластерной метки, на спане карты метки коллекций и кластерные метки с меньшим значением кластеризации.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "clear".
+  Выполнить клик в кнопку "100/0".
+  Выполнить клик в кластерную метку.
+
+  Expectation:
+  После нажатия кнопки "clear" происходит возврат спана к первоначальному виду с меткой кластера со значением "30".
+  Кластерная метка распадается, при этом на спане 12 меток кластеров с меньшим значением кластеризации которые расположены в центре спана.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "clear".
+  Выполнить клик в кнопку "[60, 0]/ [0, 60]".
+  Выполнить клик в кластерную метку.
+
+  Expectation:
+  После нажатия кнопки "clear" происходит возврат спана к первоначальному виду с меткой кластера со значением "30".
+  Кластерная метка распадается, при этом на спане 12 меток кластеров с меньшим значением кластеризации которые расположены в центре спана.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "clear".
+  Выполнить клик в кнопку "[61, 100, 0, 100]/[100, 0, 10, 32]".
+  Выполнить клик в кластерную метку.
+
+  Expectation:
+  После нажатия кнопки "clear" происходит возврат спана к первоначальному виду с меткой кластера со значением "30".
+  Кластерная метка распадается, при этом на спане 12 меток кластеров с меньшим значением кластеризации которые расположены в центре спана.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "clear".
+  Выполнить клик в кнопку "[200, 200, 0, 0]/[0, 0, 200, 200]".
+  Выполнить клик в кластерную метку.
+
+  Expectation:
+  После нажатия кнопки "clear" происходит возврат спана к первоначальному виду с меткой кластера со значением "30".
+  Кластерная метка распадается, при этом на спане 12 меток кластеров с меньшим значением кластеризации которые расположены ближе к левому нижнему углу контейнера.
+-->
+<html>
+<head>
+    <title>API 2.0</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <script src="../helper.js"></script>
+    <script type="text/javascript">
+        Api('init');
+        function init(ymaps) {
+            var myMap = new ymaps.Map('map', {
+                center: [59.936708, 30.046006],
+                zoom: 12
+            }, {
+                // avoidFractionalZoom: true
+            });
+            var bounds = myMap.getBounds();
+            
+            var x = myMap.getCenter()[0], y = myMap.getCenter()[1], i = 0;
+            // одна иконка и не указываем массив
+            var cluster = new ymaps.Clusterer();
+            cluster.options.set({
+                gridSize: 61
+            });
+            for (i = 0; i < 10; i++) {
+                cluster.add(new ymaps.Placemark([x + 0.0037, y + (i - 5) / 1000]));
+                cluster.add(new ymaps.Placemark([x + 0.0013, y + (i - 5) / 1000]));
+                cluster.add(new ymaps.Placemark([x - 0.0014, y + (i - 5) / 1000]));
+            }
+            myMap.geoObjects.add(cluster);
+            var button = new ymaps.control.Button("clear");
+            button.events.add("click", function (e) {
+                myMap.setBounds(bounds);
+            });
+            myMap.controls.add(button);
+            button = new ymaps.control.Button("100 / 0");
+            button.events.add("select", function (e) {
+                cluster.options.set("zoomMargin", 100)
+            }).add("deselect", function (e) {
+                cluster.options.set("zoomMargin", 0)
+            });
+            myMap.controls.add(button);
+            button = new ymaps.control.Button("[60, 0] / [0, 60]");
+            button.events.add("select", function (e) {
+                cluster.options.set("zoomMargin", [60, 0])
+            }).add("deselect", function (e) {
+                cluster.options.set("zoomMargin", [0, 60])
+            });
+            myMap.controls.add(button);
+            button = new ymaps.control.Button("[61, 100, 0, 100] / [100, 0, 10, 32]");
+            button.events.add("select", function (e) {
+                cluster.options.set("zoomMargin", [61, 100, 0, 100])
+            }).add("deselect", function (e) {
+                cluster.options.set("zoomMargin", [100, 0, 10, 32])
+            });
+            myMap.controls.add(button);
+            button = new ymaps.control.Button("[200, 200, 0, 0] / [0, 0, 200, 200]");
+            button.events.add("select", function (e) {
+                cluster.options.set("zoomMargin", [200, 200, 0, 0])
+            }).add("deselect", function (e) {
+                cluster.options.set("zoomMargin", [0, 0, 200, 200])
+            });
+            myMap.controls.add(button);
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;">
+</div>
+<p><a href="https://tech.yandex.ru/maps/archive/doc/jsapi/2.0/ref/reference/Clusterer-docpage/" target="_blank">Docs</a></p>
+</body>
+</html>

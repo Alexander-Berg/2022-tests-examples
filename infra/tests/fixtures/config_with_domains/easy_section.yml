@@ -1,0 +1,40 @@
+---
+l7_upstream_macro:
+  version: 0.2.0
+  id: easy
+  matcher:
+    path_re: '.*'
+  headers:
+    - create:
+        target: Host
+        value: this.is.test
+    - rewrite:
+        target: Location
+        pattern:
+          re: .*
+          case_sensitive: true
+        replacement: 'https://xxx.yandex-team.ru%{url}'
+  flat_scheme:
+    balancer:
+      backend_timeout: 20s
+      connect_timeout: 100ms
+      attempts: 3
+      retry_http_responses:
+        codes: [5xx]
+        exceptions: [503]
+        on_last_failed_retry: PROXY_RESPONSE_AS_IS
+      max_reattempts_share: 0.2
+      max_pessimized_endpoints_share: 0.2
+      use_https_to_endpoints: {}
+      watch_client_close: true
+    backend_ids:
+      - xxx
+    on_error:
+      static:
+        status: 504
+        content: 'Service unavailable'
+
+    on_fast_error:
+      static:
+        status: 509
+        content: 'Nobody knows'

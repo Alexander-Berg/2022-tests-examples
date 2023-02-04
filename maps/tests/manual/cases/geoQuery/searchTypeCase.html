@@ -1,0 +1,125 @@
+<!doctype html>
+<!--
+Title:
+Гео запрос: поиск типов объектов в выборке
+
+Description:
+Проверка поиска типов объектов в выборке.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+geoQuery
+
+Estimated time:
+120000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+  
+  Expectation:
+  Карта отобразилась корректно.
+  На спане карты множество меток(голубых и синих), объекты полупрозрачных синих прямоугольников, кругов, синие линии разной толщины. 
+  Сверху слева кнопки "regexp ^...", "!== Polyline", "==Place...".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "regexp ^...". 
+  
+  Expectation:
+  На спане все метки и узкие прямоугольники красного цвета, остальные объекты синего цвета.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "!== Polyline". 
+  
+  Expectation:
+  На спане все объекты и метки кроме линий стали красного цвета, линии остались синего цвета.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "== Plac...". 
+  
+  Expectation:
+  На спане все метки коллекций стали красного цвета, остальные объекты - синего.
+-->
+<html>
+<head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../helper.js"></script>
+    <script src="../../js/wgs84MercatorSource.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym; // hack
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.5541584321358, 37.93061981201168],
+                zoom: 9,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            wgs84MercatorSource(ym, myMap, this);
+            addGrid(myMap);
+            var log = new Log();
+
+            var result = ym.geoQuery(geoQueryResult);
+            result.then(function () {
+                result.addToMap(myMap);
+            });
+
+            var equalsButton = new ymaps.control.Button('==Placemark');
+            var inequalsButton = new ymaps.control.Button('!=Polyline');
+            var regexpButton = new ymaps.control.Button('regexp ^Po');
+
+            // filter objects (==)
+            equalsButton.events.add('click', function () {
+                testSearch(result, 'geometry.type == "Point"');
+            });
+            // filter objects (!=)
+            inequalsButton.events.add('click', function () {
+                testSearch(result, 'geometry.type != "LineString"');
+            });
+            // filter objects (regexp)
+            regexpButton.events.add('click', function () {
+                testSearch(result, 'geometry.type regexp "^Po"');
+            });
+
+            map.controls
+                    .add(equalsButton)
+                    .add(inequalsButton)
+                    .add(regexpButton);
+
+
+            // function-helper for convenient search
+            function testSearch(initialData, condition) {
+
+                initialData.unsetOptions(['preset', 'fillColor', 'fillOpacity', 'strokeColor']);
+
+                var filtered = initialData.search(condition);
+
+                var iterator = filtered.getIterator(), obj;
+                while ((obj = iterator.getNext()) && (obj != iterator.STOP_ITERATION)) {
+                    console.log(obj);
+                    obj.options.set('strokeColor', "#FF0000")
+                            .set('preset', "islands#redIcon")
+                            .set('fillColor', '#FF0000')
+                            .set('fillOpacity', 0.2)
+
+                }
+            }
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

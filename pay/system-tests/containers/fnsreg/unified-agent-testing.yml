@@ -1,0 +1,72 @@
+storages:
+  - name: main
+    plugin: fs
+    config:
+      directory: /var/log_store
+      max_partition_size: 1gb
+      data_retention:
+        by_age: 30m
+        by_size: 100mb
+  - name: nginx
+    plugin: fs
+    config:
+      directory: /var/nginx_log_store
+      max_partition_size: 512mb
+      data_retention:
+        by_age: 30m
+        by_size: 50mb
+
+routes:
+  - input:
+      plugin: grpc
+      config:
+        uri: localhost:12500
+    channel:
+      pipe:
+        - storage_ref:
+            name: main
+        - filter:
+            plugin: batch
+            config:
+              delimiter: "\n"
+              flush_period: 100ms
+              limit:
+                bytes: 256kb
+      output:
+        plugin: logbroker
+        config:
+          endpoint: logbroker.yandex.net
+          topic: spirit/fnsreg-log-testing
+          tvm:
+            client_id: 2025466
+            secret:
+              env: TVM_SECRET
+  - input:
+      plugin: syslog
+      id: nginx_access_log_input
+      config:
+        path: /tmp/unified_agent_nginx_access_log.sock
+        max_message_size: 10240
+        batch_size: 10
+        format: raw
+        strip_tag_delimiter: true
+    channel:
+      pipe:
+        - storage_ref:
+            name: nginx
+        - filter:
+            plugin: batch
+            config:
+              delimiter: "\n"
+              flush_period: 100ms
+              limit:
+                bytes: 256kb
+      output:
+        plugin: logbroker
+        config:
+          endpoint: logbroker.yandex.net
+          topic: spirit/fnsreg-nginx-access-log-testing
+          tvm:
+            client_id: 2025466
+            secret:
+              env: TVM_SECRET

@@ -1,0 +1,44 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - etruntaev
+      groups: []
+labels:
+  order: '10000000'
+config_mode: easy2
+---
+l7_upstream_macro:
+  version: 0.0.2
+  id: kp-clickhouse
+  matcher:
+    path_re: '(/.*)?'
+  monitoring:
+    uuid: kp-clickhouse
+  by_dc_scheme:
+    dc_balancer:
+      weights_section_id: bygeo
+      method: BY_DC_WEIGHT
+      attempts: 2
+    balancer:
+      attempts: 1
+      max_reattempts_share: 0.15
+      max_pessimized_endpoints_share: 0.5
+      fast_attempts: 2
+      do_not_retry_http_responses: true
+      retry_non_idempotent: false
+      connect_timeout: 200ms
+      backend_timeout: 30s
+      keepalive_count: 0  # Важно!
+      use_https_to_endpoints: {}
+    dcs:
+      - name: sas
+        backend_ids:
+          - kp-clickhouse-sas
+      - name: vla
+        backend_ids:
+          - kp-clickhouse-vla
+    on_error:
+      static:
+        status: 502
+        content: "Clickhouse unavailable"

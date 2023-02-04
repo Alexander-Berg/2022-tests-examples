@@ -1,0 +1,52 @@
+---
+regexp_section:
+  matcher:
+    match_or:
+      - match_fsm:
+          path: '/+resource/+context\\.js'
+          case_insensitive: false
+          surround: false
+      - match_fsm:
+          path: '/+system/.+\\.js'
+          case_insensitive: false
+          surround: false
+      - match_fsm:
+          path: '/+(resource|system)-debug/.+'
+          case_insensitive: false
+          surround: false
+  modules:
+    - report:
+        uuid: "pcode_redirect"
+        ranges: default
+    - rewrite:
+        actions:
+          - regexp: '^/+resource/+context\\.js'
+            rewrite: '/pcode?route=context'
+          - regexp: '^/+system/+(.+)\\.js'
+            rewrite: '/pcode?route=%1'
+          - regexp: '^/+(resource|system)-debug/+(.+)'
+            rewrite: '/pcode?route=%2'
+    - shared:
+        uuid: proxy_pcode
+    - headers:
+        create:
+          Host: pcode-static.yabs.yandex.net
+        create_weak:
+          X-Forwarded-Proto: https
+        create_func_weak:
+          X-Real-IP: realip
+    - response_headers:
+        create:
+          Strict-Transport-Security: "max-age=31536000"
+    - balancer2:
+        attempts: 2
+        rr: {}
+        simple_policy: {}
+        generated_proxy_backends:
+            proxy_options:
+                backend_timeout: 10s
+                connect_timeout: 50ms
+            instances:
+              - weight: 1
+                host: pcode-static.yabs.yandex.net
+                port: 80

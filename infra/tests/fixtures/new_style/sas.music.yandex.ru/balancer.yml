@@ -1,0 +1,109 @@
+---
+instance_macro:
+  maxconn: 5000
+  workers: !f get_workers()
+  sections:
+    admin:
+      ips: [127.0.0.1, '::1']
+      ports: [14540]
+      modules:
+        - http: {}
+        - admin: {}
+    stats_storage:
+      ips: [127.0.0.4]
+      ports: [14540]
+      modules:
+        - report:
+            uuid: 'service_total'
+            ranges: 'default'
+            just_storage: true
+        - http: {}
+        - errordocument:
+            status: 204
+    http_section:
+      ips: ['*']
+      ports: [80]
+      local_ips: [local_v4_addr, local_v6_addr]
+      local_ports: [14540]
+      extended_http_macro:
+        port: 14540
+        report_uuid: 'http'
+        modules:
+          - headers:
+              create:
+                X-Yandex-HTTP: yes
+                X-Yandex-L7: yes
+              create_func:
+                X-Start-Time: starttime
+                X-Forwarded-For-Y: realip
+                X-Source-Port-Y: realport
+                X-Scheme: scheme
+              create_func_weak:
+                X-Request-Id: reqid
+              delete: X-Real-IP
+          - log_headers:
+              name_re: "X-Request-Id"
+          - response_headers:
+              create_weak:
+                X-XSS-Protection: '1; mode=block'
+                X-Content-Type-Options: 'nosniff'
+          - regexp:
+              include_upstreams:
+                filter:
+                  id_prefix_in:
+                    - 'default'
+                    - 'http_'
+                    - 'slbping'
+                    - 'awacs-balancer-health-check'
+                order:
+                  label:
+                    name: order
+    https_section:
+      ips: ['*']
+      ports: [443]
+      local_ips: [local_v4_addr, local_v6_addr]
+      local_ports: [14541]
+      extended_http_macro:
+        port: 14541
+        report_uuid: 'https'
+        enable_ssl: true
+        ssl_sni_contexts:
+          music.ya.ru:
+            servername_regexp: 'music.ya.ru'
+          music.yandex:
+            servername_regexp: 'music.yandex'
+          music.yandex.uz:
+            servername_regexp: 'music.yandex.uz'
+          music.yandex.com:
+            servername_regexp: 'music.yandex.com'
+          music.yandex.ru:
+            servername_regexp: default
+        modules:
+          - headers:
+              create:
+                X-Yandex-HTTPS: yes
+                X-Yandex-L7: yes
+              create_func:
+                X-Start-Time: starttime
+                X-Request-Id: reqid
+                X-Forwarded-For-Y: realip
+                X-Source-Port-Y: realport
+                X-Scheme: scheme
+              delete: X-Real-IP
+          - response_headers:
+              create:
+                Strict-Transport-Security: 'max-age=31536000'
+              create_weak:
+                X-XSS-Protection: '1; mode=block'
+                X-Content-Type-Options: 'nosniff'
+          - regexp:
+              include_upstreams:
+                filter:
+                  id_prefix_in:
+                    - 'default'
+                    - 'https_'
+                    - 'slbping'
+                    - 'awacs-balancer-health-check'
+                order:
+                  label:
+                    name: order

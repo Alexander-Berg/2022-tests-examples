@@ -1,0 +1,54 @@
+groups:
+- name: /etc/prometheus/alerts/worm.rules
+  rules:
+  # meta: call_on_weekend: False
+  - alert: WormApiTooFewInstances
+    expr: sum(up{job="worm-api"}) < 3
+    for: 2m
+    labels:
+      indicates: availability
+      job: worm-api
+      kind: cause
+      severity: page
+    annotations:
+      description: Alive {{ .Value }} < 1 instances for more than 2 minutes.
+      summary: 'Worm-Api: Too few instances alive'
+  # meta: call_on_weekend: False
+  - alert: WormApiHttpHighRequestLatency
+    expr: max(worm_api_http{api="all",job="worm-api",quantile="0.999"}) > 3.5e+08
+    for: 90s
+    labels:
+      indicates: latency
+      job: worm-api
+      kind: symptom
+      severity: page
+    annotations:
+      description: Too high HTTP latency ({{ .Value }}) for last minute
+      summary: 'Worm-Api: Too high HTTP latency'
+  # meta: call_on_weekend: False
+  - alert: WormApiHttpHighNon200Rate
+    expr: (sum(rate(worm_api_http_count{api="all",job="worm-api",status!="200"}[90s]))
+      / sum(rate(worm_api_http_count{api="all",job="worm-api"}[90s]))) > 0.005
+    for: 90s
+    labels:
+      indicates: errors
+      job: worm-api
+      kind: symptom
+      severity: page
+    annotations:
+      description: Too high non-200 responses rate ({{ .Value }}) for last minute
+      summary: 'Worm-Api: Too high non-200 responses'
+  # meta: call_on_weekend: False
+  - alert: WormApiTooMuchHeapUsage
+    expr: (worm_api_jvm_memory_bytes_used{area="heap",job="worm-api"} / worm_api_jvm_memory_bytes_max{area="heap",job="worm-api"})
+      > 0.8
+    for: 90s
+    labels:
+      indicates: self-health
+      job: worm-api
+      kind: cause
+      severity: warning
+    annotations:
+      description: Too much heap usage on {{ .Labels.instance }} ({{ .Value }}) for
+        last minute
+      summary: 'Worm-Api: Too much heap usage'

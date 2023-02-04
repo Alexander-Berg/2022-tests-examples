@@ -1,0 +1,67 @@
+<!DOCTYPE HTML>
+<!--(skip)(description)
+Hotspot: hint methods
+This case must be tested manually!
+-->
+<!--(version)
+2.1
+-->
+<!--(commands)
+sleep(1000);
+test();
+-->
+<html>
+<head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            var myMap = new ymaps.Map('map', {
+                center: [55.709243, 37.500737],
+                zoom: 9,
+                controls: ['fullscreenControl']
+            }, {
+                minZoom: 9,
+                maxZoom: 10
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+            //TODO: поправить
+            log.info('Contextmenu on hotspot layer: open hint, close hint, open hint');
+
+            var tileUrlTemplate = 'http://sandbox.api.maps.yandex.net/examples/ru/2.1/hotspot_layer/hotspot_data/%z/tile_x=%x&y=%y',
+                    keyTemplate = 'testCallback_tile_%c',
+                    imgUrlTemplate = 'http://sandbox.api.maps.yandex.net/examples/ru/2.1/hotspot_layer/images/%z/tile_x=%x&y=%y.png',
+                    objSource = new ymaps.hotspot.ObjectSource(tileUrlTemplate, keyTemplate),
+
+                    imgLayer = new ymaps.Layer(imgUrlTemplate, {tileTransparent: true}),
+                    hotspotLayer = new ymaps.hotspot.Layer(objSource, {cursor: 'help', hasHint: true, openHintOnHover: false, showEmptyHint: true});
+
+            myMap.layers.add(hotspotLayer);
+            myMap.layers.add(imgLayer);
+
+            hotspotLayer.hint.events.add(['open', 'close'], function (e) {
+                log.info('event: ' + e.get('type') + ', isOpen: ' + hotspotLayer.hint.isOpen());
+            });
+            hotspotLayer.events.add('contextmenu', function (e) {
+                var coords = e.get('clientPixels');
+                hotspotLayer.hint.open(coords, {content: 'balloon'}).then(function () {
+                    hotspotLayer.hint.close().then(function () {
+                        hotspotLayer.hint.open(coords, {content: 'balloon'});
+                    });
+                });
+            })
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px; padding: 20px;"></div>
+</body>
+</html>

@@ -1,0 +1,69 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - gemberg
+      groups: []
+labels:
+  order: '99999999'
+config_mode: easy2
+---
+l7_upstream_macro:
+  by_dc_scheme:
+    balancer:
+      allow_connection_upgrade: true
+      attempts: 2
+      backend_timeout: 65s
+      connect_timeout: 100ms
+      fast_attempts: 2
+      health_check:
+        delay: 5s
+        request: 'GET /ping HTTP/1.1\nHost: arcanum2.yandex-team.ru\n\n'
+      max_pessimized_endpoints_share: 0.2
+      max_reattempts_share: 0.15
+      retry_http_responses:
+        codes:
+        - 5xx
+        on_last_failed_retry: PROXY_RESPONSE_AS_IS
+      retry_non_idempotent: false
+    dc_balancer:
+      attempt_all_dcs: true
+      method: BY_DC_WEIGHT
+      weights_section_id: bygeo
+    dcs:
+    - backend_ids:
+      - arcanum-testing_frontend_iva
+      name: iva
+    - backend_ids:
+      - arcanum-testing_frontend_man
+      name: man
+    on_error:
+      static:
+        content: Service unavailable
+        status: 504
+  headers:
+  - create:
+      func: reqid
+      keep_existing: true
+      target: X-Request-Id
+  - create:
+      func: starttime
+      target: X-Start-Time
+  - create:
+      func: realip
+      target: X-Forwarded-For
+  - create:
+      func: realport
+      target: X-Source-Port
+  - create:
+      func: proto
+      target: X-Forwarded-Proto
+  - create:
+      func: scheme
+      target: X-Scheme
+  id: default
+  matcher:
+    any: true
+  monitoring:
+    uuid: default
+  version: 0.2.0

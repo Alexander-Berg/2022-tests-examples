@@ -1,0 +1,177 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Геообъект: проверка событий хинта геообъекта и событий хинта
+
+Description:
+Проверка событий хинта геообъекта и событий хинта.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+geoobject
+
+Estimated time:
+360000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан Московской области, на спане два ряда объектов: метка, линия, многоугольник, прямоугольник, круг(верхний ряд синего цвета, нижний - зеленого), сверху слева имеется кнопка "clear".
+  (кнопка "clear" очищает блок с текстом под контейнером с картой, выполняйте клик в кнопку после каждого шага в тест-кейсе)  
+
+Step:
+  Action:
+  Навести курсор на синюю метку коллекции. 
+
+  Expectation:
+  При наведении курсор меняется на палец, на метке появляется хинт "text", под контейнером с картой появляется блок: object event: hintopen; hint event: open.
+
+Step:
+  Action:
+  Увести курсор с метки на пустое место на спане карты. 
+
+  Expectation:
+  Через секунду после перевода курсора хинт "text" пропадает, под контейнером с картой появляется блок: object event: hintclose; hint event: close.
+
+Step:
+  Action:
+  Навести курсор на синий многоугольник, зажать ЛКМ, выполнить статичный драг, отпустить ЛКМ. 
+
+  Expectation:
+  При наведении курсор меняется на палец, на многоугольнике появляется хинт "text", под контейнером с картой появляется блок: object event: hintopen; hint event: open.
+  При начале драга хинт пропадает, под контейнером появляется блок: object event: hintclose; hint event: close.
+
+Step:
+  Action:
+  Навести курсор на синюю прямоугольник, скролом мыши выполнить зум карты на несколько значений. 
+
+  Expectation:
+  При наведении курсор меняется на палец, на прямоугольнике появляется хинт "text", под контейнером с картой появляется блок: object event: hintopen; hint event: open.
+  При начале зума хинт пропадает, под контейнером появляется блок: object event: hintclose; hint event: close.
+
+Step:
+  Action:
+  Навести курсор на синий круг,скролом мыши выполнить отзум карты на несколько значений. 
+
+  Expectation:
+  При наведении курсор меняется на палец, на круге появляется хинт "text", под контейнером с картой появляется блок: object event: hintopen; hint event: open.
+  При начале отзума хинт пропадает, под контейнером появляется блок: object event: hintclose; hint event: close.
+
+Step:
+  Action:
+  Навести курсор на зеленую метку, после чего выполнить клик в метку. 
+
+  Expectation:
+  При наведении курсор меняется на палец, на метке появляется хинт "text", под контейнером с картой появляется блок: object event: hintopen; hint event: open.
+  При клике хинт пропадает, под контейнером появляется блок: object event: hintclose; hint event: close, на метке открывается балун "text".
+
+Step:
+  Action:
+  Закрыть балун кликом в кнопку закрытия.
+
+  Expectation:
+  Балун закрывается, спан карты без изменений.
+
+Step:
+  Action:
+  Навести курсор на зеленую линию, после чего перевести курсор на зеленый многоугольник. 
+
+  Expectation:
+  При наведении курсор меняется на палец, на линии появляется хинт "text", под контейнером с картой появляется блок: object event: hintopen; hint event: open.
+  При переводе курсора хинт на линии пропадает, под контейнером появляется блок: object event: hintclose; hint event: close, на многоугольнике появляется хинт "text", под контейнером с картой: object event: hintopen; hint event: open.
+ 
+Step:
+  Action:
+  Навести курсор на зеленый прямоугольник, быстро вывести курсор за пределы прямоугольника на спан карты и вернуть курсор на прямоугольник.
+
+  Expectation:
+  При наведении курсор меняется на палец, на прямоугольнике появляется хинт "text", под контейнером с картой появляется блок: object event: hintopen; hint event: open.
+  Хинт не закрывается и не переоткрывается, события закрытия хинта под контейнером не появляются.
+ 
+Step:
+  Action:
+  Быстро провести курсором по прямой линии пересекающей зеленый и синий круг на спане карты.
+
+  Expectation:
+  При наведении курсора на объекты он меняется на палец, хинт при этом не открывается, события открытия хинта под контейнером не появляются. 
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script src="../geoCS.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym; // hack
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.73259667357658, 37.70153663432529],
+                zoom: 9,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+            __log__("Проверка событий геообъекта 'hintopen', 'hintclose' и хинта 'open', 'close'");
+            __log__("Хинт должен нормально открываться, закрыватся при драге, зуме, открытии балуна, переходе между объектами, по таймауту");
+            __log__("Хинт не должен переоткрываться при быстром сведении и наведении на объект");
+            __log__("Хинт не должен открываться при быстром наведении и сведении с объекта");
+            geoCSSource(ym, myMap, this);
+            addGrid(myMap);
+            var log = new Log();
+            var events = ['hintopen', 'hintclose'];
+            var callback = function (e) {
+                log.info('object event: ' + e.get('type'));
+                console.log(e.get('target'));
+            };
+
+            var events1 = ['open', 'close'];
+            var callback1 = function (e) {
+                log.info('hint event: ' + e.get('type'));
+                console.log(e.get('target'));
+            };
+
+            var collection = new ymaps.GeoObjectCollection();
+            collection
+                    .add(geoObjectPlacemark)
+                    .add(geoObjectPolyline)
+                    .add(geoObjectPolygon)
+                    .add(geoObjectRectangle)
+                    .add(geoObjectCircle)
+                    .add(placemark)
+                    .add(polyline)
+                    .add(polygon)
+                    .add(rectangle)
+                    .add(circle);
+
+            collection.each(function (obj) {
+                obj.properties.set('hintContent', 'text');
+                obj.properties.set('balloonContent', 'text');
+                obj.events.add(events, callback);
+                obj.hint.events.add(events1, callback1);
+            });
+
+            var clearButton = new ymaps.control.Button('clear');
+            clearButton.events.add('click', function () {
+                log.clear();
+            });
+            myMap.controls.add(clearButton);
+
+            myMap.geoObjects.add(collection);
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

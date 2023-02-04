@@ -1,0 +1,132 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Гео запрос: опция проверки возможности установить указанный коэффициент масштабирования
+
+Description:
+Проверка опции установки указанного коэффициента масштабирования.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+geoQuery
+
+Estimated time:
+180000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+  
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан Московской области, в центре спана карты синяя метка коллекции.
+  Сверху слева кнопка "bounds", сверху справка "invisible".
+
+Step:
+  Action:
+  Выполнить клик кнопку "bounds". 
+  
+  Expectation:
+  Происходит смена спана с призумом на спан с меткой(метка расположена на доме № 55), на спане также видны другие элементы карты, улица, дома с номерами.
+  Под контейнером с картой появляется строка: "checkZoomRange: false". 
+
+Step:
+  Action:
+  Выполнить клик кнопку "bounds". 
+  
+  Expectation:
+  Происходит призум спана, на спане нет элементов домов, линий улиц, в центре спана метка.
+  Под контейнером с картой появляется строка: "checkZoomRange: true". 
+
+Step:
+  Action:
+  Выполнить отзум скролом мыши на одно значение. 
+  
+  Expectation:
+  Происходит отзум спана, на спане метка(метка расположена на доме № 55), на спане также видны другие элементы карты, улица, дома с номерами.
+
+Step:
+  Action:
+  Выполнить клик кнопку "invisible". 
+  
+  Expectation:
+  Метка пропадает со спана карты. 
+
+Step:
+  Action:
+  Выполнить клик кнопку "bounds". 
+  
+  Expectation:
+  Происходит небольшое смещение спана без призума, на спане корректно отображаются элементы карты: улица, дома с номерами.
+  Под контейнером с картой появляется строка: "checkZoomRange: false". 
+-->
+<html>
+<head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../helper.js"></script>
+    <script src="../../js/wgs84MercatorSource.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+        function init(ymaps) {
+            ymaps = ym;
+
+            var myMap = new ym.Map('map', {
+                center: [55.5541584321358, 37.93061981201168],
+                zoom: 9,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            wgs84MercatorSource(ym, myMap, this);
+            addGrid(myMap);
+
+            var placemark = new ymaps.Placemark([55.5541584321358, 37.93061981201168], {
+                hintContent: 'placemark',
+                balloonContent: 'placemark'
+            }, {});
+
+            // add objects and applies new bounds to myMap
+            var result = ymaps.geoQuery(placemark).addToMap(myMap);
+
+            var log = new Log();
+
+            // geodesic button sets 'true' value to geodesic option of objects
+            var applyBoundsButton = new ymaps.control.Button({data: {content: 'bounds'}}, {selectOnClick: true});
+
+            // (for geodesic option check) applyBoundsButton applies new bounds to myMap
+            applyBoundsButton.events
+                    .add('select', function () {
+                        log.info('checkZoomRange: false');
+                        result.applyBoundsToMap(myMap, {checkZoomRange: true});
+                    })
+                    .add('deselect', function () {
+                        log.info('checkZoomRange: true');
+                        result.applyBoundsToMap(myMap, {checkZoomRange: false});
+                    });
+
+            var visibleButton = new ymaps.control.Button({data: {content: 'invisible'}}, {selectOnClick: true});
+            visibleButton.events
+                    .add('select', function () {
+                        result.setOptions('visible', false);
+                    })
+                    .add('deselect', function () {
+                        result.setOptions('visible', true);
+                    });
+
+            myMap.controls
+                    .add(applyBoundsButton)
+                    .add(visibleButton, {float: 'right'})
+        }
+
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

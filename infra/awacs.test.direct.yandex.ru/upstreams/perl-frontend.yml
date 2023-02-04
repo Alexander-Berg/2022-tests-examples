@@ -1,0 +1,59 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - zhur
+      groups: []
+labels:
+  order: '9999996'
+---
+regexp_section:
+  matcher: {}
+  modules:
+    - headers:
+        create:
+            X-Awacs-Get-HTTP: true
+            X-Real-SSL-Protocol: TLSv1.2
+    - report:
+        uuid: perl-frontend
+        ranges: default
+        matcher_map:
+          perl:
+            match_or:
+              - match_fsm:
+                  path: '/(registered|public).*'
+              - match_and:
+                - match_fsm:
+                    path: '/dna/.*'
+                - match_not:
+                    match_fsm:
+                      path: '/dna/build/static/.*'
+    - antirobot_macro:
+        version: 0.0.9
+    - balancer2:
+        attempts: 1
+        attempts_rate_limiter:
+          limit: 0.15
+        connection_attempts: 3
+        status_code_blacklist : ["5xx"]
+        return_last_5xx: true
+        unique_policy: {}
+        dynamic:
+          max_pessimized_share: 0.55
+          min_pessimization_coeff: 0.1
+          weight_increase_step: 0.1
+          history_interval: "10s"
+          backends_name: "perl-frontends"
+          active:
+            use_backend_weight: false
+            weight_normalization_coeff: 1
+            request: 'GET /alive HTTP/1.0\n\n'
+            delay: "1s"
+        generated_proxy_backends:
+          proxy_options:
+            backend_timeout: 600s
+            connect_timeout: 100ms
+            fail_on_5xx: false
+          include_backends:
+            type: BY_ID
+            ids: [backend-testing-web]

@@ -1,0 +1,35 @@
+import React from 'react';
+import { screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+
+import '@testing-library/jest-dom';
+
+import { renderComponent } from 'www-poffer/react/utils/testUtils';
+import { offerFormPageContextMock } from 'www-poffer/react/contexts/offerFormPage.mock';
+import { OfferFormFieldNames } from 'www-poffer/react/types/offerForm';
+
+import OfferFormNoDisturbField from './OfferFormNoDisturbField';
+
+it('на изменении отсылает стату', async() => {
+    await renderComponent(
+        (
+            <OfferFormNoDisturbField/>
+        ),
+        {
+            offerFormContext: {
+                ...offerFormPageContextMock,
+            },
+        },
+    );
+
+    const checkbox = screen.getByRole('checkbox');
+
+    userEvent.click(checkbox);
+
+    expect(offerFormPageContextMock.sendFormLog).toHaveBeenCalledWith(
+        {
+            field: OfferFormFieldNames.NO_DISTURB,
+            event: 'click',
+        },
+    );
+});

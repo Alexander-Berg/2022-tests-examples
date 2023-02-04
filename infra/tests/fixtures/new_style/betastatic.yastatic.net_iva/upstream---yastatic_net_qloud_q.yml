@@ -1,0 +1,40 @@
+---
+regexp_path_section:
+  pattern: '/q(/.*)?'
+  modules:
+    - rewrite:
+        actions:
+          - regexp: '^(/.*)?/v-[^/a-zA-Z]+/(.*)(\\?.*)?$'
+            rewrite: '%1/%2%3'
+    - report:
+        uuid: 'yastatic_net_qloud_q'
+        ranges: 'default'
+    - shared:
+        uuid: yastatic_net_qloud_q
+    - response_headers:
+        create:
+            Cache-Control: 'public, max-age=216013'
+            Access-Control-Allow-Origin: '*'
+            Timing-Allow-Origin: '*'
+        create_func:
+            Expires: 'time:+216001s'
+    - headers:
+        create:
+            'Host': 'yastatic.net'
+            'Y-Traffic-Source': 'msk-yastatic.net'
+    - balancer2:
+        disable_attempts_rate_limiter: true
+        attempts: 5
+        simple_policy: {}
+        rr: {}
+        generated_proxy_backends:
+            proxy_options:
+                backend_timeout: '5s'
+                connect_timeout: '50ms'
+                fail_on_5xx: true
+                keepalive_count: 1
+                keepalive_timeout: '60s'
+            instances:
+                - weight: 1
+                  host: 'router-dev.qloud.yandex.net'
+                  port: 80

@@ -1,0 +1,77 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - robot-tap
+      groups: []
+labels:
+  order: '1000'
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      host: api\\.tap-rc\\.yandex\\.ru
+  modules:
+    - report:
+        uuid: 'services'
+        ranges: 'default'
+    - report:
+        uuid: 'tap-backend-release'
+        ranges: 'default'
+    - headers:
+        create_func:
+          X-Real-IP: 'realip'
+    - balancer2:
+        attempts: 2
+        connection_attempts: 1
+        retry_non_idempotent: false
+        rr: {weights_file: ./controls/traffic_control.weights}
+        return_last_5xx: true
+        status_code_blacklist: ['5xx']
+        backends:
+          - weight: 1
+            name: tapbackend_vla
+            modules:
+              - balancer2:
+                  attempts: 2
+                  connection_attempts: 1
+                  retry_non_idempotent: false
+                  attempts_rate_limiter:
+                    limit: 0.1
+                  dynamic:
+                    max_pessimized_share: 0.15
+                    backends_name: tapbackend_vla
+                  generated_proxy_backends:
+                    proxy_options:
+                      backend_timeout: 20s
+                      connect_timeout: 100ms
+                      keepalive_count: 3
+                      fail_on_5xx: true
+                    include_backends:
+                      type: BY_ID
+                      ids: [tap_backend_release_vla]
+          - weight: 1
+            name: tapbackend_sas
+            modules:
+              - balancer2:
+                  attempts: 2
+                  connection_attempts: 1
+                  retry_non_idempotent: false
+                  attempts_rate_limiter:
+                    limit: 0.1
+                  dynamic:
+                    max_pessimized_share: 0.15
+                    backends_name: tapbackend_sas
+                  generated_proxy_backends:
+                    proxy_options:
+                      backend_timeout: 20s
+                      connect_timeout: 100ms
+                      keepalive_count: 3
+                      fail_on_5xx: true
+                    include_backends:
+                      type: BY_ID
+                      ids: [tap_backend_release_sas]
+        on_error:
+          errordocument:
+            status: 503
+            content: 'Service unavailable'

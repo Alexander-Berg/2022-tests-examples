@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xmlns:util="http://www.springframework.org/schema/util"
+  xsi:schemaLocation="http://www.springframework.org/schema/beans
+       http://www.springframework.org/schema/beans/spring-beans-3.1.xsd http://www.springframework.org/schema/util http://www.springframework.org/schema/util/spring-util.xsd"
+  default-lazy-init="true">
+
+  <bean class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer"
+    lazy-init="false">
+    <property name="locations">
+      <list>
+        <value>classpath:/context/test.properties</value>
+      </list>
+    </property>
+    <property name="ignoreUnresolvablePlaceholders" value="false"/>
+    <property name="order" value="-1"/>
+    <property name="ignoreResourceNotFound" value="true"/>
+  </bean>
+
+  <bean id="shortCarAdSearchTemplate" class="ru.yandex.auto.core.search2.YoctoSearchTemplateImpl">
+    <constructor-arg name="entityGetter">
+      <bean class="ru.yandex.auto.indexer.lucene.ShortCarAdEntityGetter">
+        <constructor-arg name="converter">
+          <bean class="ru.yandex.auto.core.search2.conversion.yocto.ShortCarAdYoctoEntityConverter">
+          </bean>
+        </constructor-arg>
+      </bean>
+    </constructor-arg>
+  </bean>
+
+  <bean id="yoctoSearchQueryCompiler"
+    class="ru.yandex.auto.searcher.core.YoctoSearchQueryCompiler">
+  </bean>
+
+  <bean id="initialIndexSearcher"
+    class="ru.yandex.auto.searcher.consumer.InitialIndexSearcherFactory"
+    lazy-init="false">
+    <property name="indexConsumer" ref="carsAsyncS3IndexConsumer"/>
+  </bean>
+
+  <bean id="carsAsyncS3IndexConsumer" class="ru.yandex.auto.searcher.consumer.YoctoAsyncS3Consumer" lazy-init="false">
+    <constructor-arg name="updatedListeners" ref="carsPartitionUpdatedListeners"/>
+    <constructor-arg name="client" ref="asyncS3Client"/>
+    <constructor-arg name="updatePeriodInSeconds" value="${auto-searcher.index-update.period}"/>
+    <constructor-arg name="indexVersion"><util:constant static-field="ru.yandex.auto.core.AutoSchemaVersions.CARS_YOCTO_INDEX_VERSION"/></constructor-arg>
+    <constructor-arg name="bucket" value="${auto.s3edr.s3.bucket}"/>
+    <constructor-arg name="prefix" value="autoru-index"/>
+    <constructor-arg name="qualifier" value="cars"/>
+    <constructor-arg name="maxPartitions" value="${auto.index.maxPartitions}"/>
+    <constructor-arg name="maxConcurrent" value="1"/>
+    <constructor-arg name="oneShot" value="false"/>
+    <constructor-arg name="tracerProvider" ref="tracerProvider"/>
+    <constructor-arg name="cachers">
+      <set>
+        <util:constant static-field="ru.yandex.auto.core.model.ShortCarAd.YOCTO_CACHE_FACTORY"/>
+      </set>
+    </constructor-arg>
+  </bean>
+
+  <bean id="asyncS3Client" class="ru.yandex.auto.searcher.consumer.AsyncS3Client" lazy-init="false">
+    <constructor-arg name="endpoint" value="${auto.s3edr.s3.url}"/>
+    <constructor-arg name="accessKey" value="${auto.s3edr.s3.auth.key}"/>
+    <constructor-arg name="secretKey" value="${auto.s3edr.s3.auth.secret}"/>
+  </bean>
+
+  <bean id="carsPartitionUpdatedListeners" class="java.util.ArrayList">
+    <constructor-arg>
+      <list>
+        <ref bean="shortCarAdSearchTemplate"/>
+        <ref bean="carAdSearchTemplate"/>
+      </list>
+    </constructor-arg>
+  </bean>
+
+  <bean id="carAdSearchTemplate"
+    class="ru.yandex.auto.core.search2.YoctoSearchTemplateImpl">
+    <constructor-arg name="entityGetter">
+      <bean class="ru.yandex.auto.core.search2.YoctoNonCachedEntityGetter">
+        <constructor-arg name="converter">
+          <bean class="ru.yandex.auto.core.search2.conversion.yocto.CarAdYoctoEntityConverter">
+          </bean>
+        </constructor-arg>
+      </bean>
+    </constructor-arg>
+  </bean>
+
+  <bean id="tracerProvider" class="ru.yandex.tracing.SpringTracerProvider" lazy-init="false">
+    <constructor-arg name="env" ref="environment"/>
+    <constructor-arg name="jaegerHost" value="${auto.jaeger.host}"/>
+    <constructor-arg name="jaegerPort" value="${auto.jaeger.port}"/>
+  </bean>
+
+  <bean id="environment" class="ru.yandex.auto.app.DefaultEnvironment" lazy-init="false"/>
+
+</beans>

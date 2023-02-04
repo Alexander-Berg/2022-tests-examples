@@ -1,0 +1,40 @@
+---
+regexp_section:
+  matcher:
+    match_and:
+      - match_fsm:
+          host: local\\.yandex\\.(ru|by|uz|kz)
+      - match_fsm:
+          path: /stream/.+
+  
+  modules:
+    - report: {uuid: local, refers: local, ranges: default}
+    - report: {uuid: local_stream, ranges: default}
+    - headers:
+        create:
+          Host: s3.mds.yandex.net
+    - rewrite:
+        actions:
+          - regexp: ^/stream/(.+)
+            rewrite: /district-stream/%1
+    - balancer2:
+        simple_policy: {}
+        attempts: 2
+        connection_attempts: 5
+        rr: {}
+        disable_attempts_rate_limiter: true
+        return_last_5xx: true
+        status_code_blacklist: ['5xx']
+        generated_proxy_backends:
+          proxy_options:
+            backend_timeout: 10s
+            connect_timeout: 100ms
+            keepalive_count: 1
+            fail_on_5xx: false
+          include_backends:
+            type: BY_ID
+            ids: [s3-mds]
+        on_error:
+          errordocument:
+            status: 502
+            content: "File unavailable"

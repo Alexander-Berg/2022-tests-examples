@@ -1,0 +1,108 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Карта: метод panTo при клике по метке
+
+Description:
+Проверка метода panTo при клике по метке.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+map
+
+Estimated time:
+90000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+  
+  Expectation:
+  Карта отобразилась корректно, со спаном центральной России, левее центра имеется метка коллекции.
+  Под контейнером имеется выпадающий список со значением "setCenter([x,y])".
+
+Step:
+  Action:
+  Выполнить клик в метку коллекции. 
+  
+  Expectation:
+  Спан карты мгновенно переместился, центр карты - точка крепления метки.
+  Вместо метки на спане открылся балун с заголовком "Балун метки", содержимым "Содержимое балуна метки", футером "Подвал".
+
+Step:
+  Action:
+  Обновить страницу в браузере, выполнить клик в выпадающий список под контейнером, выбрать и выполнить клик в "panTo([x,y])", клик в метку коллекции на спане. 
+  
+  Expectation:
+  Спан карты плавно переместился, центр карты - точка крепления метки.
+  Вместо метки на спане открылся балун с заголовком "Балун метки", содержимым "Содержимое балуна метки", футером "Подвал".
+
+Step:
+  Action:
+  Обновить страницу в браузере, выполнить клик в выпадающий список под контейнером, выбрать и выполнить клик в "setCenter([x,y], zoom, {duration})", клик в метку коллекции на спане. 
+  
+  Expectation:
+  На спане вместо метки открывается балун с заголовком "Балун метки", содержимым "Содержимое балуна метки", футером "Подвал".
+  При этом балун метки перемещается вместе со спаном карты, после остановки перемещения точка крепления балуна смещается в центр карты. 
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var map = myMap = new ymaps.Map("map", {
+                center: [54.83, 37.11],
+                zoom: 5
+            });
+
+            var myPlacemark = new ymaps.Placemark([55.907228, 31.260503], {
+                // Чтобы балун и хинт открывались на метке, необходимо задать ей определенные свойства.
+                balloonContentHeader: "Балун метки",
+                balloonContentBody: "Содержимое балуна метки",
+                balloonContentFooter: "Подвал",
+                hintContent: "Хинт метки"
+            });
+
+            myPlacemark.events.add('click', function (e) {
+                var a = [55.907228, 31.260503];
+                var id = document.getElementById('nado').value;
+                switch (id) {
+                    case 'center' :
+                        myMap.setCenter(a); // мгновенное перемещение центра
+                        break;
+                    case 'panto':
+                        myMap.panTo(a); // если метка в пределах видимости и балун вмещается в область карты, то ноль реакции
+                        break;
+                    case 'pantocenter':
+                        myMap.setCenter(a, 5, {duration: 1000}); // видимо передает управление перемещением на panTo, т.к. реакция такая же
+                        break;
+                }
+            });
+
+            map.geoObjects.add(myPlacemark);
+
+            addGrid(myMap);
+            var log = new Log();
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+<select id='nado' onchange="renew()">
+    <option value="center">setCenter([x,y])</option>
+    <option value="panto">panTo([x,y])</option>
+    <option value="pantocenter">setCenter([x,y], zoom, {duration})</option>
+</select>
+</body>
+</html>

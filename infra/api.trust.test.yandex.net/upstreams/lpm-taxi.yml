@@ -1,0 +1,32 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - ozhegov
+      groups: []
+labels:
+  order: 09999998
+config_mode: easy2
+---
+l7_upstream_macro:
+  version: 0.0.1
+  id: lpm-taxi
+  can_handle_announce_checks: true
+  matcher:
+    and_:
+      - header: {name: X-Service-Token, re: 'taxifee_8c7078d6b3334e03c1b4005b02da30f4'}
+      - path_re: '/bindings-external/v2.0/bindings/'
+  monitoring:
+    uuid: lpm-taxi
+    response_codes: [429, 499]
+  headers:
+    - create: {target: Host, value: trust-lpm-test.paysys.yandex.net}
+    - create: {target: Use-Replica, value: true}
+  traffic_split:
+    weights_section_id: byenv
+    attempts: 2
+    routes:
+      - name: trust_lpm
+        upstream_id: _trust_lpm
+      - name: atlas
+        upstream_id: _atlas

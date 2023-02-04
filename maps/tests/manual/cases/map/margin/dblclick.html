@@ -1,0 +1,180 @@
+<!DOCTYPE HTML>
+<!--(skip)(description)
+Balloon class: balloon panel autopan
+-->
+<!--(version)
+2.1.2
+-->
+<!--(commands)
+sleep(1000);
+test();
+-->
+<html>
+<head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type="text/javascript" src="helpers.js"></script>
+    <style>
+        .rectImageIcon {
+            background-color: transparent;
+            background-image: url("https://png-5.findicons.com/files/icons/1676/primo/48/home.png");
+            width: 48px;
+            height: 48px;
+        }
+    </style>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            window.ymaps = ymaps;
+            setupFakeMarginManager(document.getElementById('container'));
+
+            ymaps.load(["yandex.dataProvider", "util.json"], function () {
+                var map = myMap = new ym.Map('map', {
+                            center: [59.94, 30.33],
+                            zoom: 7,
+                            controls: []
+                        }, {
+                            balloonPanelMaxMapArea: Infinity,
+                            geoObjectOpenEmptyBalloon: true
+                        }),
+                        txt = 'Мой дядя самых честных правил,<br/>\
+                            Когда не в шутку занемог,<br/>\
+                            Он уважать себя заставил<br/>\
+                            И лучше выдумать не мог.<br/>\
+                            Его пример другим наука;<br/>\
+                            Но, боже мой, какая скука<br/>\
+                            С больным сидеть и день и ночь,<br/>\
+                            Не отходя ни шагу прочь!<br/>\
+                            Какое низкое коварство<br/>\
+                            Полуживого забавлять,<br/>\
+                            Ему подушки поправлять,<br/>\
+                            Печально подносить лекарство,<br/>\
+                            Вздыхать и думать про себя:<br/><br/>\
+                            Так думал молодой повеса,<br/>\
+                            Летя в пыли на почтовых,<br/>\
+                            Всевышней волею Зевеса<br/>\
+                            Наследник всех своих родных.<br/>\
+                            Друзья Людмилы и Руслана!<br/>\
+                            С героем моего романа<br/>\
+                            Без предисловий, сей же час<br/>\
+                            Позвольте познакомить вас:<br/>\
+                            Онегин, добрый мой приятель,<br/>\
+                            Родился на брегах Невы,<br/>\
+                            Где, может быть, родились вы<br/>\
+                            Или блистали, мой читатель;<br/>\
+                            Там некогда гулял и я:<br/>\
+                            Но вреден север для меня.';
+
+                __log__('dblclick должен зумится правильно при наличии margin manager');
+
+                var placemark1 = new ymaps.GeoObject({
+                    geometry: {
+                        type: "Point",
+                        coordinates: [60, 30.5]
+                    }, properties: {
+                        balloonContent: txt,
+                        hintContent: 'text'
+                    }
+                }, {
+                    preset: 'islands#greenIcon',
+                    draggable: true,
+                    openBalloonOnClick: true
+                });
+                map.geoObjects
+                        .add(placemark1);
+
+                placemark1.balloon.open();
+
+                var j = Math.round(Math.random() * 6) + 1;
+                for (var i = 0; i < j; i++) {
+                    var obj = {
+                        width: Math.round(Math.random() * 40) + 20,
+                        height: Math.round(Math.random() * 40) + 20
+                    };
+                    obj[(Math.random() > 0.5 ? 'right' : 'left')] = Math.round(Math.random() * 70) + 70;
+                    obj[(Math.random() > 0.5 ? 'bottom' : 'top')] = Math.round(Math.random() * 70) + 70;
+
+                    map.margin.addArea(obj);
+                }
+
+                redrawMargins(map, document.getElementById('container'));
+                map.events.add('marginchange', function (e) {
+                    redrawMargins(map, document.getElementById('container'));
+                });
+
+                var centeringButton = new ymaps.control.Button('centering');
+                centeringButton.events
+                        .add('select', function() {
+                            map.behaviors.get('dblClickZoom').options.set('centering', false);
+                        })
+                        .add('deselect', function() {
+                            map.behaviors.get('dblClickZoom').options.set('centering', true);
+                        });
+
+                var durationButton = new ymaps.control.Button('duration');
+                durationButton.events
+                        .add('select', function() {
+                            map.behaviors.get('dblClickZoom').options.set('duration', '0');
+                        })
+                        .add('deselect', function() {
+                            map.behaviors.get('dblClickZoom').options.set('duration', '1000');
+                        });
+
+                var marginButton = new ymaps.control.Button('margin');
+                marginButton.events
+                        .add('select', function() {
+                            map.behaviors.get('dblClickZoom').options.set('useMapMargin', true);
+                        })
+                        .add('deselect', function() {
+                            map.behaviors.get('dblClickZoom').options.set('useMapMargin', false);
+                        });
+                map.controls
+                        .add(centeringButton)
+                        .add(durationButton)
+                        .add(marginButton);
+
+                map.events.add('boundschange', function(){
+                    __log__(map.getZoom());
+                })
+
+            })
+        }
+    </script>
+</head>
+<style>
+    #container {
+        position: relative;
+    }
+
+    #map, #container {
+        width: 1000px;
+        height: 500px;
+    }
+
+    .panel {
+        position: absolute;
+        background-color: black;
+        opacity: 0.3;
+        pointer-events: none;
+        z-index: 10000;
+    }
+
+    .rect {
+        position: absolute;
+        background-color: red;
+        opacity: 0.3;
+        pointer-events: none;
+        z-index: 20000;
+    }
+</style>
+
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="container">
+    <div id="map"></div>
+</div>
+</body>
+</html>

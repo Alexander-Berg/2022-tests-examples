@@ -1,0 +1,128 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Маршрут: программное построение мульмаршрутов
+
+Description:
+Проверка программного построения мульмаршрутов на карте.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components:
+route
+
+Estimated time:
+120000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно, со спаном Москвы.
+  Сверху слева кнопка "next route".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "next route".
+
+  Expectation:
+  Происходит смена спана с призумом, на карте маршрут в Москве из точек "A", "B", имеется альтернативная нитка.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "next route".
+
+  Expectation:
+  Через некоторое время после клика, происходит смена спана, на карте маршрут "A"-Ленинский проспект, "B"-Кулаков переулок, имеется альтернативная нитка.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "next route".
+
+  Expectation:
+  Через некоторое время после клика, происходит смена спана на спан Ирана(имеются подписи вязью), на карте маршрут "A", "B", имеется альтернативная нитка.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "next route".
+
+  Expectation:
+  Через некоторое время после клика(секунд 5-8), происходит смена спана, на карте маршрут "A"-Москва, "B"-Владивосток, имеется альтернативная нитка.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "next route".
+
+  Expectation:
+  Через некоторое время после клика, происходит смена спана, на карте маршрут "A"- Москва, "B"- Тверь, "C" - Санкт-Петербург.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 10,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+
+            __log__('route option: multiRoute');
+
+            //TODO: написать тест
+
+            var requests = [
+                [[55.80, 37.64], [55.68, 37.52]],
+                ['Ленинский проспект', 'Кулаков переулок'],
+                [[37.64, 55.80], [37.52, 55.68]],
+                ['Москва', 'Владивосток'],
+                ['Москва', 'Тверь', 'Питер']
+            ];
+
+            var button = new ymaps.control.Button({
+                        data: {
+                            content: 'next route'
+                        },
+                        options: {
+                            selectOnClick: false
+                        }
+                    }),
+                    prevRoute;
+
+            button.events.add('click', function() {
+                if (prevRoute) {
+                    myMap.geoObjects.remove(prevRoute);
+                    prevRoute = null;
+                }
+                ymaps.route(requests.shift(), { multiRoute: true })
+                        .then(function (route) {
+                            prevRoute = route;
+                            route.options.set("boundsAutoApply", true);
+                            myMap.geoObjects.add(route);
+                        }, function (err) {
+                            throw err;
+                        }, this);
+            });
+            myMap.controls.add(button);
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

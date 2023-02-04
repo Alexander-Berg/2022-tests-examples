@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>API 2.0</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <script src="../helper.js"></script>
+    <script type=text/javascript>
+        Api('init');
+        function init(ymaps) {
+            var myMap = new ymaps.Map('map', {
+                center: [55.5541584321358, 37.93061981201168],
+                zoom: 9,
+                behaviors: ['default', 'scrollZoom']
+            });
+            var myRollupLayout = ymaps.templateLayoutFactory.createClass(
+                                    " <div id='rollup-header'>[if state.expanded]Свернуть[else]Развернуть[endif] </div>" +
+                                // В этом контейнере будут располагаться дочерние элементы.
+                                    " <div id='rollup-body'> </div>", {
+                                build: function () {
+                                    myRollupLayout.superclass.build.call(this);
+                                    this.checkExpandCallback = ymaps.util.bind(this.checkExpanded, this);
+                                    $('#rollup-header').bind('click', this.checkExpandCallback);
+                                    // Поскольку макет будет перестраиваться много раз из-за
+                                    // изменения значения поля state.expanded,
+                                    // нужно при каждом перестроении сообщать об изменении контейнера
+                                    // дочерних элементов через событие интерфейса IGroupControlLayout.
+                                    this.events.fire('childcontainerchange', {
+                                        newChildContainerElement: $('#rollup-body').get(0),
+                                        oldChildContainerElement: this.childContainerElement
+                                    });
+                                    this.childContainerElement = $('#rollup-body').get(0);
+                                },
+                                clear: function () {
+                                    $('#rollup-header').unbind('click', this.checkExpandCallback);
+                                    myRollupLayout.superclass.clear.call(this);
+                                },
+                                // Переопределяем метод, который требует интерфейс IGroupControlLayout.
+                                getChildContainerElement: function () {
+                                    return this.childContainerElement;
+                                },
+                                checkExpanded: function () {
+                                    // При клике на переключающий элемент проверяем состояние
+                                    // элемента управления и генерируем одно из событий интерфейса
+                                    // IExpandableControlLayout.
+                                    if (this.getData().state.get('expanded')) {
+                                        this.events.fire('collapse');
+                                    } else {
+                                        this.events.fire('expand');
+                                    }
+                                }
+                            }),
+                    rollupButton = new ymaps.control.RollupButton({
+                        items: [
+                            new ymaps.control.Button('Киев'),
+                            new ymaps.control.Button('Львов'),
+                            new ymaps.control.Button('Харьков')
+                        ]
+                    }, {
+                        layout: myRollupLayout
+                    });
+            myMap.controls.add(rollupButton, {right: 5, top: 5});
+            var activeElementButton = new ymaps.control.Button({data: {content: 'active element'}}, {selectOnClick: false});
+            activeElementButton.events.add('click', function () {
+                if (rollupButton.state.get('activeElement')) {
+                    console.log(rollupButton.state.get('activeElement'));
+                } else console.log('activeElement is undefined');
+            });
+            myMap.controls.add(activeElementButton)
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+<p><a href="https://tech.yandex.ru/maps/archive/doc/jsapi/2.0/ref/reference/templateLayoutFactory-docpage/" target="_blank">Docs</a></p>
+</body>
+</html>

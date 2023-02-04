@@ -1,0 +1,92 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Геообъект: движущийся хинт
+
+Description:
+Проверка движущегося хинта.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+geoobject
+
+Estimated time:
+60000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан Европейской части России, в районе Москвы имеется синяя метка.
+  
+Step:
+  Action:
+  Навести курсор на метку на спане карты. 
+
+  Expectation:
+  При наведении курсор меняется на палец, появляется хинт "hint", который перемещается на спане карты по невидимому окружности справа от метки.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.74, 37.66],
+                zoom: 5,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+            __log__("Хинт перемещается при наведении");
+            var point = new ymaps.Placemark([55.728, 37.645], {hintContent: 'hint'}, {});
+            myMap.geoObjects.add(point);
+
+            var interval = null;
+
+            point.hint.events
+                    .add('open', function (e) {
+                        var angle = 0,
+                        //position = point.options.get('projection').toGlobalPixels(point.geometry.getCoordinates(), myMap.getZoom());
+                                position = point.geometry.getCoordinates();
+
+                        interval = setInterval(function () {
+                            point.hint.setPosition([
+                                //position[0] + 50 + Math.cos(angle) * 50,
+                                //position[1] + 50 + Math.sin(angle) * 50
+                                        position[0] + 1 + Math.cos(angle) * 1,
+                                        position[1] + 1 + Math.sin(angle) * 1
+                            ]);
+                            angle += Math.PI / 90;
+                            if (angle >= 2 * Math.PI) {
+                                angle = 0;
+                            }
+                        }, 50);
+                    })
+                    .add('close', function () {
+                        if (interval) {
+                            clearInterval(interval);
+                        }
+                    });
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

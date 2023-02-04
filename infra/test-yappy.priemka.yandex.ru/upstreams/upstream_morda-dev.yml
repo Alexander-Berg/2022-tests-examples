@@ -1,0 +1,383 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - vovochka
+      groups: []
+labels:
+  order: '10000000'
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      host: .*-wdevx\\.test-yappy\\.priemka\\.yandex\\..*
+  modules:
+  - regexp:
+      sections:
+        upstream_www-v13d0:
+          matcher: 
+            match_fsm:
+              host: www-v13d0-wdevx\\.test-yappy\\.priemka\\.yandex\\..*
+          modules:
+          - regexp:
+              sections:
+                upstream_captcha:
+                  matcher:
+                    match_fsm:
+                      uri: /x?(show|check)?captcha.*
+                  modules:
+                  - captcha_macro:
+                      proxy_options: {}
+                      include_backends:
+                        type: BY_ID
+                        ids:
+                        - common-antirobot/antirobot_man
+                        - common-antirobot/antirobot_sas
+                        - common-antirobot/antirobot_vla
+                upstream_clck:
+                  matcher:
+                    match_fsm:
+                      uri: /clck/(.*)?
+                  modules:
+                  - antirobot_macro:
+                      include_backends:
+                        type: BY_ID
+                        ids:
+                        - common-antirobot/antirobot_man
+                        - common-antirobot/antirobot_sas
+                        - common-antirobot/antirobot_vla
+                  - click_macro:
+                      proxy_options: {}
+                      include_backends:
+                        type: BY_ID
+                        ids:
+                        - common-clck/clck_misc_man
+                        - common-clck/clck_misc_sas
+                        - common-clck/clck_misc_vla
+                upstream_postedit:
+                  matcher:
+                    match_fsm:
+                      uri: /edit
+                  modules:
+                  - errordocument:
+                      status: 403
+                upstream_cycounter:
+                  matcher:
+                    match_fsm:
+                      uri: /cycounter(.*)?
+                  modules:
+                  - antirobot_macro:
+                      include_backends:
+                        type: BY_ID
+                        ids:
+                        - common-antirobot/antirobot_man
+                        - common-antirobot/antirobot_sas
+                        - common-antirobot/antirobot_vla
+                  - report:
+                      uuid: cycounter
+                      ranges: default
+                  - stats_eater: {}
+                  - balancer2:
+                      weighted2: {}
+                      generated_proxy_backends:
+                        proxy_options:
+                          connect_timeout: 100ms
+                          backend_timeout: 10s
+                        include_backends:
+                          type: BY_ID
+                          ids:
+                          - hamster.yandex.ru/cycounter
+                upstream_imagestoday:
+                  matcher:
+                    match_fsm:
+                      uri: /(images|gorsel)/today.*
+                  modules:
+                  - antirobot_macro:
+                      include_backends:
+                        type: BY_ID
+                        ids:
+                        - common-antirobot/antirobot_man
+                        - common-antirobot/antirobot_sas
+                        - common-antirobot/antirobot_vla
+                  - report:
+                      uuid: imagessearch
+                      ranges: default
+                  - geobase_macro: {}
+                  - exp_getter_macro:
+                      service_name: images
+                      testing_mode: {}
+                  - request_replier:
+                      sink:
+                        balancer2:
+                          weighted2: {}
+                          generated_proxy_backends:
+                            proxy_options:
+                              connect_timeout: 150ms
+                              backend_timeout: 10s
+                            instances:
+                            - host: sinkadm.priemka.yandex.ru
+                              port: 80
+                              weight: 1.0
+                      rate_file: ./controls/request_replier_images.ratefile
+                  - stats_eater: {}
+                  - balancer2:
+                      weighted2: {}
+                      generated_proxy_backends:
+                        proxy_options:
+                          connect_timeout: 100ms
+                          backend_timeout: 10s
+                          buffering: true
+                        include_backends:
+                          type: BY_ID
+                          ids:
+                          - hamster.yandex.ru/hamster_report_imgs_rkub
+                upstream_images:
+                  matcher:
+                    match_or:
+                    - match_fsm:
+                        uri: /(images|gorsel)(/.*)?
+                    - match_fsm:
+                        host: .*(images|gorsel)(\\..*)?\\.yandex\\..*
+                    - match_and:
+                      - match_fsm:
+                          uri: /(search/xml|xmlsearch)(.*)?
+                      - match_fsm:
+                          cgi: type=(pictures|cbir|cbirlike|picturedups)
+                          surround: true
+                  modules:
+                  - antirobot_macro:
+                      include_backends:
+                        type: BY_ID
+                        ids:
+                        - common-antirobot/antirobot_man
+                        - common-antirobot/antirobot_sas
+                        - common-antirobot/antirobot_vla
+                  - report:
+                      uuid: imagessearch
+                      ranges: default
+                  - geobase_macro: {}
+                  - exp_getter_macro:
+                      service_name: images
+                      testing_mode: {}
+                  - request_replier:
+                      sink:
+                        balancer2:
+                          weighted2: {}
+                          generated_proxy_backends:
+                            proxy_options:
+                              connect_timeout: 150ms
+                              backend_timeout: 10s
+                            instances:
+                            - host: sinkadm.priemka.yandex.ru
+                              port: 80
+                              weight: 1.0
+                      rate_file: ./controls/request_replier_images.ratefile
+                  - stats_eater: {}
+                  - balancer2:
+                      weighted2: {}
+                      generated_proxy_backends:
+                        proxy_options:
+                          connect_timeout: 100ms
+                          backend_timeout: 10s
+                        include_backends:
+                          type: BY_ID
+                          ids:
+                          - hamster.yandex.ru/hamster_report_imgs_rkub
+                upstream_searchapp:
+                  matcher:
+                    match_fsm:
+                      uri: /searchapp(.*)?
+                  modules:
+                  - antirobot_macro:
+                      include_backends:
+                        type: BY_ID
+                        ids:
+                        - common-antirobot/antirobot_man
+                        - common-antirobot/antirobot_sas
+                        - common-antirobot/antirobot_vla
+                  - report:
+                      uuid: searchapp
+                      ranges: default
+                  - geobase_macro: {}
+                  - exp_getter_macro:
+                      service_name: touch
+                      testing_mode: {}
+                  - stats_eater: {}
+                  - balancer2:
+                      weighted2: {}
+                      generated_proxy_backends:
+                        proxy_options:
+                          connect_timeout: 100ms
+                          backend_timeout: 60s
+                        include_backends:
+                          type: BY_ID
+                          ids:
+                          - hamster.yandex.ru/searchapp
+                upstream_video:
+                  matcher:
+                    match_fsm:
+                      uri: /video(.*)?
+                  modules:
+                  - antirobot_macro:
+                      include_backends:
+                        type: BY_ID
+                        ids:
+                        - common-antirobot/antirobot_man
+                        - common-antirobot/antirobot_sas
+                        - common-antirobot/antirobot_vla
+                  - report:
+                      uuid: videosearch
+                      ranges: default
+                  - geobase_macro: {}
+                  - exp_getter_macro:
+                      service_name: video
+                      testing_mode: {}
+                  - stats_eater: {}
+                  - balancer2:
+                      weighted2: {}
+                      generated_proxy_backends:
+                        proxy_options:
+                          connect_timeout: 100ms
+                          backend_timeout: 10s
+                        include_backends:
+                          type: BY_ID
+                          ids:
+                          - hamster.yandex.ru/hamster_report_video_rkub
+                upstream_search:
+                  matcher:
+                    match_fsm:
+                      uri: /prefetch\\.txt|/bots|/403\\.html|/404\\.html|/500\\.html|/adresa-segmentator|/all-supported-params|/black\\.html|/cgi-bin/hidereferer|/cgi-bin/set-intl|/cgi-bin/xmlsearch\\.pl|/cgi-bin/yandpage|/cgi-bin/yandsearch|/chrome-add-search-provider-v2\\.html|/chrome-add-search-provider\\.html|/click|/cy|/dzen|/experiments\\.xml|/family|/familysearch|/padsearch|/jsonsearch|/formfeedback|/goto_issue/|/goto_rubric/|/i/yandex-big\\.gaf|/ie3/yandsearch|/images-data|/images\\.html|/index_m|/jsonproxy|/jsonsearch/images|/jsonsearch/video|/largesearch|/lego/blocks-desktop/i-social/closer/i-social__closer\\.html|/map/.+/news\\.html|/more_samples|/msearch|/msearchpart|/norobot|/opensearch\\.xml|/people|/person|/podpiska/login\\.pl|/quotes|/redir|/region_map|/regions_list\\.xml|/rubric2sport|/schoolsearch|/search|/search/advanced|/search/customize|/search/extra-snippet|/search/inforequest|/sitesearch|/sportagent|/storeclick|/storerequest|/telsearch|/toggle-experiment|/touchsearch|/versions|/white\\.html|/wpage|/xmlsearch|/yandpage|/yandsearch|/yca/cy|/v|/viewconfig|/search(/.*)?|/infected|/adult|/redir_warning|/post-indexes|/adresa-segmentator|/st/b-spec-adv/title\\.gif|/yandcache\\.js|/images.*|/video.*|/gorsel.*|/getarhost.*|/safaripromoter*|/search\\.xml|/player\\.xml|/iframe|/sitesearch/opensearch\\.xml|/auto-regions.*|/sport/.*|/tail-log|/csp(/.*)?
+                  modules:
+                  - antirobot_macro:
+                      include_backends:
+                        type: BY_ID
+                        ids:
+                        - common-antirobot/antirobot_man
+                        - common-antirobot/antirobot_sas
+                        - common-antirobot/antirobot_vla
+                  - report:
+                      uuid: yandsearch
+                      ranges: default
+                  - geobase_macro: {}
+                  - exp_getter_macro:
+                      service_name: web
+                      testing_mode: {}
+                  - request_replier:
+                      sink:
+                        balancer2:
+                          weighted2: {}
+                          generated_proxy_backends:
+                            proxy_options:
+                              connect_timeout: 150ms
+                              backend_timeout: 10s
+                            instances:
+                            - host: sinkadm.priemka.yandex.ru
+                              port: 80
+                              weight: 1.0
+                      rate_file: ./controls/request_replier_web.ratefile
+                  - stats_eater: {}
+                  - balancer2:
+                      weighted2: {}
+                      generated_proxy_backends:
+                        proxy_options:
+                          connect_timeout: 100ms
+                          backend_timeout: 15s
+                        include_backends:
+                          type: BY_ID
+                          ids:
+                          - yappy_report_beta
+                upstream_ick:
+                  matcher:
+                    match_fsm:
+                      uri: /ick/(.*)?
+                  modules:
+                  - balancer2:
+                      weighted2: {}
+                      generated_proxy_backends:
+                        proxy_options: {}
+                        include_backends:
+                          type: BY_ID
+                          ids:
+                          - hamster.yandex.ru/production_icookie
+                upstream_collections:
+                  matcher:
+                    match_fsm:
+                      uri: /collections?(/.*)?
+                  modules:
+                  - exp_getter_macro:
+                      service_name: collections
+                      testing_mode: {}
+                  - balancer2:
+                      attempts: 2
+                      rr: {}
+                      generated_proxy_backends:
+                        proxy_options:
+                          backend_timeout: 5s
+                        instances:
+                        - host: internal.collections.yandex.ru
+                          port: 80
+                          weight: 1.0
+                upstream_ecoo:
+                  matcher:
+                    match_fsm:
+                      uri: /ecoo/(.*)?
+                  modules:
+                  - headers:
+                      create:
+                        X-Yandex-Internal-Request: '1'
+                  - balancer2:
+                      weighted2: {}
+                      generated_proxy_backends:
+                        proxy_options: {}
+                        include_backends:
+                          type: BY_ID
+                          ids:
+                          - hamster.yandex.ru/testing_ecoo
+                upstream_yastatic:
+                  matcher:
+                    match_fsm:
+                      uri: /yastatic(/.*)?
+                  modules:
+                  - headers:
+                      create:
+                        Host: yastatic.net
+                  - balancer2:
+                      attempts: 2
+                      rr: {}
+                      retry_policy:
+                        simple_policy: {}
+                      generated_proxy_backends:
+                        proxy_options:
+                          connect_timeout: 30ms
+                          backend_timeout: 100ms
+                        instances:
+                        - host: yastatic.net
+                          port: 80
+                          weight: 1.0
+                upstream_morda_default:
+                  matcher: {}
+                  modules:
+                  - antirobot_macro:
+                      include_backends:
+                        type: BY_ID
+                        ids:
+                        - common-antirobot/antirobot_man
+                        - common-antirobot/antirobot_sas
+                        - common-antirobot/antirobot_vla
+                  - report:
+                      uuid: mordasearch
+                      ranges: default
+                  - geobase_macro: {}
+                  - exp_getter_macro:
+                      testing_mode: {}
+                  - stats_eater: {}
+                  - balancer2:
+                      weighted2: {}
+                      generated_proxy_backends:
+                        proxy_options:
+                          connect_timeout: 100ms
+                          backend_timeout: 10s
+                        instances:
+                        - host: www-v13d0.wdevx.yandex.ru
+                          port: 80
+                          weight: 1.0

@@ -1,0 +1,107 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Геообъект: редактор точки
+
+Description:
+Проверка редактора точки.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+geoobject
+
+Estimated time:
+120000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан Москвовской области, в левой части спана синяя и зеленая метки коллекций, сверху слева имеется кнопка "editor".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "editor". 
+
+  Expectation:
+  Спан карты без изменений, метки не пропадают, под контейнером с картой появляется блок: started, started.
+
+Step:
+  Action:
+  Навести курсор на метку коллекции, зажав на метке ЛКМ переместить метку на спане карты(повторить с двумя метками). 
+
+  Expectation:
+  Захват и перенос метки корректные: метка не пропадает, нет странных визуальных эффектов.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "editor". 
+
+  Expectation:
+  Спан карты без изменений, метки не пропадают, под контейнером с картой появляется блок: stopped, stopped.
+-->
+<html>
+<head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script src="../geoCS.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym; // hack
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.73259667357658, 37.70153663432529],
+                zoom: 9,
+                behaviors: ['default', 'scrollZoom'],
+                controls: []
+            });
+
+            geoCSSource(ym, myMap, this);
+            addGrid(myMap);
+            var log = new Log();
+
+            var collection = new ymaps.GeoObjectCollection();
+            collection
+                    .add(geoObjectPlacemark)
+                    .add(placemark);
+
+            myMap.geoObjects.add(collection);
+
+            __log__('Отдельный кейс для редактора точки.');
+            __log__('Во время проверки регрессии можно пропустить');
+
+            var editorButton = new ymaps.control.Button('editor');
+            editorButton.events
+                    .add('select', function () {
+                        collection.each(function (obj) {
+                            obj.editor.startEditing().then(function () {
+                                __log__('started')
+                            })
+                        })
+                    })
+                    .add('deselect', function () {
+                        collection.each(function (obj) {
+                            obj.editor.stopEditing();
+                            __log__('stopped')
+
+                        })
+                    });
+
+            myMap.controls.add(editorButton)
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

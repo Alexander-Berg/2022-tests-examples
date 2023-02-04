@@ -1,0 +1,44 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - makstheimba
+      groups: []
+labels:
+  order: '20'
+---
+regexp_section:
+  matcher: {}
+  modules:
+    - headers:
+        create_func_weak:
+          X-Forwarded-For-Y: realip
+    - rewrite:
+        actions:
+          - regexp: '/ping'
+            rewrite: '/'
+          - regexp: '/(.*)'
+            rewrite: '/%1'
+    - balancer2:
+        attempts: 3
+        attempts_rate_limiter:
+          limit: 0.5
+        dynamic:
+          max_pessimized_share: 0.5
+        timeout_policy:
+          timeout: 10s
+          unique_policy: {}
+        generated_proxy_backends:
+          proxy_options:
+            backend_timeout: 10s
+            connect_timeout: 70ms
+            keepalive_count: 1
+          include_backends:
+            type: BY_ID
+            ids:
+              - frontend
+        on_error:
+          modules:
+            - errordocument:
+                status: 503
+                content: 'Service unavailable'              

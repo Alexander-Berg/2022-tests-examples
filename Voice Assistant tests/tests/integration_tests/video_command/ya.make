@@ -1,4 +1,0 @@
-OWNER(
-    amullanurov
-    elkalinina
-)

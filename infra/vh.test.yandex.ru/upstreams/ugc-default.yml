@@ -1,0 +1,53 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - smalashkevich
+      groups: []
+labels:
+  order: '10000010'
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      uri: '/ugc/(.*)'
+  modules:
+    - report: {uuid: ugc-default, ranges: default}
+    - rewrite:
+        actions:
+          - regexp: '/ugc/([%./a-zA-z0-9]+)[%?]*(.*)'
+            rewrite: '/vh/v23/proxy?handler=public/%1&%2'
+    - exp_getter_macro:
+        service_name: vh
+        testing_mode: {}
+        _version: 3
+    - balancer2:
+        attempts: 2
+        rr: {}
+        backends:
+          - weight: 1
+            name: bygeo_man
+            modules:
+              - log_headers:
+                  name_re: 'X-Forwarded-For-Y|Cookie|X-Req-Id|X-Simulated-Ip|Referer|User-Agent|X-Yandex-Exp.*'
+              - headers:
+                  create:
+                    X-Yandex-Internal-Request: "1"
+              - report: {uuid: ugc-default, ranges: default}
+              - balancer2:
+                  attempts: 3
+                  attempts_rate_limiter:
+                    limit: 0.25
+                  rr: {}
+                  timeout_policy:
+                    timeout: 5s
+                    unique_policy: {}
+                  generated_proxy_backends:
+                    proxy_options:
+                      backend_timeout: 2s
+                      connect_timeout: 50ms
+                      keepalive_count: 1
+                    include_backends:
+                      type: BY_ID
+                      ids:
+                        - production_vh_http_adapter_man

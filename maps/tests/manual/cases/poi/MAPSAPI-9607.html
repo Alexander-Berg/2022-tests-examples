@@ -1,0 +1,85 @@
+<!DOCTYPE HTML>
+<!--(skip)(description)
+-->
+<!--(version)
+-->
+<!--(commands)
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../helper.js"></script>
+    <script src="https://yandex.st/jquery/1.8.0/jquery.min.js" type="text/javascript"></script>
+    <script type=text/javascript>
+
+        Api("init", "package.full,yandex.layer.poi", "tr_Tr");
+
+        function init(ymaps) {
+            //ymaps = ym;
+            var map = myMap = new ymaps.Map('map', {
+                center: [41.015917, 28.962240],
+                zoom: 14,
+                controls: ['typeSelector', 'fullscreenControl']
+            }, {
+                yandexMapDisablePoiInteractivity: false,
+                layerPoiOpenBalloonOnClick: false,
+                layerPoiInteractivityModel: 'default#transparent'
+            });
+            addGrid(myMap);
+            __log__("Test case: click on POI, check information on log ");
+            // Получаем менеджер поев по карте.
+            map.events.add('click', function (e) {
+                var poiManager = ymaps.yandex.layer.poi.get(map);
+                // Пои могут сейчас отсутствовать на карте, к примеру при включенном гибриде.
+                if (poiManager.isEnabled()) {
+                    // Получаем слой активной области, запрашиваем текущий объект по координатам,
+                    // метод асинхронный, так как данные еще не могут быть загружены.
+                    poiManager.getHostpotLayer().then(function (HostpotLayer) {
+                                HostpotLayer.getObjectInPosition(
+                                        // Переводим координаты страницы в геокоординаты.
+                                        pageToGeo([e.get('pageX'), e.get('pageY')])
+                                ).then(
+                                        function (hotspotObject) {
+                                            __log__("Имя: " + hotspotObject.getProperties().name +
+                                                    " Рубрика: " + hotspotObject.getProperties().rubrics +
+                                                    " Хинт: " + hotspotObject.getProperties().hint +
+                                                    " Координаты: " + hotspotObject.getGeometry().coordinates);
+                                            console.log(hotspotObject.getProperties());
+                                        },
+                                        this
+                                );
+                            }
+                    )
+                }
+            });
+
+            var poiManager = ymaps.yandex.layer.poi.get(map);
+            var enablePoiButton = new ymaps.control.Button('EnablePoi');
+            var isEnableButton = new ymaps.control.Button('isEnable');
+
+            enablePoiButton.events
+                    .add('select', function () {
+                        map.options.set('yandexMapDisablePoiInteractivity', true);
+                    })
+                    .add('deselect', function () {
+                        map.options.set('yandexMapDisablePoiInteractivity', false);
+                    });
+            isEnableButton.events
+                    .add('click', function () {
+                        __log__("poiManager.isEnabled() = " + poiManager.isEnabled());
+                    });
+            map.controls.add(enablePoiButton)
+                    .add(isEnableButton);
+            function pageToGeo(pageCoords) {
+                return map.options.get('projection').fromGlobalPixels(map.converter.pageToGlobal(pageCoords), map.getZoom());
+            }
+
+        }
+    </script>
+</head>
+<body>
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

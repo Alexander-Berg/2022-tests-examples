@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<!--
+Title:
+Геообъект: редактирование объектов по кнопке
+
+Description:
+Проверка событий, связанных с редактором.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+regress
+
+Estimated time:
+240000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно, со спаном Московской области.
+  На спане карты два ряда объектов: метка, линия, многоугольник. Верхний ряд синего цвета, нижний - зеленого.
+  Сверху имеются кнопки "editor", "remove".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "editor". 
+
+  Expectation:
+  На линиях и многоугольниках появились метки редактирования объекта.
+
+Step:
+  Action:
+  Открыть инструменты разработчика командами: Windows: Ctrl + Shift + I если у вас MacOS: ⌥ + ⌘ + I, вкладку Console.
+  Выполнить клик в метку вершину на синей линии.
+
+  Expectation:
+  При наведении метка окрашивается желтым, по клику появляется меню с кнопками "Удалить", "Проолжить".
+
+Step:
+  Action:
+  Выполнить клик в "Продолжить", затем кликом в спан карты редактировать объект линии(продолжить построение линии). 
+   
+  Expectation:
+  По клику в "Продолжить" к курсору прилипает пунктирная линия от последней выставленной метки.
+  По клику в спан карты - появляется метка вершины, линия к метке становится сплошной, к курсору прилипает пунктирная линия от последней выставленной метки.
+
+Step:
+  Action:
+  Выполнить клик в "remove". 
+
+  Expectation:
+  Все объекты пропадают со спана карты, в консоли сообщений об ошибке не появляются.
+
+Step:
+  Action:
+  Выполнить клик в "remove". 
+
+  Expectation:
+  На карте появляются объекты, без меток редактирования, при этом построенный при редактировании линии отрезок имеется.
+
+Step:
+  Action:
+  Выполнить два клика в кнопку "editor".
+   
+  Expectation:
+  После второго клика на линиях и многоугольниках появились метки редактирования объекта.
+
+Step:
+  Action:
+  Выполнить клик в метку вершину на зеленом многоугольнике, расположенную на треугольной части многоугольника сверху.
+
+  Expectation:
+  При наведении метка окрашивается желтым, по клику появляется меню с кнопками "Удалить", "Продолжить", "Удалить контур", "Добавить внутренний контур".
+
+Step:
+  Action:
+  Выполнить клик в "Удалить контур". 
+   
+  Expectation:
+  По клику в "Удалить контур" многоугольник становится прямоугольником, треугольная часть пропадает.
+
+Step:
+  Action:
+  Выполнить клик в метку вершину на зеленом многоугольнике, в меню выполнить клик в "Продолжить", затем кликом в спан карты редактировать объект многоугольника(продолжить построение участков). 
+   
+  Expectation:
+  По клику в "Продолжить" к курсору прилипает две пунктирные линии от меток вершин многоугольника.
+  По клику в спан карты - появляется метка вершины, появляется новая вершина многоугольника площадь участка окрашена зеленым, к курсору прилипают пунктирные линии от соседних меток вершин.
+
+Step:
+  Action:
+  Выполнить клик в "remove". 
+
+  Expectation:
+  Все объекты пропадают со спана карты, в консоли сообщений об ошибке не появляются.
+
+Step:
+  Action:
+  Выполнить клик в "remove". 
+
+  Expectation:
+  На карте появляются объекты, без меток редактирования, при этом построенный при редактировании линии и многоугольника участки имеются.
+-->
+<html>
+<head>
+    <title>API 2.0</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <script src="../helper.js"></script>
+    <script src="geoCS.js"></script>
+    <script type=text/javascript>
+        Api('init');
+        function init(ymaps) {
+            
+            var myMap = new ymaps.Map('map', {
+                center: [55.73259667357658, 37.70153663432529],
+                zoom: 9,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+            geoCSSource(ymaps, myMap, this);
+            var editorButton = new ymaps.control.Button({data: {content: 'editor'}, options: {selectOnClick: true}});
+            editorButton.events
+                    .add('select', function () {
+                        polyline.editor.startEditing();
+                        geoObjectPolyline.editor.startEditing();
+                        polygon.editor.startEditing();
+                        geoObjectPolygon.editor.startEditing();
+                        placemark.editor.startEditing();
+                        geoObjectPlacemark.editor.startEditing();
+                    })
+                    .add('deselect', function () {
+                        polyline.editor.stopEditing();
+                        geoObjectPolyline.editor.stopEditing();
+                        polygon.editor.stopEditing();
+                        geoObjectPolygon.editor.stopEditing();
+                        placemark.editor.stopEditing();
+                        geoObjectPlacemark.editor.stopEditing();
+                    });
+            var removeButton = new ymaps.control.Button({data: {content: 'remove'}, options: {selectOnClick: true}});
+            removeButton.events
+                    .add('select', function () {
+                        myMap.geoObjects
+                                .remove(geoObjectPlacemark)
+                                .remove(geoObjectPolyline)
+                                .remove(geoObjectPolygon)
+                                .remove(placemark)
+                                .remove(polyline)
+                                .remove(polygon);
+                    })
+                    .add('deselect', function () {
+                        myMap.geoObjects
+                                .add(geoObjectPlacemark)
+                                .add(geoObjectPolyline)
+                                .add(geoObjectPolygon)
+                                .add(placemark)
+                                .add(polyline)
+                                .add(polygon);
+                    });
+            myMap.geoObjects
+                    .add(geoObjectPlacemark)
+                    .add(geoObjectPolyline)
+                    .add(geoObjectPolygon)
+                    .add(placemark)
+                    .add(polyline)
+                    .add(polygon);
+            myMap.controls
+                    .add(editorButton)
+                    .add(removeButton);
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+<p><a href="https://tech.yandex.ru/maps/archive/doc/jsapi/2.0/ref/reference/GeoObjectCollection-docpage/" target="_blank">Docs</a></p>
+</body>
+</html>

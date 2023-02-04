@@ -1,0 +1,121 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - fyodor
+      - eoff
+      groups:
+      - svc_ugc_development
+labels:
+  order: '00006000'
+---
+regexp_section:
+  matcher:
+    match_or:
+      - match_fsm:
+          uri: '/ugcpub/(cabinet|pk|push-org|object-digest|polls)(.*)'
+      - match_fsm:
+          uri: '/user/.*'
+      - match_fsm:
+          uri: '/my/review-likes-polls'
+      # - match_fsm:
+      #     header:
+      #       name: 'X-Yandex-HTTPS'
+      #       value: 'yes'
+  modules:
+    - headers:
+        create_func:
+          X-Yandex-Ja3: ja3
+    - report:
+        uuid: ugcpub
+        ranges: default
+    - rewrite:
+        actions:
+        - regexp: '/ugcpub/pk/(.*)'   
+          split: 'url'         
+          rewrite: '/user/%1'
+    - geobase_macro:
+        version: 0.0.3
+    - exp_getter_macro:
+        service_name: ugcpub
+        _version: 3
+    - balancer2:
+        attempts: 2
+        connection_attempts: 3
+        rr: {}
+        retry_non_idempotent: false
+        backends:
+        - weight: -1
+          name: ugc_devnull
+          modules: 
+            - report:
+                ranges: default
+                uuid: ugcpub_requests_to_devnull
+            - errordocument:
+                status: 500                  
+        - weight: 1
+          name: ugc_vla
+          modules:
+            - report:
+                ranges: default
+                uuid: ugcpub_requests_to_vla
+            - balancer2:
+                attempts: 1
+                dynamic: {
+                  max_pessimized_share: 0.2,
+                  min_pessimization_coeff: 0.1,
+                  weight_increase_step: 0.1,
+                  history_interval: "10s",
+                  backends_name: "ugcpub-ugc-pages_https_to_vla",
+                }
+                generated_proxy_backends:
+                  proxy_options:
+                    backend_timeout: 60s
+                    connect_timeout: 70ms
+                  include_backends:
+                    type: BY_ID
+                    ids: [dev_http_adapter_shared]
+        - weight: 1
+          name: ugc_sas
+          modules:
+            - report:
+                ranges: default
+                uuid: ugcpub_requests_to_sas
+            - balancer2:
+                attempts: 1
+                dynamic: {
+                  max_pessimized_share: 0.2,
+                  min_pessimization_coeff: 0.1,
+                  weight_increase_step: 0.1,
+                  history_interval: "10s",
+                  backends_name: "ugcpub-ugc-pages_https_to_sas",
+                }
+                generated_proxy_backends:
+                  proxy_options:
+                    backend_timeout: 60s
+                    connect_timeout: 70ms
+                  include_backends:
+                    type: BY_ID
+                    ids: [dev_http_adapter_shared]
+        - weight: 1
+          name: ugc_man
+          modules:
+            - report:
+                ranges: default
+                uuid: ugcpub_requests_to_man
+            - balancer2:
+                attempts: 1
+                dynamic: {
+                  max_pessimized_share: 0.2,
+                  min_pessimization_coeff: 0.1,
+                  weight_increase_step: 0.1,
+                  history_interval: "10s",
+                  backends_name: "ugcpub-ugc-pages_https_to_man",
+                }
+                generated_proxy_backends:
+                  proxy_options:
+                    backend_timeout: 60s
+                    connect_timeout: 70ms
+                  include_backends:
+                    type: BY_ID
+                    ids: [dev_http_adapter_shared]

@@ -1,0 +1,48 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - av-kotikov
+      groups: []
+labels:
+  order: '10000000'
+---
+regexp_section:
+    matcher:
+        match_fsm:
+            uri: '/ru/gpu/(.*)'
+    modules:
+        - report:
+            uuid: "ru_gpu"
+            ranges: "300ms,500ms,1s,2s,3s,4s,5s,10s"
+        - rewrite:
+            actions:
+                - {regexp: '/ru/gpu/(.*)', rewrite: /%1, split: url}
+        - balancer2:
+            attempts: 2
+            rr: {weights_file: ./controls/traffic_control.weights}
+            by_name_policy:
+                    name: !f get_geo("rugpu_", "random")
+                    unique_policy: {}
+            backends:
+                -   weight: 1
+                    name: rugpu_sas
+                    modules:
+                        - report: {ranges: "300ms,500ms,1s,2s,3s,4s,5s,10s", uuid: requests_ru_gpu_to_sas}
+                        - balancer2:
+                            attempts: 1
+                            connection_attempts: !f count_backends()
+                            rr: {}
+                            generated_proxy_backends:
+                                proxy_options:
+                                    allow_connection_upgrade: true
+                                    connect_timeout: 70ms
+                                    backend_timeout: 10s
+                                    backend_read_timeout: 600s
+                                    backend_write_timeout: 600s
+                                    client_read_timeout: 600s
+                                    client_write_timeout: 600s
+                                include_backends:
+                                    type: BY_ID
+                                    ids:
+                                        - yappy_gpu_beta_vla

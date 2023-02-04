@@ -1,0 +1,42 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - dridgerve
+      groups: []
+labels:
+  order: '99999998'
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      cookie: 'cryproxdev=1'
+      surround: true
+  modules:
+    - headers:
+        append_func_weak:
+          X-Forwarded-For: realip
+        create_func_weak:
+          X-Forwarded-For: realip
+          X-Aab-Requestid: reqid
+          X-Forwarded-Proto: scheme
+    - log_headers:
+        name_re: 'X-Aab-Requestid'
+    - balancer2:
+        attempts: 1
+        unique_policy: {}
+        active:
+          delay: '15s'
+          request: 'GET /ping HTTP/1.1\nHost: cryprox-test.yandex.net\n\n'
+        generated_proxy_backends:
+          proxy_options:
+            backend_timeout: 60s
+            connect_timeout: 70ms
+            fail_on_5xx: false
+          include_backends:
+            type: BY_ID
+            ids: [cryprox-dev-iva]
+        on_error:
+          errordocument:
+            status: 504
+            content: "Service unavailable"

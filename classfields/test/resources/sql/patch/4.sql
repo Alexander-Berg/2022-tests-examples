@@ -1,0 +1,2 @@
+ALTER TABLE `tasks`
+MODIFY `view` MEDIUMBLOB NULL;

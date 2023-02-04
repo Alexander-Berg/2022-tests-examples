@@ -1,0 +1,23 @@
+package ru.yandex.realty.persistence
+
+import org.junit.runner.RunWith
+import org.scalatestplus.junit.JUnitRunner
+import com.datastax.driver.core.utils.Bytes
+import org.scalatest.FlatSpec
+import ru.yandex.realty.model.message.RealtySchema.OfferMessage
+import ru.yandex.realty.model.serialization.OfferProtoConverter
+
+/**
+  * Created by Anton Ivanov <antonio@yandex-team.ru> on 14.09.16
+  */
+@RunWith(classOf[JUnitRunner])
+class OfferGrouper$Test extends FlatSpec {
+  "OfferGrouper" should "correct build hash" in {
+    val offerBytes = Bytes.fromHexString(
+      "0x08101081e68fdee997d7f00d2001280030023800480052c002080210093a0cd09bd0b8d0bfd0b5d186d0ba421dd183d0bbd0b8d186d0b020d0a1d182d0b0d185d0b0d0bdd0bed0b2d0b04a0232345a0c080115285d52421d081c1e42620c080115285d52421d081c1e4282013dd0a0d0bed181d181d0b8d18f2c20d09bd0b8d0bfd0b5d186d0ba2c20d183d0bbd0b8d186d0b020d0a1d182d0b0d185d0b0d0bdd0bed0b2d0b02c2032348a013ad0a0d0bed181d181d0b8d18f2c20d09bd0b8d0bfd0b5d186d0ba2cd183d0bb2e20d0a1d182d0b0d185d0b0d0bdd0bed0b2d0b02c20d0b42e323492013ad0a0d0bed181d181d0b8d18f2c20d09bd0b8d0bfd0b5d186d0ba2cd183d0bb2e20d0a1d182d0b0d185d0b0d0bdd0bed0b2d0b02c20d0b42e3234980100a00101a80100b001d2a822ba0121d183d0bbd0b8d186d0b020d0a1d182d0b0d185d0b0d0bdd0bed0b2d0b02c203234d00101b80100ea011b0801100a2001300038d20f480c6000880110a00103d00100d80100800200900200a00200ad0200000000b80200ca0200d00200da022908011225080110291a15566f734f66666572537461747573556e69666965722208696e616374697665e80200b00300c00300d80300e80301a00400b20406616374697665c00400d80400e80400fa041331303030313832353635393739383132363039880500a80501"
+    )
+    val offer = OfferProtoConverter.fromMessage(OfferMessage.parseFrom(offerBytes.array()))
+    println(offer)
+    println(OfferGrouper.group(offer))
+  }
+}

@@ -1,0 +1,139 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Карта: использование опции useMapMargin контролом пробок 
+
+Description:
+Проверка работы опции useMapMargin с контролом пробок.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+map
+
+Estimated time:
+120000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+  
+  Expectation:
+  Карта отобразилась корректно. 
+  В контейнере карта со спаном Москвы. На одной или нескольких сторонах карты имеются области затемнения с красными прямоугольниками.
+  На спане имеется синяя метка - центр карты в контейнере, красная метка - центр незатемненной области карты.
+  Сверху справа контрол пробок.
+
+Step:
+  Action:
+  Выполнить клик в контрол пробок. 
+  
+  Expectation:
+  На спане карты появляются пробочные разноцветные линии. 
+  В контроле пробок появляется бал пробок и текущее время.
+
+Step:
+  Action:
+  Выполнить отзум спана карты скролом мыши, таким образом чтобы красная метка находилась в пределах МКАД, а синяя за пределами МКАД. 
+  (при необходимости после отзума сместить спан карты драгом)
+  
+  Expectation:
+  Отзум спана карты корректный, метки располагаются аналогично(синяя в центре контейнера, красная в центре видимой области).
+  В контроле пробок бал пробок и текущее время. 
+
+Step:
+  Action:
+  Зажав на спане карты ЛКМ драгом переместить спан карты, таким образом чтобы синяя метка находилась в пределах МКАД, а красная за пределами МКАД. 
+  
+  Expectation:
+  Драг и смещение спана корректные: карта не пропадает, не мигает цветами.
+  Метки пропадают с предыдущих мест и появляются на новом спане: синяя в центре контейнера, красная в центре видимой области. 
+  В контроле пропадает бал и время, имеется подпись "Пробки".
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <script src="../../../helper.js"></script>
+    <script type="text/javascript" src="helpers.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            window.ymaps = ymaps;
+
+            setupFakeMarginManager(document.getElementById('container') );
+
+            var myMap = new ymaps.Map("map", {
+                center: [55.73, 37.75],
+                zoom: 13,
+                controls: ['trafficControl']
+            });
+
+            myMap.controls.get('trafficControl').options.set('useMapMargin', true);
+
+            myMap.margin.addArea({
+                right: 50,
+                top: 50,
+                width: '100',
+                height: '700'
+            });
+
+            redrawMargins(myMap, document.getElementById('container'));
+            myMap.events.add('marginchange', function (e) {
+                redrawMargins(myMap, document.getElementById('container'));
+            });
+
+            // красная метка - центр видимой области, синяя - физический центр карты
+            function setPlacemarks () {
+                myMap.geoObjects.removeAll();
+                myMap.geoObjects.add(new ymaps.Placemark(myMap.getCenter()));
+                myMap.geoObjects.add(new ymaps.Placemark(myMap.getCenter({useMapMargin: true}), {}, {iconColor: '#FF0000'}));
+            }
+            myMap.events.add('boundschange', setPlacemarks, this);
+            setPlacemarks();
+
+
+            addGrid(myMap);
+            var log = new Log();
+            log.info("MAPSAPI-10908: Провайдер пробок теперь умеет работать с учетом margin ");
+
+        }
+    </script>
+    <style>
+        #container {
+            position: relative;
+        }
+
+        #map, #container {
+            width: 1000px;
+            height: 500px;
+        }
+
+        .panel {
+            position: absolute;
+            background-color: black;
+            opacity: 0.3;
+            pointer-events: none;
+        }
+
+        .rect {
+            position: absolute;
+            background-color: red;
+            opacity: 0.3;
+            pointer-events: none;
+        }
+
+    </style>
+
+</head>
+<body>
+<div id="container">
+    <div id="map"></div>
+</div>
+
+</body>
+</html>

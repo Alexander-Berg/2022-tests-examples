@@ -1,0 +1,100 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - tolich
+      groups: []
+labels:
+  order: '20000002'
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      uri: '/files(.*)'
+  modules:
+    - report: {ranges: '0.1s,0.5s,2s,5s,10s,30s,120s,600s,3600s,10800s', uuid: tusd}
+    - stats_eater: {}
+    - headers:
+        create_func:
+          X-Forwarded-Proto: scheme
+          X-Forwarded-Host: host
+        delete: Forwarded
+    - log_headers:
+        name_re: 'Origin'
+    - threshold:
+        # 4 KiB
+        lo_bytes: 4096
+        # 16 KiB
+        hi_bytes: 16384
+        pass_timeout: 48s
+        recv_timeout: 32s
+        on_pass_timeout_failure:
+          modules:
+            - response_headers:
+                create:
+                  Access-Control-Expose-Headers: 'Upload-Offset, Location, Upload-Length, Tus-Version, Tus-Resumable, Tus-Max-Size, Tus-Extension, Upload-Metadata, Upload-Defer-Length, Upload-Concat'
+            - headers_forwarder:
+                actions:
+                  - request_header: 'Origin'
+                    response_header: 'Access-Control-Allow-Origin'
+                    weak: false
+            - errordocument:
+                status: 408
+                content: 'Too Slow!'
+                force_conn_close: True
+    - report: {ranges: '0.1s,0.5s,2s,5s,10s,30s,120s,600s,3600s,10800s', uuid: tusd}
+    - stats_eater: {}
+    - balancer2:
+        attempts: 1
+        rr: {weights_file: ./controls/traffic_control.weights}
+        unique_policy: {}
+        backends:
+        - weight: 1
+          name: tusd_sas
+          modules:
+          - report: {ranges: '0.1s,0.5s,2s,5s,10s,30s,120s,600s,3600s,10800s', uuid: tusd-requests-to-sas}
+          - stats_eater: {}
+          - balancer2:
+              connection_attempts: 3
+              attempts: 1
+              unique_policy: {}
+              rr: {}
+              attempts_rate_limiter:
+                limit: 0.2
+              generated_proxy_backends:
+                proxy_options:
+                  buffering: False
+                  fail_on_5xx: False
+                  keepalive_count: 8
+                  backend_timeout: 86400s
+                  connect_timeout: 500ms
+                include_backends:
+                  type: BY_ID
+                  ids: [tusd-test.sas]
+        - weight: 1
+          name: tusd_vla
+          modules:
+          - report: {ranges: '0.1s,0.5s,2s,5s,10s,30s,120s,600s,3600s,10800s', uuid: tusd-requests-to-vla}
+          - stats_eater: {}
+          - balancer2:
+              connection_attempts: 3
+              attempts: 1
+              unique_policy: {}
+              rr: {}
+              attempts_rate_limiter:
+                limit: 0.2
+              generated_proxy_backends:
+                proxy_options:
+                  buffering: False
+                  fail_on_5xx: False
+                  keepalive_count: 8
+                  backend_timeout: 86400s
+                  connect_timeout: 500ms
+                include_backends:
+                  type: BY_ID
+                  ids: [tusd-test.vla]
+        on_error:
+            modules:
+            - errordocument:
+                status: 504
+                content: 'Service unavailable'

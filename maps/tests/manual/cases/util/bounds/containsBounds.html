@@ -1,0 +1,126 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Util: пересечение прямоугольников
+
+Description:
+Проверка пересечения прямоугольников.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components:
+util
+
+Estimated time:
+180000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть страницу и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно со спаном материков Евразии и Северная Америка.
+
+Step:
+  Action:
+  Выполнить клик в центр спана с левой стороны контейнера, затем клик в центр спана у правой стороны. 
+
+  Expectation:
+  При клике на спане карты появляется синяя метка коллекции.
+  После второго клика на спане появляется область прямоугольника с вершинами - метками.
+
+Step:
+  Action:
+  Выполнить клик в центр спана сверху контейнера, затем клик в центр спана снизу контейнера. 
+
+  Expectation:
+  При клике на сверху спана карты появляется красная метка коллекции.
+  После второго клика на спане появляется область прямоугольника с вершинами - метками.
+  Область пересечения построенных прямоугольников окрашена красным, под контейнером с картой две строки "OK".
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            //ymaps = ym;
+
+            var myMap = new ymaps.Map("map", {
+                center: [50, -179],
+                zoom: 3,
+                controls: []
+            }, {
+                geoObjectInteractivityModel: 'default#silent'
+            });
+            addGrid(myMap);
+            var log = new Log();
+            log.info("Построй два bounds, пересечение должно отображаться.");
+
+            var projection = myMap.options.get('projection'),
+                    coords = [],
+                    testBounds = [],
+                    intersections;
+
+            myMap.events.add('click', function (e) {
+                if (testBounds.length == 2) {
+                    clear();
+                }
+                coords.push(e.get('coords'));
+
+                if (coords.length % 2 == 0) {
+                    var bounds = ymaps.util.bounds.fromPoints(coords.slice(-2), projection);
+                    testBounds.push(bounds);
+                    var rect = new ymaps.Rectangle(bounds, {}, {
+                        opacity: 0.2
+                    });
+                    myMap.geoObjects.add(rect);
+                }
+
+                myMap.geoObjects.add(new ymaps.Placemark(e.get('coords'), {}, {
+                    preset: (coords.length == 3) ? 'islands#redIcon' : 'islands#blueIcon'
+                }));
+
+                if (testBounds.length == 2) {
+                    intersections = ymaps.util.bounds.getIntersections(testBounds[0], testBounds[1]);
+                    for (var i = 0, l = intersections.length; i < l; i++) {
+                        var rect = new ymaps.Rectangle(intersections[i], {}, {
+                            fillColor: "FF0000",
+                            opacity: 0.4
+                        });
+                        myMap.geoObjects.add(rect);
+                    }
+                    validateValue(ymaps.util.bounds.containsBounds(testBounds[0], intersections[0]), true);
+                    if (!ymaps.util.bounds.containsBounds(testBounds[0], intersections[0])) {
+                        __log__('testBounds - ' + testBounds[0]);
+                        __log__('intersections - ' + intersections[0]);
+                    }
+                    validateValue(ymaps.util.bounds.containsBounds(testBounds[1], intersections[0]), true);
+                    if (!ymaps.util.bounds.containsBounds(testBounds[1], intersections[0])) {
+                        __log__('testBounds - ' + testBounds[1]);
+                        __log__('intersections - ' + intersections[0]);
+                    }
+                }
+            });
+
+            function clear() {
+                myMap.geoObjects.removeAll();
+                coords = [];
+                testBounds = [];
+                intersections = [];
+            }
+
+        }
+    </script>
+</head>
+<body>
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

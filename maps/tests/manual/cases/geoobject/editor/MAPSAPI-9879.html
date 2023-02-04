@@ -1,0 +1,209 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Геообъект: событие изменения геометрии объекта
+
+Description:
+Проверка прослушивания события изменения геометрии объекта.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+geoobject
+
+Estimated time:
+240000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан Московской области, на спане два ряда объектов: метка, линия и многоугольник(верхний ряд синего цвета, нижний - зеленого).
+  Сверху имеются кнопки "polyline", "polygon", "placemark", "editor".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "polygon".
+  Выполнить даблклик в метку вершину синего многоугольника.
+
+  Expectation:
+  По клику в "polygon" на объекте синего многоугольника появляются метки редактирования, к курсору прилипает пунктирные линия рисования от вершин многоугольника.
+  При даблклике метка удаляется, пропадает часть области многоугольника. Под контейнером с картой строка: polygon: geometrychange.
+  (Во время даблклика промигивает меню вершин, реагируя на события клика)
+
+Step:
+  Action:
+  Выполнить даблклик по оставшимся меткам синего многоугольника.
+  (Во время даблклика промигивает меню вершин, реагируя на события клика)
+
+  Expectation:
+  Метки многоугольника удаляются корректно, по удалению последней метки на месте многоугольника метки отсуствуют.
+  При удалении каждой метки в том числе последней, под контейнером с картой добавляется одна строка "polygon: geometrychange". 
+
+Step:
+  Action:
+  Выполнить клик в кнопку "polyline". 
+
+  Expectation:
+  На объекте синей линии появляются метки редактирования, к курсору прилипает пунктирная линия рисования.
+
+Step:
+  Action:
+  Выполнить клик в спан карты. 
+
+  Expectation:
+  По клику на спане карты появляется белая метка вершины, появляется сплошная синяя линия к метке.
+  К курсору прилипает пунктирная линия от выставленной метки вершины.
+  Под контейнером с картой строка: polyline: geometrychange.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "polyline". 
+  Выполнить клик в кнопку "editor". 
+
+  Expectation:
+  По клику в"polyline" от курсора отлипает пунктирная линия от вершины синей линии. 
+  По клику в "editor" на объектах зеленой линии и зеленого многоугольника появляются метки редактирования. 
+
+Step:
+  Action:
+  Выполнить клик в метку вершин на зеленой линии в появившемся меню выбрать "Продолжить". 
+
+  Expectation:
+  К курсору прилипает зеленая пунктирная линия от метки в которую произведен клик.
+
+Step:
+  Action:
+  Выполнить клик в спан карты. 
+
+  Expectation:
+  По клику на спане карты появляется белая метка вершины, появляется сплошная зеленая линия к метке.
+  К курсору прилипает пунктирная линия от выставленной метки вершины.
+  Под контейнером с картой строка: geoObjectPolyline: geometrychange.
+
+Step:
+  Action:
+  Выполнить клик в последнюю выставленную метку вершину, в появившемся меню выбрать "Завершить". 
+
+  Expectation:
+  От курсора отлипает пунктирная линия от вершины зеленой линии. 
+
+Step:
+  Action:
+  Выполнить даблклик в метку вершину зеленого многоугольника.
+
+  Expectation:
+  При даблклике метка удаляется, пропадает часть области многоугольника. Под контейнером с картой строка: geoObjectPolygon: geometrychange.
+  (Во время даблклика промигивает меню вершин, реагируя на события клика)
+
+Step:
+  Action:
+  Выполнить даблклик по оставшимся меткам зеленого многоугольника.
+  (Во время даблклика промигивает меню вершин, реагируя на события клика)
+
+  Expectation:
+  Метки многоугольника удаляются корректно, по удалению последней метки на месте многоугольника метки отсуствуют.
+  При удалении каждой метки в том числе последней, под контейнером с картой добавляется одна строка "geoObjectPolygon: geometrychange". 
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script src="../geoCS.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym; // hack
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.73259667357658, 37.70153663432529],
+                zoom: 9,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+            geoCSSource(ym, map, this);
+            addGrid(map);
+            var log = new Log();
+
+            __log__('Слушаем geometrychange . При удалении, добавлении точек, последней в том числе кидается одно событие');
+
+            var collection = new ymaps.GeoObjectCollection();
+            collection
+                    .add(geoObjectPlacemark)
+                    .add(geoObjectPolyline)
+                    .add(geoObjectPolygon)
+                    .add(placemark)
+                    .add(polyline)
+                    .add(polygon);
+
+            collection.each(function (object) {
+                object.events.add('geometrychange', function (e) {
+                    __log__(e.get('target').options.get('id') + ': ' + e.get('type'))
+                })
+            });
+
+            var editorButton = new ymaps.control.Button({data: {content: 'editor'}, options: {selectOnClick: true}});
+            var placemarkButton = new ymaps.control.Button({data: {content: 'placemark'}, options: {selectOnClick: true}});
+            var polylineButton = new ymaps.control.Button({data: {content: 'polyline'}, options: {selectOnClick: true}});
+            var polygonButton = new ymaps.control.Button({data: {content: 'polygon'}, options: {selectOnClick: true}});
+
+            editorButton.events
+                    .add('select', function () {
+                        collection.each(function (obj) {
+                            obj.editor.startEditing();
+                        });
+                    })
+                    .add('deselect', function () {
+                        collection.each(function (obj) {
+                            obj.editor.stopEditing();
+                        });
+                    });
+
+            placemarkButton.events
+                    .add('select', function () {
+                        placemark.editor.startDrawing();
+                    })
+                    .add('deselect', function () {
+                        placemark.editor.stopDrawing();
+                    });
+
+            polylineButton.events
+                    .add('select', function () {
+                        polyline.editor.startDrawing();
+                    })
+                    .add('deselect', function () {
+                        polyline.editor.stopDrawing();
+                    });
+
+            polygonButton.events
+                    .add('select', function () {
+                        polygon.editor.startDrawing();
+                    })
+                    .add('deselect', function () {
+                        polygon.editor.stopDrawing();
+                    });
+
+            map.geoObjects.add(collection);
+
+            map.controls
+                    .add(editorButton)
+                    .add(placemarkButton)
+                    .add(polygonButton)
+                    .add(polylineButton);
+
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

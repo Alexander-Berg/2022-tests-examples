@@ -1,0 +1,126 @@
+<!DOCTYPE HTML>
+
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 10,
+                behaviors: ['default'],
+                controls: ['fullscreenControl']
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+
+            var test1Button = new ymaps.control.Button({data: {content: 'route'}, options: {selectOnClick: false, float: 'left'}});
+            var test2Button = new ymaps.control.Button({data: {content: 'emptyPoint'}, options: {selectOnClick: false, float: 'left'}});
+            var test3Button = new ymaps.control.Button({data: {content: 'emptyTabPoint'}, options: {selectOnClick: false, float: 'left'}});
+            var massButton = new ymaps.control.Button({data: {content: 'mass/auto'}, options: {selectOnClick: true, float: 'left'}});
+
+            var multiRoute = new ymaps.multiRouter.MultiRoute({
+                referencePoints: [ '', 'Москва, Ленинский проспект', '', 'Москва, Кулаков переулок', '', 'Москва, Тверская', ''],
+                params: {
+                    viaIndexes: [2]
+                }
+            }, {
+                boundsAutoApply: true
+            });
+
+            map.geoObjects.add(multiRoute);
+            multiRoute.model.events
+                    .add("requestsuccess", function (event) {
+                        log.info("viaIndexes: [2] Маршрут  '','Москва, Ленинский проспект', '', 'Москва, Кулаков переулок','','Москва, Тверская',''");
+                        validateValue(6, multiRoute.model.getWayPoints().length);
+                        validateValue(1, multiRoute.model.getViaPoints().length);
+                    });
+
+            test2Button.events.add('click', function () {
+                map.geoObjects.removeAll();
+                multiRoute = new ymaps.multiRouter.MultiRoute({
+                    referencePoints: [ '  ', ' ', '    ', ' ', '    ', ' ', ' ', ' ', 'Москва, Арбат'],
+                    params: {
+                        viaIndexes: [1, 2, 3]
+                    }
+                }, {
+                    boundsAutoApply: true
+                });
+
+                map.geoObjects.add(multiRoute);
+                multiRoute.model.events
+                        .add("requestsuccess", function (event) {
+                            log.info("viaIndexes: [1,2,3]  Маршрут  '  ',' ', '    ', ' ', '    ', ' ',' ',' ','Москва, Арбат'");
+                            validateValue(6, multiRoute.model.getWayPoints().length);
+                            validateValue(3, multiRoute.model.getViaPoints().length);
+                        })
+            });
+            test1Button.events.add('click', function () {
+                map.geoObjects.removeAll();
+                multiRoute = new ymaps.multiRouter.MultiRoute({
+                    referencePoints: ['Москва, Ленинский проспект', 'Москва, Воробьевы горы', 'Москва', 'Москва, Кулаков переулок', 'Москва, Тверская', 'Москва, Арбат'],
+                    params: {
+                        viaIndexes: [2]
+                    }
+                }, {
+                    boundsAutoApply: true
+                });
+
+                map.geoObjects.add(multiRoute);
+                multiRoute.model.events
+                        .add("requestsuccess", function (event) {
+                            log.info("viaIndexes: [2]  Маршрут 'Москва, Ленинский проспект', 'Москва, Воробьевы горы', 'Москва', 'Москва, Кулаков переулок','Москва, Тверская','Москва, Арбат'");
+                            validateValue(5, multiRoute.model.getWayPoints().length);
+                            validateValue(1, multiRoute.model.getViaPoints().length);
+                        })
+            });
+            test3Button.events.add('click', function () {
+                map.geoObjects.removeAll();
+                multiRoute = new ymaps.multiRouter.MultiRoute({
+                    referencePoints: [ '    ', 'Москва, Ленинский проспект', '   ', 'Москва, Кулаков переулок', ' '],
+                    params: {
+                        viaIndexes: [0]
+                    }
+                }, {
+                    boundsAutoApply: true
+                });
+                multiRoute.model.events
+                        .add("requestsuccess", function (event) {
+                            log.info("viaIndexes: [0] Маршрут  '    ', 'Москва, Ленинский проспект', '   ', 'Москва, Кулаков переулок', ' '");
+                            validateValue(4, multiRoute.model.getWayPoints().length);
+                            validateValue(1, multiRoute.model.getViaPoints().length);
+                        });
+
+                map.geoObjects.add(multiRoute);
+            });
+            massButton.events
+                    .add('select', function () {
+                        multiRoute.model.setParams({
+                            routingMode: 'masstransit'
+                        });
+                    })
+                    .add('deselect', function () {
+                        multiRoute.model.setParams({
+                            routingMode: 'auto'
+                        });
+                    });
+
+
+            map.controls.add(test1Button).add(test2Button).add(test3Button).add(massButton);
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

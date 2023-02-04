@@ -1,0 +1,126 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Геообъект: установка опции панели балуна геообъекта
+
+Description:
+Проверка смены опции панели балуна геообъекта.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+geoobject
+
+Estimated time:
+90000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан Москвы, в центре спана синяя метка коллекции, внизу контейнера открыт балун-панель с содержимым: "placemark", кнопкой закрытия балуна-панели.
+  Сверху имеются кнопки "panel/balloon", "open balloon".
+
+Step:
+  Action:
+  Выполнить два клика в кнопку "open balloon". 
+
+  Expectation:
+  Панель с балуном пропадает, спан карты без изменений, метка на месте.
+
+Step:
+  Action:
+  Клик в кнопку "panel/balloon". 
+  Клик в кнопку "open balloon".
+
+  Expectation:
+  Снизу карты открывается панель-балуна, с содержимым: "placemark", кнопкой закрытия балуна-панели.
+
+Step:
+  Action:
+  Клик в кнопку "panel/balloon".
+
+  Expectation:
+  Панель балуна снизу пропадает.
+  Метка коллекции пропадает, на ее месте появляется балун с содержимым: "placemark", кнопкой закрытия балуна.
+
+Step:
+  Action:
+  Выполнить клика в кнопку "open balloon". 
+
+  Expectation:
+  Балун закрывается, на спане появляется метка коллекции.
+
+Step:
+  Action:
+  Клик в кнопку "panel/balloon". 
+  Клик в кнопку "open balloon".
+
+  Expectation:
+  Снизу карты открывается панель-балуна, с содержимым: "placemark", кнопкой закрытия балуна-панели.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 10,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+
+            log.info('preventPanelMode option was removed by special panelMaxMapArea values: ' +
+                    '0 (balloon) and Infinity (panel)');
+
+            var placemark = new ymaps.Placemark(map.getCenter(), {balloonContent: 'placemark'});
+            map.geoObjects.add(placemark);
+            placemark.balloon.open();
+
+            var preventButton = new ymaps.control.Button({data: {content: 'panel/balloon'}, options: {selectOnClick: true, maxWidth: 150}});
+            var openButton = new ymaps.control.Button({data: {content: 'open balloon'}, options: {selectOnClick: true, maxWidth: 120}});
+
+            // Change panelMaxMapArea option. Infinity value - panel mode, zero value - balloon mode.
+            preventButton.events
+                    .add('select', function () {
+                        placemark.options.set('balloonPanelMaxMapArea', Infinity);
+                    })
+                    .add('deselect', function () {
+                        placemark.options.set('balloonPanelMaxMapArea', 0);
+                    });
+
+            // Open balloon in the center of the map, and close balloon, if button deselected
+            openButton.events
+                    .add('select', function () {
+                        placemark.balloon.open();
+                    })
+                    .add('deselect', function () {
+                        placemark.balloon.close();
+                    });
+
+            myMap.controls
+                    .add(openButton)
+                    .add(preventButton);
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 480px; width: 320px;"></div>
+</body>
+</html>

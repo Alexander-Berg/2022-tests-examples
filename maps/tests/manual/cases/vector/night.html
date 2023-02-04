@@ -1,0 +1,244 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Вектор: ночной режим
+
+Description:
+Проверка корректности работы ноного режима векторной карты.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components:
+vector
+
+Estimated time:
+240000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть страницу и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно со спаном центра Москвы в ночном режиме.
+  В контейнере дефолтный набор контролов, имеется дополнительный контрол "слои".
+  Рядом с поисковым инпутом появляются кнопки индор этажей: "4", "3", "2", "1", "-1", в правом нижнем углу видна индор схема"ГУМа".
+
+Step:
+  Action:
+  Последовательно выполнить клик в кнопки индор этажей: "4", "3", "2", "1", "-1".
+
+  Expectation:
+  Происходит смена отображения "Охотного ряда", отображается схема индора с метками организаций(метки могут быть точкой с подписью).
+  Отображение на схеме корректное: подписи не слипаются, контуры этажей ровные, нет эффектов наложения этажей.
+
+Step:
+  Action:
+  Переместить спан карты, так чтобы ГУМ отображался в центре спана.
+
+  Expectation:
+  На спане видна идор схема ГУМа, возле поискового инпута сменилась шкала индора на кнопки "3", "2", "1".
+  Отображение на схеме корректное: подписи не слипаются, контуры этажей ровные, нет эффектов наложения этажей.
+
+Step:
+  Action:
+  Последовательно выполнить клик в кнопки индор этажей: "2", "3".
+
+  Expectation:
+  Происходит смена отображения "ГУМа", отображается схема индора с метками организаций(метки могут быть точкой с подписью).
+  Отображение на схеме корректное: подписи не слипаются, контуры этажей ровные, нет эффектов наложения этажей.
+
+Step:
+  Action:
+  Выполнить клик в контрол зума "+", выполнить статичный и инертный драг спана карты.
+
+  Expectation:
+  Схема индора с метками организаций не пропадает, появляются новые метки индор схемы(туалеты, лестницы, лифты).
+  Отображение на схеме корректное: подписи не слипаются, контуры этажей ровные, нет эффектов наложения этажей.
+  Драг карты корректный: карта не мигает цветами, нет странных визуальных эффектов.
+
+Step:
+  Action:
+  Ввести в поисковый инпут "монорельс телецентр", клик в "найти".
+
+  Expectation:
+  Происходит корректная смена спана карты, на спане балун "монорельс Телецентр".
+
+Step:
+  Action:
+  Выполнить клик в контрол зума "+", выполнить статичный и инертный драг спана карты, проверить векторное отображение объектов на примере Останкинской башни.
+
+  Expectation:
+  Происходит корректный призум спана карты, при этом объекты имеют векторное отображение.
+  Подписи, метки на спане карты выглядят корректно.
+  Отображение Останкинской башни корректное, башня при драгах отображается корректно, отображение не ломается, не становится растровым.
+
+Step:
+  Action:
+  Ввести в поисковый инпут "Московский международный деловой центр Москва-Сити", клик в "найти".
+  Закрыть открытый балун, выполнить клик в контрол зума "+".
+
+  Expectation:
+  Происходит корректная смена спана карты, на спане балун "Московский международный деловой центр Москва-Сити".
+  При призуме корректно работает анимация вырастания зданий и показа индор схем центра, появляются контролы этажей индора.
+
+Step:
+  Action:
+  Произвольно позумить/подрагать спан карты на текущем спане карты, выполнить зум магнифайером.
+  Посмотреть работу анимации вырастания зданий на ближних зумах.
+
+  Expectation:
+  Драг и зум карты корректные: карта не пропадает, не мигает цветами, нет странных визуальных эффектов, подписи на карте выглядят корректно, не слипаются.
+  Анимация вырастания зданий корректная: здания при вырастании не ломаются, не фрагментируются, не мигают цветами. 
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <script src="../../helper.js"></script>
+    <!-- <script type="text/javascript" src="https://api-maps.tst.c.maps.yandex.ru/2.1.77/?lang=ru_RU&mode=debug"></script> -->
+    <script type=text/javascript>
+
+        window.onerror = function(err) {
+            console.log(err);
+        };
+        let myMap;
+        Api('init', undefined, undefined, undefined, undefined, 'ymaps', undefined);
+
+        function init(ymaps) {
+            myMap = new ymaps.Map('map', {
+                center: [55.75735630854855, 37.61503342587282],
+                zoom: 17
+            }, {
+                vector: true,
+                layerVectorMode: 'night',
+                layerVectorRevealThreshold: 0
+            });
+
+            myMap.layers.events.add('vectorreveal', () => console.log('Вектор показался'));
+            myMap.layers.events.add('vectorerror', () => console.log('Вектор упал'));
+            addIndoor();
+        }
+
+        function addIndoor() {
+            ymaps.modules.require([
+                'control.Button', 'control.TypeSelector',
+                'indoor.IndoorPlanProvider', 'coordSystem.geo'
+            ]).spread(
+                (Button, TypeSelectorControl,
+                    IndoorPlanProvider, geoCoordSystem) => {
+                    myMap.controls.add(new TypeSelectorControl());
+
+                    var indoorProvider = new IndoorPlanProvider();
+                    indoorProvider.setMap(myMap);
+                    var indoorButtons = [];
+                    var activePlan = null;
+                    var currentPlans = [];
+
+                    checkIndoorPlans();
+                    indoorProvider.events.add('planschange', checkIndoorPlans);
+
+                    myMap.events.add('boundschange', checkActivePlan);
+                    function checkIndoorPlans() {
+                        currentPlans = indoorProvider.getPlans();
+                        if (currentPlans) {
+                            currentPlans.forEach((plan) => {
+                                plan.setVisible(true);
+                            });
+                        }
+                        checkActivePlan();
+                    }
+
+                    function checkActivePlan() {
+                        var newPlan = getActivePlan();
+                        if (activePlan !== newPlan) {
+                            activePlan = newPlan;
+                            indoorButtons.forEach((button) => {
+                                myMap.controls.remove(button);
+                            });
+                            indoorButtons = [];
+                            if (!activePlan) {
+                                return;
+                            }
+                            activePlan.events.add('activelevelchange', checkSelectedLevel);
+                            var levels = activePlan.getLevels();
+                            levels.forEach((level) => {
+                                var newButton = new Button(level.id);
+                                newButton.options.set('selectOnClick', false);
+                                newButton.events.add('click', () => {
+                                    activePlan.setActiveLevel(level.id);
+                                });
+                                myMap.controls.add(newButton);
+                                indoorButtons.push(newButton);
+                            });
+                            checkSelectedLevel();
+                        }
+                    }
+
+                    function getActivePlan() {
+                        currentPlans = indoorProvider.getPlans();
+                        if (!currentPlans || currentPlans.length === 0) {
+                            return null;
+                        }
+
+                        if (currentPlans.length === 1) {
+                            return currentPlans[0];
+                        }
+
+                        var centers = currentPlans.map((plan) => {
+                            var bbox = plan.getBounds();
+                            return [(bbox[0][0] + bbox[1][0]) / 2, (bbox[0][1] + bbox[1][1]) / 2];
+                        });
+
+                        var newActivePlan = null;
+                        var minDistance = Infinity;
+                        centers.forEach((point, i) => {
+                            var distance = geoCoordSystem.getDistance(point, myMap.getCenter());
+                            if (distance < minDistance) {
+                                newActivePlan = currentPlans[i];
+                                minDistance = distance;
+                            }
+                        });
+                        return newActivePlan;
+                    }
+
+                    function checkSelectedLevel() {
+                        if (!activePlan) {
+                            return;
+                        }
+                        var activeLevel = activePlan.getActiveLevel();
+                        indoorButtons.forEach((button) => {
+                            if (button.data.get('content') === activeLevel.id) {
+                                button.select();
+                            } else {
+                                button.deselect();
+                            }
+                        });
+                    }
+                },
+                (err) => {
+                    throw new Error(err);
+                }
+            ).fail((err) => {
+                throw new Error(err);
+            });
+
+            return true;
+    }
+    </script>
+    <style>
+        html, body, #map {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+    </style>
+</head>
+<body>
+<div id="map"></div>
+</body>
+</html>

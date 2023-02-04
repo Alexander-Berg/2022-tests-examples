@@ -1,0 +1,38 @@
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      uri: '/get'
+  modules:
+    - aab_cookie_verify:
+        aes_key_path: './private.key'
+        cookie: 'cycada'
+        cookie_lifetime: '15d'
+        ip_header: 'X-Not-Real-Ip'
+        disable_antiadblock_file: './controls/disable_antiadblock_file'
+        antiadblock:
+          modules:
+            - errordocument:
+                status: 500
+                content: 'Hello from aab_cookie_verify module'
+    - srcrwr:
+        id: 42
+        match_host: (.*[.])?hamster[.](.*)?
+        match_source_mask: '2a02:6b8::/32,2620:10f:d000::/44,5.45.208.0/26,5.45.228.0/25'
+        balancer2:
+          attempts: 2
+          delay_settings:
+            first_delay: 10ms
+            delay_on_fast: true
+            delay_multiplier: 1.1
+            max_random_delay: 1ms
+          return_last_5xx: true
+          status_code_blacklist: ['5xx']
+          rr: {}
+          generated_proxy_backends:
+            proxy_options:
+              backend_timeout: 100ms
+              connect_timeout: 30ms
+            gencfg_groups:
+              - name: MAN_ANTIROBOT_ANTIROBOT
+                version: tags/stable-92-r105

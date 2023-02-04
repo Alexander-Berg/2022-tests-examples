@@ -1,0 +1,696 @@
+scrape_configs:
+  - job_name: service_discovery_host
+    scrape_interval: 30s
+    scrape_timeout: 20s
+    metrics_path: "/metrics"
+    consul_sd_configs:
+      - server: '{consul_addr}'
+        datacenter: 'sas'
+        allow_stale: true
+      - server: '{consul_addr}'
+        datacenter: 'vla'
+        allow_stale: true
+      - server: '{consul_addr}'
+        datacenter: 'myt'
+        allow_stale: true
+    relabel_configs:
+      - source_labels: ['__meta_consul_node', '__meta_consul_service_port']
+        separator: ':'
+        regex: '(.*)'
+        target_label: '__address__'
+        replacement: '$1'
+      - source_labels: ['__meta_consul_tags']
+        regex: '(.*,)?metrics_.*(,.*)?'
+        action: keep
+      - source_labels: ['__meta_consul_tags']
+        regex: '(.*,)?bridge(,.*)?'
+        action: drop
+      - source_labels: [__meta_consul_tags]
+        regex: '.*,metrics_([^,]+),.*'
+        replacement: '${1}'
+        target_label: job
+      - source_labels: ['__meta_consul_tags']
+        regex: '.*,service=([^,]+),.*'
+        replacement: ${1}
+        target_label: _service
+      - source_labels: ['__meta_consul_tags']
+        regex: '.*,layer=([^,]+),.*'
+        replacement: ${1}
+        target_label: _layer
+      - source_labels: ['__meta_consul_tags']
+        regex: '.*,version=([^,]+),.*'
+        replacement: ${1}
+        target_label: _version
+      - source_labels: ['__meta_consul_tags']
+        regex: '.*,branch=([^,]+),.*'
+        replacement: ${1}
+        target_label: _branch
+      - source_labels: ['__meta_consul_tags']
+        regex: '.*,canary=([^,]+),.*'
+        replacement: ${1}
+        target_label: _canary
+      - source_labels: ['__meta_consul_tags']
+        regex: '.*,dc=([^,]+),.*'
+        replacement: ${1}
+        target_label: _dc
+      - source_labels: ['__meta_consul_tags']
+        regex: '.*,allocid=([^,]+),.*'
+        replacement: ${1}
+        target_label: _allocation_id
+      - source_labels: ['__meta_consul_tags']
+        regex: '.*,allocindex=([^,]+),.*'
+        replacement: ${1}
+        target_label: _allocation_index
+    metric_relabel_configs:
+      - source_labels: ['exported_instance']
+        regex: '(.+)'
+        target_label: 'instance'
+        replacement: '$1'
+      - regex: 'exported_instance'
+        action: 'labeldrop'
+      - source_labels: ['_noenrich']
+        regex: '(1)'
+        target_label: '_allocation_id'
+        replacement: ''
+      - source_labels: ['_noenrich']
+        regex: '(1)'
+        target_label: '_version'
+        replacement: ''
+      - source_labels: ['_noenrich']
+        regex: '(1)'
+        target_label: 'container_ip'
+        replacement: ''
+      - source_labels: ['_noenrich']
+        regex: '(1)'
+        target_label: 'docker_host'
+        replacement: ''
+      - source_labels: ['_noenrich']
+        regex: '(1)'
+        target_label: 'instance'
+        replacement: ''
+      - regex: '_noenrich'
+        action: labeldrop
+
+  - job_name: service_discovery_bridge
+    scrape_interval: 30s
+    metrics_path: "/metrics"
+    consul_sd_configs:
+      - server: '{consul_addr}'
+        datacenter: 'sas'
+        allow_stale: true
+      - server: '{consul_addr}'
+        datacenter: 'vla'
+        allow_stale: true
+      - server: '{consul_addr}'
+        datacenter: 'myt'
+        allow_stale: true
+    relabel_configs:
+      - source_labels: ['__meta_consul_tags']
+        regex: '(.*,)?metrics.*(,.*)?'
+        action: keep
+      - source_labels: ['__meta_consul_tags']
+        regex: '(.*,)?bridge(,.*)?'
+        action: keep
+      - source_labels: [__meta_consul_service]
+        target_label: job
+      - source_labels: [__meta_consul_tags]
+        regex: '.*,metrics_([^,]+),.*'
+        replacement: '${1}'
+        target_label: job
+      - source_labels: ['__meta_consul_service_address']
+        target_label: container_ip
+      - source_labels: ['__meta_consul_node']
+        target_label: docker_host
+      - source_labels: ['__meta_consul_tags']
+        regex: '.*,service=([^,]+),.*'
+        replacement: ${1}
+        target_label: _service
+      - source_labels: ['__meta_consul_tags']
+        regex: '.*,layer=([^,]+),.*'
+        replacement: ${1}
+        target_label: _layer
+      - source_labels: ['__meta_consul_tags']
+        regex: '.*,version=([^,]+),.*'
+        replacement: ${1}
+        target_label: _version
+      - source_labels: ['__meta_consul_tags']
+        regex: '.*,branch=([^,]+),.*'
+        replacement: ${1}
+        target_label: _branch
+      - source_labels: ['__meta_consul_tags']
+        regex: '.*,canary=([^,]+),.*'
+        replacement: ${1}
+        target_label: _canary
+      - source_labels: ['__meta_consul_tags']
+        regex: '.*,dc=([^,]+),.*'
+        replacement: ${1}
+        target_label: _dc
+      - source_labels: ['__meta_consul_tags']
+        regex: '.*,allocid=([^,]+),.*'
+        replacement: ${1}
+        target_label: _allocation_id
+      - source_labels: ['__meta_consul_tags']
+        regex: '.*,allocindex=([^,]+),.*'
+        replacement: ${1}
+        target_label: _allocation_index
+    metric_relabel_configs:
+      - source_labels: ['exported_instance']
+        regex: '(.+)'
+        target_label: 'instance'
+        replacement: '$1'
+      - regex: 'exported_instance'
+        action: 'labeldrop'
+      - source_labels: ['_noenrich']
+        regex: '(1)'
+        target_label: '_allocation_id'
+        replacement: ''
+      - source_labels: ['_noenrich']
+        regex: '(1)'
+        target_label: '_version'
+        replacement: ''
+      - source_labels: ['_noenrich']
+        regex: '(1)'
+        target_label: 'container_ip'
+        replacement: ''
+      - source_labels: ['_noenrich']
+        regex: '(1)'
+        target_label: 'docker_host'
+        replacement: ''
+      - source_labels: ['_noenrich']
+        regex: '(1)'
+        target_label: 'instance'
+        replacement: ''
+      - regex: '_noenrich'
+        action: labeldrop
+
+  - job_name: service_discovery_batch
+    scrape_interval: 2s
+    metrics_path: "/metrics"
+    consul_sd_configs:
+      - server: '{consul_addr}'
+        datacenter: 'sas'
+        allow_stale: true
+        tags: ['batch_metrics']
+      - server: '{consul_addr}'
+        datacenter: 'vla'
+        allow_stale: true
+        tags: ['batch_metrics']
+      - server: '{consul_addr}'
+        datacenter: 'myt'
+        allow_stale: true
+        tags: ['batch_metrics']
+    relabel_configs:
+      - source_labels: [__meta_consul_service]
+        target_label: job
+      - source_labels: ['__meta_consul_service_address']
+        target_label: container_ip
+      - source_labels: ['__meta_consul_node']
+        target_label: docker_host
+      - source_labels: ['__meta_consul_tags']
+        regex: '.*,service=([^,]+),.*'
+        replacement: ${1}
+        target_label: _service
+      - source_labels: ['__meta_consul_tags']
+        regex: '.*,layer=([^,]+),.*'
+        replacement: ${1}
+        target_label: _layer
+      - source_labels: ['__meta_consul_tags']
+        regex: '.*,version=([^,]+),.*'
+        replacement: ${1}
+        target_label: _version
+      - source_labels: ['__meta_consul_tags']
+        regex: '.*,dc=([^,]+),.*'
+        replacement: ${1}
+        target_label: _dc
+      - source_labels: ['__meta_consul_tags']
+        regex: '.*,allocid=([^,]+),.*'
+        replacement: ${1}
+        target_label: _allocation_id
+      - source_labels: ['__meta_consul_tags']
+        regex: '.*,allocindex=([^,]+),.*'
+        replacement: ${1}
+        target_label: _allocation_index
+    metric_relabel_configs:
+      - source_labels: ['exported_instance']
+        regex: '(.+)'
+        target_label: 'instance'
+        replacement: '$1'
+      - regex: 'exported_instance'
+        action: 'labeldrop'
+      - source_labels: ['_noenrich']
+        regex: '(1)'
+        target_label: '_allocation_id'
+        replacement: ''
+      - source_labels: ['_noenrich']
+        regex: '(1)'
+        target_label: '_version'
+        replacement: ''
+      - source_labels: ['_noenrich']
+        regex: '(1)'
+        target_label: 'container_ip'
+        replacement: ''
+      - source_labels: ['_noenrich']
+        regex: '(1)'
+        target_label: 'docker_host'
+        replacement: ''
+      - source_labels: ['_noenrich']
+        regex: '(1)'
+        target_label: 'instance'
+        replacement: ''
+      - regex: '_noenrich'
+        action: labeldrop
+
+# Recording rules by rr-executer
+
+  - job_name: 'rr-executer'
+    scrape_interval: 10s
+    metrics_path: "/metrics"
+    scheme: http
+    consul_sd_configs:
+      - server: '{consul_addr}'
+        datacenter: 'sas'
+        allow_stale: true
+        tags: ['rr_metrics']
+      - server: '{consul_addr}'
+        datacenter: 'vla'
+        allow_stale: true
+        tags: ['rr_metrics']
+      - server: '{consul_addr}'
+        datacenter: 'myt'
+        allow_stale: true
+        tags: ['rr_metrics']
+    metric_relabel_configs:
+      - regex: 'job'
+        action: 'labeldrop'
+      - source_labels: ['exported_job']
+        regex: '(.+)'
+        target_label: 'job'
+        replacement: '$1'
+      - regex: 'exported_job'
+        action: 'labeldrop'
+      - regex: 'instance'
+        action: 'labeldrop'
+      - source_labels: ['exported_instance']
+        regex: '(.+)'
+        target_label: 'instance'
+        replacement: '$1'
+      - regex: 'exported_instance'
+        action: 'labeldrop'
+
+# semi-dynamic jobs
+
+  - job_name: 'haproxy-exporter'
+    scrape_interval: 5s
+    metrics_path: "/metrics"
+    consul_sd_configs:
+      - server: '{consul_addr}'
+        datacenter: 'sas'
+        services: ['haproxy-exporter']
+        allow_stale: true
+      - server: '{consul_addr}'
+        datacenter: 'vla'
+        services: ['haproxy-exporter']
+        allow_stale: true
+      - server: '{consul_addr}'
+        datacenter: 'myt'
+        services: ['haproxy-exporter']
+        allow_stale: true
+    relabel_configs:
+      - source_labels: ['__meta_consul_node', '__meta_consul_service_port']
+        separator: ':'
+        regex: '(.*)'
+        target_label: '__address__'
+        replacement: '$1'
+
+  - job_name: 'statsd-exporter'
+    scrape_interval: 30s
+    metrics_path: "/metrics"
+    consul_sd_configs:
+      - server: '{consul_addr}'
+        datacenter: 'sas'
+        services: ['statsd-exporter']
+        allow_stale: true
+      - server: '{consul_addr}'
+        datacenter: 'vla'
+        services: ['statsd-exporter']
+        allow_stale: true
+      - server: '{consul_addr}'
+        datacenter: 'myt'
+        services: ['statsd-exporter']
+        allow_stale: true
+    relabel_configs:
+      - source_labels: ['__meta_consul_node', '__meta_consul_service_port']
+        separator: ':'
+        regex: '(.*)'
+        target_label: '__address__'
+        replacement: '$1'
+
+  - job_name: 'nomad-clients'
+    scrape_interval: 10s
+    metrics_path: '/v1/metrics'
+    params:
+        format: ['prometheus']
+    consul_sd_configs:
+      - server: '{consul_addr}'
+        datacenter: 'sas'
+        services: ['nomad-client']
+        allow_stale: true
+      - server: '{consul_addr}'
+        datacenter: 'vla'
+        services: ['nomad-client']
+        allow_stale: true
+      - server: '{consul_addr}'
+        datacenter: 'myt'
+        services: ['nomad-client']
+        allow_stale: true
+    relabel_configs:
+      - source_labels: ['__meta_consul_node', '__meta_consul_service_port']
+        separator: ':'
+        regex: '(.*)'
+        target_label: '__address__'
+        replacement: '$1'
+
+  - job_name: 'consul-agent'
+    scrape_interval: 10s
+    metrics_path: '/v1/agent/metrics'
+    params:
+        format: ['prometheus']
+    consul_sd_configs:
+      - server: '{consul_addr}'
+        datacenter: 'sas'
+        services: ['consul-agent']
+        allow_stale: true
+      - server: '{consul_addr}'
+        datacenter: 'vla'
+        services: ['consul-agent']
+        allow_stale: true
+      - server: '{consul_addr}'
+        datacenter: 'myt'
+        services: ['consul-agent']
+        allow_stale: true
+    relabel_configs:
+      - source_labels: ['__meta_consul_node', '__meta_consul_service_port']
+        separator: ':'
+        regex: '(.*)'
+        target_label: '__address__'
+        replacement: '$1'
+
+  - job_name: 'consul-server'
+    scrape_interval: 10s
+    metrics_path: '/v1/agent/metrics'
+    params:
+        format: ['prometheus']
+    consul_sd_configs:
+      - server: '{consul_addr}'
+        datacenter: 'sas'
+        services: ['consul-server']
+        allow_stale: true
+      - server: '{consul_addr}'
+        datacenter: 'vla'
+        services: ['consul-server']
+        allow_stale: true
+      - server: '{consul_addr}'
+        datacenter: 'myt'
+        services: ['consul-server']
+        allow_stale: true
+    relabel_configs:
+      - source_labels: ['__meta_consul_node', '__meta_consul_service_port']
+        separator: ':'
+        regex: '(.*)'
+        target_label: '__address__'
+        replacement: '$1'
+
+# static jobs
+
+  - job_name: 'kafka-jmx-static'
+    scrape_interval: 60s
+    scrape_timeout: 50s
+    metrics_path: "/metrics"
+    static_configs:
+      - targets: ['kafka-01-myt.test.vertis.yandex.net:42010', 'kafka-01-sas.test.vertis.yandex.net:42010', 'kafka-01-vla.test.vertis.yandex.net:42010']
+
+  - job_name: 'nomad-servers'
+    scrape_interval: 10s
+    metrics_path: '/v1/metrics'
+    params:
+        format: ['prometheus']
+    static_configs:
+      - targets: ['nomad-01-vla.test.vertis.yandex.net:4646', 'nomad-01-sas.test.vertis.yandex.net:4646', 'nomad-01-myt.test.vertis.yandex.net:4646']
+
+  - job_name: 'billing-api'
+    scrape_interval: 15s
+    metrics_path: "/metrics"
+    static_configs:
+      - targets: ['back-rt-01-sas.test.vertis.yandex.net:34102']
+
+  - job_name: 'billing-internal-api'
+    scrape_interval: 15s
+    metrics_path: "/metrics"
+    static_configs:
+      - targets: ['back-rt-01-sas.test.vertis.yandex.net:34152']
+
+  - job_name: 'billing-indexer'
+    scrape_interval: 15s
+    metrics_path: "/metrics"
+    static_configs:
+      - targets: ['shard-01-sas.test.vertis.yandex.net:34122']
+
+  - job_name: 'billing-tms'
+    scrape_interval: 15s
+    metrics_path: "/metrics"
+    static_configs:
+      - targets: ['shard-01-sas.test.vertis.yandex.net:34112']
+
+  - job_name: 'billing-events-storage'
+    scrape_interval: 15s
+    metrics_path: "/metrics"
+    static_configs:
+      - targets: ['billing-events-storage-01-sas.test.vertis.yandex.net:34132']
+
+  - job_name: 'salesman-user-api'
+    scrape_interval: 15s
+    metrics_path: "/metrics"
+    static_configs:
+      - targets: ['back-rt-01-sas.test.vertis.yandex.net:1051']
+
+  - job_name: 'salesman-user-tasks'
+    scrape_interval: 30s
+    metrics_path: "/metrics"
+    static_configs:
+      - targets: ['salesman-tasks-01-sas.test.vertis.yandex.net:1054']
+
+  - job_name: 'couchbase'
+    scrape_interval: 30s
+    metrics_path: "/metrics"
+    static_configs:
+      - targets: ['couchbase-01-sas.test.vertis.yandex.net:9273', 'couchbase-02-sas.test.vertis.yandex.net:9273', 'couchbase-03-sas.test.vertis.yandex.net:9273', 'couchbase-04-sas.test.vertis.yandex.net:9273', 'couchbase-05-sas.test.vertis.yandex.net:9273', 'couchbase-06-sas.test.vertis.yandex.net:9273']
+
+  - job_name: 'couchbase-replica'
+    scrape_interval: 30s
+    metrics_path: "/metrics"
+    static_configs:
+      - targets: ['couchbase-replica-01-sas.test.vertis.yandex.net:9273']
+
+  - job_name: 'envoy'
+    scrape_interval: 10s
+    metrics_path: '/stats/prometheus'
+    consul_sd_configs:
+      - server: '{consul_addr}'
+        datacenter: 'sas'
+        services: ['envoy']
+        allow_stale: true
+      - server: '{consul_addr}'
+        datacenter: 'vla'
+        services: ['envoy']
+        allow_stale: true
+      - server: '{consul_addr}'
+        datacenter: 'myt'
+        services: ['envoy']
+        allow_stale: true
+    relabel_configs:
+      - source_labels: ['__meta_consul_node', '__meta_consul_service_port']
+        separator: ':'
+        regex: '(.*)'
+        target_label: '__address__'
+        replacement: '$1'
+
+  - job_name: 'hobo'
+    scrape_interval: 30s
+    metrics_path: "/metrics"
+    params:
+        format: ['prometheus']
+    static_configs:
+      - targets: ['hobo-api-01-sas.test.vertis.yandex.net:36661']
+
+  - job_name: 'cassasndra-testing'
+    scrape_interval: 30s
+    metrics_path: "/metrics"
+    params:
+      format: ['prometheus']
+    static_configs:
+      - targets: [
+        'cassandra-realty-nrt-01-man.test.vertis.yandex.net:9144',
+        'cassandra-realty-nrt-02-man.test.vertis.yandex.net:9144',
+        'cassandra-realty-nrt-03-man.test.vertis.yandex.net:9144'
+        ]
+
+  - job_name: 'passport-controller-static'
+    scrape_interval: 30s
+    metrics_path: "/metrics"
+    static_configs:
+      - targets: ['back-nonrt-01-sas.test.vertis.yandex.net:6231']
+
+  - job_name: 'passport-api-static'
+    scrape_interval: 30s
+    metrics_path: "/metrics"
+    static_configs:
+      - targets: ['passport-api-01-sas.test.vertis.yandex.net:6211']
+
+  - job_name: 'vos2-autoru-api'
+    scrape_interval: 30s
+    static_configs:
+      - targets: ['vos2-rt-01-sas.test.vertis.yandex.net:36242']
+
+  - job_name: 'kafka-push-server-mdb'
+    scrape_interval: 10s
+    metrics_path: "/metrics"
+    static_configs:
+      - targets: ['logger-docker-01-sas.test.vertis.yandex.net:9100', 'logger-docker-01-vla.test.vertis.yandex.net:9100']
+
+  - job_name: 'user-clustering-builder'
+    scrape_interval: 30s
+    metrics_path: "/metrics"
+    static_configs:
+      - targets: ['devreggs-01-sas.dev.vertis.yandex.net:5121', 'slider5-01-sas.dev.vertis.yandex.net:5121']
+
+  - job_name: 'user-clustering-api'
+    scrape_interval: 30s
+    metrics_path: "/metrics"
+    static_configs:
+      - targets: ['devreggs-01-sas.dev.vertis.yandex.net:5125', 'slider5-01-sas.dev.vertis.yandex.net:5125']
+
+  - job_name: 'user-punisher-tasks'
+    scrape_interval: 30s
+    metrics_path: "/metrics"
+    static_configs:
+      - targets: ['devreggs-01-sas.dev.vertis.yandex.net:5091', 'slider5-01-sas.dev.vertis.yandex.net:5091']
+
+  - job_name: 'user-punisher-api'
+    scrape_interval: 30s
+    metrics_path: "/metrics"
+    static_configs:
+      - targets: ['devreggs-01-sas.dev.vertis.yandex.net:5095', 'slider5-01-sas.dev.vertis.yandex.net:5095']
+
+  - job_name: 'vin-decoder-scheduler'
+    scrape_interval: 10s
+    metrics_path: "/metrics"
+    static_configs:
+      - targets: ['vin-decoder-scheduler-01-sas.test.vertis.yandex.net:9967']
+
+  - job_name: 'hue-metrics'
+    scrape_interval: 10s
+    metrics_path: "/desktop/metrics/"
+    scheme: https
+    static_configs:
+      - targets: ['hdp-client-prd-02-sas.test.vertis.yandex.net:443']
+
+  - job_name: 'mmd'
+    scrape_interval: 1s
+    metrics_path: "/metrics"
+    static_configs:
+      - targets: ['spooner-01-dev.sas.yp-c.yandex.net:80', 'opyakin-roman-01-dev.sas.yp-c.yandex.net:81']
+
+  - job_name: 'consul-common-dev-servers'
+    scrape_interval: 30s
+    metrics_path: "/v1/agent/metrics"
+    params:
+      format: ['prometheus']
+    static_configs:
+      - targets: [
+          'consul-common-dev-01-vla.dev.vertis.yandex.net:8500',
+          'consul-common-dev-02-vla.dev.vertis.yandex.net:8500',
+          'consul-common-dev-03-vla.dev.vertis.yandex.net:8500',
+          'consul-common-dev-01-sas.dev.vertis.yandex.net:8500',
+          'consul-common-dev-02-sas.dev.vertis.yandex.net:8500',
+          'consul-common-dev-03-sas.dev.vertis.yandex.net:8500',
+          'consul-common-dev-01-myt.dev.vertis.yandex.net:8500',
+          'consul-common-dev-02-myt.dev.vertis.yandex.net:8500',
+          'consul-common-dev-03-myt.dev.vertis.yandex.net:8500'
+        ]
+
+  - job_name: 'consul-common-servers'
+    scrape_interval: 30s
+    metrics_path: "/v1/agent/metrics"
+    params:
+      format: ['prometheus']
+    static_configs:
+      - targets: [
+        'consul-common-01-vla.test.vertis.yandex.net:8500',
+        'consul-common-02-vla.test.vertis.yandex.net:8500',
+        'consul-common-03-vla.test.vertis.yandex.net:8500',
+        'consul-common-01-sas.test.vertis.yandex.net:8500',
+        'consul-common-02-sas.test.vertis.yandex.net:8500',
+        'consul-common-03-sas.test.vertis.yandex.net:8500',
+        'consul-common-01-myt.test.vertis.yandex.net:8500',
+        'consul-common-02-myt.test.vertis.yandex.net:8500',
+        'consul-common-03-myt.test.vertis.yandex.net:8500'
+        ]
+
+  - job_name: 'consul-common-servers-telegraf'
+    scrape_interval: 30s
+    metrics_path: "/metrics"
+    params:
+      format: ['prometheus']
+    static_configs:
+      - targets: [
+        'consul-common-01-vla.test.vertis.yandex.net:9144',
+        'consul-common-02-vla.test.vertis.yandex.net:9144',
+        'consul-common-03-vla.test.vertis.yandex.net:9144',
+        'consul-common-01-sas.test.vertis.yandex.net:9144',
+        'consul-common-02-sas.test.vertis.yandex.net:9144',
+        'consul-common-03-sas.test.vertis.yandex.net:9144',
+        'consul-common-01-myt.test.vertis.yandex.net:9144',
+        'consul-common-02-myt.test.vertis.yandex.net:9144',
+        'consul-common-03-myt.test.vertis.yandex.net:9144'
+        ]
+
+  - job_name: 'cloud-compute'
+    scrape_interval: 60s
+    metrics_path: '/monitoring/v2/prometheusMetrics'
+    params:
+      folderId:
+      - 'b1gv58n8k4k9qof9shir'
+      service:
+      - 'compute'
+    bearer_token: '${TOKEN:b1gv58n8k4k9qof9shir}'
+    static_configs:
+    - targets: ['monitoring.api.cloud.yandex.net']
+      labels:
+        folderId: 'b1gv58n8k4k9qof9shir'
+        service: 'compute'
+
+  - job_name: 'cloud-compute-dualstack'
+    scrape_interval: 60s
+    metrics_path: '/monitoring/v2/prometheusMetrics'
+    params:
+      folderId:
+      - 'b1gku1v9g6usqhakdtc7'
+      service:
+      - 'compute'
+    bearer_token: '${TOKEN:b1gv58n8k4k9qof9shir}'
+    static_configs:
+    - targets: ['monitoring.api.cloud.yandex.net']
+      labels:
+        folderId: 'b1gku1v9g6usqhakdtc7'
+        service: 'compute'
+
+  - job_name: 'cme-haproxy'
+    scrape_interval: 5s
+    metrics_path: "/metrics"
+    params:
+      format: ['prometheus']
+    static_configs:
+      - targets: [
+          'cme-lb-int-01-sas.test.vertis.yandex.net:8082',
+          'cme-lb-int-01-vla.test.vertis.yandex.net:8082'
+      ]

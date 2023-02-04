@@ -1,0 +1,56 @@
+import os
+import json
+
+from django_pgaas import HostManager
+
+
+POSTGRES_DEFAULT_HOSTS_WITH_GEO = {
+    'man-sq9hjl9s1myhc6b6.db.yandex.net': 'man',
+    'vla-izgy7jb2pub1qnzt.db.yandex.net': 'vla',
+    'sas-z3z54v6p00i4bkt6.db.yandex.net': 'sas',
+}
+
+POSTGRES_HOSTS_WITH_GEO = (
+    json.loads(os.environ.get('POSTGRES_HOSTS_WITH_GEO', '{}')) or
+    POSTGRES_DEFAULT_HOSTS_WITH_GEO
+)
+host_manager = HostManager(list(POSTGRES_HOSTS_WITH_GEO.items()))
+
+DATABASES = {
+    'default': {
+        'ENGINE': 'django_pgaas.backend',
+        'NAME': os.environ.get('POSTGRES_DB', 'corp_education_db_prod'),
+        'USER': os.environ.get('POSTGRES_USER', 'corp_education'),
+        'PASSWORD': os.environ['POSTGRES_PASSWORD'],
+        'HOST': os.environ.get('POSTGRES_HOSTS', host_manager.host_string),
+        'PORT': os.environ.get('POSTGRES_HOSTS', '6432'),
+        'CONN_MAX_AGE': 600,
+        'OPTIONS': {
+            'sslmode': 'verify-full',
+            'sslrootcert': '/app/.postgres/allCAs.pem',
+            'target_session_attrs': 'read-write',
+        },
+        'DISABLE_SERVER_SIDE_CURSORS': True,
+    },
+    'slave': {
+        'ENGINE': 'django_pgaas.backend',
+        'NAME': os.environ.get('POSTGRES_DB', 'corp_education_db_prod'),
+        'USER': os.environ.get('POSTGRES_USER', 'corp_education'),
+        'PASSWORD': os.environ['POSTGRES_PASSWORD'],
+        'HOST': os.environ.get('POSTGRES_HOSTS', host_manager.host_string),
+        'PORT': os.environ.get('POSTGRES_HOSTS', '6432'),
+        'CONN_MAX_AGE': 600,
+        'OPTIONS': {
+            'sslmode': 'verify-full',
+            'sslrootcert': '/app/.postgres/allCAs.pem',
+            'target_session_attrs': 'any',
+        },
+        'DISABLE_SERVER_SIDE_CURSORS': True,
+    },
+}
+REPLICATED_DATABASE_SLAVES = ['slave']
+
+# For PGaaS api
+POSTGRES_CLUSTER_ID = os.environ.get(
+    'POSTGRES_CLUSTER_ID', 'mdbrsum71ojvcsemieuk',
+)

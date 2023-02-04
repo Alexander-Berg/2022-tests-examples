@@ -1,0 +1,97 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - fyodor
+      - eoff
+      groups:
+      - svc_ugc_development
+labels:
+  order: '00004000'
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      url: '/api/v1/users/.*/searchapp-status.*'
+  modules:
+   - balancer2:
+        attempts: 1
+        rr: {}
+        by_name_policy:
+          name: !f get_geo("ugc_", "random")
+          unique_policy: {}
+        backends:
+        - weight: 1
+          name: ugc_vla
+          modules:
+            - report:
+                ranges: default
+                uuid: morda_searchapp_status_requests_to_vla
+            - balancer2:
+                dynamic: {
+                  max_pessimized_share: 0.2,
+                  min_pessimization_coeff: 0.1,
+                  weight_increase_step: 0.1,
+                  history_interval: "10s",
+                  backends_name: "morda_searchapp_status_to_vla",
+                }
+                attempts: 1
+                generated_proxy_backends:
+                  proxy_options:
+                    backend_timeout: 70ms
+                    connect_timeout: 10ms
+                  include_backends:
+                    type: BY_ID
+                    ids: [ugc_server_test_vla]
+        - weight: 1
+          name: ugc_sas
+          modules:
+            - report:
+                ranges: default
+                uuid: morda_searchapp_status_requests_to_sas
+            - balancer2:
+                dynamic: {
+                  max_pessimized_share: 0.2,
+                  min_pessimization_coeff: 0.1,
+                  weight_increase_step: 0.1,
+                  history_interval: "10s",
+                  backends_name: "morda_searchapp_status_to_sas",
+                }
+                attempts: 1
+                generated_proxy_backends:
+                  proxy_options:
+                    backend_timeout: 70ms
+                    connect_timeout: 10ms
+                  include_backends:
+                    type: BY_ID
+                    ids: [ugc_server_test_sas]
+        - weight: 1
+          name: ugc_man
+          modules:
+            - report:
+                ranges: default
+                uuid: morda_searchapp_status_requests_to_man
+            - balancer2:
+                dynamic: {
+                  max_pessimized_share: 0.2,
+                  min_pessimization_coeff: 0.1,
+                  weight_increase_step: 0.1,
+                  history_interval: "10s",
+                  backends_name: "morda_searchapp_status_to_man",
+                }
+                attempts: 1
+                generated_proxy_backends:
+                  proxy_options:
+                    backend_timeout: 70ms
+                    connect_timeout: 10ms
+                  include_backends:
+                    type: BY_ID
+                    ids: [ugc_server_test_man]
+        on_error:
+          modules:
+            - report:
+                ranges: default
+                uuid: morda_searchapp_status_errors
+            - errordocument:
+                status: 200
+                content: '{\"Url\": \"https://yandex.ru/ugcpub/cabinet?utm_source=searchapp\"}'

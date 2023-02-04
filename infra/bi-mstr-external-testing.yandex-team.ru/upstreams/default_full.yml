@@ -1,0 +1,38 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - xifos
+      groups: []
+labels:
+  order: '3'
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      uri: '/(.*)?'    
+  modules:
+    - hasher:
+        mode: subnet
+        subnet_v4_mask: 32
+        subnet_v6_mask: 128
+    - balancer2:
+        active_policy:
+          unique_policy: {}
+        connection_attempts: 3
+        attempts_rate_limiter:
+          limit: 0.2     
+        attempts: 5
+        hashing:
+          delay: '1s'
+          request: 'GET /ping HTTP/1.1\nHost: bi-mstr-external-testing.yandex-team.ru\n\n'
+        generated_proxy_backends:
+          proxy_options:
+            connect_timeout: 100ms
+            backend_timeout: 10s
+            keepalive_count: 1
+            fail_on_5xx: false
+            status_code_blacklist: ["429"]
+          include_backends:
+            type: BY_ID
+            ids: [tmstr01h.oebs.yandex.net, tmstr02h.oebs.yandex.net]

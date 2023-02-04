@@ -1,0 +1,185 @@
+<!doctype html>
+<!--
+Title:
+Менеджер объектов: опция zoomMargin менеджера объектов
+
+Description:
+Проверка опции zoomMargin менеджера объектов. 
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+objectManager
+
+Estimated time:
+90000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась корректно со спаном с водной поверхностью и меткой кластера "10".
+  Сверху имеются кнопки "[350, 35...", "[250, 10...", "[350,0]/...", "100/0", "clear".
+  
+Step:
+  Action:
+  Выполнить клик в метку кластера.
+
+  Expectation:
+  Спан призумился, метка кластера распалась на три кластера со значением "2" и 4 метки коллекции. 
+
+Step:
+  Action:
+  Выполнить клик в кнопку "clear", затем клик в "100/0", клик в кластерную метку.
+
+  Expectation:
+  Кнопка "clear" возвращает первоначальный спан с кластером "10".
+  Спан призумился, метка кластера распалась на два кластера со значением "2" и 2 кластера со значением "3". 
+
+Step:
+  Action:
+  Выполнить клик в кнопку "clear", затем клик в "[350,0]/...", клик в кластерную метку.
+
+  Expectation:
+  Кнопка "clear" возвращает первоначальный спан с кластером "10".
+  Спан призумился, метка кластера распалась на три кластера со значением "2" и 4 метки коллекции. 
+
+Step:
+  Action:
+  Выполнить клик в кнопку "clear", затем клик в "[250, 10...", клик в кластерную метку.
+
+  Expectation:
+  Кнопка "clear" возвращает первоначальный спан с кластером "10".
+  Спан призумился, метка кластера распалась на два кластера со значением "2" и 2 кластера со значением "3".
+  Метки расположены внизу спана(не по центру). 
+
+Step:
+  Action:
+  Выполнить клик в кнопку "clear", затем клик в "[350, 35...", клик в кластерную метку.
+
+  Expectation:
+  Кнопка "clear" возвращает первоначальный спан с кластером "10".
+  Спан призумился, метка кластера распалась на кластер со значением "2", кластер со значением "5", кластер со значением "3".
+  Метки расположены в нижнем левом углу спана. 
+-->
+<html>
+<head>
+    <title>API 2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type="text/javascript">
+        Api('init');
+        function init(ym) {
+            var map = myMap = new ym.Map('map', {
+                center: [59.936708, 30.046006],
+                zoom: 12,
+                controls: ['fullscreenControl']
+            });
+            var bounds = map.getBounds();
+
+            addGrid(map);
+            var log = new Log();
+
+            log.info('Clear the state after every zoomMargin change');
+
+            // TODO: проверить почему не работает зумклик по кластерам
+
+            var x = map.getCenter()[0], y = map.getCenter()[1], i = 0;
+            var objectManager = new ym.ObjectManager({clusterize: true, clusterDisableClickZoom: false});
+            objectManager.options.set({
+                gridSize: 64
+            });
+
+            for (i = 0; i < 10; i++) {
+                objectManager.objects.add({
+                    "type": "Feature",
+                    "id": i,
+                    "geometry": {
+                        "type": "Point",
+                        "coordinates": [x + 0.0037, y + (i - 5) / 1000]
+                    },
+                    "properties": {
+                        "balloonContent": i,
+                        "clusterCaption": i,
+                        "hintContent": i
+                    }
+                });
+                objectManager.objects.add({
+                    "type": "Feature",
+                    "id": i,
+                    "geometry": {
+                        "type": "Point",
+                        "coordinates": [x + 0.0013, y + (i - 5) / 1000]
+                    },
+                    "properties": {
+                        "balloonContent": i,
+                        "clusterCaption": i,
+                        "hintContent": i
+                    }
+                });
+                objectManager.objects.add({
+                    "type": "Feature",
+                    "id": i,
+                    "geometry": {
+                        "type": "Point",
+                        "coordinates": [x + 0.0014, y + (i - 5) / 1000]
+                    },
+                    "properties": {
+                        "balloonContent": i,
+                        "clusterCaption": i,
+                        "hintContent": i
+                    }
+                });
+            }
+            map.geoObjects.add(objectManager);
+
+            var button = new ym.control.Button("clear");
+            button.events.add("click", function (e) {
+                map.setBounds(bounds);
+            });
+            map.controls.add(button);
+
+            button = new ym.control.Button("100 / 0");
+            button.events.add("select", function (e) {
+                objectManager.options.set("zoomMargin", 100)
+            }).add("deselect", function (e) {
+                objectManager.options.set("zoomMargin", 0)
+            });
+            map.controls.add(button);
+
+            button = new ym.control.Button("[350, 0] / [0, 150]");
+            button.events.add("select", function (e) {
+                objectManager.options.set("zoomMargin", [150, 0])
+            }).add("deselect", function (e) {
+                objectManager.options.set("zoomMargin", [0, 150])
+            });
+            map.controls.add(button);
+
+            button = new ym.control.Button("[250, 100, 0, 100] / [100, 0, 100, 250]");
+            button.events.add("select", function (e) {
+                objectManager.options.set("zoomMargin", [250, 100, 0, 100])
+            }).add("deselect", function (e) {
+                objectManager.options.set("zoomMargin", [100, 0, 100, 250])
+            });
+            map.controls.add(button);
+
+            button = new ym.control.Button("[350, 350, 0, 0] / [0, 0, 350, 350]");
+            button.events.add("select", function (e) {
+                objectManager.options.set("zoomMargin", [350, 350, 0, 0])
+            }).add("deselect", function (e) {
+                objectManager.options.set("zoomMargin", [0, 0, 350, 350])
+            });
+            map.controls.add(button);
+        }
+
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;">
+</div>
+</body>
+</html>

@@ -1,0 +1,162 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Кластер: функция создания кластера кластеризатором
+
+Description:
+Проверка работы функции для создания кластера кластеризатором.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components:
+clusterer
+
+Estimated time:
+90000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  При загрузке карты сначала отображается спан Москвы с множеством кластерных меток, через секунду происходит смена спана и отзум, на конечном спане несколько кластерных меток(могут быть метки коллекций).
+  Сверху слева имеется кнопка "hasHint".
+
+Step:
+  Action:
+  Навести курсор на кластерные метки.
+
+  Expectation:
+  При наведении на кластерную метку курсор меняется на палец.
+  В зависимости от значения кластеризации появляется хинт. Если значение кластеризации > 100 хинт: "Меток навалом", если < 10 хинт: "Мало меток", если от 10 до 100 хинт: "Нормально так меток".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "hasHint".
+  Навести курсор на кластерные метки.
+
+  Expectation:
+  Под контейнером с картой появляется текст: "hasHint: true".
+  При наведении на кластерную метку курсор меняется на палец.
+  В зависимости от значения кластеризации появляется хинт. Если значение кластеризации > 100 хинт: "Меток навалом", если < 10 хинт: "Мало меток", если от 10 до 100 хинт: "Нормально так меток".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "hasHint".
+  Навести курсор на кластерные метки.
+
+  Expectation:
+  Под контейнером с картой появляется текст: "hasHint: false".
+  При наведении на кластерную метку курсор меняется на палец.
+  Хинт при наведении курсора на метки не появляется.
+
+Step:
+  Action:
+  Выполнить клик в кластерную метку.
+
+  Expectation:
+  Происходит смена спана с призумом, на карте спан с кластеризованными метками с меньшим значением кластеризации и метки коллекций. 
+
+Step:
+  Action:
+  Навести курсор на кластерные метки и метки коллекций.
+
+  Expectation:
+  При наведении на метки кластеров и метки коллекции курсор меняется на палец.
+  Хинт при наведении курсора на кластерные метки не появляется.  
+  Хинт при наведение курсора на метку коллекции - номер метки.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 10,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+
+            var clusterer = new ymaps.Clusterer();
+            var placemarksNumber = 200;
+            var bounds = map.getBounds();
+            var newPlacemarks = createGeoObjects(placemarksNumber, bounds);
+            var hintButton = new ymaps.control.Button({data: {content: 'hasHint'}, options: {
+                selectOnClick: true,
+                maxWidth: 160
+            }});
+
+            clusterer.createCluster = function (center, geoObjects) {
+                var clusterPlacemark = ymaps.Clusterer.prototype.createCluster.call(this, center, geoObjects),
+                        geoObjectsLength = clusterPlacemark.getGeoObjects().length,
+                        hintContent;
+                if (geoObjectsLength < 10) {
+                    hintContent = 'Мало меток';
+                } else if (geoObjectsLength < 100) {
+                    hintContent = 'Нормально так меток';
+                } else {
+                    hintContent = 'Меток навалом';
+                }
+                clusterPlacemark.properties.set('hintContent', hintContent);
+                return clusterPlacemark;
+            };
+
+            clusterer.add(newPlacemarks);
+            map.geoObjects.add(clusterer);
+
+            hintButton.events
+                    .add('select', function () {
+                        clusterer.options.set('hasHint', true);
+                        log.info('hasHint: ' + clusterer.options.get('hasHint'))
+                    })
+                    .add('deselect', function () {
+                        clusterer.options.set('hasHint', false);
+                        log.info('hasHint: ' + clusterer.options.get('hasHint'))
+                    });
+
+            map.controls.add(hintButton);
+
+            // change map zoom
+            setTimeout(function () {
+                map.setZoom(7)
+            }, 1000);
+
+            function createGeoObjects(number, bounds) {
+                var placemarks = [];
+                // Создаем нужное количество меток
+                for (var i = 0; i < number; i++) {
+                    // Генерируем координаты метки случайным образом.
+                    var coordinates = getRandomCoordinates(bounds);
+                    // Создаем метку со случайными координатами.
+                    var myPlacemark = new ymaps.Placemark(coordinates, {
+                        balloonContent: i, hintContent: i, clusterCaption: i}, {});
+                    placemarks.push(myPlacemark);
+                }
+                return placemarks;
+            }
+
+            function getRandomCoordinates(bounds) {
+                var size = [bounds[1][0] - bounds[0][0], bounds[1][1] - bounds[0][1]];
+                return [Math.random() * size[0] + bounds[0][0], Math.random() * size[1] + bounds[0][1]];
+            }
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

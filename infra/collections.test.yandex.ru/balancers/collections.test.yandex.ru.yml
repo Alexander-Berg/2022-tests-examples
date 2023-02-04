@@ -1,0 +1,272 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - ftdebugger
+      - next0
+      - lifus
+      - anoh
+      groups: []
+config_transport:
+  nanny_static_file:
+    service_id: production_balancer_pdb_test
+---
+instance_macro:
+  workers: !f get_workers()
+  sections:
+    admin:
+      ips: [127.0.0.1, '::1']
+      ports: [14590]
+      modules:
+        - http: {}
+        - admin: {}
+    stats_storage:
+      ips: [127.0.0.4]
+      ports: [14590]
+      modules:
+        - report:
+            uuid: "service_total"
+            ranges: "default"
+            just_storage: true
+        - http: {}
+        - errordocument:
+            status: 204
+    https_section:
+      ips: ['2a02:6b8:0:3400::109c']
+      ports: [443]
+      local_ips: [local_v4_addr, local_v6_addr]
+      local_ports: [14591]
+      extended_http_macro:
+        port: 14591
+        report_uuid: 'https'
+        enable_ssl: true
+        force_ssl: true
+        ssl_sni_contexts:
+          collections.test.yandex.ru:
+            servername_regexp: default
+            disable_ocsp: true
+        modules:
+          - threshold:
+              lo_bytes: 1048576
+              hi_bytes: 10485760
+              pass_timeout: 10s
+              recv_timeout: 1s
+          - headers:
+              create_func:
+                X-Forwarded-For-Y: realip
+                X-Collections-Req-Id: reqid
+              create_func_weak:
+                X-Req-Id: reqid
+          - log_headers:
+              name_re: 'User-Agent|X-Req-Id'
+          - response_headers:
+              delete: 'uWSGI-encoding|uwsgi-encoding'
+          - regexp:
+              sections:
+                avatars:
+                  matcher:
+                    match_fsm:
+                      uri: /avatars/get-pdb.*
+                  modules:
+                    - regexp:
+                        include_upstreams:
+                          type: BY_ID
+                          ids: [avatars_pdb]
+                slbping:
+                  matcher:
+                    match_fsm:
+                      uri: /slb_ping
+                  modules:
+                    - slb_ping_macro:
+                        errordoc: true
+                awacs-balancer-health-check:
+                  matcher:
+                    match_fsm:
+                      uri: /awacs-balancer-health-check
+                  modules:
+                    - errordocument:
+                        status: 200
+                priemka:
+                  matcher:
+                    match_fsm:
+                      host: "priemka.collections.test.yandex.ru"
+                  modules:
+                    - response_headers:
+                        create:
+                          X-Section: 'https:priemka'
+                    - regexp:
+                        include_upstreams:
+                          filter:
+                            id_prefix: 'priemka_'
+                          order:
+                            label:
+                              name: order
+                pull:
+                  matcher:
+                    match_fsm:
+                      host: "(fiji-)?pull-[0-9]+.collections.test.yandex.(ru|by|com|ua|kz)"
+                  modules:
+                    - response_headers:
+                        create:
+                          X-Section: 'https:pull'
+                    - regexp:
+                        include_upstreams:
+                          filter:
+                            id_prefix_in:
+                              - 'pull_'
+                              - 'common_upstream'
+                          order:
+                            label:
+                              name: order
+                exp_testing:
+                  matcher:
+                    match_fsm:
+                      cgi: "(exp-testing=da|exp_confs=testing)"
+                      surround: true
+                  modules:
+                    - response_headers:
+                        create:
+                          X-Section: 'https:exp_testing'
+                    - exp_getter_macro:
+                        header_name: X-L7-EXP-Testing
+                        service_name: collections
+                    - shared:
+                        uuid: upstreams
+                    - regexp:
+                        include_upstreams:
+                          filter:
+                            id_prefix_in:
+                              - 'common_'
+                              - 'default_upstream_nodejs'
+                          order:
+                            label:
+                              name: order
+                default:
+                  matcher: {}
+                  modules:
+                    - response_headers:
+                        create:
+                          X-Section: 'https:default'
+                    - exp_getter_macro:
+                        service_name: collections
+                    - shared:
+                        uuid: upstreams
+    http_section:
+      ips: ['2a02:6b8:0:3400::109c']
+      ports: [80]
+      local_ips: [local_v4_addr, local_v6_addr]
+      local_ports: [14590]
+      extended_http_macro:
+        port: 14590
+        report_uuid: 'http'
+        modules:
+          - threshold:
+              lo_bytes: 1048576
+              hi_bytes: 10485760
+              pass_timeout: 10s
+              recv_timeout: 1s
+          - headers:
+              create_func:
+                X-Forwarded-For-Y: realip
+                X-Collections-Req-Id: reqid
+              create_func_weak:
+                X-Req-Id: reqid
+          - log_headers:
+              name_re: 'User-Agent|X-Req-Id'
+          - response_headers:
+              delete: 'uWSGI-encoding|uwsgi-encoding'
+              create:
+                X-Section: 'http:default'
+          - regexp:
+              sections:
+                avatars:
+                  matcher:
+                    match_fsm:
+                      uri: /avatars/get-pdb.*
+                  modules:
+                    - regexp:
+                        include_upstreams:
+                          type: BY_ID
+                          ids: [avatars_pdb]
+                slbping:
+                  matcher:
+                    match_fsm:
+                      uri: /slb_ping
+                  modules:
+                    - slb_ping_macro:
+                        errordoc: true
+                awacs-balancer-health-check:
+                  matcher:
+                    match_fsm:
+                      uri: /awacs-balancer-health-check
+                  modules:
+                    - errordocument:
+                        status: 200
+                priemka-quality:
+                  matcher:
+                    match_fsm:
+                      host: "priemka-quality.collections.test.yandex.ru"
+                  modules:
+                    - headers:
+                        create_func:
+                          X-Forwarded-For-Y: realip
+                          X-Collections-Req-Id: reqid
+                        create_func_weak:
+                          X-Req-Id: reqid
+                    - regexp:
+                        include_upstreams:
+                          filter:
+                            id_suffix_in:
+                              - '_pdb_card_recommender_priemka'
+                              - '_pdb_hot_feed_priemka'
+                          order:
+                            label:
+                              name: order
+                searchmetanets:
+                  matcher:
+                    match_source_ip:
+                      source_mask: '5.45.192.0/18,5.255.192.0/18,37.9.64.0/18,37.140.128.0/18,77.88.0.0/18,84.201.128.0/18,87.250.224.0/19,93.158.128.0/18,95.108.128.0/17,100.43.64.0/19,130.193.32.0/19,141.8.128.0/18,178.154.128.0/17,199.21.96.0/22,199.36.240.0/22,213.180.192.0/19,2620:10f:d000::/44,2a02:6b8::/32'
+                  modules:
+                    - headers:
+                        create_func:
+                          X-Forwarded-For-Y: realip
+                          X-Collections-Req-Id: reqid
+                        create_func_weak:
+                          X-Req-Id: reqid
+                    - regexp:
+                        include_upstreams:
+                          filter:
+                            or:
+                              - id_prefix_in:
+                                  - 'common_'
+                                  - 'default_upstream_nodejs'
+                              - id_suffix_in:
+                                  - '_pdbcg'
+                                  - '_api_informers'
+                                  - '_pdb_hot_feed'
+                                  - '_pdb_hot_feed_debug_info'
+                                  - '_pdb_top_reader'
+                                  - '_pdb_card_recommender'
+                                  - '_pdb_image_recommender'
+                                  - '_pdb_profile_viewer'
+                          order:
+                            label:
+                              name: order
+                exp_testing:
+                  matcher:
+                    match_fsm:
+                      cgi: "(exp-testing=da|exp_confs=testing)"
+                      surround: true
+                  modules:
+                    - exp_getter_macro:
+                        header_name: X-L7-EXP-Testing
+                        service_name: collections
+                    - shared:
+                        uuid: upstreams
+                default:
+                  matcher: {}
+                  modules:
+                    - exp_getter_macro:
+                        service_name: collections
+                    - shared:
+                        uuid: upstreams

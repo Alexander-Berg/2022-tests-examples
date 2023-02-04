@@ -1,0 +1,42 @@
+---
+service: infracloudnetwork
+title: infra-env-ebpf-agent-tests-build
+ci:
+  secret: sec-01eb1ev312nt4461fyqx248tet
+  runtime:
+    sandbox-owner: RCCS-ADMINS
+  triggers:
+    - on: pr
+      flow: build
+
+  flows:
+    build:
+      title: "build"
+      jobs:
+        ya_make:
+          title: build ebpf-agent-tests layers
+          task: common/sandbox/ya_make_tgz
+          input:
+            targets: infra/environments/ebpf-agent-tests
+            arts: "infra/environments/ebpf-agent-tests/vm-layer/layer.tar.zst;\
+            infra/environments/ebpf-agent-tests/vm-image/rootfs.img;\
+            infra/environments/ebpf-agent-tests/vm-layer-5.4.134-19/layer.tar.zst;\
+            infra/environments/ebpf-agent-tests/vm-image-5.4.134-19/rootfs.img;\
+            infra/environments/ebpf-agent-tests/vm-layer-5.4.187-35.2/layer.tar.zst;\
+            infra/environments/ebpf-agent-tests/vm-image-5.4.187-35.2/rootfs.img"
+            # Do not check released resources
+            definition_flags: -DSKIP_RELEASED=1
+            junit_report: true
+            test: true
+            #
+            result_rt: "ARCADIA_PROJECT_TGZ"
+            # Avoid double archivation
+            resource_compress: false
+            resource_archive_check: true
+            # Auto release task's resources if tests succeed
+            release_on_success: true
+            release_status: stable
+            release_subject: 'testenv auto release'
+          requirements:
+            sandbox:
+              platform: linux

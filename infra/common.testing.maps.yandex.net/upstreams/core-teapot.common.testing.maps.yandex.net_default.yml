@@ -1,0 +1,81 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - robot-maps-sandbox
+      groups:
+      - svc_vops_maps
+      - svc_maps-core-common-balancer
+labels:
+  balancer_deployer_commit_id: '9754591'
+  balancer_deployer_sign: e2c01e90e9f447d16f7ff66d53cb402f
+  order: '40000000'
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      host: 'core-teapot\\.common\\.testing\\.maps\\.yandex\\.net'
+  modules:
+    - report:
+        uuid: 'core-teapot_common_testing_maps_yandex_net'
+        ranges: default
+    - report:
+        uuid: 'core-teapot_common_testing_maps_yandex_net_default'
+        ranges: default
+    - threshold:
+        lo_bytes: 734003
+        hi_bytes: 838860
+        pass_timeout: 10s
+        recv_timeout: 1s
+    - headers:
+        append_func:
+          X-Forwarded-For: realip
+        create_func_weak:
+          X-Real-IP: realip
+          X-Source-Port-Y: realport
+        create:
+          Host: 'core-teapot.testing.maps.yandex.net'
+          X-Ya-Backend-Timeout-Ms: '1000'
+    - request_replier:
+        rate: 0.1
+        rate_file: './controls/mirroring_core-teapot_common_testing_maps_yandex_net_default.weights'
+        enable_failed_requests_replication: true
+        sink:
+          modules:
+            - balancer2:
+                attempts: 2
+                attempts_rate_limiter:
+                  limit: 0.1
+                active:
+                  steady: true
+                  delay: '10s'
+                  request: 'GET /ping HTTP/1.1\r\nHost: core-teapot.testing.maps.yandex.net\r\n\r\n'
+                generated_proxy_backends:
+                  proxy_options:
+                    connect_timeout: 70ms
+                    backend_timeout: 1000ms
+                    keepalive_count: 10
+                  include_backends:
+                    type: BY_ID
+                    ids: [maps_core_teapot_unstable_sas,maps_core_teapot_unstable_vla]
+    - balancer2:
+        attempts: 3
+        active:
+          steady: true
+          delay: '10s'
+          request: 'GET /ping HTTP/1.1\nHost: core-teapot.testing.maps.yandex.net\r\n\r\n'
+        attempts_rate_limiter:
+          limit: 0.34
+        generated_proxy_backends:
+          proxy_options:
+            connect_timeout: 70ms
+            backend_timeout: 1000ms
+            keepalive_count: 100
+            fail_on_5xx: true
+          include_backends:
+            type: BY_ID
+            ids: [maps_core_teapot_testing_custom_sas,maps_core_teapot_testing_custom_vla]
+        on_error:
+          errordocument:
+            status: 504
+            content: "Service unavailable"

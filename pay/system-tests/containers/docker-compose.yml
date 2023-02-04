@@ -1,0 +1,233 @@
+version: '2.1'
+
+
+services:
+  jaeger:
+    image: registry.yandex.net/docker-hub-mirror/jaegertracing/all-in-one:1.29
+    environment:
+      COLLECTOR_ZIPKIN_HOST_PORT: 9411
+    expose:
+      - 5775
+      - 6831
+      - 6832
+      - 5778
+      - 14268
+      - 14250
+      - 9411
+    ports:
+      - '16686:16686'
+    networks:
+      testing_net:
+        aliases:
+          - jaeger
+
+  fnsreg:
+    image: registry.yandex.net/payplatform/fnsreg:c134f3f74747f172592fddfa12eddcdfc8d959a0-104
+    volumes:
+      - ./fnsreg:/etc/yandex/fnsreg/
+    environment:
+      APPLICATION_NAME: fnsreg
+      ENVIRONMENT_TYPE: testing
+      DEPLOY_TVM_TOOL_URL: http://tvmtool:18030
+      TVMTOOL_LOCAL_AUTHTOKEN: 600e1f045193d1b9cd21a232a37b4e59
+    networks:
+      testing_net:
+        aliases:
+          - fnsreg
+    depends_on:
+      - tvmtool
+    ports:
+      - 8080
+
+  wiremock:
+    image: wiremock
+    entrypoint: ["java", "-jar", "/wiremock-jre8-standalone.jar", "--port", "80"]
+    networks:
+      testing_net:
+        aliases:
+          - wiremock
+    ports:
+      - 80
+
+  kkt1:
+    image: kkt
+    entrypoint: [ "/bin/bash", "/kkt/setup_and_run_kkt.sh", "10000000010000001111", "9999000000000001", "3_5_30", "true"]
+    networks:
+      - testing_net
+    ports:
+      - 22
+      - 3333
+      - 4444
+
+  kkt2:
+    image: kkt
+    entrypoint: [ "/bin/bash", "/kkt/setup_and_run_kkt.sh", "10000000010000002222", "9999000000000002", "3_5_84", "true"]
+    networks:
+      - testing_net
+    ports:
+      - 22
+      - 3333
+      - 4444
+
+  kkt3:
+    image: kkt
+    entrypoint: [ "/bin/bash", "/kkt/setup_and_run_kkt.sh", "10000000010000003333", "9999000000000003", "3_5_84", "true"]
+    networks:
+      - testing_net
+    ports:
+      - 22
+      - 3333
+      - 4444
+
+  ws:
+    depends_on:
+      - kkt1
+      - kkt2
+      - kkt3
+      - ds
+      - tvmtool
+    image: ws
+    entrypoint: [ "python3", "run.py" ]
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8080/v1/info" ]
+      interval: 5s
+      timeout: 10s
+      retries: 5
+    ports:
+      - 8080
+    networks:
+      testing_net:
+        ipv4_address: 171.42.42.100
+
+  db:
+    image: registry.yandex.net/spirit/oracle/database:18.4.0-xe-quick
+    environment:
+      ORACLE_PWD: sysdba_pass
+    volumes:
+      - ./darkspirit/docker/db/setup:/docker-entrypoint-initdb.d/startup
+    ports:
+      - 1521
+    networks:
+      testing_net:
+        aliases:
+          - db
+
+  tvmtool:
+    image: tvmtool
+    networks:
+      testing_net:
+          aliases:
+            - tvmtool
+    expose:
+      - 18030
+
+  ds:
+    image: darkspirit
+    depends_on:
+      - db
+      - tvmtool
+    networks:
+      - testing_net_ipv6
+      - testing_net
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:5000" ]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+    ports:
+      - '5000:5000'
+    volumes:
+      - ./darkspirit:/darkspirit/src
+      - ./sql-tests:/sql-tests
+      - ./darkspirit/secrets:/etc/yandex/balance-common/secrets
+    environment:
+#      FLASK_DEBUG: 1
+      FLASK_APP: yb_darkspirit.servant:app
+      WSGI_RUNNER: anything-but-not-unicorn
+      YANDEX_XML_CONFIG: tests/application-sys-test-docker.cfg.xml
+      REQUESTS_CA_BUNDLE: /etc/ssl/certs/ca-certificates.crt
+    command: >
+      /bin/sh -c "run-liquibase /darkspirit/src/sql-liquibase/sql/DS &&
+      run-liquibase /sql-tests &&
+      run-app --host 0.0.0.0 --port 5000"
+#               /bin/sh "run-app --host 0.0.0.0 --port 5000"
+
+
+  cleaner:
+    image: darkspirit
+    depends_on:
+      - db
+      - ds
+    ports:
+      - 5000
+    networks:
+      - testing_net
+    volumes:
+      - ./darkspirit:/darkspirit/src
+      - ./sql-tests:/sql-tests
+      - ./darkspirit/secrets:/etc/yandex/balance-common/secrets
+    environment:
+      DEPLOY_POD_PERSISTENT_FQDN: worker_3
+      YANDEX_XML_CONFIG: /darkspirit/src/tests/application-sys-test-docker.cfg.xml
+      REQUESTS_CA_BUNDLE: /etc/ssl/certs/ca-certificates.crt
+    command:
+      python2.7 /darkspirit/src/yb_darkspirit/task/cron_scripts/cleaner.py
+
+
+  up_shifts:
+    image: darkspirit
+    depends_on:
+      - db
+      - ds
+    ports:
+      - 5000
+    networks:
+      - testing_net
+    volumes:
+      - ./darkspirit:/darkspirit/src
+      - ./sql-tests:/sql-tests
+      - ./darkspirit/secrets:/etc/yandex/balance-common/secrets
+    environment:
+      DEPLOY_POD_PERSISTENT_FQDN: worker_1
+      YANDEX_XML_CONFIG: /darkspirit/src/tests/application-sys-test-docker.cfg.xml
+      REQUESTS_CA_BUNDLE: /etc/ssl/certs/ca-certificates.crt
+    command:
+      python2.7 /darkspirit/src/yb_darkspirit/task/cron_scripts/update_shifts.py
+
+
+  pull_documents:
+    image: darkspirit
+    depends_on:
+      - db
+      - ds
+    ports:
+      - 5000
+    networks:
+      - testing_net
+    volumes:
+      - ./darkspirit:/darkspirit/src
+      - ./sql-tests:/sql-tests
+      - ./darkspirit/secrets:/etc/yandex/balance-common/secrets
+    environment:
+      DEPLOY_POD_PERSISTENT_FQDN: worker_2
+      YANDEX_XML_CONFIG: /darkspirit/src/tests/application-sys-test-docker.cfg.xml
+      REQUESTS_CA_BUNDLE: /etc/ssl/certs/ca-certificates.crt
+    command:
+      python2.7 /darkspirit/src/yb_darkspirit/task/cron_scripts/pull_documents.py
+
+
+networks:
+  testing_net:
+    ipam:
+      driver: default
+      config:
+        - subnet: 171.42.42.0/24
+    name: testing_net
+
+  testing_net_ipv6:
+    driver: bridge
+    enable_ipv6: true
+    ipam:
+      config:
+        - subnet: fa15:775::/64
+    name: testing_net_ipv6

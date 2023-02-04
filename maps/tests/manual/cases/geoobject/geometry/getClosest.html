@@ -1,0 +1,207 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Геообъект: метод поиска на контуре многоугольника точки, ближайшей к заданной
+
+Description:
+Проверка метода поиска на контуре многоугольника точки, ближайшей к заданнойпроверки точки внутри фигуры на карте.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+geoobject
+
+Estimated time:
+180000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан с водной поверхностью, на спане сверху фигура прямоугольника, внутри которой круг, снизу прямоугольник.
+  На границах(линиях) фигур имеются голубые метки коллекций(запятые), внутри нижнего прямоугольника круглая метка с черной кромкой.
+
+Step:
+  Action:
+  Навести курсор на круглую метку с черной кромкой, зажать ЛКМ и перенести метку между двумя прямоугольниками.
+   
+  Expectation:
+  Захват и перенос метки корректные: метка и другие элементы не пропадают.
+  При перемещении голубые метки коллекций перемещаются на границах(линиях) фигур на ближайшую позицию к позиции переносимой круглой метки с черной кромкой.
+  
+Step:
+  Action:
+  Скролом мыши выполнить отзум спана карты для отображения всех фигур на карте.
+   
+  Expectation:
+  Происходит корректный отзум: карта и элементы не пропадают, не мигают цветами.
+  На спане карты(сверху-вниз): синий квадрат, синий прямоугольник внутри с кругом, синий прямоугольник, зеленый прямоугольник, зеленый прямоугольник внутри с кругом, зеленый квадрат.
+  На каждой из фигур имеется голубая метка коллекции.
+
+Step:
+  Action:
+  Навести курсор на круглую метку с черной кромкой, зажать ЛКМ и перенести метку вправо от фигур на спане карты.
+   
+  Expectation:
+  Захват и перенос метки корректные: метка и другие элементы не пропадают.
+  При перемещении голубые метки коллекций перемещаются на границах(линиях) фигур на ближайшую позицию к позиции переносимой круглой метки с черной кромкой.
+    
+Step:
+  Action:
+  Навести курсор на круглую метку с черной кромкой, зажать ЛКМ и перенести метку влево от фигур на спане карты.
+   
+  Expectation:
+  Захват и перенос метки корректные: метка и другие элементы не пропадают.
+  При перемещении голубые метки коллекций перемещаются на границах(линиях) фигур на ближайшую позицию к позиции переносимой круглой метки с черной кромкой. 
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script src="../geoCS.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym; // hack
+
+            var map = myMap = new ym.Map('map', {
+                center: [40, 179],
+                zoom: 4,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            geoCSSource(ym, myMap, this);
+            addGrid(myMap);
+            var log = new Log();
+
+            var geoObjectPolyline = new ymaps.GeoObject({
+                geometry: { type: "LineString", coordinates: [
+                    [-30, 160],
+                    [-10, 160],
+                    [-10, -160],
+                    [-30, -160],
+                    [-30, 160]
+                ] }, properties: {custom: false}
+            }, { strokeWidth: 3, id: 'geoObjectPolyline', strokeColor: '#00FF00', draggable: true });
+
+            var geoObjectCircle = new ymaps.GeoObject({
+                geometry: { type: "Circle", coordinates: [-50, 180], radius: 1000000}, properties: {custom: true}
+            }, {id: 'geoObjectCircle', strokeColor: '#00FF00', fill: false, draggable: true });
+
+            var geoObjectPolygon = new ymaps.GeoObject({
+                geometry: { type: "Polygon", coordinates: [
+                    [
+                        [-60, 160],
+                        [-40, 160],
+                        [-40, -160],
+                        [-60, -160],
+                        [-60, 160]
+                    ]
+                ] }, properties: {custom: false}
+            }, {id: 'geoObjectPolygon', strokeColor: '#00FF00', fill: false, draggable: true });
+
+            var geoObjectRectangle = new ymaps.GeoObject({
+                geometry: { type: "Rectangle", coordinates: [
+                    [-80, 160],
+                    [-70, -160]
+                ] }, properties: {custom: true}
+            }, {id: 'geoObjectRectangle', strokeColor: '#00FF00', fill: false, draggable: true });
+
+            var polyline = new ymaps.Polyline([
+                [30, 160],
+                [10, 160],
+                [10, -160],
+                [30, -160],
+                [30, 160]
+            ], {custom: false}, {strokeWidth: 3, id: 'polyline', strokeColor: '#0000FF', fillColor: '#0000FF', draggable: true });
+
+            var circle = new ymaps.Circle([
+                [50, 180],
+                1000000
+            ], {custom: true}, {id: 'circle', strokeColor: '#0000FF', fill: false, draggable: true });
+
+            var polygon = new ymaps.Polygon([
+                [
+                    [60, 160],
+                    [40, 160],
+                    [40, -160],
+                    [60, -160],
+                    [60, 160]
+                ]
+            ], {custom: false}, {id: 'polygon', strokeColor: '#0000FF', fill: false, draggable: true });
+
+            var rectangle = new ymaps.Rectangle([
+                [80, 160],
+                [70, -160]
+            ], {custom: true}, {id: 'rectangle', strokeColor: '#0000FF', fill: false, draggable: true });
+
+            var point = [25.3456, -161.4186],
+                    goPoint = new ymaps.Placemark(point, {}, { draggable: true, preset: 'islands#nightCircleIcon' });
+
+            myMap.geoObjects
+                    .add(goPoint)
+                    .add(geoObjectPolyline)
+                    .add(geoObjectPolygon)
+                    .add(geoObjectRectangle)
+                    .add(geoObjectCircle)
+                    .add(polyline)
+                    .add(polygon)
+                    .add(rectangle)
+                    .add(circle);
+
+            var closestgeoObjectPolyline = geoObjectPolyline.geometry.getClosest(point).position;
+            var closestgeoObjectPolygon = geoObjectPolygon.geometry.getClosest(point).position;
+            var closestgeoObjectRectangle = geoObjectRectangle.geometry.getClosest(point).position;
+            var closestgeoObjectCircle = geoObjectCircle.geometry.getClosest(point).position;
+            var closestpolyline = polyline.geometry.getClosest(point).position;
+            var closestpolygon = polygon.geometry.getClosest(point).position;
+            var closestrectangle = rectangle.geometry.getClosest(point).position;
+            var closestcircle = circle.geometry.getClosest(point).position,
+
+                    goСlosestgeoObjectPolyline = new ymaps.Placemark(closestgeoObjectPolyline),
+                    goСlosestgeoObjectPolygon = new ymaps.Placemark(closestgeoObjectPolygon),
+                    goСlosestgeoObjectRectangle = new ymaps.Placemark(closestgeoObjectRectangle),
+                    goСlosestgeoObjectCircle = new ymaps.Placemark(closestgeoObjectCircle),
+                    goСlosestpolyline = new ymaps.Placemark(closestpolyline),
+                    goСlosestpolygon = new ymaps.Placemark(closestpolygon),
+                    goСlosestrectangle = new ymaps.Placemark(closestrectangle),
+                    goСlosestcircle = new ymaps.Placemark(closestcircle);
+
+            myMap.geoObjects
+                    .add(goСlosestgeoObjectPolyline)
+                    .add(goСlosestgeoObjectPolygon)
+                    .add(goСlosestgeoObjectRectangle)
+                    .add(goСlosestgeoObjectCircle)
+                    .add(goСlosestpolyline)
+                    .add(goСlosestpolygon)
+                    .add(goСlosestrectangle)
+                    .add(goСlosestcircle);
+
+            goPoint.events.add('drag', function () {
+                goСlosestgeoObjectPolyline.geometry.setCoordinates(geoObjectPolyline.geometry.getClosest(goPoint.geometry.getCoordinates()).position);
+                goСlosestgeoObjectPolygon.geometry.setCoordinates(geoObjectPolygon.geometry.getClosest(goPoint.geometry.getCoordinates()).position);
+                goСlosestgeoObjectRectangle.geometry.setCoordinates(geoObjectRectangle.geometry.getClosest(goPoint.geometry.getCoordinates()).position);
+                goСlosestgeoObjectCircle.geometry.setCoordinates(geoObjectCircle.geometry.getClosest(goPoint.geometry.getCoordinates()).position);
+                goСlosestpolyline.geometry.setCoordinates(polyline.geometry.getClosest(goPoint.geometry.getCoordinates()).position);
+                goСlosestpolygon.geometry.setCoordinates(polygon.geometry.getClosest(goPoint.geometry.getCoordinates()).position);
+                goСlosestrectangle.geometry.setCoordinates(rectangle.geometry.getClosest(goPoint.geometry.getCoordinates()).position);
+                goСlosestcircle.geometry.setCoordinates(circle.geometry.getClosest(goPoint.geometry.getCoordinates()).position);
+
+            });
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

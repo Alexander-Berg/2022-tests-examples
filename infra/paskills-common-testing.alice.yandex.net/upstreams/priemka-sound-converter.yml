@@ -1,0 +1,43 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - danichk
+      groups: []
+labels:
+  order: '05000000'
+config_mode: easy2
+---
+l7_upstream_macro:
+    version: 0.0.1
+    id: priemka-sound-converter
+    matcher:
+        uri_re: '/sound-converter(/.*)?'
+    rewrite:
+        - target: PATH
+          pattern: 
+            re: '/sound-converter/(.*)?'
+            case_sensitive: false
+          replacement: '/%1'
+    monitoring:
+        uuid: priemka-sound-converter
+        ranges: 1s,5s,10s,50s,1000s
+    flat_scheme:
+        balancer:
+            attempt_all_endpoints: true
+            fast_attempt_all_endpoints: true
+            max_reattempts_share: 0.15
+            max_pessimized_endpoints_share: 0.2
+            health_check: 
+                delay: 1s
+                request: 'GET /ping HTTP/1.1\nHost: paskills-common-testing.alice.yandex.net\n\n'
+            connect_timeout: 50ms
+            backend_timeout: 10s
+            keepalive_count: 3
+            do_not_retry_http_responses: true
+        backend_ids:
+            - priemka-sound-converter
+        on_error:
+            static:
+                status: 504
+                content: "Service unavailable"

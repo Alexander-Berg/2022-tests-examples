@@ -1,0 +1,163 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Макет: слушаем события на кастомной кнопке
+
+Description:
+Проверка прослушивания событий на кастомной кнопке.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+layout
+
+Estimated time:
+120000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+  
+  Expectation:
+  Карта отобразилась корректно. 
+  На карте спан Московской области, сверху слева кнопка "Кастомная кнопка".
+
+Step:
+  Action:
+  Навести курсор на кнопку "Кастомная кнопка".
+  Перевести курсор на спан карты.
+  
+  Expectation:
+  При наведении на кнопку курсор меняется на палец, появляется хинт "Нажмите на кнопку", под контейнером появляется событие наведения: "event: mouseenter".
+  При уводе курсора за пределы кнопки под контейнером появляется событие: "event: mouseleave".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "Кастомная кнопка".
+  
+  Expectation:
+  По клику кнопка становится черного цвета, текст кнопки белого.
+  Под контейнером с картой появляются события: "event: mousedown; event: mouseup; event: click"(события наведения/увода курсора также дублируются).
+
+Step:
+  Action:
+  Выполнить клик ПКМ в кнопку "Кастомная кнопка".
+  
+  Expectation:
+  По клику выпадает контекстное меню, внешний вид кнопки без изменений.
+  Под контейнером с картой появляются события: "event: mousedown; event: mouseup; event: contextmenu"(события наведения/увода курсора также дублируются).
+
+Step:
+  Action:
+  Навести курсор на кнопку "Кастомная кнопка".
+  Выполнить скрол колесиком мыши.
+  
+  Expectation:
+  Внешний вид кнопки при скроле без изменений.
+  Под контейнером с картой появляются события: "event: wheel"(события наведения/увода курсора также дублируются).
+-->
+<html>
+<head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../helper.js"></script>
+    <style>
+        .my-button-selected {
+            color: #f5f5f5;
+            background-color: #333333;
+            outline: 2px dashed #333;
+            outline: 5px auto -webkit-focus-ring-color;
+            outline-offset: -2px;
+            display: inline-block;
+            padding: 4px 14px;
+            margin-bottom: 0;
+            font-size: 14px;
+            line-height: 20px;
+            text-align: center;
+            vertical-align: middle;
+            cursor: pointer;
+            border: 1px solid #bbbbbb;
+            border-color: #e6e6e6 #e6e6e6 #bfbfbf;
+            font-family: Arial;
+        }
+
+        .my-button {
+            display: inline-block;
+            padding: 4px 14px;
+            margin-bottom: 0;
+            font-size: 14px;
+            line-height: 20px;
+            color: #333333;
+            text-align: center;
+            vertical-align: middle;
+            cursor: pointer;
+            background-color: #f5f5f5;
+            border: 1px solid #bbbbbb;
+            border-color: #e6e6e6 #e6e6e6 #bfbfbf;
+            font-family: Arial;
+        }
+    </style>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            var map = myMap = new ym.Map('map', {
+                center: [55.73259667357658, 37.70153663432529],
+                zoom: 9,
+                behaviors: ['default', 'scrollZoom'],
+                controls: []
+            });
+
+            var log = new Log();
+            addGrid(myMap);
+
+            log.info('Button changes style on click. Expected shape - null');
+
+            var buttonLayout = ymaps.templateLayoutFactory.createClass(
+                            "<div class='[if state.selected]my-button-selected[else]my-button[endif]' title='$[data.title]'>" +
+                            "$[data.content]" +
+                            "</div>", {
+                        disableDomEventListening: true
+                    });
+
+            ymaps.layout.storage.add('custom#layout', buttonLayout);
+
+            var button = new ymaps.control.Button({
+                data: {
+                    content: 'Кастомная кнопка',
+                    title: 'Нажмите на кнопку'
+                },
+                options: {
+                    layout: buttonLayout
+                }});
+
+            button.events.add(['click', 'contextmenu', 'dblclick', 'mousedown', 'mouseenter', 'mouseleave', 'mouseup', 'multitouchend',
+                'multitouchstart', 'wheel'], function (e) {
+                log.info('event: ' + e.get('type'))
+            });
+
+            map.controls.add(button, { float: 'none', position: {left: '5px', top: '5px'} });
+
+            // проверка шейпа контрола с кастомным макетом
+            button.getLayout().then(function (layout) {
+                var shape = layout.getShape();
+                if (shape) {
+                    log.info('button: ' + shape + ', type: ' + shape.getType() + ', bounds: '
+                            + shape.getBounds());
+                    console.log(shape)
+                } else {
+                    log.info('button shape: null');
+                    console.log(shape)
+                }
+            });
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

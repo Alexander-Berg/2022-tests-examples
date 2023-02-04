@@ -1,0 +1,77 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - fyodor
+      groups:
+      - svc_sprav_development
+labels:
+  order: 09000000
+---
+regexp_section:
+  matcher:
+    match_fsm:
+        path: /spravapi/v2/.*
+  modules:
+  - report:
+      uuid: api
+      ranges: default
+  - regexp:
+        sections:
+          modify_method:
+            matcher:
+              match_fsm: {match: (PUT|PATCH|POST|DELETE).*}
+            modules:
+            - rps_limiter_macro:
+                record_name: spravapi
+                installation: COMMON_V2
+            - balancer2:
+                attempts: 1
+                connection_attempts: 2
+                watermark_policy:
+                  lo: 0.1
+                  hi: 0.1
+                  unique_policy: {}
+                weighted2: {}
+                generated_proxy_backends:
+                  proxy_options:
+                    backend_timeout: 10s
+                    connect_timeout: 70ms
+                    keepalive_count: 0
+                    fail_on_5xx: true
+                  include_backends:
+                    type: BY_ID
+                    ids: [public-api-testing-deploy]
+                on_error:
+                  errordocument:
+                    status: 504
+                    content: "Service unavailable"
+          default:
+            matcher: {}
+            modules:
+            - rps_limiter_macro:
+                record_name: spravapi
+                installation: COMMON_V2
+            - balancer2:
+                attempts: 3
+                attempts_rate_limiter:
+                  limit: 0.34
+                connection_attempts: 2
+                watermark_policy:
+                  lo: 0.1
+                  hi: 0.1
+                  unique_policy: {}
+                weighted2: {}
+                generated_proxy_backends:
+                  proxy_options:
+                    backend_timeout: 10s
+                    connect_timeout: 70ms
+                    keepalive_count: 0
+                    fail_on_5xx: true
+                  include_backends:
+                    type: BY_ID
+                    ids: [public-api-testing-deploy]
+                on_error:
+                  errordocument:
+                    status: 504
+                    content: "Service unavailable"

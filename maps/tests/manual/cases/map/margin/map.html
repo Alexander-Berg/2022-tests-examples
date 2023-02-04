@@ -1,0 +1,140 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Карта: отступы от заданной точки
+
+Description:
+Проверка отступов карты от заданной точки.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+map
+
+Estimated time:
+90000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+  
+  Expectation:
+  Карта отобразилась корректно. 
+  В контейнере карта со спаном Москвы. На одной или нескольких сторонах карты имеются области затемнения с красными прямоугольниками.
+  Сверху имеются кнопки "Антверпен margin", "Антверпен center".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "Антверпен center". 
+  
+  Expectation:
+  Происходит смена спана карты на спан Европы с меткой в Антверпене. 
+  Метка находится в центре контейнера с картой(включая затемненные области спана).
+
+Step:
+  Action:
+  Выполнить клик в кнопку "Антверпен margin". 
+  
+  Expectation:
+  Карта смещается таким образом, что метка Антверпена находится в центре не затемненного спана карты. 
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type="text/javascript" src="helpers.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            window.ymaps = ymaps;
+            setupFakeMarginManager(document.getElementById('container'));
+
+            var myMap = new ymaps.Map("map", {
+                center: [55.73, 37.75],
+                zoom: 8,
+                controls: ['trafficControl']
+            });
+
+            var btn = new ymaps.control.Button('Антверпен center');
+            btn.events.add('click', function () {
+                myMap.setCenter([51.21287792, 4.40559963], myMap.getZoom());
+            });
+            btn.options.set('maxWidth', 200);
+            myMap.controls.add(btn);
+
+            var btn = new ymaps.control.Button('Антверпен margin');
+            btn.events.add('click', function () {
+                myMap.setCenter([51.21287792, 4.40559963], myMap.getZoom(), {useMapMargin: true});
+            });
+            btn.options.set('maxWidth', 200);
+            myMap.controls.add(btn);
+
+            var pl = new ymaps.Placemark([51.21287792, 4.40559963], {}, {
+                preset: 'islands#violetCircleDotIcon'
+            });
+
+            myMap.geoObjects.add(pl);
+
+            // добавляем случайные прямоугольники.
+            var j = Math.round(Math.random() * 5) + 1;
+            for (var i = 0; i < j; i++) {
+                var obj = {
+                    width: Math.round(Math.random() * 40) + 20,
+                    height: Math.round(Math.random() * 40) + 20
+                };
+                obj[(Math.random() > 0.5 ? 'right' : 'left')] = Math.round(Math.random() * 70) + 70;
+                obj[(Math.random() > 0.5 ? 'bottom' : 'top')] = Math.round(Math.random() * 70) + 70;
+
+                myMap.margin.addArea(obj);
+            }
+
+            redrawMargins(myMap, document.getElementById('container'));
+            myMap.events.add('marginchange', function (e) {
+                redrawMargins(myMap, document.getElementById('container'));
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+            log.info("Test case:");
+
+        }
+    </script>
+    <style>
+        #container {
+            position: relative;
+        }
+
+        #map, #container {
+            width: 1000px;
+            height: 500px;
+        }
+
+        .panel {
+            position: absolute;
+            background-color: black;
+            opacity: 0.3;
+            pointer-events: none;
+        }
+
+        .rect {
+            position: absolute;
+            background-color: red;
+            opacity: 0.3;
+            pointer-events: none;
+        }
+    </style>
+
+</head>
+<body>
+<div id="container">
+    <div id="map"></div>
+</div>
+
+</body>
+</html>

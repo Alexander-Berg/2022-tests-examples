@@ -1,0 +1,52 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - nexidan
+      groups: []
+labels:
+  order: 00008400
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      uri: '(/znatoki)?/avatars/.*'
+  modules:
+    - rewrite:
+        actions:
+          - regexp: '(/znatoki)?/avatars/(.*)'
+            rewrite: '/%2'
+    - balancer2:
+        rr: {}
+        attempts: 2
+        attempts_rate_limiter:
+          limit: 0.15
+          coeff: 0.99
+        generated_proxy_backends:
+          proxy_options:
+            connect_timeout: 100ms
+            backend_timeout: 10s
+            status_code_blacklist: ['404']
+          instances:
+            - host: avatars.mdst.yandex.net
+              port: 80
+              weight: 1
+        on_error:
+          modules:
+          - balancer2:
+              rr: {}
+              attempts: 2
+              attempts_rate_limiter:
+                limit: 0.15
+                coeff: 0.99
+              generated_proxy_backends:
+                proxy_options:
+                  connect_timeout: 100ms
+                  backend_timeout: 10s
+                instances:
+                  - host: avatars.mds.yandex.net
+                    port: 80
+                    weight: 1
+              on_error:
+                modules:
+                - errordocument: {content: Gateway Timeout, status: 504}

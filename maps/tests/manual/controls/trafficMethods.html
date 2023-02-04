@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<!--
+Title:
+Контрол пробок: методы контрола
+
+Description:
+Проверка работы методов контрола пробок.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+smoke, regress
+
+Estimated time:
+90000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась корректно с пробочными линиями. 
+  Контрол пробок развернут, в контроле: иконка светофора; бал пробок и время. 
+  Имеется флаг "Сейчас" и "Прогноз", и чекбокс "Дорожные события"(неактивен).
+  Справа сверху кнопки методов контрола.
+
+Step:
+  Action:
+  Открыть инструменты разработчика командами Windows: Ctrl + Shift + I если у вас MacOS: ⌥ + ⌘ + I, вкладку Console.
+
+  Expectation:
+  В консоли отображаются строки: "parentchange; optionschange; mapchange".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "other".
+
+  Expectation:
+  В консоли появляются две строки ("Parent's map center; Provider's map center") с одинаковыми координатами. 
+
+Step:
+  Action:
+  Выполнить клик в кнопку "hide".
+
+  Expectation:
+  Контрол пробок выключается, с карты пропадают линии пробок.
+  В консоли появляются строки: "hide; traffic is hidden".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "show".
+
+  Expectation:
+  Контрол пробок включается, на карте появляются линии пробок.
+  В консоли появляются строки: "show; traffic is show".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "expand".
+
+  Expectation:
+  В консоли появляется строка: "traffic controls is expanded".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "collapse".
+
+  Expectation:
+  Попап контрола сворачивается, контрол отображается корректно, линии пробок не пропадают.
+  В консоли появляются строки: "collapse; traffic controls is collapse".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "expand".
+
+  Expectation:
+  Попап контрола разворачивается, контрол отображается корректно, линии пробок не пропадают.
+  В консоли появляются строки: "expand; traffic controls is expanded".
+-->
+<html>
+<head>
+    <title>API 2.0</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <script src="../helper.js"></script>
+    <script type=text/javascript>
+        Api('init');
+        function init(ymaps) {
+            var myMap = new ymaps.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 10,
+                behaviors: ['default', 'scrollZoom']
+            });
+            var actualTrafficButton = new ymaps.control.TrafficControl({
+                providerKey: 'traffic#actual',
+                shown: true
+            });
+            actualTrafficButton.events.add([
+                'collapse', 'expand', 'hide', 'mapchange', 'optionschange',
+                'parentchange', 'providerkeychange', 'show'
+            ], function (e) {
+                console.log(e.get('type'));
+                if (e.get('type') == 'providerkeychange') {
+                    console.log(e.get('oldProviderKey') + ' > ' + e.get('newProviderKey'));
+                }
+            });
+            var collapseButton = new ymaps.control.Button({data: {content: 'collapse'}}, {selectOnClick: false});
+            collapseButton.events.add('click', function () {
+                actualTrafficButton.collapse();
+                if (actualTrafficButton.isExpanded()) {
+                    console.log('traffic controls is expanded');
+                } else console.log('traffic controls is collapsed')
+            });
+            var expandButton = new ymaps.control.Button({data: {content: 'expand'}}, {selectOnClick: false});
+            expandButton.events.add('click', function () {
+                actualTrafficButton.expand();
+                if (actualTrafficButton.isExpanded()) {
+                    console.log('traffic controls is expanded');
+                } else console.log('traffic controls is collapsed')
+            });
+            var showButton = new ymaps.control.Button({data: {content: 'show'}}, {selectOnClick: false});
+            showButton.events.add('click', function () {
+                actualTrafficButton.show();
+                if (actualTrafficButton.isShown()) {
+                    console.log('traffic is shown');
+                } else console.log('traffic is hidden')
+            });
+            var hideButton = new ymaps.control.Button({data: {content: 'hide'}}, {selectOnClick: false});
+            hideButton.events.add('click', function () {
+                actualTrafficButton.hide();
+                if (actualTrafficButton.isShown()) {
+                    console.log('traffic is shown');
+                } else console.log('traffic is hidden')
+            });
+            var otherButton = new ymaps.control.Button({data: {content: 'other'}}, {selectOnClick: false});
+            otherButton.events.add('click', function () {
+                console.log("Parent's map center: " + actualTrafficButton.getParent().getMap().getCenter());
+                console.log("Provider's map center: " + actualTrafficButton.getProvider().getMap().getCenter());
+            });
+            myMap.controls
+                    .add(collapseButton, {right: 5, top: 5})
+                    .add(expandButton, {right: 5, top: 35})
+                    .add(showButton, {right: 5, top: 65})
+                    .add(hideButton, {right: 5, top: 95})
+                    .add(otherButton, {right: 5, top: 125})
+                    .add(actualTrafficButton);
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+<p><a href="https://tech.yandex.ru/maps/archive/doc/jsapi/2.0/ref/reference/control.TrafficControl-docpage/" target="_blank">Docs</a></p>
+</body>
+</html>

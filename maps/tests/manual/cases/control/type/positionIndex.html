@@ -1,0 +1,114 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Контрол типов карт: позиционирование типа карты в контроле
+
+Description:
+Проверка позиционирования типа карт в контроле.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+control
+
+Estimated time:
+240000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась корректно, на карте спан Санкт-Петербурга.
+  В контейнере 4 контрола "Слои", у всех развернут выпадающий список с типами карт.
+  Крайний левый контрол: "Мой тип карты 1"; "Схема"(стоит галка); "Спутник"; "Гибрид"; разделитель; "Панорамы".
+  Второй слева контрол: "Схема"(стоит галка); "Мой тип карты 2"; "Спутник"; "Гибрид"; разделитель; "Панорамы".
+  Третий слева контрол: "Мой тип карты 3"; "Схема"(стоит галка); "Спутник"; "Гибрид"; разделитель; "Панорамы".
+  Четвертый слева контрол: "Гибрид"; "Народная карта"; "Мой тип карты 4"; "Схема"(стоит галка); разделитель; "Панорамы".
+
+Step:
+  Action:
+  Выполнить клик в тип карты "Гибрид" в третьем слева контроле "Слои".
+
+  Expectation:
+  При наведении курсора на значение в списке, фон значения выделяется желтым.
+  Все выпадающие списки 4 контролов свернулись.
+  Спан карты меняется на гибрид - спутниковый снимок с отображением подписей, линий улиц, меток. 
+
+Step:
+  Action:
+  Поочередно выполнить клик в каждый из контролов "Слои" в контейнере.
+
+  Expectation:
+  На спане карты без изменений.
+  При клике в контрол, выпадает список типов карт.
+  В каждом списке галка стоит напротив значения "Гибрид".
+  Расположение типов карт в списках контролов должно соотвествовать расположению из первого шага. 
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            var map = myMap = new ym.Map('map', {
+                        center: [59.94, 30.33],
+                        zoom: 12,
+                        controls: ["fullscreenControl"]
+                    }),
+                    log = new Log(),
+                    before = new ym.control.TypeSelector(),
+                    after = new ym.control.TypeSelector(),
+                    middle = new ym.control.TypeSelector(),
+                    empty = new ym.control.TypeSelector([]),
+                    i = 0;
+
+            addGrid(map);
+
+            //custom layers and types
+
+            for (i = 0; i < 5; i++) {
+                var Layer = function () {
+                    return new ym.Layer('');
+                };
+                ym.layer.storage.add('my#layer' + i, Layer);
+                var type = new ym.MapType('Мой тип карты ' + i, ['my#layer' + i]);
+                ym.mapType.storage.add('my#mapType' + i, type);
+            }
+
+            log.info('hybrid added with index -3, custom type1 added with index -3');
+            before.addMapType('yandex#hybrid', -3);
+            before.addMapType('my#mapType1', -3);
+
+            log.info('custom type2 added with index 6');
+            after.addMapType('my#mapType2', 6);
+
+            log.info('custom type3 added with index 2');
+            middle.addMapType('my#mapType3', 2);
+
+            log.info('hybrid added with index 0, map added with index 2, publicMap and custom type added with index 1');
+            empty.addMapType('yandex#hybrid', 0);
+            empty.addMapType('yandex#map', 2);
+            empty.addMapType('yandex#publicMap', 1);
+            empty.addMapType('my#mapType4', 1);
+
+            before.expand();
+            after.expand();
+            middle.expand();
+            empty.expand();
+
+            map.controls.add(before).add(after).add(middle).add(empty);
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

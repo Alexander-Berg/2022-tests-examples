@@ -1,0 +1,174 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Мультимаршрут: применение опций мультимаршрута 
+
+Description:
+Проверка применения опций мультимаршрута. 
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+multiRouter
+
+Estimated time:
+120000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно со спаном Москвы.
+  В контейнере контрол фулскрин, снизу слева кнопки "model", "multiRoute", "prevent".
+  На спане карты маршрут с метками "A"(Москва), "B"(Красная площадь), а также виаточкой в Химках.  
+
+Step:
+  Action:
+  Выполнить клик в кнопку "prevent".
+  Навести курсор на метку "A", зажать ЛКМ и перенести метку в сторону.
+
+  Expectation:
+  Захват и перенос метки корректные, после переноса метки на спане появляется маршрутная нитка к выставленной метке.
+  В метке "А" отсутсвует подпись, во время переноса метки маршрутная нитка к метке не выстраивается.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "prevent".
+  Навести курсор на метку "A", зажать ЛКМ и перенести метку в сторону.
+
+  Expectation:
+  Захват и перенос метки корректные, при переносе метки на спане появляется маршрутная нитка к выставленной метке.
+  В метке "А" отсутсвует подпись, во время переноса метки к метке выстраивается маршрутная нитка.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "multiRoute".
+  Навести курсор на метку "B", зажать ЛКМ и перенести метку в сторону.
+
+  Expectation:
+  Захват и перенос метки корректные, после переноса метки на спане появляется маршрутная нитка к выставленной метке.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "multiRoute".
+  Навести курсор на метку "B", зажать ЛКМ и перенести метку в сторону.
+
+  Expectation:
+  Захват и перенос метки корректные, при переносе метки на спане появляется маршрутная нитка к выставленной метке.
+  
+
+Step:
+  Action:
+  Выполнить клик в кнопку "model".
+  Навести курсор на метку "B", зажать ЛКМ и перенести метку в сторону.
+
+  Expectation:
+  Захват и перенос метки корректные, после переноса метки на спане появляется маршрутная нитка к выставленной метке.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "model".
+  Навести курсор на метку "A", зажать ЛКМ и перенести метку в сторону.
+
+  Expectation:
+  Захват и перенос метки корректные, при переносе метки на спане появляется маршрутная нитка к выставленной метке.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 10,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            }, {
+                suppressObsoleteBrowserNotifier: false,
+                suppressMapOpenBlock: false
+
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+
+            __log__("Опция отключающая запросы к марщрутизатору во время драга и изменяющая интервал между запросами");
+
+            var multiRoute = new ymaps.multiRouter.MultiRoute({
+                referencePoints: ['москва', "Химки", "красная площадь"],
+                params: {
+                    viaIndexes: [1],
+                    boundedBy: [
+                        [56.393500932099016, 35.5287338256808],
+                        [53.47902043412735, 40.72526702880481]
+                    ],
+                    strictBounds: true
+                    //routingMode: "pedestrian"
+                }
+            }, {
+                boundsAutoApply: true,
+                //dragUpdateInterval: 20000,
+                preventDragUpdate: true
+            });
+            map.geoObjects.add(multiRoute);
+            multiRoute.editor.start({
+                //addWayPoints: true,
+                dragWayPoints: true,
+                dragViaPoints: true,
+                removeWayPoints: true,
+                removeViaPoints: true
+            });
+            multiRoute.options.set('editorDrawOver', true);
+
+            var modelButton = new ymaps.control.Button('model');
+            modelButton.events
+                    .add('select', function () {
+                        multiRoute.model.setParams({requestSendInterval: 100}, true)
+                    })
+                    .add('deselect', function () {
+                        multiRoute.model.setParams({requestSendInterval: 10000}, true)
+                    });
+            map.controls.add(modelButton, {position: {bottom: 35, left: 5}});
+
+            var routeButton = new ymaps.control.Button('multiRoute');
+            routeButton.events
+                    .add('select', function () {
+                        multiRoute.options.set({dragUpdateInterval: 100});
+                    })
+                    .add('deselect', function () {
+                        multiRoute.options.set({dragUpdateInterval: 10000});
+                    });
+            map.controls.add(routeButton, {position: {bottom: 65, left: 5}});
+
+
+
+            var preventButton = new ymaps.control.Button('prevent');
+            preventButton.events
+                    .add('select', function () {
+                        multiRoute.options.set({preventDragUpdate: true});
+                    })
+                    .add('deselect', function () {
+                        multiRoute.options.set({preventDragUpdate: false});
+                    });
+            map.controls.add(preventButton, {position: {bottom: 95, left: 5}});
+
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

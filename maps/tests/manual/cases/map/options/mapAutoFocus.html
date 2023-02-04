@@ -1,0 +1,150 @@
+<!DOCTYPE HTML>
+<!--(skip)(description)
+
+-->
+<!--(version)
+
+-->
+<!--(commands)
+
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script src="../../../js/geoCS.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 10,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl', 'rulerControl', 'zoomControl']
+            }, {
+                mapAutoFocus: false
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+            log.info('Test case: Click, drag (placemark, geoobject vertex, ruler vertex, route vertex)  on any object should remove the focus from the active controls.');
+            log.info('mapAutoFocus: ' + map.options.get('mapAutoFocus'));
+
+            geoCSSource(ym, myMap, this);
+
+            var myGeoObjects = [];
+            myGeoObjects[0] = new ymaps.GeoObject({geometry: { type: "Point", coordinates: [55.799716316844474, 37.50037536621043] }});
+            myGeoObjects[1] = new ymaps.GeoObject({geometry: { type: "Point", coordinates: [55.799716316844474, 37.50037536621043] }});
+            myGeoObjects[2] = new ymaps.GeoObject({geometry: { type: "Point", coordinates: [55.799716316844474, 37.50037536621043] }});
+            myGeoObjects[3] = new ymaps.GeoObject({geometry: { type: "Point", coordinates: [55.799716316844474, 37.50037536621043] }});
+            myGeoObjects[4] = new ymaps.GeoObject({geometry: { type: "Point", coordinates: [55.799716316844474, 37.50037536621043] }});
+            var clusterer = new ymaps.Clusterer({ clusterDisableClickZoom: true, hasBalloon: false });
+            clusterer.add(myGeoObjects);
+            placemark.options.set('draggable', true);
+
+            var multiRoute = new ymaps.multiRouter.MultiRoute({
+                referencePoints: [
+                    [55.71574031323344, 37.29753265380539],
+                    [55.912150224943986, 37.29753265380539],
+                    [56.16, 37.29753265380539],
+                    [56.36, 37.29753265380539],
+                    [55.97, 37.18]
+                ],
+                params: {
+                    viaIndexes: [1, 2]
+                }
+            }, {
+                boundsAutoApply: true,
+                preset: "islands#multiRouterSmall"
+            });
+
+            var autoFocusButton = new ymaps.control.Button('autoFocus');
+            var editorButton = new ymaps.control.Button({data: {content: 'editor'}, options: {selectOnClick: true}});
+            var placemarkButton = new ymaps.control.Button({data: {content: 'placemark'}, options: {selectOnClick: true}});
+            var editorRouteButton = new ymaps.control.Button('editorRoute');
+
+            autoFocusButton.events
+                    .add('select', function () {
+                        map.options.set('mapAutoFocus', true);
+                        log.info('autoFocus: ' + map.options.get('mapAutoFocus'))
+                    })
+                    .add('deselect', function () {
+                        map.options.set('mapAutoFocus', false);
+                        log.info('autoFocus: ' + map.options.get('mapAutoFocus'))
+                    });
+
+            editorButton.events
+                    .add('select', function () {
+                        log.info('Режим редактирования включен');
+                        placemark.editor.startEditing();
+                        polyline.editor.startEditing();
+                        polygon.editor.startEditing();
+                    })
+                    .add('deselect', function () {
+                        log.info('Режим редактирования выключен');
+                        placemark.editor.stopEditing();
+                        polyline.editor.stopEditing();
+                        polygon.editor.stopEditing();
+                    });
+
+            placemarkButton.events
+                    .add('select', function () {
+                        log.info('Режим рисования точки включен');
+                        placemark.editor.startDrawing();
+                    })
+                    .add('deselect', function () {
+                        log.info('Режим рисования точки выключен');
+                        placemark.editor.stopDrawing();
+                    });
+
+            editorRouteButton.events
+                    .add('select', function () {
+                        multiRoute.editor.start({
+                            addWayPoints: true,
+                            dragWayPoints: true,
+                            dragViaPoints: true,
+                            removeWayPoints: true,
+                            removeViaPoints: true
+                        })
+                    })
+                    .add('deselect', function () {
+                        multiRoute.editor.stop()
+                    });
+
+            var searchControl = new ymaps.control.SearchControl({
+                options: {
+                    float: 'left',
+                    floatIndex: 100,
+                    size: 'large'
+                }
+            });
+            map.geoObjects
+                    .add(placemark)
+                    .add(polyline)
+                    .add(polygon)
+                    .add(multiRoute)
+                    .add(clusterer);
+
+            map.controls.add(editorRouteButton)
+                    .add(editorButton)
+                    .add(placemarkButton)
+                    .add(autoFocusButton)
+                    .add(searchControl);
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+<form>
+    First name: <input type="text" name="fname"><br>
+    Last name: <input type="text" name="lname"><br>
+    <input type="submit" value="Submit">
+</form>
+</body>
+</html>

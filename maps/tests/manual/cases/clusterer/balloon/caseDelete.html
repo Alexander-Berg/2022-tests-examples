@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<!--
+Title:
+Кластер: применение макетов
+
+Description:
+Макеты кластеризации балуна.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+clusterer
+
+Estimated time:
+360000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан в центре которого кластерная метка с цифрой "5".
+  При загрузке карты открывается панель балуна кластера аккордеон со списком из 5 меток "Заголовок метки №0, ...", имеется кнопка закрытия балуна.
+  Напротив каждой метки синяя иконка с точкой внутри.
+
+Step:
+  Action:
+  Навести курсор на "Заголовок метки №0" и выполнить клик ЛКМ.
+
+  Expectation:
+  При наведении на текст - ховер эффект текст красный. 
+  Панель балуна смещается влево, и появляется панель балуна с содержимым метки.
+  В панели слена бургер-меню, заголовок "Заголовок метки №0", тело (стих), футер "Футер метки №0".
+
+Step:
+  Action:
+  Выполнить клик в бургер-меню в панели балуна.
+
+  Expectation:
+  Панель балуна смещается вправо, и появляется панель балуна со списком меток "Заголовок метки №0, ...", аналогично шагу 1.
+
+Step:
+  Action:
+  Выполнить клик в кнопку закрытия панели балуна - крестик.
+
+  Expectation:
+  Панель балуна закрывается на спане кластерная метка с цифрой "5".
+
+Step:
+  Action:
+  Выполнить максимальный призум к кластерной метке скролом мыши.
+
+  Expectation:
+  Происходит корректный зум карты, кластерная метка с цифрой "5" не пропадает и не распадается на метки коллекций.
+
+Step:
+  Action:
+  Выполнить клик в кластерную метку.
+
+  Expectation:
+  Происходит смещение спана, для открытия панели балуна, при этом кластерная метка перемещается в центр оставшегося спана карты.
+  При загрузке карты открывается панель балуна кластера аккордеон со списком из 5 меток "Заголовок метки №0, ...", имеется кнопка закрытия балуна.
+  Напротив каждой метки синяя иконка с точкой внутри.
+-->
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title>Кейс</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type="text/javascript">
+        Api("init");
+
+        function init(ym) {
+            ymaps = ym; // hack
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.716901946294286, 37.31336807048247],
+                zoom: 15,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            var clusterer = new ymaps.Clusterer({
+                clusterBalloonContentLayout: 'cluster#balloonAccordion',
+                clusterBalloonPanelContentLayout: 'cluster#balloonAccordion',
+                clusterDisableClickZoom: true,
+                clusterOpenBalloonOnClick: true,
+                clusterBalloonPanelMaxMapArea: 0,
+                clusterBalloonContentLayoutHeight: 600
+            });
+            map.geoObjects.add(clusterer);
+
+            var geoObjects = [];
+
+            var customItemContentLayout = ymaps.templateLayoutFactory.createClass('<b>123 {{ properties.balloonContentBody|raw }}</b>');
+
+            var content = [
+                '',
+                'Этот город завёрнут, как в саван, в туман, ',
+                'И царит в нём безумье, порок и обман. ',
+                'Город мрачных трущоб, весь изглоданный злом, ',
+                'По ночам его мгла накрывает крылом.. . ',
+                '',
+                'И в глазницы домов смотрит ночь, словно ворон, ',
+                'Этот город безукоризненно чёрен. ',
+                'Только толпы теней, только Темзы свинец — ',
+                'Этот город страшней, чем оживший мертвец. ',
+                '',
+                'И в роскошных дворцах вечный холод и тлен, ',
+                'И часы мертвецам отбивает Биг-Бен. ',
+                'Вы не бывали в Лондоне, сэр? ',
+                'Этот город безукоризненно сер...'
+            ].join('<br/>');
+
+            for (var i = 0, l = 5; i < l; i++) {
+                var placemark = new ymaps.GeoObject({
+                    geometry: {
+                        type: "Point",
+                        coordinates: map.getCenter()
+                    },
+                    properties: {
+                        balloonContentHeader: 'Заголовок метки №' + i,
+                        balloonContentBody: 'Тело метки №' + i + content,
+                        balloonContentFooter: 'Футер метки №' + i
+                    }
+                });
+                geoObjects.push(placemark);
+            }
+
+            clusterer.add(geoObjects);
+            clusterer.options.set('clusterBalloonPanelMaxMapArea', Infinity);
+            var objectState = clusterer.getObjectState(geoObjects[2]);
+
+            objectState.cluster.state.set('activeObject', geoObjects[2]);
+            clusterer.balloon.open(objectState.cluster);
+
+            myMap.events.add('click', function (e) {
+                console.log(e.get('coords'));
+            });
+        }
+    </script>
+</head>
+
+<body>
+<div id="map" style="width: 1280px; height: 800px"></div>
+</body>
+
+</html>

@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<!--
+Title:
+Геообъект: опция растягивания метки под подпись
+
+Description:
+Проверка растягивания метки для подписи.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+geoobject
+
+Estimated time:
+180000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+  
+  Expectation:
+  Карта отобразилась корректно, на всю ширину страницы браузера.
+  На карте спан Иркутска, на спане фигура полупрозрачного синего круга в центре которого зеленая метка "Я", также на спане множество растянутых меток с подписью "5613 р.".
+  Слева вверху кнопка "Показать все", имеется контрол зума, контрол пробок, контрол слоев. 
+
+Step:
+  Action:
+  Выполнить два клика в кнопку "-" контрола зума. 
+  
+  Expectation:
+  Происходит корректный отзум спана карты, метки с подписью "5613 р." кластеризуются в кластерные метки, остальные объекты на карте без изменений.
+
+Step:
+  Action:
+  Выполнить клик в кластеную метку на спане карты. 
+  
+  Expectation:
+  Происходит призум спана, при этом на новом спане отображены метки с подписью "5613 р.".
+  Подпись и метка отображаются корректно: метка растянута по ширине подписи.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "Показать все". 
+  
+  Expectation:
+  Происходит отзум спана к первоначальному, на спане фигура полупрозрачного синего круга в центре которого зеленая метка "Я", также на спане множество растянутых меток с подписью "5613 р.".
+
+Step:
+  Action:
+  Выполнить клик в метку с подписью "5613 р.". 
+  
+  Expectation:
+  Метка меняет пресет, становится зеленой, спан карты смещается центрируяс по метке в которую произведен клик.
+  Внизу появляется балун-панель с содержимым: заголовком "Снежинка"; телом "парацетомолл (Вакцина для профилактики кори): 5613 р. зарезервировать; Байкальская, 11 (с 11:00 до 13:00) маршрут; Телефон: +73952000002, Email: tp12@digup.me, Skype: digupdemo12".
+-->
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <title></title>
+    <script async src="https://api-maps.tst.c.maps.yandex.ru/2.1-dev/?lang=ru_RU&&coordorder=longlat&mode=debug"
+            type="text/javascript"></script>
+    <style>
+        body, html {
+            padding: 0;
+            margin: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+</head>
+
+<body>
+<div id="indicator"></div>
+<div id="map"></div>
+
+<script>
+    var indicator = document.querySelector('#indicator');
+    var checkYaMAps = function () {
+        if (typeof ymaps === 'undefined') {
+            indicator.innerHTML += '.';
+            return setTimeout(checkYaMAps, 250);
+        }
+
+        indicator.innerHTML = '';
+        ymaps.ready(init);
+
+        function init() {
+            var map, pm, i, cluster, showAllButton, myCircle, yaPlacemark,
+                    blueIcon = 'islands#blueStretchyIcon',
+                    c = [104.269307, 52.287352];
+
+            map = new ymaps.Map('map', {
+                center: c,
+                zoom: 11,
+                yandexMapAutoSwitch: true,
+                controls: ['zoomControl', 'typeSelector', 'trafficControl'],
+                behaviors: ['default', 'scrollZoom', 'multiTouch']
+            });
+
+            myCircle = new ymaps.Circle([
+                c,
+                // Радиус круга в метрах.
+                500
+            ], {
+                hintContent: 'Круг можно двигать'
+            }, {
+                draggable: true,
+                fillColor: "#0062cc40",
+                strokeColor: "#0062cc",
+                strokeOpacity: 0.5,
+                strokeWidth: 1
+            });
+            map.geoObjects.add(myCircle);
+
+            yaPlacemark = new ymaps.Placemark(c, {iconContent: 'Я'}, {
+                draggable: true,
+                preset: "islands#greenStretchyIcon"
+            });
+
+            map.geoObjects.add(yaPlacemark);
+
+            cluster = new ymaps.Clusterer({
+                gridSize: 128,
+                minClusterSize: 3,
+                preset: 'islands#blueClusterIcons',
+                clusterBalloonContentLayout: 'cluster#balloonCarousel',
+                clusterBalloonPagerVisible: true,
+                clusterBalloonCycling: true,
+                clusterBalloonPagerSize: 8,
+                groupByCoordinates: false,
+                clusterHideIconOnBalloonOpen: false,
+                geoObjectHideIconOnBalloonOpen: false,
+                clusterBalloonPanelMaxMapArea: Infinity
+            });
+
+            map.geoObjects.add(cluster);
+            for (i = 0; i < 10; i++) {
+                pm = new ymaps.Placemark([c[0] + Math.random() / 100, c[1] + Math.random() / 100], {
+                    balloonContentHeader: "<span class=\"balloonHeader\">Снежинка</span><span data-vote='{\"votes\":{\"common\":{\"rating\":4,\"total\":4,\"count\":1,\"demo\":true}},\"idc\":\"52da3da34876175620e99ff5\"}'></span>",
+                    balloonContentBody: "<p style=\"text-align: left; margin-bottom: 5px;\">парацетомолл (Вакцина для профилактики кори): <strong>5613</strong> р. <a href=\"#reserving\" data-modal=\"uid\" data-uid=\"05\">зарезервировать</a></p><p style=\"text-align: left;\">Байкальская, 11 (с 11:00 до 13:00) <a href=\"#\" data-routeuid=\"05\">маршрут</a><br>Телефон:&nbsp;<a href=\"tel:+73952000002\">+73952000002</a>, Email:&nbsp;<a href=\"mailto:tp12@digup.me\">tp12@digup.me</a>, Skype:&nbsp;<a href=\"skype:digupdemo12?call\">digupdemo12</a></p>",
+                    balloonContentFooter: "",
+                    iconContent: "5613 р.",
+                    clusterCaption: "<span class=\"tpListPrice\">5613 р.</span>Снежинка (Байкальская, 11)"
+                }, {
+                    preset: blueIcon,
+                    balloonPanelMaxMapArea: Infinity
+                });
+
+                pm.validForColorChange = true;
+                cluster.add(pm);
+            }
+
+            cluster.events.add('balloonopen', function (event) {
+                var geoObjects = cluster.getGeoObjects();
+                var pm = event.get('target');
+
+                for (var i = 0, l = geoObjects.length; i < l; i++) {
+                    var go = geoObjects[i];
+                    if (go !== pm)
+                        go.options.set({preset: blueIcon});
+                    else
+                        pm.options.set({preset: 'islands#greenStretchyIcon'});
+                }
+            });
+
+            // Событие на закрытие балуна кластера
+            cluster.events.add('balloonclose', function () {
+                var geoObjects = cluster.getGeoObjects();
+
+                for (var i = 0, l = geoObjects.length; i < l; i++) {
+                    var go = geoObjects[i];
+                    go.options.set({preset: blueIcon});
+                }
+            });
+
+            showAllButton = new ymaps.control.Button({
+                data: {
+                    content: 'Показать все'
+                },
+                options: {
+                    float: 'left',
+                    selectOnClick: false,
+                    maxWidth: 200
+                }
+            });
+
+            map.controls.add(showAllButton);
+
+            var eventClick = function () {
+
+                // Закроем баллун, если открыт
+                var geoObjects = cluster.getGeoObjects();
+
+                for (var i = 0, l = geoObjects.length; i < l; i++) {
+                    var go = geoObjects[i];
+                    if (go.balloon.isOpen())
+                        go.balloon.close();
+                }
+                map.setBounds(cluster.getBounds(), {zoomMargin: 30, checkZoomRange: true, duration: 500});
+            };
+
+            showAllButton.events.add('click', eventClick);
+
+            eventClick();
+        }
+    };
+
+    checkYaMAps();
+</script>
+
+</body>
+
+</html>

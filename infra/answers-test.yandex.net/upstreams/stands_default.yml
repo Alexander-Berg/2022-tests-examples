@@ -1,0 +1,41 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - vkorbut
+      groups: []
+labels:
+  order: 00008421
+---
+regexp_section:
+  matcher: 
+    match_fsm:
+      host: "pull-[0-9]+.answers.test.yandex.ru"
+  modules:
+  - threshold:
+      lo_bytes: 262144
+      hi_bytes: 419430
+      pass_timeout: 10s
+      recv_timeout: 5s
+  - report: {ranges: default, uuid: requests_stands_nodejs}
+  - balancer2:
+      attempts: 3
+      attempts_rate_limiter:
+        limit: 0.15
+        coeff: 0.99
+      rr: {}
+      active_policy:
+        unique_policy: {}
+      generated_proxy_backends:
+        proxy_options:
+          backend_timeout: 10s
+          connect_timeout: 100ms
+          keepalive_count: 1
+        include_backends:
+          type: BY_ID
+          ids: [answers_stands]
+      on_error:
+        modules:
+        - errordocument:
+            status: 504
+            content: 'Service unavailable!'

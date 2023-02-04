@@ -1,0 +1,48 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - olegsenin
+      - kfour
+      groups: []
+config_transport:
+  nanny_static_file:
+    service_id: l7_images_search_test_balancer_sas
+---
+instance_macro:
+  workers: 5
+  maxconn: 8000
+  sections:
+    admin:
+      ips: [127.0.0.1, '::1']
+      ports: [26000]
+      modules:
+        - http: {}
+        - admin: {}
+    stats_storage:
+      ips: [127.0.0.4]
+      ports: [26000]
+      modules:
+        - report:
+            uuid: 'service_total'
+            ranges: 'default'
+            just_storage: true
+        - http: {}
+        - errordocument:
+            status: 204
+    http_section:
+      ips: [127.0.0.3]
+      ports: [80]
+      local_ips: [local_v4_addr, local_v6_addr]
+      local_ports: [26000]
+      extended_http_macro:
+        port: 26000
+        report_uuid: 'http'
+        modules:
+          - regexp:
+              include_upstreams:
+                filter:
+                  any: true
+                order:
+                  label:
+                    name: order

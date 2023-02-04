@@ -1,0 +1,40 @@
+
+---
+regexp_section:
+  matcher: {}
+  modules:
+    - threshold:
+        lo_bytes: 734003
+        hi_bytes: 838860
+        pass_timeout: 10s
+        recv_timeout: 1s
+    - headers:
+        append_func:
+          X-Forwarded-For: realip
+        create_func_weak:
+          X-Real-IP: realip
+        create:
+          Host: 'core-jams-matcher.maps.yandex.net'
+    - balancer2:
+        attempts: 3
+        active:
+          steady: false
+          delay: '10s'
+          request: 'GET /ping HTTP/1.1\nHost: core-jams-matcher.maps.yandex.net\r\n\r\n'
+        watermark_policy:
+          lo: 0.2
+          hi: 0.4
+          unique_policy: {}
+        generated_proxy_backends:
+          proxy_options:
+            connect_timeout: 70ms
+            backend_timeout: 1000ms
+            keepalive_count: 100
+            fail_on_5xx: true
+          include_backends:
+            type: BY_ID
+            ids: [maps_core_jams_matcher_prestable,maps_core_jams_matcher_stable]
+        on_error:
+          errordocument:
+            status: 504
+            content: "Service unavailable"

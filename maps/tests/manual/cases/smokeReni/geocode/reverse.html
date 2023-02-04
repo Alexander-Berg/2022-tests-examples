@@ -1,0 +1,114 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Обратное геокодирование по виду топонима
+
+Description:
+Результаты запроса по параметру вид топонима: метро.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+smoke
+
+Estimated time:
+180000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан Москвы, на спане метки(в виде красных кружков). 
+  Под блоком с картой инпут со значением "20", за инпутом кнопка "SHOW!"
+
+Step:
+  Action:
+  Клик в одну из меток на спане карты.
+
+  Expectation:
+  На месте метки открывается балун с данными станции метро вида: "метро Охотный ряд; Россия, Москва, Сокольническая линия"(название станции; страна, город, линия).
+
+Step:
+  Action:
+  Выполнить клик в инпут со значением "20" под блоком с картой, удалить значение "20", ввести значение "50". 
+  Клик в кнопку "SHOW!".
+
+  Expectation:
+  Происходит отзум карты.
+  На спане карты на спане метки(в виде красных кружков). Количество меток и их локация на карте увеличилось. 
+  
+Step:
+  Action:
+  Клик в одну из крайних меток на спане карты.
+
+  Expectation:
+  Спан карты может сместится для открытия метки.
+  На месте метки открывается балун с данными станции метро вида: "метро Достоевская; Россия, Москва, Люблинско-Дмитровская линия"(название станции; страна, город, линия).
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="//yandex.st/jquery/1.6.4/jquery.min.js" type="text/javascript"></script>
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            //ymaps = ym;
+
+            var myMap = new ymaps.Map('map', {
+                center: [55.753994, 37.622093],
+                zoom: 9,
+                controls: []
+            }, {
+                backgroundVisible: false
+            });
+            addGrid(myMap);
+            var log = new Log();
+            log.info("Test case: На карте отображаются результаты по поиску метро около центра карты");
+            // Поиск станций метро.
+
+            function showMe(count) {
+                ymaps.geocode(myMap.getCenter(), {
+                    /**
+                     * Опции запроса
+                     * @see https://api.yandex.ru/maps/doc/jsapi/2.1/ref/reference/geocode.xml
+                     */
+                    // Ищем только станции метро.
+                    kind: 'metro',
+                    // Запрашиваем не более 20 результатов.
+                    results: count
+                }).then(function (res) {
+                    // Задаем изображение для иконок меток.
+                    res.geoObjects.options.set('preset', 'islands#redCircleIcon');
+                    // Добавляем коллекцию найденных геообъектов на карту.
+                    myMap.geoObjects.add(res.geoObjects);
+                    // Масштабируем карту на область видимости коллекции.
+                    myMap.setBounds(res.geoObjects.getBounds(), {checkZoomRange: true});
+                });
+            };
+
+            button = $('#show');
+            button.click(function () {
+                // Удаление провайдера с карты также производится через метод setMap.
+                myMap.geoObjects.removeAll();
+                showMe(document.getElementById('count').value);
+            });
+            showMe(20);
+
+        }
+    </script>
+</head>
+<body>
+<div id="map" style="height: 512px; width: 512px;"></div>
+<input type="text" id="count" value="20">
+<input type="button" id="show" onclick="" value="SHOW!">
+</body>
+</html>

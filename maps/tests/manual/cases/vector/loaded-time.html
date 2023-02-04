@@ -1,0 +1,104 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Вектор: время загрузки слоя
+
+Description:
+Проверка времени загрузки слоя векторной карты.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components:
+vector
+
+Estimated time:
+120000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть страницу и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно со спаном Москвы.
+  Под контейнером с картой при загрузке появляется строка: "vectorreveal: Вектор показался", а также строка "tiles ready" со значением времени загрузки слоя.
+
+Step:
+  Action:
+  Выполнять клик в контрол зума "+" до максимального призума спана карты.
+
+  Expectation:
+  Происходит корректный призум спана карты, под контейнером с картой после каждого клика в "+" появляются две строки "tiles ready" со значениями.
+  Карта имеет корректное векторное отображение объектов, при призуме карта детализируется, появляются подписи, метки.
+  Зум карты корректный: карта не мигает цветами, нет странных виузальных эффектов, тормозов карты.
+
+Step:
+  Action:
+  Сделать скриншот строк "tiles ready" со значениями.
+
+  Expectation:
+  Выполненный скриншот залейте на Я.Диск, или другой файлообменник, при выставлении оценки кейсу приложите ссылку на скриншот в комментарий к тест-кейсу.
+  Значения будут проанализированы при проверке рана.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <script src="../../helper.js"></script>
+    <!-- <script type="text/javascript" src="https://api-maps.tst.c.maps.yandex.ru/2.1.77/?lang=ru_RU&mode=debug"></script> -->
+    <script type=text/javascript>
+       
+
+        window.onerror = function(err) {
+            __log__(err);
+        };
+
+        Api('init', undefined, undefined, undefined, undefined, 'ymaps', undefined);
+
+        function init(ymaps) {
+            var map = new ymaps.Map('map', {
+                center: [55.753930, 37.621401],
+                zoom: 10.77,
+                controls: ['default']
+            }, {
+                vector: true,
+                layerVectorRevealThreshold : 0
+            });
+
+            var start = 0;
+
+            map.layers.events.add('vectorreveal', () => __log__('vectorreveal: Вектор показался'));
+            map.layers.events.add('vectorerror', () => __log__('vectorerror: Вектор упал'));
+
+            map.events.add('actionbegin', () => {
+                start = performance.now();
+                console.log('actionbegin');
+            });
+
+            map.layers.events.add('tileloadchange', (event) => {
+                var ready = event.get('readyTileNumber');
+                var total = event.get('totalTileNumber');
+
+                if(ready === total) {
+                    var loadedTime = (performance.now() - start).toFixed(2);
+                    __log__('tiles ready ' +  loadedTime);
+                }
+            });
+        }
+    </script>
+    <style>
+        html, body, #map {
+            width: 100%;
+            height: 95%;
+            margin: 0;
+            padding: 0;
+        }
+    </style>
+</head>
+<body>
+<div id="map"></div>
+</body>
+</html>

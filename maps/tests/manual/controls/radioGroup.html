@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<!--
+Title:
+Контрол: радиогруппа контролов
+
+Description:
+Проверка работы группы радио контролов
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+smoke, regress
+
+Estimated time:
+180000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась корректно.
+  В контейнере сверху 4 кнопки: "radio 1", "radio 2", "radio 3", "radio 4". 
+  Кнопка "radio 3" включена, на спане хинт "add select remove".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "radio 1".
+  
+  Expectation:
+  Кнопка "radio 3" выключилась, хинт на карте "deselect select".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "radio 2".
+  
+  Expectation:
+  Кнопка "radio 1" выключилась, хинт на карте "deselect select deselect".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "radio 3".
+  
+  Expectation:
+  На спане остается только кнопка "radio 3", хинт на карте "remove".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "radio 3".
+  
+  Expectation:
+  Появляется включенная кнопка "radio 4", хинт на карте "add".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "radio 4".
+  
+  Expectation:
+  Кнопки пропадают, хинт на карте "remove".  
+-->
+<html>
+<head>
+    <title>API 2.0</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <script src="../helper.js"></script>
+    <script type="text/javascript">
+        Api('init');
+        function init(ymaps) {
+            var myMap = new ymaps.Map('map', {
+                center: [34.8006, -37.5181],
+                zoom: 5
+            });
+            
+            var button1 = new ymaps.control.Button({ data: { content: 'radio 1' } });
+            var button2 = new ymaps.control.Button({ data: { content: 'radio 2' } });
+            var button3 = new ymaps.control.Button({ data: { content: 'radio 3' } });
+            var button4 = new ymaps.control.Button({ data: { content: 'radio 4' } });
+            button2.select();
+            button3.select();
+            var radioGroup = new ymaps.control.RadioGroup({
+                items: [
+                    button1,
+                    button2,
+                    button4
+                ]
+            });
+            myMap.controls.add(radioGroup);
+            radioGroup.events.add("childcontainerchange", function (e) {
+                console.log("newChildContainerElement: " + e.get("newChildContainerElement") +
+                        "; oldChildContainerElement: " + e.get("oldChildContainerElement"));
+            });
+            radioGroup.add(button3, 1);
+            var hint = '';
+            // проверяем события select и deselect
+            var listners = radioGroup.events.group().add("select", function (e) {
+                hint += ' select';
+                myMap.hint.show (myMap.getCenter(), hint);
+            }).add("deselect", function (e) {
+                hint += ' deselect';
+                myMap.hint.show (myMap.getCenter(), hint);
+                if (radioGroup.indexOf(e.get('item')) == 0) {
+                    listners.removeAll();
+                }
+            });
+            var i, buttons = [];
+            button4.events.add("deselect", function (e) {
+                radioGroup.removeAll();
+            });
+            button3.events.add("select", function (e) {
+                myMap.hint.hide();
+                radioGroup.each(function (b) {
+                    if (radioGroup.indexOf(b) != radioGroup.getSelectedIndex()) {
+                        buttons.push(b);
+                    }
+                });
+                for (i = 0; i < buttons.length; i++) radioGroup.remove(buttons[i]);
+            }).add("deselect", function (e) {
+                if (buttons.length > 0) {
+                    radioGroup.add(buttons.pop(), 1);
+                    radioGroup.get(1).select();
+                }
+            });
+            radioGroup.events.add("add", function (e) {
+                myMap.hint.show (myMap.getCenter(), "add");
+            }).add("remove", function (e) {
+                myMap.hint.show (myMap.getCenter(), "remove");
+            });
+            // MAPSAPI-5763
+            var radioGroupForEvents = new ymaps.control.RadioGroup(), ehint = "", element = new ymaps.control.Button("");
+            radioGroupForEvents.events.add("select", function (e) {
+                ehint += " select ";
+            }).add("add", function (e) {
+                ehint += " add ";
+            }).add("remove", function (e) {
+                ehint += " remove ";
+            });
+            radioGroupForEvents.add(element);
+            element.select();
+            radioGroupForEvents.remove(element);
+            myMap.hint.show (myMap.getCenter(), ehint);
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;">
+</div>
+<p><a href="https://tech.yandex.ru/maps/archive/doc/jsapi/2.0/ref/reference/control.RadioGroup-docpage/" target="_blank">Docs</a></p>
+</body>
+</html>

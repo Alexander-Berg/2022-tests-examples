@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<!--
+Title:
+Кластеризация: опция установки иконки кластера
+
+Description:
+Проверка опции установки иконки кластера.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+smoke, regress
+
+Estimated time:
+120000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась корректно, на спане множество меток кластеров в виде иконок елочных шаров, синие и зеленые метки коллекций.
+  При значении кластеризации больше 5, иконка большая, меньшем значении - маленькая.
+  Сверху слева кнопка "clusterSize".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "clusterSize".
+
+  Expectation:
+  По клику метки коллекций на спане пропадают становясь также кластерными метками со значением кластеризации "1".
+  При значении кластеризации больше 5, иконка большая, значении "5" и меньшем - маленькая.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "clusterSize".
+
+  Expectation:
+  По клику на спане появляются метки коллекций, кластерными метками остаются метки со значением кластеризации "5" и больше.
+  При значении кластеризации больше 5, иконка большая, значении "5" - маленькая.
+-->
+<html>
+<head>
+    <title>API 2.0</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <script src="../../helper.js"></script>
+    <script type=text/javascript>
+        Api('init');
+        function init(ymaps) {
+            var myMap = new ymaps.Map('map', {
+                center: [59.96343157514998, 30.317977733422868],
+                zoom: 7,
+                // Добавим к стандартным поведениям карты зум колесом мыши.
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+            
+            var clusterIcons = [
+                        {
+                            href: 'https://png-5.findicons.com/files/icons/232/christmas_xp/32/christmas_ball_5.png',
+                            size: [40, 40],
+                            // Отступ, чтобы центр картинки совпадал с центром кластера.
+                            offset: [-20, -20]
+                        },
+                        {
+                            href: 'https://png-5.findicons.com/files/icons/232/christmas_xp/64/christmas_ball_5.png',
+                            size: [60, 60],
+                            offset: [-30, -30]
+                        }
+                    ],
+            // При размере кластера до 100 будет использована картинка 'small.jpg'.
+            // При размере кластера больше 100 будет использована 'big.png'.
+                    clusterNumbers = [5],
+            // Сделаем макет содержимого иконки кластера,
+            // в котором цифры будут раскрашены в белый цвет.
+                    MyIconContentLayout = ymaps.templateLayoutFactory.createClass(
+                            '<div style="color: #000000; font-weight: bold;">$[properties.geoObjects.length]</div>');
+            var clusterer = new ymaps.Clusterer({
+                preset: 'twirl#redClusterIcons',
+                disableClickZoom: true,
+                clusterIcons: clusterIcons,
+                clusterNumbers: clusterNumbers,
+                clusterIconContentLayout: MyIconContentLayout
+            });
+            
+            var i = 0;
+            myMap.geoObjects.add(clusterer);
+            var clusterSizeButton = new ymaps.control.Button({data: {content: 'clusterSize'}, options: {selectOnClick: true}});            var placemarksNumber = 200,
+                    bounds = myMap.getBounds();
+            console.log('Placemarks added.');
+            var newPlacemarks = createGeoObjects(placemarksNumber, bounds);
+            clusterer.add(newPlacemarks);
+            clusterSizeButton.events
+                    .add('select', function () {
+                        clusterer.options.set('minClusterSize', 1);
+                        console.log('minClusterSize: ' + clusterer.options.get('minClusterSize'))
+                    })
+                    .add('deselect', function () {
+                        clusterer.options.set('minClusterSize', 5);
+                        console.log('minClusterSize: ' + clusterer.options.get('minClusterSize'))
+                    });            myMap.controls
+                    .add(clusterSizeButton, {top: 5, left: 5});
+            function createGeoObjects(number, bounds) {
+                var placemarks = [];
+                // Создаем нужное количество меток
+                for (var i = 0; i < number; i++) {
+                    // Генерируем координаты метки случайным образом.
+                    coordinates = getRandomCoordinates(bounds);
+                    // Создаем метку со случайными координатами.
+                    if (Math.random() > 0.5) {
+                        myPlacemark = new ymaps.Placemark(coordinates, {
+                            balloonContent: i, hintContent: i, clusterCaption: i}, {});
+                    } else {
+                        myPlacemark = new ymaps.Placemark(coordinates, {
+                            balloonContent: i, hintContent: i, iconContent: 'point', clusterCaption: 'point ' + i}, {preset: 'twirl#greenStretchyIcon'});
+                    }
+                    placemarks.push(myPlacemark);
+                }
+                return placemarks;
+            }
+            function getRandomCoordinates(bounds) {
+                var size = [bounds[1][0] - bounds[0][0], bounds[1][1] - bounds[0][1]];
+                return [Math.random() * size[0] + bounds[0][0], Math.random() * size[1] + bounds[0][1]];
+            }
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+<p><a href="https://tech.yandex.ru/maps/archive/doc/jsapi/2.0/ref/reference/Clusterer-docpage/" target="_blank">Docs</a></p>
+</body>
+</html>

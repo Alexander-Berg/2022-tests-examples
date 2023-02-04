@@ -1,0 +1,183 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - a-lexx
+      groups: []
+labels:
+  order: 09500000
+---
+regexp_section:
+  matcher:
+    match_or:
+        - match_fsm:
+            path: '/web/payment'
+        - match_fsm:
+            path: '/web/binding'
+        - match_fsm:
+            path: '/web/success_3ds'
+        - match_fsm:
+            path: '/web/fail_3ds'
+  modules:
+    - shared:
+        uuid: backends
+    - headers:
+        create_func:
+            X-Real-IP: realip
+            X-Balancer-IP: localip
+        create_func_weak:
+            X-Request-Id: reqid
+            X-Forwarded-For-Y: realip
+            X-Forwarded-Proto: scheme
+    - response_headers:
+        delete: 'X-Powered-By'
+        create_weak:
+            X-Content-Type-Options: 'nosniff'
+    - icookie:
+        use_default_keys: true
+        trust_parent: true
+        trust_children: true
+        domains: ['.yandex.ru', '.yandex.ua', '.yandex.com', '.yandex.com.tr', '.yandex.kz', '.yandex.by', '.yandex.uz']
+
+    - balancer2:
+        attempts: 2
+        rr:
+          weights_file: ./controls/traffic_control.weights
+        # unique_policy: { }
+        on_error:
+          modules:
+            - errordocument:
+                status: 504
+                content: 'Service unavailable'
+        backends:
+        - name:  byenv_front_new_scheme
+          weight: 1
+          modules:
+          - report:
+              uuid: request_to_new_front_scheme
+              ranges: default
+
+          - balancer2:
+                connection_attempts: 2
+                attempts: 2
+                rr: {weights_file: ./controls/traffic_control.weights}
+                backends:
+                    - name: bygeo_sas
+                      weight: 1
+                      modules:
+
+                        - balancer2:
+                            attempts: 1
+                            dynamic:
+                                max_pessimized_share: 1
+                                active:
+                                    request: 'GET /ping HTTP/1.1\nHost: trust-test.yandex.ru\nUser-Agent: l7-balancer-trust-test-l7\n\n'
+                                    weight_normalization_coeff: 1
+                                    delay: 3s
+                            attempts_rate_limiter:
+                                limit: 0.15
+                            generated_proxy_backends:
+                                proxy_options:
+                                    connect_timeout: 70ms
+                                    backend_timeout: 15s
+                                    fail_on_5xx:     false
+                                    keepalive_count: 100
+                                include_backends:
+                                    type: BY_ID
+                                    ids:
+                                    - trust_test_web_deploy_sas
+
+                    - name: bygeo_vla
+                      weight: 1
+                      modules:
+
+                        - balancer2:
+                            attempts: 1
+                            dynamic:
+                                max_pessimized_share: 1
+                                active:
+                                    request: 'GET /ping HTTP/1.1\nHost: trust-test.yandex.ru\nUser-Agent: l7-balancer-trust-test-l7\n\n'
+                                    weight_normalization_coeff: 1
+                                    delay: 3s
+                            attempts_rate_limiter:
+                                limit: 0.15
+                            generated_proxy_backends:
+                                proxy_options:
+                                    connect_timeout: 70ms
+                                    backend_timeout: 15s
+                                    fail_on_5xx:     false
+                                    keepalive_count: 100
+                                include_backends:
+                                    type: BY_ID
+                                    ids:
+                                    - trust_test_web_deploy_vla
+
+        - name:   byenv_front_old_scheme
+          weight: 1
+          modules:
+          - report:
+              uuid: request_to_old_front_scheme
+              ranges: default
+
+          - balancer2:
+                connection_attempts: 2
+                attempts: 2
+                rr: {weights_file: ./controls/traffic_control.weights}
+                backends:
+                    - name: bygeo_sas
+                      weight: 1
+                      modules:
+
+                        - balancer2:
+                            attempts: 1
+                            dynamic:
+                                max_pessimized_share: 1
+                                active:
+                                    request: 'GET /ping HTTP/1.1\nHost: trust-test.paysys.yandex.net:443\nUser-Agent: l7-balancer-trust-test\n\n'
+                                    weight_normalization_coeff: 1
+                                    delay: 3s
+                            attempts_rate_limiter:
+                                limit: 0.15
+                            generated_proxy_backends:
+                                proxy_options:
+                                    https_settings:
+                                        ca_file: !f   get_ca_cert_path("allCAs.pem", "./")
+                                        sni_on:       true
+                                        verify_depth: 3    
+                                    connect_timeout: 70ms
+                                    backend_timeout: 15s
+                                    fail_on_5xx:     false
+                                    keepalive_count: 100
+                                include_backends:
+                                    type: BY_ID
+                                    ids:
+                                    - trust_test_sas
+
+                    - name: bygeo_vla
+                      weight: 1
+                      modules:
+
+                        - balancer2:
+                            attempts: 1
+                            dynamic:
+                                max_pessimized_share: 1
+                                active:
+                                    request: 'GET /ping HTTP/1.1\nHost: trust-test.paysys.yandex.net:443\nUser-Agent: l7-balancer-trust-test\n\n'
+                                    weight_normalization_coeff: 1
+                                    delay: 3s
+                            attempts_rate_limiter:
+                                limit: 0.15
+                            generated_proxy_backends:
+                                proxy_options:
+                                    https_settings:
+                                        ca_file: !f   get_ca_cert_path("allCAs.pem", "./")
+                                        sni_on:       true
+                                        verify_depth: 3    
+                                    connect_timeout: 70ms
+                                    backend_timeout: 15s
+                                    fail_on_5xx:     false
+                                    keepalive_count: 100
+                                include_backends:
+                                    type: BY_ID
+                                    ids:
+                                    - trust_test_vla

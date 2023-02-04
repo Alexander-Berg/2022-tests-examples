@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<!--
+Title:
+Панорама: открытие панорамы по клику в карту 
+
+Description:
+Проверка программного запуска плеера по клику в карту и выставления панорамной метки.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+panorama
+
+Estimated time:
+60000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть страницу и элементы на ней. 
+
+  Expectation:
+  На странице внизу отображается контейнер с картой со спаном центра Москвы.
+  
+Step:
+  Action:
+  Выполнить клик в спан карты.
+  
+  Expectation:
+  Над контейнером с картой появляется контейнер с наземной панорамой заданной точки.  
+  На панораме имеются контролы масштабирования "+/-", контрол разворачивания панорамы, контрол закрытия панорамного плеера - крестик, на наземной панораме имеются стрелки перехода к следующей панораме.
+  На карте появляется панорамная метка со шторкой обзора.
+
+Step:
+  Action:
+  Выполнить клик в другое место на спане карты.
+  
+  Expectation:
+  Панорама в верхнем контейнере меняется на панораму заданной заданной точки.  
+  На панораме имеются контролы масштабирования "+/-", контрол разворачивания панорамы, контрол закрытия панорамного плеера - крестик, на наземной панораме имеются стрелки перехода к следующей панораме.
+  На карте в месте клика появляется панорамная метка со шторкой обзора, предыдущаяя метка пропадает.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <script src="../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init', ['Map', 'GeoObject', 'Placemark', 'control.SearchControl', 'control.ZoomControl', 'event.Manager', 'geocode', 'geometry.Point', 'overlay.Placemark', 'panorama.Placemark', 'panorama.Player', 'panorama.locate',
+            'templateLayoutFactory', 'util.defineClass']);
+
+        function init(ymaps) {
+            var player = null,
+                    map = null,
+                    panoramaPlacemark = null;
+
+            function onPlayerClose () {
+                player = null;
+                map.geoObjects.remove(panoramaPlacemark);
+                panoramaPlacemark = null;
+            }
+
+            function openPanorama (panoramas) {
+                if (panoramas.length) {
+                    if (player) {
+                        player.setPanorama(panoramas[0]);
+                    } else {
+                        player = new ymaps.panorama.Player('player', panoramas[0]);
+                        player.events
+                                .add('spanchange', function () {
+                                    console.log('spanchangegetSpan', player.getSpan());
+                                    console.log('spanchangegetMinSpan', player.getMinSpan());
+                                    console.log('spanchangegetMaxSpan', player.getMaxSpan());
+                                })
+                                .add('directionchange', function () {
+                                    console.log('directionchange', player.getDirection()[0]);
+                                    console.log('directionchangegetMinSpan', player.getMinSpan());
+                                    console.log('directionchangegetMaxSpan', player.getMaxSpan());
+                                })
+                                .add('panoramachange', function () {
+                                    console.log('panoramachange');
+                                    console.log('panoramachangegetMinSpan', player.getMinSpan());
+                                    console.log('panoramachangegetMaxSpan', player.getMaxSpan());
+                                })
+                                .add('destroy', onPlayerClose);
+                        panoramaPlacemark = new ymaps.panorama.Placemark(player);
+                        map.geoObjects.add(panoramaPlacemark);
+                    }
+                }
+            }
+
+            function loadPanoramaOnClick (e) {
+                ymaps.panorama.locate(e.get('coords')).done(openPanorama);
+            }
+
+            function initMap (center) {
+                map = new ymaps.Map('map', {
+                    center: center,
+                    zoom: 15,
+                    controls: [
+                        'zoomControl',
+                        'searchControl'
+                    ]
+                });
+
+                map.events.add('click', loadPanoramaOnClick);
+            }
+
+            ymaps.geocode('Москва').done(function (response) {
+                initMap(response.geoObjects.get(0).geometry.getCoordinates());
+            });
+        }
+    </script>
+    <style>
+        #player, #map {
+            width: 640px;
+            height: 480px;
+        }
+    </style>
+</head>
+<body>
+<div id="player"></div>
+<div id="map"></div>
+</body>
+</html>

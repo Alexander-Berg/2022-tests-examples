@@ -1,0 +1,70 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - robot-tap
+      groups: []
+labels:
+  order: '1000'
+---
+regexp_section:
+    matcher:
+        match_and:
+            - match_fsm:
+                  host: refuel\\.tap-tst\\.yandex\\.ru
+            - match_fsm:
+                  path: /api/.*
+    modules:
+        - report:
+              uuid: 'services'
+              ranges: 'default'
+        - report:
+              uuid: 'refuel-total'
+              ranges: 'default'
+        - report:
+              uuid: 'refuel-api'
+              ranges: 'default'
+        - rewrite:
+              actions:
+                  - regexp: '/api(/.*)'
+                    rewrite: '%1'
+                  - regexp: '.*'
+                    header_name: 'Host'
+                    rewrite: 'app.tst.tanker.yandex.net'
+        - threshold:
+              lo_bytes: 1024
+              hi_bytes: 1024
+              pass_timeout: 15s
+              recv_timeout: 5s
+              on_pass_timeout_failure:
+                  errordocument:
+                      status: 408
+                      content: 'Request Timeout'
+        - response_headers:
+              create:
+                  X-Frame-Options: DENY
+                  X-XSS-Protection: 1; mode=block
+                  X-Content-Type-Options: nosniff
+        - balancer2:
+              timeout_policy:
+                  timeout: 10s
+                  unique_policy: {}
+              attempts: 5
+              connection_attempts: 5
+              rr: {}
+              return_last_5xx: true
+              status_code_blacklist: ['5xx']
+              generated_proxy_backends:
+                  proxy_options:
+                      backend_timeout: 2s
+                      connect_timeout: 100ms
+                      keepalive_count: 3
+                      fail_on_5xx: false
+                  instances:
+                      - weight: 1
+                        host: 'app.tst.tanker.yandex.net'
+                        port: 80
+              on_error:
+                  errordocument:
+                      status: 503
+                      content: 'Service unavailable'

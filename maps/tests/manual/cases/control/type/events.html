@@ -1,0 +1,117 @@
+<!doctype html>
+<!--
+Title:
+Контрол тип карты: события контрола 
+
+Description:
+Проверка событий контрола.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+control
+
+Estimated time:
+120000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан Санкт-Петербурга, справа вверху 2 контрола "Слои", контрол фулскрин.
+  Под правым контролом "Слои" выпадающий список с типами карты: "Схема"(стоит галка), "Спутник"; "Гибрид"; разделитель; "Панорамы".
+  Под контейнером с картой блок логов, в конце блок: "after: click; after: press; after: expand.
+
+Step:
+  Action:
+  Выполнить клик в левый контрол "Слои".
+
+  Expectation:
+  Выпадающий список типов карты под правым контролом свернулся, под левым контролом открылся выпадающий список с типами карты: "Схема"(стоит галка), "Спутник"; "Гибрид"; разделитель; "Панорамы".
+  Под контейнером с картой добавляются логи: "after: collapse; before: click; before: press; before: expand.
+
+Step:
+  Action:
+  Навести курсор на значение "Спутник" в списке, выполнить клик.
+
+  Expectation:
+  При наведении курсора на значение в списке, фон значения выделяется желтым.
+  По клику список сворачивается, спан карты меняется на спутниковый снимок. 
+  Под контейнером с картой добавляются логи: "before: click; before: collapse".
+
+Step:
+  Action:
+  Выполнить клик в правый контрол "Слои".
+
+  Expectation:
+  Под контролом выпадает список с типами карты: "Схема"; "Спутник"(стоит галка); "Гибрид"; разделитель; "Панорамы".
+  Под контейнером с картой добавляются логи: "after: click; after: press; after: expand".
+
+Step:
+  Action:
+  Навести курсор на значение "Гибрид" в списке, выполнить клик.
+
+  Expectation:
+  При наведении курсора на значение в списке, фон значения выделяется желтым.
+  По клику список сворачивается, спан карты меняется на спутниковый снимок. 
+  Под контейнером с картой добавляются логи: "after: click; after: collapse".
+-->
+<html>
+<head>
+    <title>API 2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type="text/javascript">
+        Api('init');
+        function init(ym) {
+            var map = myMap = new ym.Map('map', {
+                        center: [59.94, 30.33],
+                        zoom: 12,
+                        controls: ["fullscreenControl"]
+                    }),
+                    log = new Log(),
+                    typeSelectorBefore = new ym.control.TypeSelector(),
+                    typeSelectorAfter = new ym.control.TypeSelector(),
+                    i = 0;
+
+            addGrid(map);
+
+            typeSelectorBefore.events.add(['click', 'press', 'collapse', 'expand'], function (e) {
+                log.info('before: ' + e.get('type'));
+            });
+            log.info('Expanding typeSelectorBefore...');
+            typeSelectorBefore.expand();
+            log.info('Collapsing typeSelectorBefore...');
+            typeSelectorBefore.collapse();
+            log.info('fire("click") (typeSelectorBefore)...');
+            typeSelectorBefore.events.fire('click');
+
+            typeSelectorAfter.events.add(['click', 'press', 'collapse', 'expand'], function (e) {
+                log.info('after: ' + e.get('type'));
+            });
+
+            map.controls.add(typeSelectorBefore);
+            map.controls.add(typeSelectorAfter);
+
+            log.info('Expanding typeSelectorAfter...');
+            typeSelectorAfter.expand();
+            log.info('Collapsing typeSelectorAfter...');
+            typeSelectorAfter.collapse();
+            log.info('fire("click") on layout (typeSelectorAfter)...');
+            typeSelectorAfter.getLayout().then(function (l) {
+                l.events.fire('click');
+            });
+        }
+
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;">
+</div>
+</body>
+</html>

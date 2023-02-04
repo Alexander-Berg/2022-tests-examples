@@ -1,0 +1,137 @@
+module.exports = {
+    'Россия, Москва, улица Арбат, 24': {
+        entries: [
+            {
+                name: 'улица Арбат, 24',
+                shortName: 'улица Арбат, 24',
+                fullName: 'улица Арбат, 24',
+                scope: 'Москва, Россия',
+                address: 'Россия, Москва, улица Арбат, 24',
+                streetId: 62613,
+                buildingId: '8017417998175267261',
+                point: {
+                    latitude: 55.75007,
+                    longitude: 37.592293,
+                    defined: true,
+                },
+                lt: {
+                    latitude: 55.750294,
+                    longitude: 37.591892,
+                    defined: true,
+                },
+                rb: {
+                    latitude: 55.749844,
+                    longitude: 37.592693,
+                    defined: true,
+                },
+                type: 'HOUSE',
+                changeRegion: true,
+                countryGeoId: 225,
+                rgid: 587795,
+                populatedRgid: 587795,
+                changeRegionInfo: {
+                    rgid: 165705,
+                    totalOffers: 5959,
+                    region: {
+                        name: 'Москва (без Новой Москвы)',
+                        shortName: 'Москва (без Новой Москвы)',
+                        fullName: 'Москва (без Новой Москвы)',
+                        point: {
+                            latitude: 55.755817,
+                            longitude: 37.617645,
+                            defined: true,
+                        },
+                        lt: {
+                            latitude: 55.957565,
+                            longitude: 37.32606,
+                            defined: true,
+                        },
+                        rb: {
+                            latitude: 55.491333,
+                            longitude: 37.967796,
+                            defined: true,
+                        },
+                        type: 'CITY',
+                        changeRegion: false,
+                        countryGeoId: 225,
+                        rgid: 165705,
+                        populatedRgid: 741964,
+                        searchParams: {
+                            rgid: ['165705'],
+                        },
+                    },
+                },
+                searchParams: {
+                    rgid: ['165705'],
+                    unifiedAddress: ['Россия, Москва, улица Арбат, 24'],
+                },
+            },
+            {
+                name: 'улица Новый Арбат, 24',
+                shortName: 'улица Новый Арбат, 24',
+                fullName: 'улица Новый Арбат, 24',
+                scope: 'Москва, Россия',
+                address: 'Россия, Москва, улица Новый Арбат, 24',
+                streetId: 30296,
+                buildingId: '8906219283845356924',
+                point: {
+                    latitude: 55.753086,
+                    longitude: 37.587616,
+                    defined: true,
+                },
+                lt: {
+                    latitude: 55.75331,
+                    longitude: 37.587215,
+                    defined: true,
+                },
+                rb: {
+                    latitude: 55.75286,
+                    longitude: 37.588017,
+                    defined: true,
+                },
+                type: 'HOUSE',
+                changeRegion: true,
+                countryGeoId: 225,
+                rgid: 587795,
+                populatedRgid: 587795,
+                changeRegionInfo: {
+                    rgid: 165705,
+                    totalOffers: 5959,
+                    region: {
+                        name: 'Москва (без Новой Москвы)',
+                        shortName: 'Москва (без Новой Москвы)',
+                        fullName: 'Москва (без Новой Москвы)',
+                        point: {
+                            latitude: 55.755817,
+                            longitude: 37.617645,
+                            defined: true,
+                        },
+                        lt: {
+                            latitude: 55.957565,
+                            longitude: 37.32606,
+                            defined: true,
+                        },
+                        rb: {
+                            latitude: 55.491333,
+                            longitude: 37.967796,
+                            defined: true,
+                        },
+                        type: 'CITY',
+                        changeRegion: false,
+                        countryGeoId: 225,
+                        rgid: 165705,
+                        populatedRgid: 741964,
+                        searchParams: {
+                            rgid: ['165705'],
+                        },
+                    },
+                },
+                searchParams: {
+                    rgid: ['165705'],
+                    unifiedAddress: ['Россия, Москва, улица Новый Арбат, 24'],
+                },
+            },
+        ],
+        totalEntries: 2,
+    },
+};

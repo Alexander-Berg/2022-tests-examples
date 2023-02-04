@@ -1,0 +1,433 @@
+namespace:
+  taxi_disable_fake: # original: taxi
+    accruals:
+      types:
+        agencyFull:
+          topics:
+            default:
+              endpoint: lbkx.logbroker.yandex.net
+              topic: accruals/new-accrual
+              tvmId: 2001059
+            dry-run:
+              endpoint: lbkx.logbroker.yandex.net
+              topic: accruals/new-accrual-dry
+              tvmId: 2001059
+          events:
+            - loc: cashless
+              batch: "taxi:cashless"
+              type_cc: terminalid
+              format: taxi_cashless
+            - loc: cashless_refunds
+              batch: "taxi:cashless"
+              type_cc: terminalid
+              format: taxi_cashless
+            - loc: cashless
+              batch: "taxi:fuel"
+              type_cc: fuel_hold_payment
+              format: taxi_fuel_hold_payment
+        agencyDetailed:
+          topics:
+            default:
+              endpoint: lbkx.logbroker.yandex.net
+              topic: accruals/new-accrual
+              tvmId: 2001059
+            dry-run:
+              endpoint: lbkx.logbroker.yandex.net
+              topic: accruals/new-accrual-dry
+              tvmId: 2001059
+          events:
+            - loc: commissions_with_vat
+              type_cc: netting
+              format: taxi_commission
+            - loc: commissions_refunds_with_vat
+              type_cc: netting
+              format: taxi_commission
+            - loc: fuel_hold
+              batch: "taxi:fuel"
+              side: credit
+              type_cc: fuel_hold
+              format: taxi_fuel_hold_payment
+
+      ignore:
+        - loc: compensations
+        - loc: compensations_refunds
+        - batch: "taxi:payout"
+        - batch: "reserve for payout"
+        - batch: "payout register"
+        - loc: "fuel_hold"
+          batch: "taxi:fuel"
+          side: debit
+        # spendable accruals, will add later
+        - loc: promocodes
+          type_cc: yataxi
+        - loc: promocodes_refunds
+          type_cc: yataxi
+        - loc: subventions
+          type_cc: yataxi
+        - loc: subventions
+          type_cc: yataxi
+        - loc: subventions_refunds
+          type_cc: yataxi
+        - loc: logistics
+          type_cc: yataxi
+        - loc: logistics_refunds
+          type_cc: yataxi
+        - loc: corporate
+          type_cc: yataxi
+        - loc: corporate_refunds
+          type_cc: yataxi
+        - batch: "taxi:revenue"
+      marked_events:
+        cluster: hahn
+        yt_path: "//home/balance/test/new_billing/public/taxi/marked_events"
+        yt_path_dry: "//home/balance/test/new_billing/public/taxi/marked_events"
+
+    acts:
+      agency:
+        topics:
+          default:
+            endpoint: lbkx.logbroker.yandex.net
+            topic: acts/agent
+            tvmId: 2001059
+          dry-run:
+            endpoint: lbkx.logbroker.yandex.net
+            topic: acts/agent
+            tvmId: 2001059
+        events: # у такси есть отдельный поток для генерации актов, оставляем только один тип
+          #        - loc: promocodes
+          #        - loc: promocodes_refunds
+          - loc: commissions_with_vat
+            sign: "+1"
+
+  bnpl:
+    accruals:
+      types:
+        agencyFull:
+          topics:
+            default:
+              endpoint: lbkx.logbroker.yandex.net
+              topic: accruals/new-accrual-common
+              partitionGroup: 2
+              tvmId: 2001059
+            dry-run:
+              endpoint: lbkx.logbroker.yandex.net
+              topic: accruals/new-accrual-common-dry
+              partitionGroup: 2
+              tvmId: 2001059
+          events:
+            - loc: cashless
+              batch: "bnpl:cashless"
+              type_cc: bnpl
+              format: bnpl_base
+            - loc: cashless_refunds
+              batch: "bnpl:cashless"
+              type_cc: bnpl_canceled
+              format: bnpl_base
+              filter:
+                refund: canceled
+            - loc: cashless_refunds
+              batch: "bnpl:cashless"
+              type_cc: bnpl_refunded
+              format: bnpl_base
+          event_fields:
+            vars:
+              refund:
+                path: [ "event_batch", "info", "payload", "cancel_reason" ]
+                type: string
+            fields:
+              refund: $refund
+        agencyDetailed:
+          topics:
+            default:
+              endpoint: lbkx.logbroker.yandex.net
+              topic: accruals/new-accrual-common
+              partitionGroup: 2
+              tvmId: 2001059
+            dry-run:
+              endpoint: lbkx.logbroker.yandex.net
+              topic: accruals/new-accrual-common-dry
+              partitionGroup: 2
+              tvmId: 2001059
+          events:
+            - loc: commissions_acted
+              type_cc: netting
+              format: bnpl_commissions
+            - loc: commission_refunds_acted
+              type_cc: netting
+              format: bnpl_commissions_refunds
+      netting:
+        batch: "bnpl:payout"
+        loc: payout
+      operation_type:
+        INSERT:
+      marked_events:
+        cluster: hahn
+        yt_path: "//home/balance/test/new_billing/public/bnpl/marked_events"
+        yt_path_dry: "//home/balance/test/new_billing/public/bnpl/marked_events"
+      ignore:
+        - batch: "reserve for payout"
+        - batch: "payout register"
+        # сейчас нет начислений по удержаниям
+        - loc: commissions
+        - loc: commission_refunds
+    acts:
+      agency:
+        topics:
+          default:
+            endpoint: lbkx.logbroker.yandex.net
+            topic: acts/agent
+            tvmId: 2001059
+          dry-run:
+            endpoint: lbkx.logbroker.yandex.net
+            topic: acts/agent
+            tvmId: 2001059
+        events:
+          - loc: commissions
+            sign: "+1"
+          - loc: commission_refunds
+            sign: "-1"
+
+  bnpl_income:
+    acts:
+      agency:
+        topics:
+          default:
+            endpoint: lbkx.logbroker.yandex.net
+            topic: acts/agent
+            tvmId: 2001059
+          dry-run:
+            endpoint: lbkx.logbroker.yandex.net
+            topic: acts/agent
+            tvmId: 2001059
+        events:
+          - loc: commissions
+            sign: "+1"
+          - loc: commission_refunds
+            sign: "-1"
+
+  plus:
+    accruals:
+      types:
+        spendable:
+          topics:
+            default:
+              endpoint: lbkx.logbroker.yandex.net
+              topic: accruals/spendable-common
+              partitionGroup: 3
+              tvmId: 2001059
+            dry-run:
+              endpoint: lbkx.logbroker.yandex.net
+              topic: accruals/spendable-common-dry
+              partitionGroup: 3
+              tvmId: 2001059
+          events:
+            - loc: act_expense
+              format: plus_spendable
+    acts:
+      agency:
+        topics:
+          default:
+            endpoint: lbkx.logbroker.yandex.net
+            topic: acts/agent
+            tvmId: 2001059
+          dry-run:
+            endpoint: lbkx.logbroker.yandex.net
+            topic: acts/agent
+            tvmId: 2001059
+        events:
+          - loc: act_income
+            batch: "act-row:general"
+            sign: "+1"
+
+  oplata:
+    accruals:
+      types:
+        agencyFull:
+          topics:
+            default:
+              endpoint: lbkx.logbroker.yandex.net
+              topic: accruals/new-accrual-common
+              partitionGroup: 1
+              tvmId: 2001059
+            dry-run:
+              endpoint: lbkx.logbroker.yandex.net
+              topic: accruals/new-accrual-common-dry
+              partitionGroup: 1
+              tvmId: 2001059
+          events:
+            - loc: agent_rewards
+              batch: "oplata:cashless"
+              type_cc: terminalid
+              format: oplata_agent_reward
+            - loc: cashless_refunds
+              batch: "oplata:cashless"
+              type_cc: terminalid
+              format: oplata_cashless_refund
+              sign: "-1"
+      ignore:
+        - loc: cashless
+          batch: "oplata:cashless"
+        - loc: promocodes
+          batch: "oplata:cashless"
+        - batch: "oplata:payout"
+        - batch: "reserve for payout"
+    acts:
+      agency:
+        topics:
+          default:
+            endpoint: lbkx.logbroker.yandex.net
+            topic: acts/agent
+            tvmId: 2001059
+          dry-run:
+            endpoint: lbkx.logbroker.yandex.net
+            topic: acts/agent
+            tvmId: 2001059
+        events:
+          - loc: "agent_rewards"
+            sign: "+1"
+
+  mail_pro:
+    acts:
+      agency:
+        topics:
+          default:
+            endpoint: lbkx.logbroker.yandex.net
+            topic: acts/agent
+            tvmId: 2001059
+          dry-run:
+            endpoint: lbkx.logbroker.yandex.net
+            topic: acts/agent
+            tvmId: 2001059
+        events:
+          - &x-event-cashless
+            loc: cashless
+            side: credit
+            sign: "+1"
+          - &x-event-cashless-refunds
+            loc: cashless_refunds
+            side: debit
+            sign: "-1"
+
+  disk:
+    acts:
+      agency:
+        topics:
+          default:
+            endpoint: lbkx.logbroker.yandex.net
+            topic: acts/agent
+            tvmId: 2001059
+          dry-run:
+            endpoint: lbkx.logbroker.yandex.net
+            topic: acts/agent
+            tvmId: 2001059
+        events:
+          - *x-event-cashless
+          - *x-event-cashless-refunds
+
+  music:
+    acts:
+      agency:
+        topics:
+          default:
+            endpoint: lbkx.logbroker.yandex.net
+            topic: acts/agent
+            tvmId: 2001059
+          dry-run:
+            endpoint: lbkx.logbroker.yandex.net
+            topic: acts/agent
+            tvmId: 2001059
+        events:
+          - loc: cashless
+            side: credit
+            sign: "+1"
+          - loc: cashless_refunds
+            side: debit
+            sign: "-1"
+          - loc: plus_withdraw
+            side: credit
+            sign: "+1"
+          - loc: plus_withdraw_refunds
+            side: debit
+            sign: "-1"
+
+event:
+  vars:
+    namespace:
+      path: [ "event", "loc", "namespace" ]
+      type: string
+      required: true
+    loc:
+      path: [ "event", "loc", "type" ]
+      type: string
+      required: true
+    batch:
+      path: [ "event_batch", "type" ]
+      type: string
+      required: true
+    side:
+      path: [ "event", "type" ]
+      type: string
+      required: true
+    id:
+      path: [ "id" ]
+      type: int
+      required: true
+    seqID:
+      path: [ "seq_id" ]
+      type: int
+      required: true
+    amount:
+      path: [ "event", "amount" ]
+      type: string
+      required: true
+    info:
+      path: [ "event_batch", "info" ]
+      type: string
+    transactionID:
+      path: [ "event_batch", "info", "transaction_id" ]
+      type: string
+      required: true
+    eventTime:
+      path: [ "event_batch", "info", "event_time" ]
+      type: string
+      required: true
+    contractID:
+      path: [ "event", "loc", "contract_id" ]
+      type: string
+      required: true
+
+    # tariffer_payload fields - https://st.yandex-team.ru/BILLING-1311
+    invoices:
+      path: [ "event_batch", "info", "tariffer_payload", "contract_states", "invoices" ]
+      type: any
+    alternativeInvoices:
+      path: [ "event", "info", "tariffer_payload", "contract_states", "invoices" ]
+      type: any
+
+    dryRun:
+      path: [ "event_batch", "info", "tariffer_payload", "dry_run" ]
+      type: bool
+    alternativeDryRun:
+      path: [ "event", "info", "tariffer_payload", "dry_run" ]
+      type: bool
+
+  fields:
+    namespace: $namespace
+    loc: $loc
+    batch: $batch
+    side: $side
+    id: $id
+    seq_id: $seqID
+    amount: $amount
+    info: $info
+    transactionID: $transactionID
+    event_time: $eventTime
+    contract_id: $contractID
+    invoices:
+      nvl:
+        - $invoices
+        - $alternativeInvoices
+    dry_run:
+      nvl:
+        - $dryRun
+        - $alternativeDryRun

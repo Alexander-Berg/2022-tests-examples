@@ -1,0 +1,122 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Балун: балун на карте в скрытом контейнере
+
+Description:
+Проверка балунов на картах в скрытых контейнерах. 
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+smoke, regress
+
+Estimated time:
+120000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть страницу и элементы на ней. 
+
+  Expectation:
+  На странице отображен контейнер с закладками "Описание", "Москва", "Питер", "Казань".
+
+Step:
+  Action:
+  Последовательно прокликать закладки контейнера(кроме "Описание"). 
+
+  Expectation:
+  По клику в закладку в контейнере должна корректно отображаться карта города, в центре балун с названием города.
+
+Step:
+  Action:
+  Последовательно прокликать закладки контейнера, в каждой закладке выполнить клик в свободное место на спане карты. 
+
+  Expectation:
+  По клику балун с названием города закрывается, в центре остается метка коллекции.
+  В месте клика открывается балун с содержимым "myMap(номер) balloon"(номера от 1 до 3).
+
+Step:
+  Action:
+  Последовательно прокликать закладки контейнера. 
+
+  Expectation:
+  При открытии карты в закладке, балун открытый на предыдущем шаге будет находится в центре спана карты.
+-->
+<html>
+<head>
+    <title>API 2.0</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <script src="https://yandex.st/jquery/1.6.4/jquery.min.js" type="text/javascript"></script>
+    <script src="https://yandex.st/jquery-ui/1.8.16/jquery-ui.min.js" type="text/javascript"></script>
+    <link rel="stylesheet" href="https://yandex.st/jquery-ui/1.8.15/themes/humanity/jquery.ui.all.min.css"
+          type="text/css"/>
+    <script src="../helper.js"></script>
+    <script type=text/javascript>
+        Api('init');
+        function init(ymaps) {
+            $('#tabs').tabs();
+            var myMap1 = new ymaps.Map('tab-2', {
+                center: [55.76, 37.64], // Москва
+                zoom: 10
+            });
+            var myMap2 = new ymaps.Map('tab-3', {
+                center: [60, 30], // Питер
+                zoom: 10
+            });
+            var myMap3 = new ymaps.Map('tab-4', {
+                center: [56, 49], // Казань
+                zoom: 10
+            });
+            // В момент показа нового таба будем пересчитывать размер карты.
+            // Карта примет максимально возможные значения при активации ее таба,
+            // и нулевые как только будет выбран первый таб.
+            // Требуется слушать именно tabsshow, а не tabsselect, так как требуется
+            // чтобы элемент, где располагается карта, уже был виден.
+            $('#tabs').bind('tabsshow', function (event, ui) {
+                myMap1.container.fitToViewport();
+                myMap2.container.fitToViewport();
+                myMap3.container.fitToViewport();
+            });
+            
+            var moscow = new ymaps.Placemark(myMap1.getCenter(), {balloonContent: "Moscow"});
+            var piter = new ymaps.Placemark(myMap2.getCenter(), {balloonContent: "St.Petersburg"});
+            var kazan = new ymaps.Placemark(myMap3.getCenter(), {balloonContent: "Kazan"});
+            myMap1.geoObjects.add(moscow);
+            myMap2.geoObjects.add(piter);
+            myMap3.geoObjects.add(kazan);
+            moscow.balloon.open();
+            piter.balloon.open();
+            kazan.balloon.open();
+            myMap1.events.add('click', function (e) {
+                myMap1.balloon.open(e.get('coords'), {content: 'myMap1 balloon'});
+            });
+            myMap2.events.add('click', function (e) {
+                myMap2.balloon.open(e.get('coords'), {content: 'myMap2 balloon'});
+            });
+            myMap3.events.add('click', function (e) {
+                myMap3.balloon.open(e.get('coords'), {content: 'myMap3 balloon'});
+            });
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="tabs" style="width: 512px; height: 512px;">
+    <ul>
+        <li><a href="#tab-1">Описание</a></li>
+        <li><a href="#tab-2">Москва</a></li>
+        <li><a href="#tab-3">Питер</a></li>
+        <li><a href="#tab-4">Казань</a></li>
+    </ul>
+    <div id="tab-1">
+        <p>Во вкладке Карта находится карта Москвы</p>
+    </div>
+    <div id="tab-2" style="width: 512px; height: 512px; padding: 0;"></div>
+    <div id="tab-3" style="width: 512px; height: 512px; padding: 0;"></div>
+    <div id="tab-4" style="width: 512px; height: 512px; padding: 0;"></div>
+</div>
+<p><a href="https://tech.yandex.ru/maps/archive/doc/jsapi/2.0/ref/reference/Balloon-docpage/" target="_blank">Docs</a></p>
+</body>
+</html>

@@ -1,0 +1,169 @@
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      uri: '(/collections)?/api/cards(/.*)?'
+  modules:
+    - report:
+        uuid: api_cards
+        ranges: default
+    - icookie:
+        use_default_keys: true
+        domains: [".yandex.ru", ".yandex.by", ".yandex.com", ".yandex.com.tr", ".yandex.kz", ".yandex.ua", ".yandex.uz"]
+    - regexp:
+        sections:
+          post_method:
+            matcher:
+              match_fsm: {match: POST.*}
+            modules:
+            - balancer2:
+                attempts: 1
+                rr: {weights_file: ./controls/traffic_control.weights}
+                backends:
+                - weight: 1
+                  name: api_sas
+                  modules:
+                    - report: {ranges: default, uuid: requests_api_cards_to_sas}
+                    - balancer2:
+                        attempts: 1
+                        active:
+                          steady: false
+                          request: 'GET /health/ HTTP/1.1\nHost: collections.yandex.ru\n\n'
+                          delay: 10s
+                        generated_proxy_backends:
+                          proxy_options:
+                            backend_timeout: 15s
+                            keepalive_count: 1
+                            fail_on_5xx: false
+                          include_backends:
+                            type: BY_ID
+                            ids: [pdb_backend_production_sas]
+                - weight: 1
+                  name: api_man
+                  modules:
+                    - report: {ranges: default, uuid: requests_api_cards_to_man}
+                    - balancer2:
+                        attempts: 1
+                        active:
+                          steady: false
+                          request: 'GET /health/ HTTP/1.1\nHost: collections.yandex.ru\n\n'
+                          delay: 10s
+                        generated_proxy_backends:
+                          proxy_options:
+                            backend_timeout: 15s
+                            keepalive_count: 1
+                            fail_on_5xx: false
+                          include_backends:
+                            type: BY_ID
+                            ids: [pdb_backend_production_man]
+                - weight: 1
+                  name: api_vla
+                  modules:
+                    - report: {ranges: default, uuid: requests_api_cards_to_vla}
+                    - balancer2:
+                        attempts: 1
+                        active:
+                          steady: false
+                          request: 'GET /health/ HTTP/1.1\nHost: collections.yandex.ru\n\n'
+                          delay: 10s
+                        generated_proxy_backends:
+                          proxy_options:
+                            backend_timeout: 15s
+                            keepalive_count: 1
+                            fail_on_5xx: false
+                          include_backends:
+                            type: BY_ID
+                            ids: [pdb_backend_production_vla]
+                - weight: -1
+                  name: api_devnull
+                  modules:
+                    - report:
+                        uuid: requests_api_cards_to_devnull
+                        ranges: 1ms
+                    - errordocument:
+                        status: 204
+                on_error:
+                  modules:
+                  - errordocument: {content: Gateway Timeout, status: 504}
+          get_method:
+            matcher:
+              match_fsm: {match: GET.*}
+            modules:
+            - request_replier:
+                sink:
+                  modules:
+                  - report: {ranges: default, uuid: requests_api_cards_to_prestable}
+                  - balancer2:
+                      weighted2: {}
+                      attempts: 5
+                      generated_proxy_backends:
+                        proxy_options:
+                          backend_timeout: 15s
+                          connect_timeout: 100ms
+                        include_backends:
+                          type: BY_ID
+                          ids: [pdb_backend_prestable]
+            - shared:
+                uuid: collections_api_cards_backends
+            - balancer2:
+                attempts: 3
+                attempts_file: './controls/api_cards.attempts'
+                rr: {weights_file: ./controls/traffic_control.weights}
+                backends:
+                - weight: 1
+                  name: api_sas
+                  modules:
+                    - report: {ranges: default, uuid: requests_api_cards_to_sas}
+                    - balancer2:
+                        attempts: 2
+                        weighted2: {}
+                        generated_proxy_backends:
+                          proxy_options:
+                            backend_timeout: 4s
+                            keepalive_count: 1
+                          include_backends:
+                            type: BY_ID
+                            ids: [pdb_backend_production_sas]
+                - weight: 1
+                  name: api_man
+                  modules:
+                    - report: {ranges: default, uuid: requests_api_cards_to_man}
+                    - balancer2:
+                        attempts: 2
+                        weighted2: {}
+                        generated_proxy_backends:
+                          proxy_options:
+                            backend_timeout: 4s
+                            keepalive_count: 1
+                          include_backends:
+                            type: BY_ID
+                            ids: [pdb_backend_production_man]
+                - weight: 1
+                  name: api_vla
+                  modules:
+                    - report: {ranges: default, uuid: requests_api_cards_to_vla}
+                    - balancer2:
+                        attempts: 2
+                        weighted2: {}
+                        generated_proxy_backends:
+                          proxy_options:
+                            backend_timeout: 4s
+                            keepalive_count: 1
+                          include_backends:
+                            type: BY_ID
+                            ids: [pdb_backend_production_vla]
+                - weight: -1
+                  name: api_devnull
+                  modules:
+                    - report:
+                        uuid: requests_api_cards_to_devnull
+                        ranges: 1ms
+                    - errordocument:
+                        status: 204
+                on_error:
+                  modules:
+                  - errordocument: {content: Gateway Timeout, status: 504}
+          default:
+            matcher: {}
+            modules:
+            - shared: {uuid: collections_api_cards_backends}

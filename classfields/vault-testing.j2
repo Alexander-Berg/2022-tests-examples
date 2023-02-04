@@ -1,0 +1,45 @@
+#
+# vault server
+#
+ui = true
+log_level = "Debug"
+
+cluster_name = "test-vault"
+api_addr = "http://{{ ansible_nodename }}:8200"
+cluster_addr = "https://{{ ansible_nodename }}:8201"
+
+# 20 years, max ttl for secrets and tokens
+max_lease_ttl = "175200h"
+
+listener "tcp" {
+  address     = "[::]:8200"
+  cluster_address = "{{ ansible_nodename }}:8201"
+  tls_cert_file = "/etc/vault/certs/vault.crt"
+  tls_key_file = "/etc/vault/certs/vault.key"
+  tls_disable_client_certs = true
+
+  telemetry {
+    unauthenticated_metrics_access = true
+  }
+}
+
+storage "zookeeper" {
+  address = "zookeeper-01-sas.test.vertis.yandex.net:2181,zookeeper-01-vla.test.vertis.yandex.net:2181,zookeeper-01-myt.test.vertis.yandex.net:2181"
+  path    = "vault/"
+  auth_info = "digest:vault:{{lookup('yav', 'sec-01eayjd38q4c781hdg71mjn81m', 'vault_zk_pass')}}"
+  znode_owner = "digest:vault:{{lookup('yav', 'sec-01eayjd38q4c781hdg71mjn81m', 'vault_zk_digest')}}"
+}
+
+ha_storage "zookeeper" {
+  address = "zookeeper-01-sas.test.vertis.yandex.net:2181,zookeeper-01-vla.test.vertis.yandex.net:2181,zookeeper-01-myt.test.vertis.yandex.net:2181"
+  path    = "vault-ha/"
+  auth_info = "digest:vault:{{lookup('yav', 'sec-01eayjd38q4c781hdg71mjn81m', 'vault_zk_pass')}}"
+  znode_owner = "digest:vault:{{lookup('yav', 'sec-01eayjd38q4c781hdg71mjn81m', 'vault_zk_digest')}}"
+}
+
+# /v1/sys/metrics?format=prometheus
+telemetry {
+  prometheus_retention_time = "24h"
+  disable_hostname = true
+}
+

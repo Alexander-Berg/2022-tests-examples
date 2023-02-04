@@ -1,0 +1,126 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Мультимаршрут: переключение режима ОТ-авто
+
+Description:
+Проверка переключения режима ОТ-авто.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+multiRouter
+
+Estimated time:
+180000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно со спаном Москвы, затем спан сразу меняется на спан с маршрутом из двух точек "A","B"(могут быть альтернативные линии), курсор - палец с меткой "С".
+  Снизу слева кнопка "mode".
+
+Step:
+  Action:
+  Открыть инструменты разработчика командой Windows: Ctrl + Shift + I если у вас MacOS: ⌥ + ⌘ + I, вкладку Console.
+  Выполнить клик в кнопку "mode".
+
+  Expectation:
+  Маршрутная нитка перестраивается, на маршрутной нитке появляются метки общественного транспорта(метро, электричек), с подписями станций, пешеходные метки с временем и расстоянием.
+  В консоли отсуствуют ошибки после переключения режима маршрута.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "mode".
+
+  Expectation:
+  Маршрутная нитка перестраивается, с маршрута пропадают метки общественного транспорта, пешеходные метки, появляется альтернативная линия.
+  В консоли отсуствуют ошибки после переключения режима маршрута.
+
+Step:
+  Action:
+  Навести курсор на метку "A", зажать ЛКМ на маршрутной метке и попробовать переместить метку.
+
+  Expectation:
+  Метка перемещается вслед за курсором, маршрут перестраивается.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "mode".
+
+  Expectation:
+  Маршрутная нитка перестраивается, на маршрутной нитке появляются метки общественного транспорта(метро, электричек), с подписями станций, пешеходные метки с временем и расстоянием.
+  В консоли отсуствуют ошибки после переключения режима маршрута.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "mode".
+
+  Expectation:
+  Маршрутная нитка перестраивается, с маршрута пропадают метки общественного транспорта, пешеходные метки, появляется альтернативная линия.
+  В консоли отсуствуют ошибки после переключения режима маршрута.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 10,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl', 'zoomControl']
+            });
+
+            addGrid(map);
+            __log__('Падает ошибка при переключении между ОТ-АВТО');
+
+            var placemark1 = new ymaps.Placemark([55.71574031323344, 37.49753265380539]);
+            var placemark5 = new ymaps.Placemark([55.97, 37.18]);
+
+            var multiRoute = new ymaps.multiRouter.MultiRoute({
+                referencePoints: [placemark1.geometry, placemark5.geometry]
+            }, {
+                boundsAutoApply: true,
+                preset: "islands#multiRouterSmall"
+            });
+
+            map.geoObjects.add(multiRoute);
+
+            multiRoute.editor.start({
+                addWayPoints: true,
+                dragWayPoints: true,
+                dragViaPoints: true,
+                removeWayPoints: true,
+                removeViaPoints: true
+            });
+
+            var modeButton = new ymaps.control.Button('mode');
+            modeButton.events
+                    .add('select', function () {
+                        multiRoute.model.setParams({routingMode: 'masstransit'}, true);
+                    })
+                    .add('deselect', function () {
+                        multiRoute.model.setParams({routingMode: 'auto'}, true);
+                    });
+            map.controls.add(modeButton, {position: {bottom: 35, left: 5}});
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

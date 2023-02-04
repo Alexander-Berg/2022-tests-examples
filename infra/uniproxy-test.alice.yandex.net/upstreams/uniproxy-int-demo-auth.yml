@@ -1,0 +1,40 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - av-kotikov
+      groups: []
+labels:
+  order: '02000000'
+---
+regexp_section:
+    matcher:
+        match_and:
+            - match_fsm: { host: "uniproxy-test\\\\.alice\\\\.yandex-team\\\\.ru", case_insensitive: true }
+            - match_or:
+              - match_fsm: {path: '/unidemo.html', case_insensitive: true, surround: false}
+              - match_fsm: {path: '/ttsdemo.html', case_insensitive: true, surround: false}
+    modules:
+        - balancer2:
+            attempts: 2
+            attempts_rate_limiter:
+                limit: 2
+            unique_policy: {}
+            rr: {}
+            generated_proxy_backends:
+                proxy_options:
+                    allow_connection_upgrade: true
+                    connect_timeout: 75ms
+                    backend_timeout: 5s
+                    backend_read_timeout: 600s
+                    backend_write_timeout: 600s
+                    client_read_timeout: 600s
+                    client_write_timeout: 600s
+                include_backends:
+                    type: BY_ID
+                    ids:
+                        - authproxy
+            on_error:
+                errordocument:
+                    status: 504
+                    content: "Service unavailable"

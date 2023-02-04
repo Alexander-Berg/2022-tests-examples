@@ -1,0 +1,46 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - ftdebugger
+      groups: []
+labels:
+  order: '01000000'
+---
+regexp_section:
+  matcher:
+    match_fsm: 
+        path: '/__DISABLE__/collections/web-api/aggregate'
+  modules:
+  - icookie:
+      use_default_keys: true
+      force_generate_from_searchapp_uuid: true
+      enable_parse_searchapp_uuid: false
+      domains: [".yandex.ru", ".yandex.by", ".yandex.com", ".yandex.com.tr", ".yandex.kz", ".yandex.ua", ".yandex.uz"]
+  - report: {ranges: default, uuid: nodejs}
+  - hasher:
+      mode: text
+  - response_headers:
+      create:
+        X-Upstream: 'common_upstream_nodejs_aggregate'
+  - balancer2:
+      attempts_rate_limiter:
+        limit: 0.1
+        coeff: 0.99
+      attempts: 2
+      hashing:
+        delay: 30s
+        request: 'GET /version.json HTTP/1.1\nHost: collections.test.yandex.ru\n\n'
+      active_policy:
+        unique_policy: {}
+      generated_proxy_backends:
+        proxy_options:
+          backend_timeout: 2s
+          connect_timeout: 100ms
+          keepalive_count: 1
+        include_backends:
+          type: BY_ID
+          ids: [pdb_nodejs_webapi_test]
+      on_error:
+        modules:
+        - errordocument: {content: Gateway Timeout, status: 504}

@@ -1,0 +1,140 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            var map = myMap = new ymaps.Map('map', {
+                center: [59.976469003480716, 30.290052050069413],
+                zoom: 9,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+            __log__("Поставь точку. Проверь ошибки и работу корректора в режиме перетаскивания и рисования");
+            var placemark = new ymaps.GeoObject({
+                geometry: { type: "MultiPoint", coordinates: [] }, properties: {
+                    balloonContent: 'text', hintContent: 'text'
+                }}, {preset: 'islands#greenIcon', draggable: true, openBalloonOnClick: false});
+
+            myMap.geoObjects.add(placemark);
+            placemark.options.set({
+
+                editorDrawingCorrector: function (coords, index) {
+                    var coord = coords.slice();
+                    coord[0] += 10;
+                    coord[1] += 10;
+                    return ymaps.vow.resolve(coord);
+                },
+                editorDrawingCorrectorTimeout: 100,
+
+                editorDraggingCorrector: function (coords, index) {
+                    var coord = coords.slice();
+                    coord[0] = Math.round(coord[0] / 10) * 10;
+                    coord[1] = Math.round(coord[1] / 10) * 10;
+                    return ymaps.vow.resolve(coord);
+
+                },
+                editorDraggingCorrectorTimeout: 1500
+            });
+            placemark.editor.startDrawing();
+
+            function addPolyline() {
+                var myPolyline = new ymaps.GeoObject({
+                    geometry: { type: "MultiPolyline", coordinates: [] }, properties: {
+                        balloonContent: 'text', hintContent: 'text'
+                    }}, {preset: 'islands#greenIcon', draggable: true, openBalloonOnClick: false});
+
+                myPolyline.options.set({
+                    editorDrawingCorrector: function (coords, index) {
+                        var coord = coords[index].slice();
+                        coord[0] += 10;
+                        coord[1] += 10;
+                        var deferred = ymaps.vow.defer();
+                        setTimeout(function () {
+                            deferred.resolve(coord);
+                        }, 100);
+                        return deferred.promise();
+                    },
+                    editorDrawingCorrectorTimeout: 200,
+                    editorDraggingCorrector: function (coords, index) {
+                        var coord = coords[index].slice();
+                        coord[0] -= 10;
+                        coord[1] -= 10;
+                        return ymaps.vow.resolve(coord);
+                    },
+                    editorDraggingCorrectorTimeout: 1500
+                });
+                myMap.geoObjects.add(myPolyline);
+                myPolyline.editor.startDrawing().then(function () {
+                    try {
+                        __log__('drawing started')
+                    } catch (e) {
+                        __log__(e)
+                    }
+                });
+            }
+
+            function addPolygon() {
+                var myPolygon = new ymaps.GeoObject({
+                    geometry: { type: "MultiPolygon", coordinates: [] }, properties: {
+                        balloonContent: 'text', hintContent: 'text'
+                    }}, {preset: 'islands#greenIcon', draggable: true, openBalloonOnClick: false});
+
+                myMap.geoObjects.add(myPolygon);
+                myPolygon.options.set({
+                    editorDrawingCorrector: function (coords, pathIndex, vertexIndex) {
+                        var coord = coords[pathIndex][vertexIndex].slice();
+                        coord[0] += 10;
+                        coord[1] += 10;
+                        var deferred = ymaps.vow.defer();
+                        setTimeout(function () {
+                            deferred.resolve(coord);
+                        }, 200);
+                        return deferred.promise();
+                    },
+                    editorDrawingCorrectorTimeout: 100,
+                    editorDraggingCorrector: function (coords, pathIndex, vertexIndex) {
+                        var coord = coords[pathIndex][vertexIndex].slice();
+                        coord[0] -= 10;
+                        coord[1] -= 10;
+                        var deferred = ymaps.vow.defer();
+                        setTimeout(function () {
+                            deferred.resolve(coord);
+                        }, 1000);
+                        return deferred.promise();
+                    },
+                    editorDraggingCorrectorTimeout: 1500
+                });
+                myPolygon.editor.startDrawing().then(function () {
+                    try {
+                        __log__('drawing started')
+                    } catch (e) {
+                        __log__(e)
+                    }
+                });
+            }
+            var polylineBtn = new ymaps.control.Button('polyline');
+            polylineBtn.events.add('click', function (e) {
+                addPolyline();
+            });
+
+            var polygonBtn = new ymaps.control.Button('polygon');
+            polygonBtn.events.add('click', function (e) {
+                addPolygon();
+            });
+            myMap.controls
+                    .add(polylineBtn)
+                    .add(polygonBtn);
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

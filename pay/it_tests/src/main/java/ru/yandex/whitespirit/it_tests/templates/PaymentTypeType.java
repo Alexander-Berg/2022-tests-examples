@@ -1,0 +1,12 @@
+package ru.yandex.whitespirit.it_tests.templates;
+
+public enum PaymentTypeType {
+    PREPAYMENT,
+    FULL_PREPAYMENT_WO_DELIVERY,
+    IP_PAYMENT,
+    PARTIAL_PREPAYMENT_WO_DELIVERY,
+    FULL_PAYMENT_W_DELIVERY,
+    PARTIAL_PAYMENT_W_DELIVERY,
+    CREDIT_W_DELIVERY,
+    CREDIT_AFTER_DELIVERY
+}

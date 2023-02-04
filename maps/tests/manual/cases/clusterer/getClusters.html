@@ -1,0 +1,112 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Кластер: метод получения текущего массива объектов-кластеров
+
+Description:
+Проверка метода получения текущего массива объектов-кластеров.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+clusterer
+
+Estimated time:
+120000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась корректно.
+  На спане карты кластерные метки.
+  Под контейнером с картой имеется строка вида: "Cейчас показано 2 кластеров.", в которой отображается текущее количество кластеров на спане карты.
+  
+Step:
+  Action:
+  Выполнить клик в контрол масштабирования "-".
+
+  Expectation:
+  Происходит корректный отзум: карта не пропадает, не мигает.
+  На спане карты одна кластерная метка со значением "200", под контейнером с картой "Cейчас показано 1 кластеров".
+
+Step:
+  Action:
+  Последовательно выполнять клик в контрол масштабирования "+", до максимального призума карты, проверяя на каждом шаге распад кластерной метки и значение под контейнером с картой.
+
+  Expectation:
+  Значение под контейнером с картой увеличивается при последовательном призуме спана карты.
+  При призуме кластерные метки распадаются на кластеры с меньшим значением и метки коллекции.
+  На 9 клик в контрол масштабирования, когда в области видимости отсутствуют кластерные метки и метки коллекций, под контейнером с картой: "Cейчас показано 0 кластеров".
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 10,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl', 'zoomControl']
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+
+            log.info('Zoom in to show clusterer.getClusters().length');
+
+            var clusterer = new ymaps.Clusterer();
+            var placemarksNumber = 200;
+            var bounds = map.getBounds();
+            var newPlacemarks = createGeoObjects(placemarksNumber, bounds);
+
+            // add 200 placemarks
+            clusterer.add(newPlacemarks);
+            map.geoObjects.add(clusterer);
+
+            map.events.add('boundschange', function () {
+                var clusters = clusterer.getClusters();
+                log.info('Cейчас показано ' + clusters.length + ' кластеров.');
+            });
+
+            setTimeout(function () {
+                map.setZoom(6)
+            }, 500);
+
+            function createGeoObjects(number, bounds) {
+                var placemarks = [];
+                // Создаем нужное количество меток
+                for (var i = 0; i < number; i++) {
+                    // Генерируем координаты метки случайным образом.
+                    var coordinates = getRandomCoordinates(bounds);
+                    // Создаем метку со случайными координатами.
+                    var myPlacemark = new ymaps.Placemark(coordinates, {
+                        balloonContent: i, hintContent: i, clusterCaption: i}, {});
+                    placemarks.push(myPlacemark);
+                }
+                return placemarks;
+            }
+
+            function getRandomCoordinates(bounds) {
+                var size = [bounds[1][0] - bounds[0][0], bounds[1][1] - bounds[0][1]];
+                return [Math.random() * size[0] + bounds[0][0], Math.random() * size[1] + bounds[0][1]];
+            }
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

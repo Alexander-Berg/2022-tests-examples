@@ -1,0 +1,118 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Контрол: стирание запроса при смене провайдера поиска
+
+Description:
+Проверка реакции панелли со сниппетами на стирание запроса при смене провайдера поиска.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+control
+
+Estimated time:
+120000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Дождаться загрузки карты, осмотреть карту и элементы на ней.
+
+  Expectation:
+  При загрузке карты происходит программный поиск "Санкт-Петербурга", загружается спан Санкт-Петербурга, открывается балун с карточкой "Санкт-Петербург; Россия".
+  Сверху слева контрол поиска с иконкой лупы, кнопка "provider".  
+
+Step:
+  Action:
+  Открыть инструменты разработчика командами Windows: Ctrl + Shift + I если у вас MacOS: ⌥ + ⌘ + I, перейти во вкладку "Console".
+  Выполнить клик в кнопку "provider".
+
+  Expectation:
+  Кнопка "provider" меняет значение на "yandex#publicMap", со спана карты пропадает балун с карточкой "Санкт-Петербург; Россия".
+  В консоли разработчика не появляется ошибок. 
+
+Step:
+  Action:
+  Ввести в контрол поиска с иконкой лупы.
+
+  Expectation:
+  Сверху выпадает плашка с поисковым инпутом и кнопкой "Найти" и кнопкой сворачивания поискового инпута, в инпуте значение "питер". 
+  Под плашкой с инпутом панель с 1 сниппетом "Санкт-Петербург; Россия", фон сниппета выделен желтым.
+  
+Step:
+  Action:
+  Выполнить клик в кнопку стирания поискового запроса - крестик в инпуте.
+
+  Expectation:
+  Пропадает панель со сниппетом, пропадает поисковое значение из инпута, консоль разработчика без ошибок.
+-->
+<html>
+<head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            var map = myMap = new ym.Map('map', {
+                        center: [55.73259667357658, 37.70153663432529],
+                        zoom: 9,
+                        behaviors: ['default', 'scrollZoom'],
+                        controls: []
+                    }),
+                    log = new Log();
+
+            addGrid(map);
+
+            __log__('boundedBy: moscow - st.pete - kaliningrad - ekaterinburg - usa');
+            __log__('request: "льва толстого"');
+
+            var search1 = new ymaps.control.SearchControl({
+                options: {
+                    float: 'left',
+                    size: 'small',
+                    boundedBy: [
+                        [55.80401592823549, 37.53099212646316],
+                        [55.68937363510669, 37.68480072021266]
+                    ]
+                }
+            });
+
+
+            search1.search('питер').then(function () {
+                var results = search1.getResultsArray();
+                __log__('search1 (питер): ');
+                __log__(results[0].properties.get('name') + ', ' + results[0].properties.get('description'));
+            });
+
+
+            var providerButton = new ymaps.control.Button({
+                data: {content: 'provider'},
+                options: {selectOnClick: true, maxWidth: 150}
+            });
+            providerButton.events
+                    .add('select', function () {
+                        search1.options.set('provider', 'yandex#publicMap');
+                        providerButton.data.set('content', 'yandex#publicMap');
+
+                    })
+                    .add('deselect', function () {
+                        search1.options.set('provider', 'yandex#map');
+                        providerButton.data.set('content', 'yandex#map');
+                    });
+
+            map.controls
+                    .add(search1, {floatIndex: 100})
+                    .add(providerButton);
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

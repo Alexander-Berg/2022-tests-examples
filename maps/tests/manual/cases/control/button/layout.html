@@ -1,0 +1,160 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Контрол: собственный макет кнопки и изменение стилей кнопки
+
+Description:
+Проверка добавления на карту собственной кнопки и изменения стилей по клику.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+control
+
+Estimated time:
+120000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан Москвы, сверху слева имеется кнопка "Кастомная кнопка".
+
+Step:
+  Action:
+  Навести курсор на "Кастомную кнопку".
+
+  Expectation:
+  При наведении на кнопку курсор меняется - палец, появляется хинт - "Нажмите на кнопку".
+  Под контейнером с картой при наведении курсора появляется текст: mouseenter, при перемещении курсора с кнопки под контейнером появляется текст: mouseleave.
+
+Step:
+  Action:
+  Выполнить клик ПКМ по "Кастомная кнопка".
+
+  Expectation:
+  На кнопке открывается контекстное меню, при этом под контейнером с картой появляются текст событий: mousedown, mouseup, contextmenu.
+
+Step:
+  Action:
+  Выполнить клик ЛКМ по "Кастомная кнопка".
+
+  Expectation:
+  Кнопка меняет стили, рамка кнопки белая, цвет кнопки - черный, шрифт белый.
+  Под контейнером с картой появляются текст событий: mousedown, mouseup, click.
+
+Step:
+  Action:
+  Выполнить клик ЛКМ по "Кастомная кнопка".
+
+  Expectation:
+  Кнопка меняет стили на первоначальные, цвет кнопки - серый, шрифт черный.
+  Под контейнером с картой появляются текст событий: mousedown, mouseup, click.
+-->
+<html>
+<head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <style>
+        .my-button-selected {
+            color: #f5f5f5;
+            background-color: #333333;
+            outline: 2px dashed #333;
+            outline: 5px auto -webkit-focus-ring-color;
+            outline-offset: -2px;
+            display: inline-block;
+            padding: 4px 14px;
+            margin-bottom: 0;
+            font-size: 14px;
+            line-height: 20px;
+            text-align: center;
+            vertical-align: middle;
+            cursor: pointer;
+            border: 1px solid #bbbbbb;
+            border-color: #e6e6e6 #e6e6e6 #bfbfbf;
+            font-family: Arial;
+        }
+
+        .my-button {
+            display: inline-block;
+            padding: 4px 14px;
+            margin-bottom: 0;
+            font-size: 14px;
+            line-height: 20px;
+            color: #333333;
+            text-align: center;
+            vertical-align: middle;
+            cursor: pointer;
+            background-color: #f5f5f5;
+            border: 1px solid #bbbbbb;
+            border-color: #e6e6e6 #e6e6e6 #bfbfbf;
+            font-family: Arial;
+        }
+    </style>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            var map = myMap = new ym.Map('map', {
+                center: [55.73259667357658, 37.70153663432529],
+                zoom: 9,
+                behaviors: ['default', 'scrollZoom'],
+                controls: []
+            });
+
+            var log = new Log();
+            addGrid(myMap);
+
+            log.info('Button changes style on click. Expected shape - null');
+
+            // Создание кнопки с пользовательским макетом
+            var button = new ymaps.control.Button({
+                data: {
+                    content: 'Кастомная кнопка',
+                    title: 'Нажмите на кнопку'
+                },
+                options: {
+                    layout: ymaps.templateLayoutFactory.createClass(
+                            // Если кнопка не нажата, к ней применится css-стиль 'myButton'
+                            // Если кнопка нажата, к ней применятся 'myButtonSelected'.
+                                    "<div class='[if state.selected]my-button-selected[else]my-button[endif]' title='$[data.title]'>" +
+                                    "$[data.content]" +
+                                    "</div>"
+                    ),
+                    // Чтобы другие элементы управления корректно позиционировались по горизонтали,
+                    // нужно обязательно задать максимальную ширину для макета.
+                    maxWidth: 150
+                }});
+
+            button.events.add(['click', 'contextmenu', 'dblclick', 'mousedown', 'mouseenter', 'mouseleave', 'mouseup', 'multitouchend',
+                'multitouchstart', 'wheel'], function (e) {
+                log.info(e.get('type'))
+            });
+
+            map.controls.add(button, { float: 'none', position: {left: '5px', top: '5px'} });
+
+            button.getLayout().then(function (layout) {
+                var shape = layout.getShape();
+                if (shape) {
+                    log.info('button: ' + shape + ', type: ' + shape.getType() + ', bounds: '
+                            + shape.getBounds());
+                    console.log(shape)
+                } else {
+                    log.info('button: null');
+                    console.log(shape)
+                }
+            });
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

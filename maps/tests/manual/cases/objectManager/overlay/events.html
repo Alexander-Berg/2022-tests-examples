@@ -1,0 +1,212 @@
+<!DOCTYPE HTML>
+<!--(skip)(description)
+
+-->
+<!--(version)
+
+-->
+<!--(commands)
+
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script src="../../../js/objectSource.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var map = myMap = new ymaps.Map('map', {
+                center: [55.716901946294286, 37.30336807048247],
+                zoom: 15,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+            objectManagerSource(ym, myMap, this);
+
+            var objectManager = new ym.ObjectManager({clusterize: false});
+            var placemarksNumber = 10;
+            var bounds = map.getBounds();
+            var newPlacemarks = createGeoObjects(placemarksNumber, bounds);
+
+            var events = ['add', 'objectoptionschange', 'optionschange', 'remove'];
+            var domevents = ['click', 'contextmenu', 'dblclick', 'mousedown', 'mouseenter', 'mouseleave', 'mouseup', 'multitouchend',
+                'multitouchstart', 'wheel'];
+            var moveevents = ['mousemove', 'multitouchmove'];
+            var callbackCluster1 = function (e) {
+                __log__("cluster: " + e.get('type'));
+                console.log('objectId: ' + e.get('objectId') + ', overlay: ' + e.get('overlay') + ', coords: ' + e.get('coords') +
+                        ', globalPixels: ' + e.get('globalPixels') + ', pagePixels: ' + e.get('pagePixels') +
+                        ', clientPixels: ' + e.get('clientPixels') + ', domEvent: ' + e.get('domEvent'))
+            };
+            var callbackCluster2 = function (e) {
+                if (e.get('type') == 'add' || e.get('type') == 'remove') {
+                    __log__("cluster: " + e.get('type') + ', id: ' + e.get('objectId'));
+                } else if (e.get('type') == 'clusteroptionschange') {
+                    __log__("cluster: " + e.get('type') + ', id: ' + e.get('objectId'))
+                } else {
+                    __log__("cluster: " + e.get('type'));
+                }
+            };
+
+            var callbackObject1 = function (e) {
+                __log__("object: " + e.get('type'));
+                console.log('objectId: ' + e.get('objectId') + ', overlay: ' + e.get('overlay') + ', coords: ' + e.get('coords') +
+                        ', globalPixels: ' + e.get('globalPixels') + ', pagePixels: ' + e.get('pagePixels') +
+                        ', clientPixels: ' + e.get('clientPixels') + ', domEvent: ' + e.get('domEvent'))
+            };
+            var callbackObject2 = function (e) {
+                if (e.get('type') == 'add' || e.get('type') == 'remove') {
+                    __log__("object: " + e.get('type') + ', id: ' + e.get('objectId'));
+                } else if (e.get('type') == 'clusteroptionschange') {
+                    __log__("object: " + e.get('type') + ', id: ' + e.get('objectId'))
+                } else {
+                    __log__("object: " + e.get('type'));
+                }
+            };
+
+            objectManager.clusters.overlays.events.add(events, callbackCluster2);
+            objectManager.clusters.overlays.events.add(domevents, callbackCluster1);
+            objectManager.objects.overlays.events.add(events, callbackObject2);
+            objectManager.objects.overlays.events.add(domevents, callbackObject1);
+
+            objectManager.add(newPlacemarks)
+                    .add(objectManagerArrayNonPointObjects)
+                    .add(objectManagerCollectionNonPointObjects)
+                    .add(objectManagerPolygon)
+                    .add(objectManagerPolyline)
+                    .add(objectManagerCircle)
+                    .add(objectManagerRectangle);
+
+            map.geoObjects.add(objectManager);
+
+            var listenerButton = new ymaps.control.Button({data: {content: 'ignore'}, options: {selectOnClick: true}});
+            var optionButton = new ymaps.control.Button({data: {content: 'option'}, options: {selectOnClick: true}});
+            var removeButton = new ymaps.control.Button({data: {content: 'remove'}, options: {selectOnClick: true}});
+            var domButton = new ymaps.control.Button({data: {content: 'DOM'}, options: {selectOnClick: true}});
+            var moveButton = new ymaps.control.Button({data: {content: 'move'}, options: {selectOnClick: true}});
+            var clearButton = new ymaps.control.Button({data: {content: 'clear log'}, options: {selectOnClick: false}});
+
+            listenerButton.events
+                    .add('select', function () {
+                        log.info('Events will be ignored.');
+                        objectManager.clusters.overlays.events.remove(events, callbackCluster2);
+                        objectManager.objects.overlays.events.remove(events, callbackObject2);
+                    })
+                    .add('deselect', function () {
+                        log.info('Waiting for events...');
+                        objectManager.clusters.overlays.events.add(events, callbackCluster2);
+                        objectManager.objects.overlays.events.add(events, callbackObject2);
+                    });
+
+            optionButton.events
+                    .add('select', function () {
+                        objectManager.objects.each(function (obj) {
+                            objectManager.objects.setObjectOptions(obj.id, {pointOverlay: 'html#placemark'})
+                        })
+                    })
+                    .add('deselect', function () {
+                        objectManager.objects.each(function (obj) {
+                            objectManager.objects.setObjectOptions(obj.id, {pointOverlay: 'interactive#placemark'})
+                        })
+                    });
+
+            removeButton.events
+                    .add('select', function () {
+                        map.geoObjects.remove(objectManager);
+                    })
+                    .add('deselect', function () {
+                        map.geoObjects.add(objectManager);
+                    });
+
+            domButton.events
+                    .add('select', function () {
+                        log.info('Waiting for DOM events...');
+                        objectManager.clusters.overlays.events.remove(domevents, callbackCluster1);
+                        objectManager.objects.overlays.events.remove(domevents, callbackObject1);
+                    })
+                    .add('deselect', function () {
+                        log.info('DOM events will be ignored.');
+                        objectManager.clusters.overlays.events.add(domevents, callbackCluster1);
+                        objectManager.objects.overlays.events.add(domevents, callbackObject1);
+                    });
+
+            moveButton.events
+                    .add('select', function () {
+                        log.info('Waiting for move events...');
+                        objectManager.clusters.overlays.events.add(moveevents, callbackCluster1);
+                        objectManager.objects.overlays.events.add(moveevents, callbackObject1);
+                    })
+                    .add('deselect', function () {
+                        log.info('Move events will be ignored.');
+                        objectManager.clusters.overlays.events.remove(moveevents, callbackCluster1);
+                        objectManager.objects.overlays.events.remove(moveevents, callbackObject1);
+                    });
+
+            clearButton.events.add('click', function () {
+                log.clear();
+            });
+            var button = new ymaps.control.Button('clusterize');
+            button.events
+                    .add('select', function () {
+                        objectManager.options.set('clusterize', true)
+                    })
+                    .add('deselect', function () {
+                        objectManager.options.set('clusterize', false)
+                    });
+            map.controls.add(button)
+
+            map.controls
+                    .add(listenerButton, {float: 'left'})
+                    .add(optionButton, {float: 'left'})
+                    .add(removeButton, {float: 'left'})
+                    .add(clearButton, {float: 'none', position: {bottom: 25, right: 10}})
+                    .add(moveButton, {float: 'left'})
+                    .add(domButton, {float: 'left'});
+
+            function createGeoObjects(number, bounds) {
+                var placemarks = [];
+                // Создаем нужное количество меток
+                for (var i = 0; i < number; i++) {
+                    // Генерируем координаты метки случайным образом.
+                    var coordinates = getRandomCoordinates(bounds);
+                    // Создаем метку со случайными координатами.
+                    var myPlacemark = {
+                        "type": "Feature",
+                        "id": 500 + i,
+                        "geometry": {
+                            "type": "Point",
+                            "coordinates": coordinates
+                        },
+                        "properties": {
+                            "balloonContent": "blabla" + i,
+                            "clusterCaption": i,
+                            "hintContent": i
+                        }
+                    };
+                    placemarks.push(myPlacemark);
+                }
+                return placemarks;
+            }
+
+            function getRandomCoordinates(bounds) {
+                var size = [bounds[1][0] - bounds[0][0], bounds[1][1] - bounds[0][1]];
+                return [Math.random() * size[0] + bounds[0][0], Math.random() * size[1] + bounds[0][1]];
+            }
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

@@ -1,0 +1,162 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Кластер: образование кластера только из геобъектов с одинаковыми координатами
+
+Description:
+Проверка работы опции образования кластера только из геобъектов с одинаковыми координатами.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+clusterer
+
+Estimated time:
+90000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан Санкт-Петербурга и Ленинградской области.
+  Сверху в ряд кнопки "clusterer", "groupByCoords", "same coords", "add objects".
+  Под контейнером с картой текст: "groupByCoordinates: true".
+
+Step:
+  Action:
+  Клик в кнопку "clusterer".
+
+  Expectation:
+  На карте появляются две метки коллекций.
+  Под контейнером с картой появляется текст: "Clusterer is added to map".
+
+Step:
+  Action:
+  Выполнить два клика в кнопку "groupByCoords".
+
+  Expectation:
+  После второго клика на карте появляется метка кластера со значением "2".
+  Под контейнером с картой после первого клика появляется: "groupByCoordinates: true", после второго клика: "groupByCoordinates: false".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "groupByCoords".
+  Выполнить клик в кнопку "same coords".
+
+  Expectation:
+  После клика в кнопку "groupByCoords", на спане карты кластер меняется на две метки коллекций.
+  Под контейнером с картой текст: "groupByCoordinates: true".
+  После клика в кнопку "same coords" на спане карты появляется две кластерные метки со знанением "2".
+  Под контейнером с картой текст: "Objects with the same coordinates are added to map".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "add objects".
+
+  Expectation:
+  На спан карты к кластерным меткам добавляются 6 меток коллекций.
+  Под контейнером с картой текст: "Objects with different coordinates are added to map".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "same coords".
+
+  Expectation:
+  Значение в кластерных метках сменилось с "2" на "3".
+  Под контейнером с картой текст: "Objects with the same coordinates are added to map".
+-->
+<html>
+<head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+
+            var myMap = new ymaps.Map('map', {
+                        center: [59.936807874528924, 30.37978130712598],
+                        zoom: 8,
+                        behaviors: ['default', 'scrollZoom'],
+                        controls: ['fullscreenControl']
+                    }),
+                    clusterer = new ymaps.Clusterer({
+                        groupByCoordinates: true
+                    });
+
+            addGrid(myMap);
+            var log = new Log();
+
+            log.info('groupByCoordinates: ' + clusterer.options.get('groupByCoordinates'));
+
+            var addPointsButton = new ymaps.control.Button({data: {content: 'add objects'}}, {selectOnClick: false});
+            var addSameCoordsButton = new ymaps.control.Button({data: {content: 'same coords'}},
+                    {selectOnClick: false});
+            var optionButton = new ymaps.control.Button({data: {content: 'groupByCoords'}}, {selectOnClick: true});
+            var clusterButton = new ymaps.control.Button({data: {content: 'clusterer'}}, {selectOnClick: false});
+
+            clusterer.add(new ymaps.Placemark([59.761842778554374, 30.354173278803078],
+                    {clusterCaption: 'placemark', balloonContent: 'placemark'}, {}));
+            clusterer.add(new ymaps.Placemark([59.76461372494131, 30.42009124755539],
+                    {clusterCaption: 'placemark', balloonContent: 'placemark'}, {}));
+
+            addPointsButton.events.add('click', function () {
+                clusterer.add(new ymaps.Placemark([59.80338273980143, 30.035569763180483],
+                        {clusterCaption: 'placemark', balloonContent: 'placemark'}, {}));
+                clusterer.add(new ymaps.Placemark([59.92769160782265, 30.72770843505527],
+                        {clusterCaption: 'placemark', balloonContent: 'placemark'}, {}));
+                clusterer.add(new ymaps.Placemark([59.875262501024146, 30.749681091305206],
+                        {clusterCaption: 'placemark', balloonContent: 'placemark'}, {}));
+                clusterer.add(new ymaps.Placemark([59.89182803339186, 30.683763122554957],
+                        {clusterCaption: 'placemark', balloonContent: 'placemark'}, {}));
+                clusterer.add(new ymaps.Placemark([59.77015492248828, 30.194871520992113],
+                        {clusterCaption: 'placemark', balloonContent: 'placemark'}, {}));
+                clusterer.add(new ymaps.Placemark([59.75075669172969, 30.057542419429556],
+                        {clusterCaption: 'placemark', balloonContent: 'placemark'}, {}));
+                log.info('Objects with different coordinates are added to map');
+            });
+
+            addSameCoordsButton.events.add('click', function () {
+                clusterer.add(new ymaps.Placemark([59.761842778554374, 30.354173278803078],
+                        {clusterCaption: 'placemark', balloonContent: 'placemark'}));
+                clusterer.add(new ymaps.Placemark([59.76461372494131, 30.42009124755539],
+                        {clusterCaption: 'placemark', balloonContent: 'placemark'}));
+                log.info('Objects with the same coordinates are added to map');
+            });
+
+            optionButton.events
+                    .add('select', function () {
+                        clusterer.options.set('groupByCoordinates', true);
+                        log.info('groupByCoordinates: ' + clusterer.options.get('groupByCoordinates'));
+                    })
+                    .add('deselect', function () {
+                        clusterer.options.set('groupByCoordinates', false);
+                        log.info('groupByCoordinates: ' + clusterer.options.get('groupByCoordinates'));
+                    });
+
+            clusterButton.events
+                    .add('click', function () {
+                        myMap.geoObjects.add(clusterer);
+                        log.info('Clusterer is added to map');
+                    });
+
+            myMap.controls
+                    .add(new ymaps.control.ZoomControl())
+                    .add(addPointsButton)
+                    .add(addSameCoordsButton)
+                    .add(optionButton)
+                    .add(clusterButton);
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

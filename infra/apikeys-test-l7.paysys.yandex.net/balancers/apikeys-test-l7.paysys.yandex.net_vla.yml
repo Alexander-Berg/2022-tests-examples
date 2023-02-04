@@ -1,0 +1,127 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - nanny-robot
+      groups: []
+config_transport:
+  nanny_static_file:
+    service_id: rtc_balancer_apikeys-test-l7_paysys_yandex_net_vla
+    instance_tags:
+      ctype: prod
+      itype: balancer
+      prj: apikeys-test-l7.paysys.yandex.net
+---
+instance_macro:
+  version: 0.0.2
+  workers: !f get_workers()
+  sd: {}
+  unistat: {}
+  sections:
+    admin:
+      ips: [127.0.0.1, '::1']
+      ports:
+        - 80
+      modules:
+        - http: {}
+        - admin: {}
+    stats_storage:
+      ips: [127.0.0.4]
+      ports: [80]
+      modules:
+        - report:
+            uuid: "service_total"
+            ranges: "default"
+            just_storage: true
+        - http: {}
+        - errordocument:
+            status: 204
+    http_8666:
+      ips: 
+        - '2a02:6b8:0:3400:0:71d:0:291'
+        - !f get_ip_by_iproute("v4")
+        - !f get_ip_by_iproute("v6")
+      ports:
+        - 8666
+      extended_http_macro:
+        report_uuid: http_8666
+        modules:
+          - headers:
+              create_func:
+                X-Start-Time: starttime
+                X-Forwarded-For-Y: realip
+                X-Source-Port-Y: realport
+                X-Yandex-RandomUID: yuid
+              create_func_weak:
+                X-Req-Id: reqid
+          - regexp:
+              include_upstreams:
+                filter:
+                  id_prefix_in:
+                    - 'apikeys-8666'
+                    - 'slbping'
+                    - 'awacs-balancer-health-check'
+                order:
+                  label:
+                    name: order
+    https_8668:
+      ips: 
+        - '2a02:6b8:0:3400:0:71d:0:291'
+        - !f get_ip_by_iproute("v4")
+        - !f get_ip_by_iproute("v6")
+      ports:
+        - 8668
+      extended_http_macro:
+        report_uuid: https_8668
+        enable_ssl: true
+        ssl_sni_contexts:
+          apikeys-test-l7.paysys.yandex.net:
+            cert: !c apikeys-test-l7.paysys.yandex.net
+            servername_regexp: default
+        modules:
+          - headers:
+              create_func:
+                X-Start-Time: starttime
+                X-Forwarded-For-Y: realip
+                X-Source-Port-Y: realport
+                X-Yandex-RandomUID: yuid
+              create_func_weak:
+                X-Req-Id: reqid
+          - regexp:
+              include_upstreams:
+                filter:
+                  id_prefix_in:
+                    - 'apikeys-8668'
+                    - 'slbping'
+                    - 'awacs-balancer-health-check'
+                order:
+                  label:
+                    name: order
+    http_18025:
+      ips: 
+        - '2a02:6b8:0:3400:0:71d:0:291'
+        - !f get_ip_by_iproute("v4")
+        - !f get_ip_by_iproute("v6")
+      ports:
+        - 18025
+      extended_http_macro:
+        report_uuid: http_18025
+        modules:
+          - headers:
+              create_func:
+                X-Start-Time: starttime
+                X-Forwarded-For-Y: realip
+                X-Source-Port-Y: realport
+                X-Yandex-RandomUID: yuid
+              create_func_weak:
+                X-Req-Id: reqid
+          - regexp:
+              include_upstreams:
+                filter:
+                  id_prefix_in:
+                    - 'apikeys-18025'
+                    - 'slbping'
+                    - 'awacs-balancer-health-check'
+                order:
+                  label:
+                    name: order

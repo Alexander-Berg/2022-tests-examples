@@ -1,0 +1,112 @@
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      url: '/collections/toloka_form/api/(.*)?'
+  modules:
+    - threshold:
+        lo_bytes: 262144
+        hi_bytes: 419430
+        pass_timeout: 10s
+        recv_timeout: 2s
+    - regexp:
+        sections:
+            post_method:
+                matcher:
+                    match_fsm: {match: POST.*}
+                modules:
+                - balancer2:
+                    attempts: 1
+                    rr: {weights_file: ./controls/traffic_control.weights}
+                    backends:
+                    - weight: 1
+                      name: answers_man
+                      modules:
+                        - report: {ranges: default, uuid: requests_api_to_man}
+                        - balancer2:
+                            attempts: 1
+                            weighted2: {}
+                            generated_proxy_backends:
+                              proxy_options:
+                                backend_timeout: 5s
+                                connect_timeout: 100ms
+                              include_backends:
+                                type: BY_ID
+                                ids: [answers_man]
+                    - weight: 1
+                      name: answers_vla
+                      modules:
+                        - report: {ranges: default, uuid: requests_api_to_vla}
+                        - balancer2:
+                            attempts: 1
+                            weighted2: {}
+                            generated_proxy_backends:
+                              proxy_options:
+                                backend_timeout: 5s
+                                connect_timeout: 100ms
+                              include_backends:
+                                type: BY_ID
+                                ids: [answers_vla]
+                    - weight: 1
+                      name: answers_sas
+                      modules:
+                        - report: {ranges: default, uuid: requests_api_to_sas}
+                        - balancer2:
+                            attempts: 1
+                            weighted2: {}
+                            generated_proxy_backends:
+                              proxy_options:
+                                backend_timeout: 5s
+                                connect_timeout: 100ms
+                              include_backends:
+                                type: BY_ID
+                                ids: [answers_sas]
+            default:
+                matcher: {}
+                modules:
+                - balancer2:
+                    attempts: 2
+                    rr: {weights_file: ./controls/traffic_control.weights}
+                    backends:
+                    - weight: 1
+                      name: answers_man
+                      modules:
+                        - report: {ranges: default, uuid: requests_api_to_man}
+                        - balancer2:
+                            attempts: 3
+                            weighted2: {}
+                            generated_proxy_backends:
+                              proxy_options:
+                                backend_timeout: 5s
+                                connect_timeout: 100ms
+                              include_backends:
+                                type: BY_ID
+                                ids: [answers_man]
+                    - weight: 1
+                      name: answers_vla
+                      modules:
+                        - report: {ranges: default, uuid: requests_api_to_vla}
+                        - balancer2:
+                            attempts: 3
+                            weighted2: {}
+                            generated_proxy_backends:
+                              proxy_options:
+                                backend_timeout: 5s
+                                connect_timeout: 100ms
+                              include_backends:
+                                type: BY_ID
+                                ids: [answers_vla]
+                    - weight: 1
+                      name: answers_sas
+                      modules:
+                        - report: {ranges: default, uuid: requests_api_to_sas}
+                        - balancer2:
+                            attempts: 3
+                            weighted2: {}
+                            generated_proxy_backends:
+                              proxy_options:
+                                backend_timeout: 5s
+                                connect_timeout: 100ms
+                              include_backends:
+                                type: BY_ID
+                                ids: [answers_sas]

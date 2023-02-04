@@ -1,0 +1,61 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - anttsov
+      groups: []
+labels:
+  order: '10000000'
+---
+regexp_section:
+  matcher:
+    match_fsm:
+        uri: '/up2(/.*)?'
+  modules:
+    - rewrite:
+        actions:
+          - {regexp: '/up2/(.+)', rewrite: '/%1'}
+    - redirects:
+        actions:
+          - src: '//mir.trains.yandex.ru/x/*'
+            forward:
+              dst: 'http://yastatic.net/s3/travel/other-projects/mir/robots.txt'
+              dst_rewrites:
+                - regexp: '[.]xml$'
+                  rewrite: ''
+                  url:
+                    host: true
+                    path: false
+              errordocument:
+                content: 'Service unavailable'
+                status: 503
+          - src: '//mir.trains.yandex.ru/y/*'
+            redirect:
+              dst: 'https://travel.yandex.ru/trains{query}'
+              code: 301
+          - src: '//adv.yandex.ru/price/media/*'
+            redirect:
+              dst: 'https://yandex.ru/adv/products/display/{path}#price'
+              code: 301
+              dst_rewrites:
+                - regexp: '[.]xml$'
+                  rewrite: ''
+    - balancer2:
+        connection_attempts: !f count_backends()
+        attempts: 1
+        unique_policy: {}
+        rr: {}
+        generated_proxy_backends:
+          proxy_options:
+            backend_timeout: 5s
+            connect_timeout: 70ms
+            keepalive_count: 1
+            keepalive_timeout: 60s
+            fail_on_5xx: true
+          include_backends:
+            type: BY_ID
+            ids: [anttsov-test-balancer-backend]
+        on_error:
+          errordocument:
+            status: 504
+            content: "Service unavailable"

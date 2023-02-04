@@ -1,0 +1,1 @@
+CLEAN_AFTER_EACH_RUN = True

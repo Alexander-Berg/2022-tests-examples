@@ -1,0 +1,69 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - evbogdanov
+      groups: []
+labels:
+  order: '10000000'
+---
+regexp_section:
+  matcher: {}
+  modules:
+    - balancer2:
+        attempts: 2
+        by_name_policy:
+          name: !f get_geo("bygeo_", "random")
+          unique_policy: {}
+        rr: {}
+        backends:
+          - weight: 1
+            name: bygeo_vla
+            modules:
+              - report: {ranges: default, uuid: requests_to_vla}
+              - headers_hasher:
+                  header_name: X-Yandex-Req-Id
+                  randomize_empty_match: true
+              - balancer2:
+                  by_hash_policy:
+                    unique_policy: {}
+                  attempts: 2
+                  attempts_rate_limiter:
+                    coeff: 0.99
+                    limit: 0.1
+                  hashing: {}
+                  generated_proxy_backends:
+                    proxy_options:
+                      backend_timeout: 10s
+                      connect_timeout: 50ms
+                    include_backends:
+                      type: BY_ID
+                      ids: [vla]
+          - weight: 1
+            name: bygeo_sas
+            modules:
+              - report: {ranges: default, uuid: requests_to_sas}
+              - headers_hasher:
+                  header_name: X-Yandex-Req-Id
+                  randomize_empty_match: true
+              - balancer2:
+                  by_hash_policy:
+                    unique_policy: {}
+                  attempts: 2
+                  attempts_rate_limiter:
+                    coeff: 0.99
+                    limit: 0.1
+                  hashing: {}
+                  generated_proxy_backends:
+                    proxy_options:
+                      backend_timeout: 10s
+                      connect_timeout: 50ms
+                    include_backends:
+                      type: BY_ID
+                      ids: [sas]
+          - weight: -1
+            name: bygeo_devnull
+            modules:
+              - report: {ranges: default, uuid: requests_to_devnull}
+              - errordocument:
+                  status: 204

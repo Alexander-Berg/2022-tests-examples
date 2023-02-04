@@ -1,0 +1,50 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - robot-taxi-clown
+      - eatroshkin
+      - sgrebenyukov
+      - nikkraev
+      - khomikki
+      - temox
+      - ssviderkiy
+      - nikslim
+      - nanny-robot
+      groups:
+      - svc_vopstaxi
+labels:
+  order: '99999999'
+
+---
+regexp_section:
+  matcher: {}
+  modules:
+    - headers:
+        create_weak:
+          Host: mobile-qa-test-app.taxi.yandex.net
+        create_func:
+          X-Real-IP: realip
+    - shared:
+        uuid: 'backends'
+    - balancer2:
+        connection_attempts: !f count_backends()
+        attempts: 1
+        unique_policy: {}
+        active:
+          delay: '2s'
+          request: 'GET /ping HTTP/1.1\nHost: mobile-qa-test-app.taxi.yandex.net\nUser-agent: l7-balancer\n\n'  # noqa: E501
+        generated_proxy_backends:
+          proxy_options:
+            backend_timeout: 60s
+            connect_timeout: 70ms
+            keepalive_count: 1
+            keepalive_timeout: 60s
+            fail_on_5xx: false
+          include_backends:
+            type: BY_ID
+            ids: [taxi_mobile-qa-test-app_stable, taxi_mobile-qa-test-app_pre_stable]
+        on_error:
+          errordocument:
+            status: 504
+            content: "Service unavailable"

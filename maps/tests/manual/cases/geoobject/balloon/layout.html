@@ -1,0 +1,286 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Геообъект: кастомный балун объектов
+
+Description:
+Проверка работы кастомного балуна геообъектов.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+geoobject
+
+Estimated time:
+90000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно.
+  На карте спан Московской области.
+  На спане карты два ряда объектов: метка, линия, многоугольник, прямоугольник, круг. Верхний ряд синего цвета, нижний - зеленого.
+  Под контейнером с картой серые кнопки "Задать заголовок балуна", "Задать содержимое балуна".
+
+Step:
+  Action:
+  Навести курсор на синюю метку коллекции в верхнем ряду и выполнить клик в нее.
+   
+  Expectation:
+  При наведении на метку курсор меняется на палец, хинт: "Тут был se0ga!".
+  По клику на метку, метка пропадает, происходит смещение спан карты, на месте метки открывается балун со скругленными углами, с заголовком "Заголовок балуна", телом "Тут был se0ga!", кнопкой закрытия.
+  Между заголовком и телом в балуне полоса разделитель, фон заголовка - серый, кнопка закрытия небольшой серый крестик.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "Задать заголовок балуна".
+   
+  Expectation:
+  Происходит смещение спана вверх, заголовок балуна растягивается вверх, заголовок меняется на блок текста: "Lorem ipsum...consequat.".
+  Точка крепления балуна не меняется, спан карты без изменений.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "Задать содержимое балуна".
+   
+  Expectation:
+  Происходит смещение спана вверх, тело балуна растягивается вверх, тело балуна меняется на блок текста: "Lorem ipsum...consequat.".
+  Точка крепления балуна не меняется, спан карты без изменений.
+
+Step:
+  Action:
+  Выполнить клик в кнопку закрытия балуна.
+   
+  Expectation:
+  Балун закрывается, на спане карты появляется метка.
+
+Step:
+  Action:
+  Навести курсор на зеленый круг в нижнем ряду и выполнить клик в него.
+   
+  Expectation:
+  При наведении на объект курсор меняется на палец, хинт: "Тут был se0ga!".
+  По клику на круг, происходит смещение спан карты, в месте клика открывается балун со скругленными углами, с заголовком "Lorem ipsum...consequat.", телом "Lorem ipsum...consequat.", кнопкой закрытия.
+-->
+<html>
+<head>
+<title>2.1</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+<link href="//yandex.st/bootstrap/2.3.2/css/bootstrap.min.css" rel="stylesheet">
+<script src="//yandex.st/jquery/2.0.3/jquery.min.js" type="text/javascript"></script>
+<style>
+    .popover {
+        display: block;
+    }
+
+    .popover .close {
+        position: absolute;
+        right: 5px;
+        top: 1px;
+    }
+
+    .btn {
+        margin-top: 10px;
+    }
+</style>
+<script src="../../../helper.js"></script>
+<script src="../geoCS.js"></script>
+<script type=text/javascript>
+
+    Api('init');
+
+    function init(ymaps) {
+        ymaps = ym;
+
+        var map = myMap = new ym.Map('map', {
+            center: [55.73259667357658, 37.70153663432529],
+            zoom: 9,
+            behaviors: ['default', 'scrollZoom'],
+            controls: ['fullscreenControl']
+        });
+        window.collection = new ymaps.GeoObjectCollection();
+
+        addGrid(myMap);
+        var log = new Log();
+        __log__('Кастомный лэйаут балуна');
+
+        geoCSSource(ym, myMap, this);
+        collection
+                .add(geoObjectPlacemark)
+                .add(geoObjectPolyline)
+                .add(geoObjectPolygon)
+                .add(geoObjectRectangle)
+                .add(geoObjectRectangle)
+                .add(geoObjectCircle)
+                .add(placemark)
+                .add(polyline)
+                .add(polygon)
+                .add(rectangle)
+                .add(circle);
+
+        myMap.geoObjects
+                .add(collection);
+
+        var MyBalloonLayout = ymaps.templateLayoutFactory.createClass(
+                                '<div class="popover top">' +
+                                '<a class="close" href="#">&times;</a>' +
+                                '<div class="arrow"></div>' +
+                                '<div class="popover-inner">' +
+                                '$[[options.contentLayout observeSize minWidth=235 maxWidth=235 maxHeight=350]]' +
+                                '</div>' +
+                                '</div>', {
+                            /**
+                             * Строит экземпляр макета на основе шаблона и добавляет его в родительский HTML-элемент.
+                             * @see https://api.yandex.ru/maps/doc/jsapi/2.1/ref/reference/layout.templateBased.Base.xml#build
+                             * @function
+                             * @name build
+                             */
+                            build: function () {
+                                this.constructor.superclass.build.call(this);
+
+                                this._$element = $('.popover', this.getParentElement());
+
+                                this.applyElementOffset();
+
+                                this._$element.find('.close')
+                                        .on('click', $.proxy(this.onCloseClick, this));
+                            },
+
+                            /**
+                             * Удаляет содержимое макета из DOM.
+                             * @see https://api.yandex.ru/maps/doc/jsapi/2.1/ref/reference/layout.templateBased.Base.xml#clear
+                             * @function
+                             * @name clear
+                             */
+                            clear: function () {
+                                this._$element.find('.close')
+                                        .off('click');
+
+                                this.constructor.superclass.clear.call(this);
+                            },
+
+                            /**
+                             * Метод будет вызван системой шаблонов АПИ при изменении размеров вложенного макета.
+                             * @see https://api.yandex.ru/maps/doc/jsapi/2.1/ref/reference/IBalloonLayout.xml#event-userclose
+                             * @function
+                             * @name onSublayoutSizeChange
+                             */
+                            onSublayoutSizeChange: function () {
+                                MyBalloonLayout.superclass.onSublayoutSizeChange.apply(this, arguments);
+
+                                if (!this._isElement(this._$element)) {
+                                    return;
+                                }
+
+                                this.applyElementOffset();
+
+                                this.events.fire('shapechange');
+                            },
+
+                            /**
+                             * Сдвигаем балун, чтобы "хвостик" указывал на точку привязки.
+                             * @see https://api.yandex.ru/maps/doc/jsapi/2.1/ref/reference/IBalloonLayout.xml#event-userclose
+                             * @function
+                             * @name applyElementOffset
+                             */
+                            applyElementOffset: function () {
+                                this._$element.css({
+                                    left: -(this._$element[0].offsetWidth / 2),
+                                    top: -(this._$element[0].offsetHeight + this._$element.find('.arrow')[0].offsetHeight)
+                                });
+                            },
+
+                            /**
+                             * Закрывает балун при клике на крестик, кидая событие "userclose" на макете.
+                             * @see https://api.yandex.ru/maps/doc/jsapi/2.1/ref/reference/IBalloonLayout.xml#event-userclose
+                             * @function
+                             * @name onCloseClick
+                             */
+                            onCloseClick: function (e) {
+                                e.preventDefault();
+
+                                this.events.fire('userclose');
+                            },
+
+                            /**
+                             * Используется для автопозиционирования (balloonAutoPan).
+                             * @see https://api.yandex.ru/maps/doc/jsapi/2.1/ref/reference/ILayout.xml#getClientBounds
+                             * @function
+                             * @name getClientBounds
+                             * @returns {Number[][]} Координаты левого верхнего и правого нижнего углов шаблона относительно точки привязки.
+                             */
+                            getShape: function () {
+                                if (!this._isElement(this._$element)) {
+                                    return MyBalloonLayout.superclass.getShape.call(this);
+                                }
+
+                                var position = this._$element.position();
+
+                                return new ymaps.shape.Rectangle(new ymaps.geometry.pixel.Rectangle([
+                                    [position.left, position.top],
+                                    [
+                                                position.left + this._$element[0].offsetWidth,
+                                                position.top + this._$element[0].offsetHeight + this._$element.find('.arrow')[0].offsetHeight
+                                    ]
+                                ]));
+                            },
+
+                            /**
+                             * Проверяем наличие элемента (в ИЕ и Опере его еще может не быть).
+                             * @function
+                             * @private
+                             * @name _isElement
+                             * @param {jQuery} [element] Элемент.
+                             * @returns {Boolean} Флаг наличия.
+                             */
+                            _isElement: function (element) {
+                                return element && element[0] && element.find('.arrow')[0];
+                            }
+                        }),
+
+        // Создание вложенного макета содержимого балуна.
+                MyBalloonContentLayout = ymaps.templateLayoutFactory.createClass(
+                                '<h3 class="popover-title">$[properties.balloonHeader]</h3>' +
+                                '<div class="popover-content">$[properties.balloonContent]</div>'
+                );
+        collection.each(function (obj) {
+            obj.properties.set('balloonContent', 'Тут был se0ga!');
+            obj.properties.set('hintContent', 'Тут был se0ga!');
+            obj.properties.set('balloonHeader', 'Заголовок балуна');
+            obj.options.set('balloonLayout', MyBalloonLayout);
+            obj.options.set('balloonContentLayout', MyBalloonContentLayout);
+        });
+    }
+    $(function () {
+        $('#set-balloon-header').click(function () {
+            window.collection.each(function (obj) {
+                obj.properties.set(
+                        'balloonHeader',
+                                'Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.'
+                                + 'Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.'
+                );
+            });
+        });
+        $('#set-balloon-content').click(function () {
+            window.collection.each(function (obj) {
+                obj.properties.set(
+                        'balloonContent',
+                                'Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.'
+                                + 'Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.'
+                );
+            });
+        });
+    });
+</script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+<button id="set-balloon-header" class="btn">Задать заголовок балуна</button>
+<button id="set-balloon-content" class="btn">Задать содержимое балуна</button>
+</body>
+</html>

@@ -1,0 +1,46 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - kasharin
+      groups: []
+labels:
+  order: '10000000'
+---
+ regexp_section:
+  matcher:
+    match_fsm:
+          uri: '/static(.*)?'
+  modules:
+     - report:
+         uuid: socorro_test_browser_yandex-team_ru
+         ranges: default
+     - headers:
+        create_func:
+          X-Location: location
+          X-URL: url
+        create_func_weak:
+          X-Req-Id: reqid
+          X-Forwarded-For-Y: realip
+          X-Forwarded-For: realip
+          X-Real-Ip: realip
+          X-Source-Port-Y: realport
+          X-Scheme: scheme
+     - balancer2:
+         connection_attempts: 2
+         attempts: 2
+         rr: {}
+         unique_policy: {}
+         attempts_rate_limiter:
+           limit: 0.15
+         generated_proxy_backends:
+           proxy_options:
+             backend_timeout: 60s
+             connect_timeout: 170ms
+           include_backends:
+             type: BY_ID
+             ids: [webapp.static]
+         on_error:
+           errordocument:
+             status: 504
+             content: "Service unavailable"

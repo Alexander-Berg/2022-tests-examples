@@ -1,0 +1,116 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Вектор: опция включения векторного слоя
+
+Description:
+Проверка корректности работы опции включения векторного слоя.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components:
+vector
+
+Estimated time:
+240000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть страницу и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно со спаном Москвы.
+  В контейнере дефолтный набор контролов, имеются кнопка "vector", под контейнером строка: "{"vector":false}".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "vector".
+
+  Expectation:
+  Карта промигавает, при этом отображается корректно, не мигает цветами, нет странных визуальных эффектов.
+  Под контейнером появляются строки: "set vector: true; Вектор показался".
+
+Step:
+  Action:
+  Выполнить клик в контрол зума "+", затем выполнить статичный и инертный драг спана карты, затем два клика в "vector"(с паузой между кликами). 
+  Повторять вышеуказанное действие до максимального призума карты.
+
+  Expectation:
+  Происходит корректный призум, с каждым зумом карта детализируется, появляются подписи, метки, подписи стоимости парковки, участки запрета парковки.
+  Драг карты корректный: карта не пропадает, не мигает цветами, нет странных визуальных эффектов, подписи на карте выглядят корректно, не слипаются.
+  На большим значениях зума после кликов в "vector" видна смена отображения карты с растрового на векторный. 
+  При кликах "vector" под контейнером появляются корректные строки установки опции.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <script src="../../helper.js"></script>
+    <!-- <script type=text/javascript src="https://api-maps.tst.c.maps.yandex.ru/2.1.77/?lang=ru_RU&mode=debug&apikey=b027f76e-cc66-f012-4f64-696c7961c395"></script> -->
+    <script type=text/javascript>
+        
+        window.onerror = function(err) {
+            __log__(err);
+        };
+
+        Api('init', undefined, undefined, undefined, undefined, 'ymaps', undefined);
+
+        function init(ymaps) {
+            var map = new ymaps.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 10,
+                behaviors: ['default', 'scrollZoom']
+            }, {
+                vector: false
+            });
+
+            map.layers.events.add('vectorreveal', () => __log__('Вектор показался'));
+            map.layers.events.add('vectorerror', () => __log__('Вектор упал'));
+
+            ['vector'].forEach(function(option) {
+                var opt = new ymaps.control.Button({
+                    data: {
+                        content: option
+                    },
+                    options: {
+                        selectOnClick: true,
+                        maxWidth: [1000]
+                    }
+                });
+
+                opt.events
+                    .add('select', function () {
+                        map.options.set(option, true);
+                        __log__('set ' + option + ': true');
+                    })
+                    .add('deselect', function () {
+                        map.options.set(option, false);
+                        __log__('set ' + option + ': false');
+                    });
+
+                map.controls.add(opt);
+            });
+            map.events.add('boundschange', () => {
+                console.log('getCenter: ' + map.getCenter(), 'getZoom: ' + map.getZoom());
+            });
+
+            __log__(JSON.stringify(map.options.getAll()));
+        }
+    </script>
+    <style>
+        html, body, #map {
+            width: 100%;
+            height: 95%;
+            margin: 0;
+            padding: 0;
+        }
+    </style>
+</head>
+<body>
+<div id="map"></div>
+</body>
+</html>

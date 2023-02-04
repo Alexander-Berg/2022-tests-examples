@@ -1,0 +1,151 @@
+<!DOCTYPE HTML>
+<!--(skip)(description)
+geoObject.balloon: autoPan
+This case must be tested manually!
+-->
+<!--(version)
+2.1
+-->
+<!--(commands)
+sleep(1000);
+test();
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            var map = myMap = new ym.Map('map', {
+                center: [61.5078, 74.2802],
+                zoom: 3,
+                controls: ['fullscreenControl']
+            }, {
+                geoObjectStrokeColor: "#FF000088",
+                geoObjectStrokeWidth: 6,
+                balloonAutoPan: true
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+
+            log.info('Balloon must change position along with its object');
+
+            var collection = new ym.GeoObjectCollection();
+            myMap.geoObjects.add(collection);
+
+            var polygon = new ym.Polygon([
+                [
+                    [50, 50],
+                    [50, 60],
+                    [60, 55]
+                ],
+                [],
+                [
+                    [49, 49],
+                    [49, 39],
+                    [39, 44]
+                ]
+            ]);
+            collection.add(polygon);
+
+            var rectangle = new ym.Rectangle([
+                [70, 85],
+                [60, 95]
+            ]);
+            collection.add(rectangle);
+
+            var polyline = new ym.Polyline([
+                [60, 77],
+                [50, 77]
+            ]);
+            collection.add(polyline);
+
+            var circle = new ym.Circle([
+                [46.1313, 99.7685],
+                1000000
+            ]);
+            collection.add(circle);
+
+            var point = new ym.Placemark([70, 60]);
+            collection.add(point);
+
+            polygon.properties.set("balloonContent", "polygon");
+            rectangle.properties.set("balloonContent", "rectangle");
+            polyline.properties.set("balloonContent", "polyline");
+            circle.properties.set("balloonContent", "circle");
+            point.properties.set("balloonContent", "point");
+
+            var button = new ym.control.Button("offset");
+            button.events.add("click", function (e) {
+                var i = e.get("target").isSelected() ? 1 : -1;
+                i *= 90;
+                collection.each(function (object) {
+                    var type = object.geometry.getType();
+                    var coordinates = object.geometry.getCoordinates();
+                    if (type == 'Polygon') {
+                        for (var j = 0; j < coordinates.length; j++) {
+                            for (var k = 0; k < coordinates[j].length; k++) {
+                                coordinates[j][k][1] += i;
+                            }
+                        }
+                    }
+                    else if (type == "Rectangle" || type == "LineString") {
+                        for (var j = 0; j < coordinates.length; j++) {
+                            coordinates[j][1] += i;
+                        }
+                    }
+                    else {
+                        coordinates[1] += i;
+                    }
+                    object.geometry.setCoordinates(coordinates);
+                })
+            });
+            myMap.controls.add(button);
+
+            var buttonReset = new ym.control.Button("reset");
+            buttonReset.events.add("click", function (e) {
+                myMap.setCenter([61.5078, 74.2802]);
+            });
+            myMap.controls.add(buttonReset, {top: 3, right: 3});
+
+            var openCloseButton = new ymaps.control.Button({data: {content: 'openClose'}, options: {selectOnClick: false}});
+            openCloseButton.events.add('click', function () {
+                var promise = rectangle.balloon.open();
+                rectangle.balloon.close();
+                var promise1 = polyline.balloon.open();
+                polyline.balloon.close();
+                var promise2 = circle.balloon.open();
+                circle.balloon.close();
+                var promise3 = point.balloon.open();
+                point.balloon.close();
+                promise.always(function () {
+                    log.info('balloon.open() fulfilled: ' + promise.isFulfilled());
+                    log.info('balloon.open() rejected: ' + promise.isRejected());
+                });
+                promise1.always(function () {
+                    log.info('balloon.open() fulfilled: ' + promise1.isFulfilled());
+                    log.info('balloon.open() rejected: ' + promise1.isRejected());
+                });
+                promise2.always(function () {
+                    log.info('balloon.open() fulfilled: ' + promise2.isFulfilled());
+                    log.info('balloon.open() rejected: ' + promise2.isRejected());
+                });
+                promise3.always(function () {
+                    log.info('balloon.open() fulfilled: ' + promise3.isFulfilled());
+                    log.info('balloon.open() rejected: ' + promise3.isRejected());
+                });
+            });
+            myMap.controls.add(openCloseButton);
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

@@ -1,0 +1,41 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - ialand
+      groups: []
+labels:
+  order: '10000000'
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      uri: '/android_widget_api(/.*)?'
+  modules:
+    - report:
+        uuid: android_widget_api
+        ranges: default
+    - threshold:
+        lo_bytes: 153600
+        hi_bytes: 307200
+        pass_timeout: '2s'
+        recv_timeout: '0.05s'
+        on_pass_timeout_failure:
+          errordocument:
+            status: 413
+    - geobase_macro: {}
+    - exp_getter_macro:
+        _version: 3
+        service_name: 'android_widget_api'
+    - report: {ranges: default, uuid: android_widget_api_requests_to_sas}
+    - balancer2:
+        connection_attempts: 5
+        attempts: 1
+        retry_non_idempotent: true
+        attempts_file: './controls/android_widget_api.attempts'
+        rr: {}
+        generated_proxy_backends:
+          proxy_options: {}
+          include_backends:
+            type: BY_ID
+            ids: [backends_SAS_PORTAL_MORDA_RC,backends_VLA_PORTAL_MORDA_RC_YP,backends_SAS_PORTAL_MORDA_RC_YP]

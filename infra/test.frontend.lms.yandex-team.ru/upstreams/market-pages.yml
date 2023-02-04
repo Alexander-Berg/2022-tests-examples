@@ -1,0 +1,41 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - akuv
+      groups: []
+labels:
+  order: '10000000'
+---
+regexp_section:
+  matcher:
+    match_or:
+      - match_fsm:
+          uri: '/resources/(.*)?'
+  modules:
+    - headers:
+        create:
+          Host: corp-education-external.s3.mds.yandex.net
+    - rewrite:
+        actions:
+          - regexp: '/resources/(.*)?'
+            rewrite: '/market/%1'
+    - balancer2:
+        attempts: 3
+        attempts_rate_limiter:
+          limit: 0.2 
+        rr: {}
+        generated_proxy_backends:
+          proxy_options:
+            backend_timeout: 10s
+            connect_timeout: 150ms
+            keepalive_count: 0
+            fail_on_5xx: false
+            https_settings:
+              ca_file: !f get_ca_cert_path("allCAs.pem", "./")
+              sni_on: true
+              verify_depth: 3
+          instances:
+            - weight: 1
+              host: corp-education-external.s3.mds.yandex.net
+              port: 443

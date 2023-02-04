@@ -1,0 +1,88 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - anttsov
+      - nanny-robot
+      groups: []
+config_transport:
+  nanny_static_file:
+    service_id: rtc_balancer_anttsov-test-balancer-ns_sas
+    instance_tags:
+      ctype: prod
+      itype: balancer
+      prj: anttsov-test-balancer-ns
+---
+instance_macro:
+  version: 0.0.2
+  maxconn: 5000
+  workers: !f 'get_workers()'
+  sections:
+    admin:
+      ips:
+      - 127.0.0.1
+      - ::1
+      ports:
+      - !f 'get_port_var("port")'
+      http:
+        admin: {}
+    http_section:
+      ips:
+      - '*'
+      ports:
+      - 80
+      extended_http_macro:
+        maxlen: 65536
+        maxreq: 65536
+        report_input_size_ranges: 32,64,128,256,512,1024,4096,8192,16384,131072,524288,1048576,2097152
+        report_output_size_ranges: 512,1024,4096,8192,16384,32768,65536,131072,262144,524288,1048576,2097152,4194304,8388608
+        yandex_cookie_policy: YCP_STABLE
+        regexp:
+          sections:
+            awacs-balancer-health-check:
+              matcher:
+                match_fsm:
+                  uri: /awacs-balancer-health-check
+              errordocument:
+                status: 200
+            slbping:
+              matcher:
+                match_fsm:
+                  url: /ping
+              slb_ping_macro:
+                errordoc: true
+            # '_2':
+            #   matcher:
+            #     match_fsm:
+            #       uri: '.*'
+            #   regexp_path:
+            #     include_upstreams:
+            #       ids: [default2]
+            '_1':
+              matcher: {}
+              # rps_limiter_macro: 
+              #   record_name: weather_apphost
+              #   installation: COMMON_V2
+              regexp:
+                include_upstreams:
+                  type: BY_ID
+                  ids: [up3, up2, up4, default]
+                #   filter:
+                #     any: true
+                #   order:
+                #     label:
+                #       name: order
+  tcp_listen_queue: 128
+  unistat:
+    hide_legacy_signals: true
+  cpu_limiter:
+    active_check_subnet_file: ./controls/active_check_subnets_list
+    disable_file: ./controls/cpu_limiter_disabled
+  sd: {}
+  state_directory: /dev/shm/balancer-state
+  dynamic_balancing_log: !f 'get_log_path("dynamic_balancing_log", get_port_var("port"),
+    "/place/db/www/logs/")'
+  pinger_required: true
+  pinger_log: !f 'get_log_path("pinger_log", get_port_var("port"), "/place/db/www/logs/")'
+  config_check: {}
+

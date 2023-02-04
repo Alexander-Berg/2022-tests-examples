@@ -1,0 +1,113 @@
+---
+regexp_section:
+    matcher:
+      match_or:
+        - match_fsm: {path: '/h?uni.ws', case_insensitive: true, surround: false}
+    modules:
+        - rewrite:
+            actions:
+              - regexp: '/h?uni.ws(.*)'
+                rewrite: '/uni.ws%1'    
+        - report: {ranges: default, uuid: uniproxy_ext_ws}
+        - headers:
+            create_func:
+              X-Yandex-TCP-Info: tcp_info
+              X-Real-Port: realport
+            create_func_weak:
+              X-Forwarded-For-Y: realip              
+        - log_headers:
+            name_re: 'X-(UPRX-(UUID|SSID|AUTH-TOKEN|RETRY-COUNT|APP-(ID|TYPE))|ALICE-CLIENT-REQID|Yandex-TCP-Info)'
+        - antirobot_macro: {version: 0.0.2}
+        - shared:
+            uuid: uniproxy_backends
+        - balancer2:
+            attempts: 3
+            unique_policy: {}
+            rr: {weights_file: ./controls/traffic_control.weights}
+            backends:
+                -   weight: 1
+                    name: uniproxy_man
+                    modules:
+                        - report: {ranges: default, uuid: uniproxy_ext_ws_to_man}
+                        - balancer2:
+                            attempts: 1
+                            attempts_rate_limiter:
+                                limit: 2
+                            fast_attempts: 2
+                            fast_503: true
+                            unique_policy: {}
+                            active: {delay: 1s, request: 'GET /ping HTTP/1.1\nHost: uniproxy.alice.yandex.net\n\n'}
+                            generated_proxy_backends:
+                                proxy_options:
+                                    allow_connection_upgrade: true
+                                    connect_timeout: 75ms
+                                    backend_timeout: 5s
+                                    backend_read_timeout: 600s
+                                    backend_write_timeout: 600s
+                                    client_read_timeout: 600s
+                                    client_write_timeout: 600s
+                                include_backends:
+                                    type: BY_ID
+                                    ids:
+                                        - wsproxy-man
+                -   weight: 1
+                    name: uniproxy_sas
+                    modules:
+                        - report: {ranges: default, uuid: uniproxy_ext_ws_to_sas}
+                        - balancer2:
+                            attempts: 1
+                            attempts_rate_limiter:
+                                limit: 2
+                            fast_attempts: 2
+                            fast_503: true
+                            unique_policy: {}
+                            active: {delay: 1s, request: 'GET /ping HTTP/1.1\nHost: uniproxy.alice.yandex.net\n\n'}
+                            generated_proxy_backends:
+                                proxy_options:
+                                    allow_connection_upgrade: true
+                                    connect_timeout: 75ms
+                                    backend_timeout: 5s
+                                    backend_read_timeout: 600s
+                                    backend_write_timeout: 600s
+                                    client_read_timeout: 600s
+                                    client_write_timeout: 600s
+                                include_backends:
+                                    type: BY_ID
+                                    ids:
+                                        - wsproxy-sas
+                                        - wsproxy-prestable-sas
+                -   weight: 1
+                    name: uniproxy_vla
+                    modules:
+                        - report: {ranges: default, uuid: uniproxy_ext_ws_to_vla}
+                        - balancer2:
+                            attempts: 1
+                            attempts_rate_limiter:
+                                limit: 2
+                            fast_attempts: 2
+                            fast_503: true
+                            unique_policy: {}
+                            active: {delay: 1s, request: 'GET /ping HTTP/1.1\nHost: uniproxy.alice.yandex.net\n\n'}
+                            generated_proxy_backends:
+                                proxy_options:
+                                    allow_connection_upgrade: true
+                                    connect_timeout: 75ms
+                                    backend_timeout: 5s
+                                    backend_read_timeout: 600s
+                                    backend_write_timeout: 600s
+                                    client_read_timeout: 600s
+                                    client_write_timeout: 600s
+                                include_backends:
+                                    type: BY_ID
+                                    ids:
+                                        - wsproxy-vla
+                -   weight: -1
+                    name: uniproxy_devnull
+                    modules:
+                        - report: {ranges: default, uuid: uniproxy_ws_to_devnull}
+                        - errordocument:
+                            status: 204
+            on_error:
+                errordocument:
+                    status: 504
+                    content: "Service unavailable"

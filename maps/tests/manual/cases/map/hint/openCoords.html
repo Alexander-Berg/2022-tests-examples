@@ -1,0 +1,82 @@
+<!DOCTYPE HTML>
+<!--(skip)(description)
+map.hint: cartesian
+-->
+<!--(version)
+2.0.15
+-->
+<!--(commands)
+sleep(1000);
+test();
+sleep(1000);
+test();
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+        //TODO: запили тест на балуны нестандартных проекций
+        function init(ymaps) {
+            ymaps = ym; // hack
+
+            var projection = new ym.projection.Cartesian([
+                [-100, -100],
+                [140, 140]
+            ]);
+
+            var constructor = function () {
+                        var layer = new ym.Layer('http://mt.gmapuploader.com/tiles/zDtAlUfaDe/');
+                        layer.getTileUrl = function (tile, zoom) {
+                            var tile = this.restrict(tile, zoom);
+                            return tile ? "http://mt.gmapuploader.com/tiles/zDtAlUfaDe/tile-" + zoom + "-" +
+                                    (tile[1] * Math.pow(2, zoom) + tile[0]) + ".jpg" : null;
+                        };
+                        return layer;
+                    },
+                    lineageMap = new ym.MapType('LineageMap', [constructor]),
+                    myMap = new ym.Map('map', {
+                        center: [18.125, 42.03125],
+                        zoom: 2,
+                        type: null,
+                        behaviors: ['default', 'scrollZoom'],
+                        controls: ['fullscreenControl']
+                    }, {
+                        projection: projection,
+                        geoObjectStrokeWidth: 4
+                    }), i = 0;
+
+            ym.mapType.storage.add('lineage#map', lineageMap);
+            myMap.setType("lineage#map");
+
+            addGrid(myMap);
+            var log = new Log();
+
+            var pos1 = [0, 0];
+            var pos2 = [50, 50];
+
+            myMap.hint.events.add(['open', 'close'], function (e) {
+                log.info('event: ' + e.get('type') + ', isOpen: ' + myMap.hint.isOpen());
+            });
+
+            myMap.hint.open(pos1, {content: 'hint1'}, {projection: projection}).then(function () {
+                myMap.hint.close().then(function () {
+                    myMap.hint.open(pos2, {content: 'hint2'}, {projection: projection});
+                });
+            });
+
+            myMap.events.add('click', function (e) {
+                var pixels = e.get('globalPixels');
+                myMap.hint.open(pixels, {content: 'hint1'}, {projection: projection})
+            })
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

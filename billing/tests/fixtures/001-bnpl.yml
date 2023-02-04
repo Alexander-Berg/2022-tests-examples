@@ -1,0 +1,181 @@
+locals:
+  service_id: &x-service-id 1125
+  contract_type: &x-contract-type BnplContract
+
+  input:
+    processor:
+      valid_input: &x-valid-input
+        renderer_type: ProcessorBnplRenderer
+        contract_type: *x-contract-type
+        service_id: *x-service-id
+        person_type: *x-person-type-ur
+        firm_id: *x-yandex-firm-id
+        service_code: *x-service-code-yandex-service
+
+
+cases:
+  cashless:
+    - description: Cashless payment workflow
+
+      foreach:
+        paths:
+          - processor.input.dry_run
+          - processor.expected.response.data.event.tariffer_payload.dry_run
+        values:
+          - [ true, true ]
+          - [ false, false ]
+
+      processor:
+        input:
+          <<: *x-valid-input
+          template: cashless-payment.json
+          dry_run: true
+          event:
+            transaction_amount: 120000
+            total_commission: 100
+        expected:
+          response:
+            status: 200
+            data:
+              event:
+                tariffer_payload:
+                  dry_run: true
+                  amount_wo_vat: '83.333333'
+
+      accounts:
+        input:
+          accounts: [ cashless, commissions ]
+        expected:
+          response:
+            status: 200
+            data:
+              balances:
+                - loc: { type: cashless }
+                  credit: '120000.000000'
+                - loc: { type: commissions }
+                  debit: '100.000000'
+
+    - description: Cashless refund workflow
+
+      foreach:
+        paths:
+          - processor.input.dry_run
+          - processor.expected.response.data.event.tariffer_payload.dry_run
+        values:
+          - [ true, true ]
+          - [ false, false ]
+
+      processor:
+        input:
+          <<: *x-valid-input
+          template: cashless-refund.json
+          dry_run: true
+          event:
+            transaction_amount: 10000
+            total_commission: 100
+        expected:
+          response:
+            status: 200
+            data:
+              event:
+                tariffer_payload:
+                  dry_run: true
+                  amount_wo_vat: '83.333333'
+
+      accounts:
+        input:
+          accounts: [ cashless_refunds, commission_refunds ]
+        expected:
+          response:
+            status: 200
+            data:
+              balances:
+                - loc: { type: cashless_refunds }
+                  debit: '10000.000000'
+                - loc: { type: commission_refunds }
+                  credit: '100.000000'
+
+  acts:
+    - description: Acts workflow
+
+      foreach:
+        paths:
+          - processor.input.dry_run
+          - processor.expected.response.data.event.tariffer_payload.dry_run
+          - processor.input.contract.collaterals.0.withholding_commissions_from_payments
+          - accounts.expected.response.data.balances
+        values:
+          - - true
+            - true
+            - 1
+            - &x-acts-balances
+              - { loc: { type: commissions }, credit: '200.000000' }
+              - { loc: { type: commissions_acted }, debit: '200.000000' }
+              - { loc: { type: commission_refunds }, debit: '100.000000' }
+              - { loc: { type: commission_refunds_acted }, credit: '100.000000' }
+          - [ false, false, 1, *x-acts-balances ]
+          - [ true, true, 0, ~ ]
+          - [ false, false, 0, ~ ]
+
+      processor:
+        input:
+          <<: *x-valid-input
+          template: acts.json
+          contract:
+            collaterals:
+              "0":
+                withholding_commissions_from_payments: 0
+          dry_run: true
+          event:
+            act_sum_positive: 200
+            act_sum_negative: -100
+            act_sum_wo_vat_positive: 20
+            act_sum_wo_vat_negative: -10
+        expected:
+          response:
+            status: 200
+            data:
+              event:
+                tariffer_payload:
+                  dry_run: true
+
+      accounts:
+        input:
+          accounts: [ commissions, commission_refunds, commissions_acted, commission_refunds_acted ]
+        expected:
+          response:
+            status: 200
+            data:
+              balances: ~
+
+  payout:
+    - description: Payout workflow
+
+      foreach:
+        paths:
+          - processor.input.dry_run
+        values:
+          - [ true ]
+          - [ false ]
+
+      processor:
+        input:
+          <<: *x-valid-input
+          template: payout.json
+          dry_run: true
+          event:
+            operation_type: INSERT_NETTING
+            amount: 100
+
+        expected:
+          response:
+            status: 200
+
+      accounts:
+        input:
+          accounts: [ payout ]
+        expected:
+          response:
+            status: 200
+            data:
+              balances: ~

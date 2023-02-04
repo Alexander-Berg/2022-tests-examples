@@ -1,0 +1,101 @@
+
+<!doctype html>
+<!--(description)
+проверка getBounds всех геометрий
+-->
+<!--(commands)
+// https://jira.yandex-team.ru/browse/MAPSAPI-4770
+test();
+drag(73, 53); // перетаскиваем вертекс полилинии
+drag(189, 59); // перетаскиваем круг
+click(49); // hack
+click(147); // удаляем вертексы
+click(148);
+click(185);
+click(186);
+click(217);
+click(218);
+drag(122, 152); // перетаскиваем квадрат
+test();
+-->
+<html>
+    <head>
+        <title>API 2.0</title>
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+        <script src="http://yui.yahooapis.com/3.5.1/build/yui/yui-min.js"></script>
+        <script src="helper.js"></script>
+        <script type="text/javascript">
+            Api('init');
+            function init(ym){
+                myMap = new ym.Map('map', {
+                    center: [58.3693, -136.5269],
+                    zoom: 0
+                }, {
+                    geoObjectDraggable: true,
+                    geoObjectStrokeColor: "#FF000088",
+                    geoObjectStrokeWidth: 6
+                });
+                addGrid(myMap);
+                var collection = new ym.GeoObjectCollection();
+                collection.options.set({
+                    strokeColor: "#000000",
+                    strokeWidth: 2,
+                    draggable: false,
+                    fillColor: false,
+                    zIndex: 100,
+                    coordRendering: 'straightPath'
+                });
+
+                var polygon = new ym.Polygon([
+                    [[-85.06462555678986, 112.37929999999996], [-64.82583415847476, -111.21445000000004],
+                        [-85.0646255567886, -112.62070000000003], [-85.06462555678986, 112.37929999999996]],
+                    [[-65.99725844343887, -67.62069999999999], [-85.06462555678986, -67.62070000000006],
+                        [-87.80328571532004, -22.62070000000004], [-85.18414659696342, 26.598049999999898],
+                        [-65.9972584434389, 25.19179999999998], [-65.99725844343887, -67.62069999999999]],
+                    [[0.22784489248405956, -21.214450000000042], [-78.9329368873498, -21.214450000000042],
+                        [-79.19971538756553, 67.37929999999996], [0.22784489248405956, -21.214450000000042]]
+                ], {}, {
+                    strokeStyle: 'dot',
+                    fillColor: "#00FF0088"
+                });
+                myMap.geoObjects.add(polygon);
+
+                var geometry = ym.geometry.LineString.fromEncodedCoordinates("YLm9BOz1Swm2T34AmDue91zOAAC-bzT4F7QSACoK0Aoq9QoAAAAAAA==");
+                var line = new ym.Polyline(geometry);
+                myMap.geoObjects.add(line);
+
+                var rectangle = new ym.Rectangle([[72, -156.2144], [44.44217215953398, 19.566850000000017]]);
+                myMap.geoObjects.add(rectangle);
+
+                var circle = new ym.Circle([[-73.267574709474, 43.004399999998206], 3000000]);
+                myMap.geoObjects.add(circle);
+
+                line.editor.startEditing();
+                polygon.editor.startEditing();
+
+                myMap.geoObjects.each(function(o){
+                    var bounds = o.geometry.getBounds();
+                    var r = new ym.Rectangle(bounds, {}, {
+                        coordRendering: "boundsPath"
+                    });
+                    collection.add(r);
+                    o.properties.set("bounds", r);
+
+                });
+                myMap.geoObjects.each(function(o){
+                    o.geometry.events.add("pixelgeometrychange", function(e){
+                        var bounds = o.geometry.getBounds();
+                        o.properties.get("bounds").geometry.setCoordinates(bounds);
+                    });
+                });
+
+                myMap.geoObjects.add(collection);
+            }
+
+        </script>
+    </head>
+<body style="position: relative; padding: 0; margin: 0;">
+    <div id="map" style="height: 512px; width: 512px;">
+    </div>
+</body>
+</html>

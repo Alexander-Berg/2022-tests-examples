@@ -1,0 +1,80 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+
+
+            var map = myMap = new ymaps.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 10,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            link(map);
+
+            var balloon,
+                    pos = map.getCenter(),
+                    contentLayout = ymaps.templateLayoutFactory.createClass('$[balloonContent]<span id="tst">$[a]$[x]</span>'),
+                    data = { a: 'b' },
+                    options = { contentLayout: contentLayout, preventPanelMode: true, closeTimeout: 5000 };
+
+            window.balloon = balloon = new ymaps.Balloon(map);
+            balloon.options.set(options).setParent(map.options);
+
+            balloon.events.add(['open', 'close', 'userclose'], function (e) {
+                __log__('event: ' + e.get('type') + ', overlay: ' + balloon.getOverlaySync().getMap() +
+                        ', isOpen: ' + balloon.isOpen() + ', target: ' + e.get('target'));
+                console.log(e.get('target'))
+            });
+
+            balloon.open(pos);
+
+            var forceCloseButton = new ymaps.control.Button({data: {content: 'force'}, options: {selectOnClick: false}});
+            var closeButton = new ymaps.control.Button({data: {content: 'close'}, options: {selectOnClick: false}});
+            var openButton = new ymaps.control.Button({data: {content: 'open'}, options: {selectOnClick: false}});
+            var promiseButton = new ymaps.control.Button({data: {content: 'promise'}, options: {selectOnClick: false}});
+
+            forceCloseButton.events.add('click', function () {
+                balloon.close(true);
+            });
+
+            closeButton.events.add('click', function () {
+                balloon.close(false);
+            });
+
+            openButton.events.add('click', function () {
+                balloon.open(pos);
+            });
+
+            promiseButton.events.add('click', function () {
+                var promise = balloon.open(pos);
+                balloon.close(true);
+                promise.always(function () {
+                    __log__('resolved: ' + promise.isResolved() + ', fulfilled: ' + promise.isFulfilled() + ', ' +
+                            'rejected: ' + promise.isRejected());
+                });
+
+            });
+
+            map.controls
+                    .add(forceCloseButton)
+                    .add(closeButton)
+                    .add(openButton)
+                    .add(promiseButton)
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

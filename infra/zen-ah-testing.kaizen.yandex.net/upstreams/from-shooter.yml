@@ -1,0 +1,42 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - comunodi
+      groups: []
+labels:
+  order: '01000000'
+---
+regexp_section:
+  matcher:
+    match_fsm:
+      header:
+        name: x-zen-shooter-request
+        value: '1'
+  modules:
+    - rewrite:
+        actions:
+          - regexp: '^/(..)/api-v1/(.*)'
+            split: 'path'
+            rewrite: '/api-v1/%2'
+    - headers:
+        create_weak:
+          X-Yandex-Internal-Request: '1'
+        append_func:
+          X-Forwarded-For: 'realip'
+          Zen-Forwarded-For: 'realip'
+    - balancer2:
+        connection_attempts: 2
+        attempts: 1
+        unique_policy: {}
+        rr: {}
+        return_last_5xx: true
+        status_code_blacklist: ["503"]
+        generated_proxy_backends:
+          proxy_options:
+            backend_timeout: 5s
+            connect_timeout: 70ms
+            fail_on_5xx: false
+          include_backends:
+            type: BY_ID
+            ids: [zen-apphost-testing-man, zen-apphost-testing-sas, zen-apphost-testing-vla]

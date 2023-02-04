@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<!--
+Title:
+Контрол пробок: включение контрола кнопкой и валидация методов
+
+Description:
+Проверка включения контрола кнопкой и валидация методов.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+regress
+
+Estimated time:
+60000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  На карте кнопка "show", и контрол пробок.
+
+Step:
+  Action:
+  Открыть инструменты разработчика командами Windows: Ctrl + Shift + I если у вас MacOS: ⌥ + ⌘ + I, вкладку Console.
+  Выполнить клик в кнопку "show".
+
+  Expectation:
+  На карте отобразились разноцветные линии пробок. 
+  Сверху расширенный контрол пробок в котором: иконка светофора; бал пробок и время. 
+  Имеется флаг "Сейчас" и "Прогноз", и чекбокс "Дорожные события"(неактивен).
+  В консоли строки: "providerKey -> traffic#actual; shown -> true; expanded -> true".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "show".
+
+  Expectation:
+  Контрол пробок выключился, пробочные линии пропадают со спана.
+  В консоли две группы строк: "providerKey -> traffic#actual; shown -> false; expanded -> true".
+-->
+<html>
+<head>
+    <title>API 2.0</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <script src="../helper.js"></script>
+    <script type=text/javascript>
+        Api('init');
+        function init(ymaps) {
+            var myMap = new ymaps.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 10,
+                behaviors: ['default', 'scrollZoom']
+            });
+            var actualTrafficButton = new ymaps.control.TrafficControl({
+                providerKey: 'traffic#actual',
+                shown: false
+            });
+            actualTrafficButton.state.events.add('change', function () {
+                console.log('---traffic control state changed---');
+                for (var key in actualTrafficButton.state.getAll()) {
+                    console.log(key + ' -> ' + actualTrafficButton.state.get(key));
+                }
+            });
+            var shownButton = new ymaps.control.Button({data: {content: 'shown'}}, {selectOnClick: true});
+            shownButton.events
+                    .add('select', function () {
+                        actualTrafficButton.state.set('shown', true)
+                    })
+                    .add('deselect', function () {
+                        actualTrafficButton.state.set('shown', false)
+                    })
+            myMap.controls
+                    .add(shownButton)
+                    .add(actualTrafficButton);
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+<p><a href="https://tech.yandex.ru/maps/archive/doc/jsapi/2.0/ref/reference/control.TrafficControl-docpage/" target="_blank">Docs</a></p>
+</body>
+</html>

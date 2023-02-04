@@ -1,0 +1,109 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Менеджер объектов: опция открытия балуна RemoteObjectManager
+
+Description:
+Проверка опции открытия балуна RemoteObjectManager. 
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+objectManager
+
+Estimated time:
+90000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась корректно со спаном Москвы.
+  На спане метки коллекции, метки кластеров со значениями кластеризации, линия, прямоугольники, круг.
+  Сверху слева кнопка "openBall...".
+
+Step:
+  Action:
+  Выполнить клик в кластерную метку на спане карты, затем клик в метку коллекции, прямоугольник.
+
+  Expectation:
+  По клику балун объектов не открывается, спан карты без изменений.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "openBall...", затем последовательно выполнить клик в кластерную метку на спане карты, клик в метку коллекции, прямоугольник.
+
+  Expectation:
+  По клику в "openBall..." под контейнером строка: "openBalloonOnClick = true".
+  По клику в объект открывается балун с содержимым, у кластера балун с двумя колонками(спан карты может смещаться при открытии балуна).
+
+Step:
+  Action:
+  Закрыть последний открытый балун объекта.
+  Выполнить клик в кнопку "openBall...", затем последовательно выполнить клик в кластерную метку на спане карты, клик в метку коллекции, прямоугольник.
+
+  Expectation:
+  По клику в "openBall..." под контейнером строка: "openBalloonOnClick = false".
+  По клику балун объектов не открывается, спан карты без изменений.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var center = [55.763338, 37.565466];
+
+            var map = myMap = new ymaps.Map('map', {
+                center: center,
+                zoom: 10,
+                type: 'yandex#map',
+                controls: ['fullscreenControl'],
+                minZoom: 4
+            });
+
+            // создаем экземпляр класса RemoteObjectManager
+            var remoteObjectManager = new ymaps.RemoteObjectManager('../objectData2.js?%l', {
+                //splitRequests: true,
+                paddingTemplate: 'managerResponse',
+                clusterDisableClickZoom: true,
+                clusterOpenBalloonOnClick: false,
+                geoObjectOpenBalloonOnClick: false
+            });
+            map.geoObjects.add(remoteObjectManager);
+
+            addGrid(myMap);
+            var log = new Log();
+
+            var openBalloonButton = new ymaps.control.Button('openBalloon');
+            openBalloonButton.events
+                    .add('select', function () {
+                        remoteObjectManager.options.set('clusterOpenBalloonOnClick', true);
+                        remoteObjectManager.options.set('geoObjectOpenBalloonOnClick', true);
+                        log.info('openBalloonOnClick = ' + remoteObjectManager.options.get('clusterOpenBalloonOnClick'));
+                    })
+                    .add('deselect', function () {
+                        remoteObjectManager.options.set('clusterOpenBalloonOnClick', false);
+                        remoteObjectManager.options.set('geoObjectOpenBalloonOnClick', false);
+                        log.info('openBalloonOnClick = ' + remoteObjectManager.options.get('clusterOpenBalloonOnClick'));
+                    });
+
+            map.controls
+                    .add(openBalloonButton)
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

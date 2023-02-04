@@ -1,0 +1,50 @@
+---
+# yt-adapter-bohr
+regexp_section:
+  matcher:
+    match_fsm:
+      host: cloud-adapter-bohr.yt.yandex-team.ru(:\\d+)?
+  modules:
+    - report:
+        uuid: cloud-adapter-bohr
+        ranges: default
+        events:
+          stats: report
+    - headers:
+        create_func_weak:
+          X-Forwarded-For: "realip"
+          X-Req-Id: "reqid"
+          X-Scheme: "scheme"
+          X-Source-Port: "realport"
+    - balancer2:
+        attempts: 1
+        rr: {}
+        backends:
+        - name: "main"
+          weight: 100
+          modules:
+          - balancer2:
+              attempts: 3
+              timeout_policy:
+                timeout: 10s
+                unique_policy: {}
+              weighted2:
+                min_weight: 0.05
+                max_weight: 5.0
+                plus_diff_per_sec: 0.05
+                minus_diff_per_sec: 0.05
+                history_time: 20s
+                feedback_time: 10s
+                slow_reply_time: 1s
+              generated_proxy_backends:
+                proxy_options:
+                  backend_timeout: 5s
+                  connect_timeout: 100ms
+                  keepalive_count: 10
+                  fail_on_5xx: true
+                include_backends:
+                  type: BY_ID
+                  ids: [yt_cloud_adapter_bohr]
+        on_error:
+          errordocument:
+            status: 504

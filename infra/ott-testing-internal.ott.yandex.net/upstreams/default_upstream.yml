@@ -1,0 +1,52 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - vyacheslav
+      groups: []
+labels:
+  order: '10000000'
+config_mode: easy2
+---
+l7_upstream_macro:
+  version: 0.2.1
+  id: default_upstream
+  monitoring:
+    uuid: default_upstream
+    response_codes: [400, 401, 403, 410, 499, 500, 502, 503, 504]
+  matcher:
+    path_re: '(/.*)?'
+  by_dc_scheme:
+    balancer:
+      attempts: 1
+      backend_timeout: 30s
+      connect_timeout: 60ms
+      fast_attempts: 2
+      max_pessimized_endpoints_share: 0.5
+      max_reattempts_share: 0.15
+      retry_non_idempotent: false
+      health_check:
+        delay: '5s'
+        request: 'GET /ping?l7 HTTP/1.0\n\n'
+      retry_http_responses:
+        on_last_failed_retry: PROXY_RESPONSE_AS_IS
+        codes: [5xx]
+    dc_balancer:
+      attempts: 2
+      method: LOCAL_THEN_BY_DC_WEIGHT
+      weights_section_id: bygeo
+    dcs:
+      - name: sas
+        monitoring:
+          uuid: default_upstream_sas
+        backend_ids:
+          - ott-api_testing_backend_sas
+      - name: myt
+        monitoring:
+          uuid: default_upstream_myt
+        backend_ids:
+          - ott-api_testing_backend_myt
+    on_error:
+      static:
+        status: 504
+        content: "Service unavailable"

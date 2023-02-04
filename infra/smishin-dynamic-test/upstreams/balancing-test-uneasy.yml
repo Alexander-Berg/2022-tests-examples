@@ -1,0 +1,40 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - smishin
+      groups: []
+labels:
+  order: '10000000'
+---
+regexp_section:
+  matcher: {}
+  modules:
+    - balancer2:
+        attempts: 2
+        attempts_rate_limiter:
+            limit: 1 
+        dynamic:
+            max_pessimized_share: 1
+            min_pessimization_coeff: 0.1
+            weight_increase_step: 0.1
+            history_interval: "10s"
+            backends_name: "test"
+            active:
+                use_backend_weight: true
+                weight_normalization_coeff: 100
+                request: 'GET /health?test=true HTTP/1.1\nHost: localhost\r\n\r\n'
+                delay: 10s
+        generated_proxy_backends:
+            proxy_options:
+                backend_timeout: 200ms
+                connect_timeout: 100ms
+                keepalive_count: 0
+                fail_on_5xx: true
+            include_backends:
+                type: BY_ID
+                ids: [balancing-test]
+        on_error:
+            errordocument:
+                status: 504
+                content: "Service unavailable"

@@ -1,0 +1,66 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - fedusia
+      - nanny-robot
+      groups:
+      - svc_strust
+labels:
+  order: '10000000'
+config_mode: easy2
+---
+l7_upstream_macro:
+  version: 0.0.1
+  id: api_trust_test_yandex_net
+  matcher:
+    path_re: '(/.*)?'
+  headers:
+    - create:
+        target: X-Real-IP
+        func: realip
+    - create:
+        target: X-Balancer-IP
+        func: localip
+    - create:
+        target: X-Request-Id
+        func: reqid
+        keep_existing: true
+  monitoring:
+    uuid: api_trust_test_yandex_net
+    response_codes: [429, 499]
+  rps_limiter:
+    external:
+      record_name: trust_gateway_test
+      installation: COMMON_V2
+  by_dc_scheme:
+    dc_balancer:
+      weights_section_id: bygeo
+      method: BY_DC_WEIGHT
+      attempts: 1
+    balancer:
+      attempts: 2
+      max_reattempts_share: 0.15
+      max_pessimized_endpoints_share: 0.2
+      fast_attempts: 2
+      do_not_retry_http_responses: true
+      retry_non_idempotent: false
+      connect_timeout: 70ms
+      backend_timeout: 10s
+      health_check:
+        delay: '1s'
+        request: 'GET /ping HTTP/1.1\nHost: api.trust.test.yandex.net\nUser-Agent: l7-balancer-api-trust-test\n\n'
+    dcs:
+      - name: myt
+        backend_ids:
+          - trust-gateway_testing_myt
+      - name: sas
+        backend_ids:
+          - trust-gateway_testing_sas
+      - name: vla
+        backend_ids:
+          - trust-gateway_testing_vla
+    on_error:
+      static:
+        status: 504
+        content: 'Service unavailable'

@@ -1,0 +1,92 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Макет: диаграмма с меняющимися данными
+
+Description:
+Проверка установки опции макета диаграмме.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+layout
+
+Estimated time:
+60000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+  
+  Expectation:
+  Карта отобразилась корректно. 
+  На карте спан Москвы, в центре круглая диаграмма из трех блоков(темно-синий, красный, зеленый).
+  В центре диаграммы значение, которое после загрузки карты начинает увеличиваться, диаграмма также увеличивается в размерах.
+  Примерно через 7 секунд диаграмма полностью окрашивается темно-синим, в центре значение "7000000000", под контейнером появляется строка: "Все мертвы. Вам понадобилось примерно дней 30".
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 10,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            var geoObject = new ymaps.Placemark([
+                55.72725771214265, 37.640390506634006
+            ], {
+                // Данные для построения диаграммы.
+                data: [
+                    { weight: 150, color: '#224080' },
+                    { weight: 3, color: '#408022' },
+                    { weight: 2, color: '#802240' }
+                ]
+            }, {
+                iconLayout: 'default#pieChart',
+                // Также можно переопределить опции макета с префиксом icon.
+                iconPieChartCoreRadius: 10
+            });
+            map.geoObjects.add(geoObject);
+            //прогнозируем как будет распространяться зомбиапокалипсис по всем миру
+            var data, count = 1;
+            var interval = setInterval(function(){
+                data = [
+                        //количество мёртвых
+                    { weight: count *= 2, color: '#224080' },
+                    //количество заражённых
+                    { weight: count * 2, color: '#408022' },
+                    //инкубационный период
+                    { weight: count * 3, color: '#802240' }
+                ];
+                geoObject.properties.set("data", data);
+
+                if(count > 1000000000){
+                    __log__("Все мертвы. Вам понадобилось примерно дней " + Math.log2(count));
+                    geoObject.properties.set("data", [
+                        //количество мёртвых
+                        { weight: 7000000000, color: '#224080' }
+                    ]);
+                    clearInterval(interval);
+                }
+            }, 200)
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

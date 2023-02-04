@@ -1,0 +1,104 @@
+<!DOCTYPE HTML>
+<!--(skip)(description)
+Map: basic test
+-->
+<!--(version)
+2.1.3
+-->
+<!--(commands)
+sleep(1000);
+test();
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var myMap = new ym.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 10,
+                behaviors: ['default', 'scrollZoom']
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+
+            // geoobjects
+            var placemark = new ymaps.Placemark([55.709243, 37.500737], {balloonContent: 'balloon', pointOverlay: 'interactive#placemark'});
+
+            var rectangle = new ymaps.Rectangle([
+                [55.973805634187, 37.81389007567776],
+                [55.87510965298843, 37.95396575927215]
+            ], {hintContent: 'hint'}, {draggable: true, rectangleOverlay: 'interactive#rectangle'});
+
+            // hotspot layer
+            var tileUrlTemplate = 'https://api.yandex.ru/maps/jsbox/examples/maps/ru/hotspot_layer/hotspot_data/%z/tile_x=%x&y=%y',
+                    keyTemplate = 'testCallback_tile_%c',
+                    imgUrlTemplate = 'https://api.yandex.ru/maps/jsbox/examples/maps/ru/hotspot_layer/images/%z/tile_x=%x&y=%y.png',
+                    objSource = new ymaps.hotspot.ObjectSource(tileUrlTemplate, keyTemplate),
+
+                    imgLayer = new ymaps.Layer(imgUrlTemplate, {tileTransparent: true}),
+                    hotspotLayer = new ymaps.hotspot.Layer(objSource, {cursor: 'help', openEmptyBalloon: true});
+
+            myMap.layers.add(hotspotLayer);
+            myMap.layers.add(imgLayer);
+
+            myMap.geoObjects
+                    .add(placemark)
+                    .add(rectangle);
+
+            // event listeners
+            var events = ['click', 'contextmenu', 'dblclick', 'mousedown', 'mouseenter', 'mouseleave', 'mouseup',
+                'multitouchend', 'multitouchstart', 'wheel'];
+
+            var callback = function (e) {
+                log.info(e.get('type'));
+                console.log(e.get('type'));
+                if (e.get('type') == 'click') {
+                    log.info('click-click')
+                }
+            };
+
+            myMap.container.events.add(events, callback);
+
+            var moveevents = ['mousemove'];
+
+            // buttons
+            var clearButton = new ymaps.control.Button({data: {content: 'clear'}, options: {selectOnClick: false}});
+            var moveButton = new ymaps.control.Button({data: {content: 'move'}, options: {selectOnClick: true}});
+
+            clearButton.events.add('click', function () {
+                log.clear();
+            });
+
+            moveButton.events
+                    .add('select', function () {
+                        log.info('Waiting for move events...');
+                        myMap.container.events.add(moveevents, callback);
+                    })
+                    .add('deselect', function () {
+                        log.info('Move events will be ignored.');
+                        myMap.container.events.add(moveevents, callback);
+                    });
+
+            myMap.controls
+                    .add(new ymaps.control.ZoomControl())
+                    .add(new ymaps.control.SearchControl())
+                    .add(new ymaps.control.RouteEditor())
+                    .add(clearButton, {bottom: 60, right: 15})
+                    .add(moveButton);
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

@@ -1,0 +1,41 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - avshev
+      - secondfry
+      groups: []
+labels:
+  order: '10000000'
+config_mode: easy2
+---
+l7_upstream_macro:
+  version: 0.0.1
+  id: browser-updater-uatraits-test
+  matcher:
+      or_:
+        - and_: 
+           - host_re: '(www\.)?l7test\.yandex\.ru'
+           - path_re: '/browser-updater(/)?(.*)?'
+        - host_re: 'browser-updater.spec-promo.yandex.net'
+        - host_re: 'browser-updater.brpages-test.yandex.net'
+  rewrite:
+    - {target: PATH, pattern: { re: '/browser-updater(/)?(.*)?' }, replacement: '/%2' }
+  monitoring:
+    uuid: browser-updater-uatraits-test
+  flat_scheme:
+    balancer:
+      attempts: 1
+      fast_attempts: 2
+      do_not_retry_http_responses: true
+      retry_non_idempotent: false
+      connect_timeout: 100ms
+      backend_timeout: 5s
+      max_reattempts_share: 0.2
+      max_pessimized_endpoints_share: 0.2
+    backend_ids:
+      - browser-updater-uatraits-test.app_myt
+    on_error:
+      static:
+        status: 504
+        content: 'Service unavailable browser-updater-uatraits-test'

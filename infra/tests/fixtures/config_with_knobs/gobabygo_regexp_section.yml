@@ -1,0 +1,97 @@
+regexp_section:
+  matcher:
+    match_fsm:
+      uri: /gobabygo(/.*)?
+      case_insensitive: false
+      surround: false
+  modules:
+    - rewrite:
+        actions:
+          - split: url
+            regexp: /gobabygo/?(.*)
+            rewrite: /%1
+    - headers:
+        create_func:
+          X-Real-IP: realip
+        create_func_weak:
+          X-Forwarded-For: realip
+          X-Req-Id: reqid
+          X-Scheme: scheme
+          X-Source-Port: realport
+    - antirobot_wrapper:
+        no_cut_request_file: !k antirobot-wrapper-no-cut-request-file
+    - icookie:
+        use_default_keys: true
+        force_equal_to_yandexuid: false
+        domains: [".yandex.ru", ".yandex.tr"]
+        file_switch: !k icookie-hasher-file-switch
+    - cookie_hasher:
+        file_switch: !k cookie-hasher-file-switch
+        cookie: yandexuid
+    - geobase_macro:
+        file_switch: !k geobase-macro-file-switch
+    - rpcrewrite:
+        host: 'bolver.yandex-team.ru'
+        url: '/proxy'
+        dry_run: false
+        rpc_success_header: 'X-Metabalancer-Answered'
+        file_switch: !k rpcrewrite-file-switch
+        rpc:
+          modules:
+            - hasher:
+                mode: subnet
+                take_ip_from: X-Forwarded-For-Y
+                subnet_v4_mask: 32
+                subnet_v6_mask: 128
+            - balancer2:
+                rendezvous_hashing:
+                  weights_file: !k rendezvous-hashing-weights-file
+                attempts: 3
+                connection_attempts: !f count_backends()
+                simple_policy: {}
+                generated_proxy_backends:
+                  proxy_options:
+                    backend_timeout: 10s
+                    connect_timeout: 150ms
+                  instances:
+                    - weight: 1.000
+                      host: bolver.yandex-team.ru
+                      port: 80
+        on_rpc_error:
+          modules:
+            - errordocument: {status: 500}
+    - rpcrewrite_macro:
+        enable_on_rpc_error: true
+        file_switch: !k rpcrewrite-macro-file-switch
+    - balancer2:
+        rr:
+          weights_file: !k rr-weights-file
+        attempts: 3
+        attempts_file: !k between-locations-attempts
+        backends:
+          - weight: 100
+            balancer2:
+              attempts: 3
+              attempts_file: !k attempts
+              weighted2:
+                weights_file: !k weighted2-weights-file
+                min_weight: 0.05
+                max_weight: 5.0
+                plus_diff_per_sec: 0.05
+                minus_diff_per_sec: 0.05
+                history_time: 20s
+                feedback_time: 10s
+                slow_reply_time: 1s
+              on_error:
+                errordocument:
+                  status: 504
+              generated_proxy_backends:
+                proxy_options:
+                  backend_timeout: 5s
+                  buffering: false
+                  connect_timeout: 999ms
+                  fail_on_5xx: false
+                  keepalive_count: 3
+                nanny_snapshots:
+                  - service_id: gobabygo
+                    snapshot_id: d3724027b76bc20ace297dc2a8397d2b71dfcb4a

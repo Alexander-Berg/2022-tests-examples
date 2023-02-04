@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<!--
+Title:
+Контрол: мини-карта
+
+Description:
+Проверка работы контрола мини-карты.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+smoke, regress
+
+Estimated time:
+180000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась корректно.
+  В контейнере в центре хинт "collapse typechange expand", 
+  В контейнере 5 контролов миникарты, три мини-карты развернуты, две в виде контрола со стрелкой. 
+  Одна мини-карта - спутник, вторая схема, третья миникарты с полупрозрачным синим прямоугольником.
+
+Step:
+  Action:
+  Развернуть оставшиеся две неразвернутые миникарты, кликом в стрелку.
+  
+  Expectation:
+  Неразвернутая миникарта снизу разворачивается в узкий выскоий прямоугольник со спаном Москвы.
+  Неразвернутая карты сверху в прямоугольник со спаном мира, с полупрозрачным синим прямоугольником над областью России.
+
+Step:
+  Action:
+  Зажав ЛКМ выполнить статичный и инертный драг спана карты.
+  
+  Expectation:
+  При начале драга хинт пропадает.
+  Драг карты корректный, карта не пропадает, не мигает цветами, нет странных эффектов.
+  Корректный драг карты происходит и во всех 5 миникартах.
+
+Step:
+  Action:
+  Зажав ЛКМ на миникартах последовательно выполнить драг карты каждой миникарты.
+  
+  Expectation:
+  Драг в миникартах корректный, карта драгается одновременно во всех миникартах и на спане основной карты.
+  Корректный драг карты происходит и во всех 5 миникартах.
+
+Step:
+  Action:
+  Кликом в стрелку миникарт последовательно свернуть все миникарты.
+  
+  Expectation:
+  Миникарты корректно сворачиваются, контрол со стрелкой остается на спане.
+-->
+<html>
+<head>
+    <title>API 2.0</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <script src="../helper.js"></script>
+    <script type="text/javascript">
+        Api('init');
+        function init(ymaps) {
+            var myMap = new ymaps.Map('map', {
+                center: [55.8148, 37.5104],
+                zoom: 5
+            });
+            
+            var miniMap1 = new ymaps.control.MiniMap({
+                expanded: true
+            });
+            miniMap1.collapse();
+            var miniMap2 = new ymaps.control.MiniMap({
+                expanded: false,
+                type: 'yandex#publicMapHybrid'
+            }, {
+                zoomOffset: 0,
+                size: [150, 50]
+            });
+            miniMap2.expand();
+            miniMap2.setType(miniMap1.getType());
+            var miniMap3 = new ymaps.control.MiniMap({
+                expanded: false
+            }, {
+                zoomOffset: -3,
+                size: [50, 150]
+            });
+            var miniMap4 = new ymaps.control.MiniMap({
+                expanded: true,
+                type: 'yandex#publicMap'
+            }, {
+                zoomOffset: 3
+            });
+            miniMap3.setType(miniMap4.getType());
+            myMap.controls.add(miniMap1, {left: 5, top: 5}).add(miniMap2, {right: 5, top: 5})
+                    .add(miniMap3, {left: 5, bottom: 105}).add(miniMap4, {right: 25, bottom: 105});
+            miniMap3.events.add("collapse", function (e) {
+                miniMap3.options.set("size", [40, 40]);
+            });
+            miniMap2.events.add("expand", function (e) {
+                miniMap2.options.set("size", [200, 60]);
+            });
+            // MAPSAPI-5763
+            var miniMapForEvents = new ymaps.control.MiniMap(), ehint = "";
+            // myMap.controls.add(miniMapForEvents);
+            miniMapForEvents.events.add("collapse", function (e) {
+                ehint += " collapse ";
+            }).add("expand", function (e) {
+                ehint += " expand ";
+            }).add("typechange", function (e) {
+                ehint += " typechange ";
+            });
+            miniMapForEvents.collapse();
+            miniMapForEvents.setType(miniMap4.getType());
+            miniMapForEvents.expand();
+            myMap.hint.show(myMap.getCenter(), ehint);            var miniMap5 = new ymaps.control.MiniMap(
+                    {
+                        type: 'yandex#satellite'
+                    },
+                    {
+                        size: [64, 64]
+                    }
+            );
+            myMap.controls.add(miniMap5, {left: 5, top: 125});
+            miniMap5.options.set({size: [128, 64]});
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;">
+</div>
+<p><a href="https://tech.yandex.ru/maps/archive/doc/jsapi/2.0/ref/reference/control.MapTools-docpage/" target="_blank">Docs</a></p>
+</body>
+</html>

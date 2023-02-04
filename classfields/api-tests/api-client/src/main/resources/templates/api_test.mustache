@@ -1,0 +1,143 @@
+{{>licenseInfo}}
+
+package {{package}};
+
+{{#imports}}import {{import}};
+{{/imports}}
+import com.carlosbecker.guice.GuiceTestRunner;
+import {{invokerPackage}}.ApiClient;
+import {{apiPackage}}.{{classname}};
+import io.restassured.builder.RequestSpecBuilder;
+import io.restassured.filter.log.ErrorLoggingFilter;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.Ignore;
+import org.junit.Rule;
+import org.junit.rules.RuleChain;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import ru.auto.tests.commons.runners.GuiceParametersRunnerFactory;
+import io.qameta.allure.junit4.DisplayName;
+import io.qameta.allure.Owner;
+import io.qameta.allure.Description;
+import com.carlosbecker.guice.GuiceModules;
+import com.google.inject.Inject;
+import static com.google.common.collect.Lists.newArrayList;
+import org.hamcrest.MatcherAssert;
+import com.google.gson.JsonObject;
+import  {{invokerPackage}}.anno.Prod;
+import  {{invokerPackage}}.module.MoishaApiModule;
+
+{{^fullJavaUtil}}
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Collection;
+import java.util.function.Consumer;
+import java.util.function.Function;
+{{/fullJavaUtil}}
+import static io.restassured.config.ObjectMapperConfig.objectMapperConfig;
+import static io.restassured.config.RestAssuredConfig.config;
+import static {{invokerPackage}}.{{#gson}}GsonObjectMapper.gson{{/gson}}{{#jackson}}JacksonObjectMapper.jackson{{/jackson}};
+import static ru.auto.tests.jsonunit.matcher.JsonPatchMatcher.jsonEquals;
+import static ru.auto.tests.commons.restassured.ResponseSpecBuilders.shouldBe200OkJSON;
+import static {{invokerPackage}}.ResponseSpecBuilders.shouldBeCode;
+import static {{invokerPackage}}.ResponseSpecBuilders.validatedWith;
+import static {{invokerPackage}}.ra.RequestSpecBuilders.defaultSpec;
+import static {{apiPackage}}.{{classname}}.*;
+
+/**
+* API tests for {{classname}}
+*/
+@Ignore
+public class {{classname}}Test {
+
+{{#operations}}
+    {{#operation}}
+        /**
+        * Generated compare test for {{operationIdCamelCase}}
+        */
+        @DisplayName("{{httpMethod}} {{path}}")
+        @GuiceModules(MoishaApiModule.class)
+        @RunWith(Parameterized.class)
+        @Parameterized.UseParametersRunnerFactory(GuiceParametersRunnerFactory.class)
+        public static class {{operationIdCamelCase}}CompareTest {
+
+            @Rule
+            @Inject
+            public RuleChain defaultRules;
+
+            @Inject
+            private ApiClient api;
+
+            @Inject
+            @Prod
+            private ApiClient prodApi;
+
+            @Parameterized.Parameter
+            public Consumer<RequestSpecBuilder> reqSpec;
+
+            @Parameterized.Parameters
+            public static Collection<Consumer<RequestSpecBuilder>> getParameters() {
+            return newArrayList(req -> req.and()
+            {{#hasParams}}
+            {{#allParams}}
+               {{#isPathParam}}
+                //   .addPathParam({{operationIdCamelCase}}Oper.{{#convert}}{{paramName}}{{/convert}}_PATH, {{{example}}})
+               {{/isPathParam}}
+               {{#isQueryParam}}
+                //   .addQueryParam({{operationIdCamelCase}}Oper.{{#convert}}{{paramName}}{{/convert}}_QUERY, {{{example}}})
+               {{/isQueryParam}}
+                {{#isFormParam}}
+                 //  .addFormParam({{operationIdCamelCase}}Oper.{{#convert}}{{paramName}}{{/convert}}_FORM, {{{example}}})
+                {{/isFormParam}}{{/allParams}}{{/hasParams}}
+            );
+            }
+
+            @Test
+            @Owner("generated")
+            @Description("Compare json response for {{httpMethod}} {{path}}")
+            public void should{{operationIdCamelCase}}HasNoDiffWithProduction() {
+                Function<ApiClient, JsonObject> req = apiClient -> apiClient.{{classVarName}}().{{operationId}}()
+                    .reqSpec(defaultSpec())
+                    .reqSpec(reqSpec).execute(validatedWith(shouldBe200OkJSON())).as(JsonObject.class);
+                MatcherAssert.assertThat(req.apply(api), jsonEquals(req.apply(prodApi)));
+            }
+        }
+
+        /**
+        * Generated API tests for all status codes {{operationIdCamelCase}}
+        */
+        @DisplayName("{{httpMethod}} {{path}}")
+        @RunWith(GuiceTestRunner.class)
+        @GuiceModules(MoishaApiModule.class)
+        public static class {{operationIdCamelCase}}Test {
+            @Rule
+            @Inject
+            public RuleChain defaultRules;
+
+            @Inject
+            private ApiClient api;
+
+            {{#responses}}
+            @Test
+            @Owner("generated")
+            @Description("Check status code {{code}} and response for {{httpMethod}} {{path}} ({{message}})")
+            public void shouldSee{{code}}{{operationIdCamelCase}}() {
+            {{#allParams}}{{^isHeaderParam}}
+                //{{{dataType}}} {{paramName}} = {{example}};
+                {{{dataType}}} {{paramName}} = null;{{/isHeaderParam}}{{/allParams}}
+                api.{{classVarName}}().{{operationId}}().reqSpec(defaultSpec()){{#allParams}}{{#required}}{{#isPathParam}}
+                    .{{paramName}}Path({{paramName}}){{/isPathParam}}{{#isQueryParam}}
+                    .{{paramName}}Query({{paramName}}){{/isQueryParam}}{{#isFormParam}}{{^isFile}}
+                    .{{paramName}}Form({{paramName}}){{/isFile}}{{/isFormParam}}{{#isFormParam}}{{#isFile}}
+                    .{{paramName}}MultiPart({{paramName}}){{/isFile}}{{/isFormParam}}{{#isBodyParam}}
+                    .body({{paramName}}){{/isBodyParam}}{{/required}}{{/allParams}}
+                    .execute(validatedWith(shouldBeCode({{code}})));
+            }
+        {{/responses}}
+        }
+    {{/operation}}
+{{/operations}}
+}

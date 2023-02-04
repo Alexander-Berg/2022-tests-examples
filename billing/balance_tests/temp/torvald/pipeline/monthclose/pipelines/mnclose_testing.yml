@@ -1,0 +1,184 @@
+
+INITIAL:
+  owner: torvald
+  edges:
+    COPY_FROM_PROD:
+      notify:
+        [aikawa]
+      conditions:
+        - check(True)
+      actions:
+#        - start_teamcity(['Billing_Autotesting_PythonTests_Smoke', 'Billing_Autotesting_PythonTests_Manual'])
+        - version = executeSQL("select value_str from t_config where item = 'BALANCE_VERSION'")
+        - comment('BALANCE_VERSION - {version}')
+
+COPY_FROM_PROD:
+  owner: aikawa
+  edges:
+    COPY_IN_PROGRESS:
+      conditions:
+        - send('COPY_IN_PROGRESS', 'torvald') #тикет на переналивку открыт/в работе
+
+COPY_IN_PROGRESS:
+  owner: aikawa
+  edges:
+    COPIED:
+      notify:
+        - Gorbyk   #посмотреть мониторинги
+      conditions:
+        - is_db_available()
+    COPY_IN_PROGRESS:
+      conditions:
+        - is_db_non_available()
+
+COPIED:
+  owner: aikawa
+  edges:
+    SET_ACTUAL_VERSION:
+      actions:
+        - write_db_restore_dt_to_ticket()
+
+
+SET_ACTUAL_VERSION:
+  owner: aikawa
+  edges:
+    ACTIALISE_VERSION_SET:
+      notify:
+        - release_manager
+
+SETTING_ACTUAL_VERSION:
+  owner: aikawa
+  edges:
+    ACTUAL_VERSION_SETTED:
+      notify:
+        - aikawa
+      conditions:
+        - is_setted_current_release()
+        - is_setted_current_lb()
+    ACTUAL_VERSION_NOT_SETTED:
+      notify:
+        - release_manager
+      conditions:
+        - is_not_setted_current_release()
+        - is_not_setted_current_lb()
+
+ACTUAL_VERSION_SETTED:
+  owner: aikawa
+  edges:
+    DB_RESTORE_POINT_CREATING:
+      conditions:
+        - is_restore_point_created()
+      actions:
+        - write_release_version_to_ticket()
+
+DB_RESTORE_POINT_CREATING:
+  owner: aikawa
+  edges:
+    DB_RESTORE_POINT_CREATED:
+      conditions:
+        - is_restore_point_created()
+      actions:
+        - write_release_version_to_ticket()
+
+    DB_RESTORE_POINT_NOT_CREATED:
+      conditions:
+        - is_restore_point_not_created()
+      actions:
+        - create_restore_point()
+
+DB_RESTORE_POINT_CREATED:
+  owner: aikawa
+  edges:
+    PYCRON_IS_DONE:
+      actions:
+        - SET_PYCRON()
+
+PYCRON_IS_DONE:
+  owner: aikawa
+  edges:
+    COMPLETIONS_IS_DONE:
+      conditions:
+        - is_completions_done()
+
+    PROCESS_COMPETIONS_IS_IN_PROGRESS:
+      conditions:
+        - is_not_completions_done()
+
+COMPLETIONS_IS_DONE:
+  owner: aikawa
+  edges:
+    UA_TRANSFER_QUEUE_IN_PROGRESS:
+      action:
+        - update_2_state()
+        - start_ua_transfer_queue()
+        - refresh_mview()
+
+UA_TRANSFER_QUEUE_IN_PROGRESS:
+  owner: aikawa
+  edges:
+    UA_TRANSFER_QUEUE_IS_DONE:
+      conditions:
+        - pycron_job_is_stopped()
+      action:
+        - stop_ua_transfer_queue()
+
+UA_TRANSFER_QUEUE_IS_DONE:
+  owner: aikawa
+  edges:
+    UA_TRANSFER_IN_PROGRESS:
+      action:
+        - update_job_dt()
+        - start_ua_transfer()
+
+UA_TRANSFER_IN_PROGRESS:
+  owner: aikawa
+  edges:
+    UA_TRANSFER_IS_DONE:
+      conditions:
+        - UA_TRANSFER_queue_has_no_0_state()
+      action:
+        - write_to_aikawa_about_2_state()
+        - stop_ua_transfer()
+        - collect_stats_to_ticket()
+
+UA_TRANSFER_IS_DONE:
+  owner: aikawa
+  edges:
+    MONTH_PROC_QUEUE_IN_PROGRESS:
+      action:
+        - update_2_state()
+        - start_ua_generate_acts()
+        - refresh_mview()
+
+MONTH_PROC_QUEUE_IN_PROGRESS:
+  owner: aikawa
+  edges:
+    MONTH_PROC_QUEUE_IS_DONE:
+      conditions:
+        - pycron_job_is_stopped()
+      action:
+        - stop_month_proc_queue()
+
+
+MONTH_PROC_QUEUE_IS_DONE:
+  owner: aikawa
+  edges:
+    MONTH_PROC_IN_PROGRESS:
+      action:
+        - start_ua_transfer()
+
+MONTH_PROC_IN_PROGRESS:
+  owner: aikawa
+  edges:
+    MONTH_PROC_IS_DONE:
+      conditions:
+        - pycron_job_is_stopped()
+      action:
+        - write_to_aikawa_about_2_state()
+        - stop_month_proc()
+        - collect_stats_to_ticket()
+
+
+
+
+

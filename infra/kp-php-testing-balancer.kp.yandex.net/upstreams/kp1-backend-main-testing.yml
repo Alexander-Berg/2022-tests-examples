@@ -1,0 +1,53 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - vyacheslav
+      groups: []
+labels:
+  order: '10000000'
+config_mode: easy2
+---
+l7_upstream_macro:
+  version: 0.2.1
+  id: kp1-backend-main-testing
+  matcher:
+    path_re: '(/.*)?'
+  monitoring:
+    uuid: kp1-backend-main-testing
+    response_codes: [400, 401, 403, 410, 418, 431, 499, 500, 502, 503, 504]
+  by_dc_scheme:
+    dc_balancer:
+      weights_section_id: bygeo
+      method: LOCAL_THEN_BY_DC_WEIGHT
+      attempts: 2
+    balancer:
+      attempts: 1
+      max_reattempts_share: 0.15
+      max_pessimized_endpoints_share: 0.5
+      fast_attempts: 2
+      retry_http_responses:
+        on_last_failed_retry: PROXY_RESPONSE_AS_IS
+        codes: [5xx]
+      retry_non_idempotent: false
+      connect_timeout: 200ms
+      backend_timeout: 60s
+      health_check:
+        delay: '5s'
+        request: 'GET /ping/?L7_main HTTP/1.1\nHost: testing.kinopoisk.ru\n\n'
+      keepalive_count: 2
+    dcs:
+      - name: sas
+        monitoring:
+          uuid: kp1-backend-main-testing_to_sas
+        backend_ids:
+          - kp1-backend_testing_backend_sas
+      - name: iva
+        monitoring:
+          uuid: kp1-backend-main-testing_to_iva
+        backend_ids:
+          - kp1-backend_testing_backend_iva
+    on_error:
+      static:
+        status: 504
+        content: 'Service unavailable'

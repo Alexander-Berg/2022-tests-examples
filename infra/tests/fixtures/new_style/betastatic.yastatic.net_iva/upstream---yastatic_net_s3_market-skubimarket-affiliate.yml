@@ -1,0 +1,100 @@
+---
+regexp_path_section:
+  pattern: '/(market-skubi|market-affiliate|market-bluedesktop|market-bluetouch|market-touch|market-reddesktop|market-partner|market-vendors|market-analytics)(/.*)?'
+  modules:
+    - report:
+        uuid: 'yastatic_net_s3_market-skubimarket-affiliate'
+        ranges: 'default'
+        matcher_map:
+            'market-skubi':
+                match_fsm:
+                    path: '/market-skubi.*'
+            'market-affiliate':
+                match_fsm:
+                    path: '/market-affiliate.*'
+            'market-bluedesktop':
+                match_fsm:
+                    path: '/market-bluedesktop.*'
+            'market-bluetouch':
+                match_fsm:
+                    path: '/market-bluetouch.*'
+            'market-touch':
+                match_fsm:
+                    path: '/market-touch.*'
+            'market-reddesktop':
+                match_fsm:
+                    path: '/market-reddesktop.*'
+            'market-partner':
+                match_fsm:
+                    path: '/market-partner.*'
+            'market-vendors':
+                match_fsm:
+                    path: '/market-vendors.*'
+            'market-analytics':
+                match_fsm:
+                    path: '/market-analytics.*'
+            'doccenter':
+                match_fsm:
+                    path: '/doccenter.*'
+    - shared:
+        uuid: yastatic_net_s3_market-skubimarket-affiliate
+    - headers:
+        create:
+            'Host': 'yastatic-testing.s3.yandex.net'
+    - response_headers:
+        create:
+            Cache-Control: 'public'
+            Strict-Transport-Security: 'max-age=43200000; includeSubDomains;'
+            Access-Control-Allow-Origin: '*'
+            Timing-Allow-Origin: '*'
+        create_func:
+            Expires: 'time:+1h'
+    - regexp:
+        sections:
+          # Отдаем gzip вместо br. Так указано в конфиге nginx.
+          br_section:
+              matcher:
+                match_fsm:
+                    header:
+                      name: 'accept-encoding'
+                      value: '(.*,\\s*|)br(\\s*;\\s*q\\s*=\\s*(1|0\\.0*[1-9]).*|\\s*,.*|)'
+              modules:
+              - rewrite:
+                  actions:
+                    - regexp: '([^\\?]+)(.*)'
+                      rewrite: '%1.gz'
+              - response_headers:
+                  create:
+                    Content-Encoding: gzip
+              - shared:
+                  uuid: 'yastatic_net_s3_market-skubimarket-affiliate_common'
+          gzip_section:
+              matcher:
+                match_fsm:
+                    header:
+                      name: 'accept-encoding'
+                      value: '(.*,\\s*|)gzip(\\s*;\\s*q\\s*=\\s*(1|0\\.0*[1-9]).*|\\s*,.*|)'
+              modules:
+              - rewrite:
+                  actions:
+                    - regexp: '([^\\?]+)(.*)'
+                      rewrite: '%1.gz'
+              - response_headers:
+                  create:
+                    Content-Encoding: gzip
+              - shared:
+                  uuid: 'yastatic_net_s3_market-skubimarket-affiliate_common'
+          default:
+              matcher: {}
+              modules:
+              - shared:
+                  uuid: 'yastatic_net_s3_market-skubimarket-affiliate_common'
+              - headers:
+                  delete:
+                    'authorization|accept-encoding'
+              - response_headers:
+                  create:
+                    Cache-Control: 'public, max-age=216013'
+                  delete: 'content-encoding'
+              - shared:
+                  uuid: 'yastatic_s3_cached_shared'

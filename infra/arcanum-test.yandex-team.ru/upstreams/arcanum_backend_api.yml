@@ -1,0 +1,128 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - gemberg
+      groups: []
+labels:
+  order: '10000000'
+---
+regexp_section:
+    matcher:
+        match_fsm:
+            path: /api/.*
+    modules:
+        - threshold:
+            lo_bytes: 734003
+            hi_bytes: 838860
+            pass_timeout: 10s
+            recv_timeout: 1s
+        - regexp:
+            sections:
+                backend_heavy_api:
+                    matcher:
+                        match_or:
+                            - match_and:
+                                - match_method: { methods: [post] }
+                                - match_fsm: { path: '/api/v2/pullrequest/\\d+/upload' }
+                            - match_and:
+                                - match_method: { methods: [post] }
+                                - match_fsm: { path: '/api/v1/review-requests/\\d+/diff-sets' }
+                    modules:
+                        - headers:
+                            create_func_weak:
+                                X-Request-Id: reqid
+                            create_func:
+                                X-Start-Time: starttime
+                                X-Forwarded-For: realip
+                                X-Source-Port: realport
+                                X-Forwarded-Proto: proto
+                                X-Scheme: scheme
+                                X-Yandex-RandomUID: yuid
+                        - log_headers:
+                            name_re: 'X-Request-Id'
+                            response_name_re: 'X-Arcanum-User'
+                        - balancer2:
+                            simple_policy: {}
+                            attempts: 1
+                            fast_attempts: 2
+                            fast_503: true
+                            disable_attempts_rate_limiter: true
+                            retry_non_idempotent: true
+                            status_code_blacklist: ["503"]
+                            dynamic:
+                                max_pessimized_share: 0.5
+                                min_pessimization_coeff: 0.5
+                                weight_increase_step: 0.1
+                                history_interval: 120s
+                                backends_name: 'backend_test_heavy_api'
+                                active:
+                                    use_backend_weight: false
+                                    weight_normalization_coeff: 1
+                                    delay: 10s
+                                    request: 'GET /api/ready HTTP/1.1\r\nHost: heavy-api.arcanum-test.yandex-team.ru\r\n\r\n'
+                            generated_proxy_backends:
+                                proxy_options:
+                                    backend_timeout: 1200s
+                                    connect_timeout: 70ms
+                                    keepalive_count: 1
+                                    keepalive_timeout: 1200s
+                                    fail_on_5xx: false
+                                include_backends:
+                                    type: BY_ID
+                                    ids:
+                                      - arcanum-server-testing
+                            on_error:
+                                errordocument:
+                                    status: 503
+                                    content: "Service unavailable"
+                default:
+                    matcher: {}
+                    modules:
+                        - headers:
+                            create_func_weak:
+                                X-Request-Id: reqid
+                            create_func:
+                                X-Start-Time: starttime
+                                X-Forwarded-For: realip
+                                X-Source-Port: realport
+                                X-Forwarded-Proto: proto
+                                X-Scheme: scheme
+                                X-Yandex-RandomUID: yuid
+                        - log_headers:
+                            name_re: 'X-Request-Id'
+                            response_name_re: 'X-Arcanum-User'
+                        - balancer2:
+                            simple_policy: {}
+                            attempts: 2
+                            fast_attempts: 2
+                            fast_503: true
+                            disable_attempts_rate_limiter: true
+                            retry_non_idempotent: true
+                            status_code_blacklist: ["503"]
+                            dynamic:
+                                max_pessimized_share: 0.5
+                                min_pessimization_coeff: 0.5
+                                weight_increase_step: 0.1
+                                history_interval: 10s
+                                backends_name: 'backend_test_api'
+                                active:
+                                    use_backend_weight: false
+                                    weight_normalization_coeff: 1
+                                    delay: 10s
+                                    request: 'GET /api/ready HTTP/1.1\r\nHost: arcanum-test.yandex-team.ru\r\n\r\n'
+                            generated_proxy_backends:
+                                proxy_options:
+                                    backend_timeout: 65s
+                                    connect_timeout: 70ms
+                                    keepalive_count: 1
+                                    keepalive_timeout: 65s
+                                    fail_on_5xx: false
+                                include_backends:
+                                    type: BY_ID
+                                    ids:
+                                      - arcanum-server-testing
+                            on_error:
+                                errordocument:
+                                    status: 503
+                                    content: "Service unavailable"

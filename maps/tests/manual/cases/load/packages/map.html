@@ -1,0 +1,143 @@
+<!DOCTYPE HTML>
+<!--(skip)(description)
+Package: map
+-->
+<!--(version)
+2.1-dev
+-->
+<!--(commands)
+sleep(1000);
+test();
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script src="../../../js/geoCS.js"></script>
+    <script type=text/javascript>
+
+        Api("init", "package.map");
+
+        function init(ymaps) {
+            var map = myMap = new ymaps.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 5
+            });
+
+            console.log(ymaps);
+
+            // geocode
+
+            ymaps.geocode('москва').then(function (res) {
+                map.geoObjects.add(res.geoObjects);
+            });
+
+            // clusterer
+
+            var clusterer = new ymaps.Clusterer({ clusterDisableClickZoom: true });
+            var placemark1 = new ymaps.GeoObject({
+                geometry: { type: "Point", coordinates: [61, 31] },
+                properties: {
+                    clusterCaption: 'Геообъект №1',
+                    balloonContentBody: 'Содержимое балуна геообъекта №1.'
+                }
+            });
+            var placemark2 = new ymaps.GeoObject({
+                geometry: { type: "Point", coordinates: [61, 31] },
+                properties: {
+                    clusterCaption: 'Геообъект №2',
+                    balloonContentBody: 'Содержимое балуна геообъекта №2.'
+                }
+            });
+            clusterer.add(placemark1).add(placemark2);
+            map.geoObjects.add(clusterer);
+
+            // traffic provider
+
+            var actualProvider = new ymaps.traffic.provider.Actual({}, {infoLayerShown: true});
+            actualProvider.setMap(myMap);
+
+            // route
+
+            ymaps.route(['москва', 'питер']).then(function (route) {
+                map.geoObjects.add(route);
+            });
+
+            //geoXML
+
+            ymaps.geoXml.load('http://maps.yandex.ru/export/usermaps/6lXyMJReL87z0LJ0Y3eF2M59iZ1Dbv9D/').then(function (res) {
+                map.geoObjects.add(res.geoObjects);
+            });
+
+            // all types of geoobjects
+
+            geoCSSource(ymaps, map, this);
+            var collection = new ymaps.GeoObjectCollection();
+            collection
+                    .add(geoObjectPlacemark)
+                    .add(geoObjectPolyline)
+                    .add(geoObjectPolygon)
+                    .add(geoObjectRectangle)
+                    .add(geoObjectRectangle)
+                    .add(geoObjectCircle)
+                    .add(placemark)
+                    .add(polyline)
+                    .add(polygon)
+                    .add(rectangle)
+                    .add(circle);
+            map.geoObjects.add(collection);
+
+            // geometry editor
+
+            var editorButton = new ymaps.control.Button('editor');
+            editorButton.events
+                    .add('select', function () {
+                        collection.each(function (obj) {
+                            obj.editor.startEditing()
+                        })
+                    })
+                    .add('deselect', function () {
+                        collection.each(function (obj) {
+                            obj.editor.stopEditing()
+                        })
+                    });
+            map.controls.add(editorButton);
+
+            // overlays
+
+            var overlayButton = new ymaps.control.Button('overlay');
+            overlayButton.events
+                    .add('select', function () {
+                        geoObjectPlacemark.options.set('pointOverlay', 'hotspot#placemark');
+                        geoObjectPolyline.options.set('lineStringOverlay', 'hotspot#polyline');
+                        geoObjectPolygon.options.set('polygonOverlay', 'hotspot#polygon');
+                        geoObjectRectangle.options.set('rectangleOverlay', 'hotspot#rectangle');
+                        geoObjectCircle.options.set('circleOverlay', 'hotspot#circle');
+                        placemark.options.set('pointOverlay', 'hotspot#placemark');
+                        polyline.options.set('lineStringOverlay', 'hotspot#polyline');
+                        polygon.options.set('polygonOverlay', 'hotspot#polygon');
+                        rectangle.options.set('rectangleOverlay', 'hotspot#rectangle');
+                        circle.options.set('circleOverlay', 'hotspot#circle');
+                    })
+                    .add('deselect', function () {
+                        geoObjectPlacemark.options.set('pointOverlay', 'interactive#placemark');
+                        geoObjectPolyline.options.set('lineStringOverlay', 'interactive#polyline');
+                        geoObjectPolygon.options.set('polygonOverlay', 'interactive#polygon');
+                        geoObjectRectangle.options.set('rectangleOverlay', 'interactive#rectangle');
+                        geoObjectCircle.options.set('circleOverlay', 'interactive#circle');
+                        placemark.options.set('pointOverlay', 'interactive#placemark');
+                        polyline.options.set('lineStringOverlay', 'interactive#polyline');
+                        polygon.options.set('polygonOverlay', 'interactive#polygon');
+                        rectangle.options.set('rectangleOverlay', 'interactive#rectangle');
+                        circle.options.set('circleOverlay', 'interactive#circle');
+                    });
+            map.controls.add(overlayButton);
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px; border: 1px black solid;"></div>
+</body>
+</html>

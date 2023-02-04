@@ -1,0 +1,197 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - skydreamer
+      groups: []
+labels:
+  order: '99999999'
+---
+regexp_section:
+  matcher: {}
+  modules:
+    - report:
+       uuid: "default_full_mode"
+       ranges: default
+       just_storage: false
+       events:
+         stats: "report"
+    - headers:
+        create_func:
+          X-Balancer-IP: localip
+          X-Real-IP: realip
+        create_func_weak:
+          X-Request-Id: reqid
+    - balancer2:
+        attempts: 2
+        rr: {weights_file: ./controls/traffic_control.weights}
+        unique_policy: {}
+        backends:
+          - weight: 1
+            name: byenv_prod
+            modules:
+              - report:
+                  uuid: "requests_default_full_mode_to_prod"
+                  ranges: default
+                  just_storage: false
+                  events:
+                    stats: "report"
+              - balancer2:
+                  attempts: 2
+                  unique_policy: {}
+                  rr: {weights_file: ./controls/traffic_control.weights}
+                  backends:
+                    - name: bygeoprod_sas
+                      weight: 1
+                      modules:
+                        - report:
+                            uuid: "requests_default_full_mode_to_prod_to_sas"
+                            ranges: default
+                            just_storage: false
+                            events:
+                              stats: "report"
+                        - balancer2:
+                            attempts: 2
+                            connection_attempts: 2
+                            dynamic:
+                              max_pessimized_share: 0.200
+                              min_pessimization_coeff: 0.100
+                              weight_increase_step: 0.100
+                              history_interval: 10s
+                              backends_name: 'trust_test_sas'
+                              active:
+                                request: 'GET /ping HTTP/1.1\nHost: trust-payments-xg-test.paysys.yandex.net:8038\nUser-Agent: l7-balancer-trust-payments-xg-test\n\n'
+                                delay: 1s
+                                weight_normalization_coeff: 0.0001
+                                use_backend_weight: false
+                            generated_proxy_backends:
+                              proxy_options:
+                                fail_on_5xx: false
+                                backend_timeout: 10s
+                                connect_timeout: 70ms
+                                https_settings:
+                                  ca_file: !f get_ca_cert_path("allCAs.pem", "./")
+                                  verify_depth: 3
+                                  sni_on: true
+                              include_backends:
+                                ids: [trust_test_sas]
+                                type: BY_ID
+                            attempts_rate_limiter:
+                              limit: 0.15
+                              coeff: 0.990
+                    - name: bygeoprod_vla
+                      weight: 1
+                      modules:
+                        - report:
+                            uuid: "requests_default_full_mode_to_prod_to_vla"
+                            ranges: default
+                            just_storage: false
+                            events:
+                              stats: "report"
+                        - balancer2:
+                            attempts: 2
+                            connection_attempts: 2
+                            dynamic:
+                              max_pessimized_share: 0.200
+                              min_pessimization_coeff: 0.100
+                              weight_increase_step: 0.100
+                              history_interval: 10s
+                              backends_name: 'trust_test_vla'
+                              active:
+                                request: 'GET /ping HTTP/1.1\nHost: trust-payments-xg-test.paysys.yandex.net:8038\nUser-Agent: l7-balancer-trust-payments-xg-test\n\n'
+                                delay: 1s
+                                weight_normalization_coeff: 0.0001
+                                use_backend_weight: false
+                            generated_proxy_backends:
+                              proxy_options:
+                                fail_on_5xx: false
+                                backend_timeout: 10s
+                                connect_timeout: 70ms
+                                https_settings:
+                                  ca_file: !f get_ca_cert_path("allCAs.pem", "./")
+                                  verify_depth: 3
+                                  sni_on: true
+                              include_backends:
+                                ids: [trust_test_vla]
+                                type: BY_ID
+                            attempts_rate_limiter:
+                              limit: 0.15
+                              coeff: 0.990
+                    - name: bygeoprod_devnull
+                      weight: -1
+                      modules:
+                        - report:
+                            uuid: "requests_default_full_mode_to_prod_to_devnull"
+                            ranges: default
+                            just_storage: false
+                            events:
+                              stats: "report"
+                        - errordocument: {status: 204}
+                  on_error:
+                    errordocument: {status: 504, content: 'Service unavailable from prod'}
+          - weight: 1
+            name: byenv_canary
+            modules:
+              - report:
+                  uuid: "requests_default_full_mode_to_canary"
+                  ranges: default
+                  just_storage: false
+                  events:
+                    stats: "report"
+              - balancer2:
+                    attempts: 2
+                    unique_policy: {}
+                    rr: {weights_file: ./controls/traffic_control.weights}
+                    backends:
+                      - name: bygeocanary_sas
+                        weight: 1
+                        modules:
+                            - report:
+                                uuid: "requests_default_full_mode_to_canary_to_sas"
+                                ranges: default
+                                just_storage: false
+                                events:
+                                    stats: "report"
+                            - balancer2:
+                                attempts: 2
+                                connection_attempts: 2
+                                dynamic:
+                                    max_pessimized_share: 0.200
+                                    min_pessimization_coeff: 0.100
+                                    weight_increase_step: 0.100
+                                    history_interval: 10s
+                                    backends_name: 'trust_test_sas'
+                                    active:
+                                        request: 'GET /ping HTTP/1.1\nHost: trust-payments-xg-test.paysys.yandex.net:8038\nUser-Agent: l7-balancer-trust-payments-xg-test\n\n'
+                                        delay: 1s
+                                        weight_normalization_coeff: 0.0001
+                                        use_backend_weight: false
+                                generated_proxy_backends:
+                                    proxy_options:
+                                        fail_on_5xx: false
+                                        backend_timeout: 10s
+                                        connect_timeout: 70ms
+                                        https_settings:
+                                            ca_file: !f get_ca_cert_path("allCAs.pem", "./")
+                                            verify_depth: 3
+                                            sni_on: true
+                                    include_backends:
+                                        ids: [trust_test_sas]
+                                        type: BY_ID
+                                attempts_rate_limiter:
+                                    limit: 0.15
+                                    coeff: 0.990
+                      - name: bygeocanary_devnull
+                        weight: -1
+                        modules:
+                            - report:
+                                uuid: "requests_default_full_mode_to_canary_to_devnull"
+                                ranges: default
+                                just_storage: false
+                                events:
+                                    stats: "report"
+                            - errordocument: {status: 204}
+                    on_error: 
+                        errordocument: {status: 504, content: 'Service unavailable from canary'}
+        on_error: 
+          errordocument: {status: 504, content: 'Service unavailable'}

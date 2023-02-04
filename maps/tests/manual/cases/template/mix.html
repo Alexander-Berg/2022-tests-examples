@@ -1,0 +1,125 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Шаблонизатор: смешанный шаблон
+
+Description:
+Проверка применения смешанного шаблона.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components:
+template
+
+Estimated time:
+60000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть страницу и элементы на ней. 
+
+  Expectation:
+  На странице блок тестовых кнопок, под которым блок строк содержащих имя и фамилию, месяц и дату, seniority(первые две строки category 2, 3 строка - category 3, 4-ая -student, 5-ая - category 1).
+  Первые две строки оканчиваются spouse - имя и фамилия курсивом, остальные строки spouse - single.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var log = new Log();
+
+            var dateFilter = function (data, dateString, filterValue) {
+                var months = ['January', 'February', 'March', 'April',
+                            'May', 'June', 'July', 'August',
+                            'September', 'October', 'November', 'December'
+                        ],
+                        date = dateString.split('.');
+
+                var month = date[1];
+                date[1] = date[0];
+                date[2] = undefined;
+                var day = date[1].toString();
+                if (day.charAt(0) == '0') {
+                    date[1] = day.slice(1);
+                }
+                date[0] = months[parseInt(month, 10) - 1];
+                return date.join(' ');
+            };
+
+            ymaps.template.filtersStorage.add('date', dateFilter);
+
+            var data1 = new ymaps.data.Manager({
+                user: [
+                    {
+                        firstname: "John",
+                        lastname: "Smith",
+                        birthday: "21.10.1960",
+                        seniority: 25,
+                        gender: 'M',
+                        agent: true,
+                        spouse: '<i>Jane Smith</i>'
+                    },
+                    {
+                        firstname: "Jane",
+                        lastname: "Smith",
+                        birthday: "05.02.1962",
+                        seniority: 25,
+                        gender: 'F',
+                        agent: true,
+                        spouse: '<i>John Smith</i>'
+                    },
+                    {
+                        firstname: "Julia",
+                        lastname: "Green",
+                        birthday: "10.07.1969",
+                        seniority: 20,
+                        gender: 'F',
+                        agent: false
+                    },
+                    {
+                        firstname: "Joe",
+                        lastname: "Black",
+                        seniority: null,
+                        birthday: "31.09.1985",
+                        gender: 'M',
+                        agent: false,
+                        student: true
+                    },
+                    {
+                        firstname: "James",
+                        lastname: "Bond",
+                        birthday: "19.12.1950",
+                        seniority: 35,
+                        gender: 'M',
+                        agent: true
+                    }
+                ]
+            });
+
+            var template = new ymaps.Template('{%for u in user%} {{ u.firstname }} {{ u.lastname }}: ' +
+                    '{{ u.birthday|date }}, seniority - {{u.seniority}}' +
+                    '{%if u.seniority <= 20%} {%if u.student %}(<u>student</u>){%else%}(category 3){%endif%} ' +
+                    '{%elseif u.seniority > 20 && u.seniority <= 30%} (category 2)' +
+                    '{%else e.age > 30%} (category 1) {%endif%}, spouse - {{u.spouse|default: "single"|raw}}' +
+                    '<br/>{%endfor%}');
+
+            var result = template.build(data1);
+            __log__(result.text);
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+</body>
+</html>

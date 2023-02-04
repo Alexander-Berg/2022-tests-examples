@@ -1,0 +1,271 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Кластер: закрытие хинта кластера
+
+Description:
+Проверка корректного закрытия хинта кластера.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+clusterer
+
+Estimated time:
+120000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней.
+
+  Expectation:
+  Карта отобразилась корректно.
+  После загрузки на спане в районе Москвы несколько кластерных меток(может быть синяя метка коллекции).
+  Сверху кнопки опций хинта.
+
+Step:
+  Action:
+  Навести курсор на кластерные метки.
+
+  Expectation:
+  При наведении курсор - палец, на метке со значением кластеризации больше 100 хинта нет, значение больше 10 хинт "Нормально так меток", меньше 10 хинт "Мало меток".
+
+Step:
+  Action:
+  Навести курсор на метку со значением кластеризации больше 10, дождаться появления хинта, резко увести курсор с метки.
+
+  Expectation:
+  При наведении курсор - палец, на метке появляется хинт "Нормально так меток", при уводе курсора через секундку хинт пропадает.
+
+Step:
+  Action:
+  Навести курсор на метку со значением кластеризации меньше 10, дождаться появления хинта, резко увести курсор с метки.
+
+  Expectation:
+  При наведении курсор - палец, на метке появляется хинт "Мало меток", при уводе курсора через секундку хинт пропадает.
+
+Step:
+  Action:
+  Поочередно наводить курсор на метку со значением кластеризации больше 10, и метку со значением кластеризации меньше 10.
+
+  Expectation:
+  При наведении курсор - палец, на метках появляются хинты "Нормально так меток", "Мало меток", при переводе курсора хинты корректно пропадают и появляются.
+
+Step:
+  Action:
+  Поочередно наводить курсор на метку со значением кластеризации больше 10, и метку со значением кластеризации меньше 10.
+
+  Expectation:
+  При наведении курсор - палец, на метках появляются хинты "Нормально так меток", "Мало меток", при переводе курсора хинты корректно пропадают и появляются.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "clickZoom", затем клик в метку кластера со значением больше 100.
+
+  Expectation:
+  По клику в "clickZoom", под контейнером строка: "clusterDisableClickZoom: true".
+  По клику в кластер происходит призум спана карты на спане множество меток кластеров, под контейнером строка: "boundschange".
+
+Step:
+  Action:
+  Навести курсор на метку кластера, дождаться появления хинта, затем клик в метку кластера.
+
+  Expectation:
+  Спан карты смещается, на месте кластера открывается балун с двумя колонками, хинт пропадает при открытии балуна.
+  Под контейнером с картой появляется строка: "boundschange".
+
+Step:
+  Action:
+  Навести курсор на метку кластера, и сразу выполнить клик в метку кластера.
+
+  Expectation:
+  Предыдущий балун закрылся, спан карты смещается, на месте кластера открывается балун с двумя колонками, хинт не появляется.
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 10,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl'],
+                type: 'yandex#publicMap'
+            });
+
+            addGrid(myMap);
+            var log = new Log();
+            log.info('hintGeo - наличие/отсутствие хинта кластера у геообъектов');
+            log.info('OpenTimeout - Изменяем OpenTimeout');
+            log.info('CloseTimeout - Изменяем CloseTimeout');
+            log.info('clickZoom - разрешение/запрет призумливаться при клике');
+            log.info('EmptyHint - разрешение/запрет открывать пустой хинт');
+            log.info('openHint - разрешение/запрет открывания хинта при наведении на кластер');
+            log.info('hasHint - наличие/отсутствие хинта кластера');
+
+            var clusterer = new ymaps.Clusterer(),
+                    placemarksNumber = 200,
+                    bounds = map.getBounds(),
+                    newPlacemarks = createGeoObjects(placemarksNumber, bounds),
+                    hintButton = new ymaps.control.Button({data: {content: 'hasHint'}, options: {selectOnClick: true}}),
+                    hintGeoButton = new ymaps.control.Button({data: {content: 'hintGeo'}, options: {selectOnClick: true}}),
+                    setCloseHintTimeoutButton = new ymaps.control.Button({data: {content: 'CloseTimeout'}, options: {selectOnClick: true}}),
+                    setOpenHintTimeoutButton = new ymaps.control.Button({data: {content: 'OpenTimeout'}, options: {selectOnClick: true}}),
+                    setOpenEmptyHintButton = new ymaps.control.Button({data: {content: 'EmptyHint'}, options: {selectOnClick: true}}),
+                    setOpenHintOnHoverButton = new ymaps.control.Button({data: {content: 'openHint'}, options: {selectOnClick: true}}),
+                    clickZoomButton = new ymaps.control.Button({data: {content: 'clickZoom'}, options: {selectOnClick: true}}),
+                    hintCloseButton = new ymaps.control.Button({data: {content: 'closeHint'}, options: {selectOnClick: true}});
+
+            clusterer.createCluster = function (center, geoObjects) {
+                var clusterPlacemark = ymaps.Clusterer.prototype.createCluster.call(this, center, geoObjects),
+                        geoObjectsLength = clusterPlacemark.getGeoObjects().length,
+                        hintContent;
+                if (geoObjectsLength < 10) {
+                    hintContent = 'Мало меток';
+                } else if (geoObjectsLength < 100) {
+                    hintContent = 'Нормально так меток';
+                } else {
+                }
+                clusterPlacemark.properties.set('hintContent', hintContent);
+                return clusterPlacemark;
+            };
+
+            clusterer.add(newPlacemarks);
+            map.geoObjects.add(clusterer);
+
+            hintButton.events
+                    .add('deselect', function () {
+                        clusterer.options.set('hasHint', true);
+                        log.info('hasHint: ' + clusterer.options.get('hasHint'))
+                    })
+                    .add('select', function () {
+                        clusterer.options.set('hasHint', false);
+                        log.info('hasHint: ' + clusterer.options.get('hasHint'))
+                    });
+            hintGeoButton.events
+                    .add('select', function () {
+                        map.geoObjects.options.set('hasHint', true);
+                        log.info('hasHintGeo: ' + map.geoObjects.options.get('hasHint'))
+                    })
+                    .add('deselect', function () {
+                        map.geoObjects.options.set('hasHint', false);
+                        log.info('hasHintGeo: ' + map.geoObjects.options.get('hasHint'))
+                    });
+            setCloseHintTimeoutButton.events
+                    .add('select', function () {
+                        clusterer.options.set('hintCloseTimeout', 3000);
+                        log.info('hintCloseTimeout: ' + clusterer.options.get('hintCloseTimeout'));
+                    })
+                    .add('deselect', function () {
+                        clusterer.options.set('hintCloseTimeout', 1000);
+                        log.info('hintCloseTimeout: ' + clusterer.options.get('hintCloseTimeout'));
+                    });
+            setOpenHintTimeoutButton.events
+                    .add('select', function () {
+                        clusterer.options.set('hintOpenTimeout', 3000);
+                        log.info('hintOpenTimeout: ' + clusterer.options.get('hintOpenTimeout'));
+                    })
+                    .add('deselect', function () {
+                        clusterer.options.set('hintOpenTimeout', 1000);
+                        log.info('hintOpenTimeout: ' + clusterer.options.get('hintOpenTimeout'));
+                    });
+            clickZoomButton.events
+                    .add('select', function () {
+                        clusterer.options.set('clusterDisableClickZoom', true);
+                        log.info('clusterDisableClickZoom: ' + clusterer.options.get('clusterDisableClickZoom'))
+                    })
+                    .add('deselect', function () {
+                        clusterer.options.set('clusterDisableClickZoom', false);
+                        log.info('clusterDisableClickZoom: ' + clusterer.options.get('clusterDisableClickZoom'))
+                    });
+            setOpenEmptyHintButton.events
+                    .add('select', function () {
+                        clusterer.options.set('openEmptyHint', true);
+                        log.info('openEmptyHint: ' + clusterer.options.get('openEmptyHint'))
+                    })
+                    .add('deselect', function () {
+                        clusterer.options.set('openEmptyHint', false);
+                        log.info('openEmptyHint: ' + clusterer.options.get('openEmptyHint'))
+                    });
+            setOpenHintOnHoverButton.events
+                    .add('select', function () {
+                        clusterer.options.set('openHintOnHover', true);
+                        log.info('openHintOnHover: ' + clusterer.options.get('openHintOnHover'))
+                    })
+                    .add('deselect', function () {
+                        clusterer.options.set('openHintOnHover', false);
+                        log.info('openHintOnHover: ' + clusterer.options.get('openHintOnHover'))
+                    });
+            hintCloseButton.events
+                    .add('select', function () {
+                        map.hint.close();
+                        clusterer.hint.close();
+                        log.info('close()')
+                    })
+                    .add('deselect', function () {
+                        map.hint.open(map.getCenter());
+                        log.info('open()')
+                    });
+
+            //Проверяем MAPSAPI-8684
+            map.events.add('boundschange', function () {
+                log.info('boundschange')
+                var geoObjects = clusterer.getGeoObjects(),
+                        shownObjectsCounter = 0;
+                for (var i = 0, l = geoObjects.length; i < l; i++) {
+                    if (clusterer.getObjectState(geoObjects[i]).isShown) {
+                        shownObjectsCounter++;
+                    }
+                }
+            });
+
+            map.controls.add(hintButton)
+                    .add(setOpenHintOnHoverButton)
+                    .add(setOpenEmptyHintButton)
+                    .add(clickZoomButton)
+                    .add(setCloseHintTimeoutButton)
+                    .add(setOpenHintTimeoutButton)
+                    .add(hintGeoButton)
+                    .add(hintCloseButton);
+
+            // change map zoom
+            setTimeout(function () {
+                map.setZoom(7)
+            }, 1000);
+
+            function createGeoObjects(number, bounds) {
+                var placemarks = [];
+                // Создаем нужное количество меток
+                for (var i = 0; i < number; i++) {
+                    // Генерируем координаты метки случайным образом.
+                    var coordinates = getRandomCoordinates(bounds);
+                    // Создаем метку со случайными координатами.
+                    var myPlacemark = new ymaps.Placemark(coordinates, {
+                        balloonContent: i, hintContent: i, clusterCaption: i}, {});
+                    placemarks.push(myPlacemark);
+                }
+                return placemarks;
+            }
+
+            function getRandomCoordinates(bounds) {
+                var size = [bounds[1][0] - bounds[0][0], bounds[1][1] - bounds[0][1]];
+                return [Math.random() * size[0] + bounds[0][0], Math.random() * size[1] + bounds[0][1]];
+            }
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

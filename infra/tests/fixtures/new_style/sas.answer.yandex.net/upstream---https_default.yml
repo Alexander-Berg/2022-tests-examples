@@ -1,0 +1,125 @@
+---
+regexp_section:
+  matcher: {}
+  modules:
+    - threshold:
+        lo_bytes: 262144
+        hi_bytes: 419430
+        pass_timeout: 10s
+        recv_timeout: 2s
+    - shared:
+        uuid: backends
+    - regexp:
+        sections:
+            frontend:
+                matcher: {}
+                modules:
+                - balancer2:
+                    attempts: 2
+                    rr: {weights_file: ./controls/traffic_control.weights}
+                    backends:
+                    - weight: 1
+                      name: answers_man
+                      modules:
+                        - report: {ranges: default, uuid: requests_nodejs_to_man}
+                        - balancer2:
+                            attempts: 1
+                            weighted2: {}
+                            generated_proxy_backends:
+                              proxy_options:
+                                backend_timeout: 2s
+                                connect_timeout: 100ms
+                              include_backends:
+                                type: BY_ID
+                                ids: [answers_nodejs_man]
+                    - weight: 1
+                      name: answers_vla
+                      modules:
+                        - report: {ranges: default, uuid: requests_nodejs_to_vla}
+                        - balancer2:
+                            attempts: 1
+                            weighted2: {}
+                            generated_proxy_backends:
+                              proxy_options:
+                                backend_timeout: 2s
+                                connect_timeout: 100ms
+                              include_backends:
+                                type: BY_ID
+                                ids: [answers_nodejs_vla]
+                    - weight: 1
+                      name: answers_sas
+                      modules:
+                        - report: {ranges: default, uuid: requests_nodejs_to_sas}
+                        - balancer2:
+                            attempts: 1
+                            weighted2: {}
+                            generated_proxy_backends:
+                              proxy_options:
+                                backend_timeout: 2s
+                                connect_timeout: 100ms
+                              include_backends:
+                                type: BY_ID
+                                ids: [answers_nodejs_sas]
+                    on_error:
+                      modules:
+                      - balancer2:
+                          attempts: 3
+                          rr: {weights_file: ./controls/traffic_control.weights}
+                          backends:
+                          - weight: 1
+                            name: answers_man
+                            modules:
+                              - report: {ranges: default, uuid: requests_nodejs_offline_to_man}
+                              - balancer2:
+                                  attempts: 1
+                                  weighted2: {}
+                                  generated_proxy_backends:
+                                    proxy_options:
+                                      backend_timeout: 500ms
+                                      connect_timeout: 100ms
+                                    include_backends:
+                                      type: BY_ID
+                                      ids: [answers_nodejs_offline_man]
+                                  on_error:
+                                    modules:
+                                    - errordocument:
+                                        status: 504
+                                        content: 'Service unavailable!'
+                          - weight: 1
+                            name: answers_vla
+                            modules:
+                              - report: {ranges: default, uuid: requests_nodejs_offline_to_vla}
+                              - balancer2:
+                                  attempts: 1
+                                  weighted2: {}
+                                  generated_proxy_backends:
+                                    proxy_options:
+                                      backend_timeout: 500ms
+                                      connect_timeout: 100ms
+                                    include_backends:
+                                      type: BY_ID
+                                      ids: [answers_nodejs_offline_vla]
+                                  on_error:
+                                    modules:
+                                    - errordocument:
+                                        status: 504
+                                        content: 'Service unavailable!'
+                          - weight: 1
+                            name: answers_sas
+                            modules:
+                              - report: {ranges: default, uuid: requests_nodejs_offline_to_sas}
+                              - balancer2:
+                                  attempts: 1
+                                  weighted2: {}
+                                  generated_proxy_backends:
+                                    proxy_options:
+                                      backend_timeout: 500ms
+                                      connect_timeout: 100ms
+                                    include_backends:
+                                      type: BY_ID
+                                      ids: [answers_nodejs_offline_sas]
+                                  on_error:
+                                    modules:
+                                    - errordocument:
+                                        status: 504
+                                        content: 'Service unavailable!'

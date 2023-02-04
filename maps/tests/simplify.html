@@ -1,0 +1,222 @@
+<!doctype html>
+<html style='height:100%;width:100%;'>
+<head>
+    <title>Graphics simplify test</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <meta name="viewport" content="initial-scale=1.0; user-scalable=0"/>
+
+    <script src='http://localhost:8080/2.0/?lang=ru-RU&mode=debug&load=graphics.generator.simplify,graphics.render.detect.all,graphics.render.factory,graphics.Path'></script>
+
+</head>
+<body onload='prestart()'>
+
+<style>
+    body {
+        font-family: Arial;
+    }
+
+    table td {
+        padding: 5px;
+        font-size: 14px;
+        overflow: hidden;
+    }
+
+    div.testdiv {
+        width: 400px;
+        height: 270px;
+        border: 1px solid #EEE;
+        padding: 10px;
+        font-size: 10px;
+        position: relative;
+        float: left;
+    }
+
+    p {
+        font-size: 12px;
+        float: left;
+        clear: left;
+        width: 300px;
+    }
+
+
+</style>
+
+
+<script>
+    var imports;
+    function prestart () {
+        imports=ymaps;
+        //include.whenDone(start);
+        start();
+    }
+
+    var renderOptions = {
+        fillColor:'#994444',
+        strokeColor:'#449944',
+        strokeWidth:1,
+        opacity:1
+    };
+
+
+    var initPoly = function (divIndex, renderTech, delta, applySieve, algo) {
+        var simp = imports.graphics.generator.simplify;
+
+        //renderTech='SVG';
+
+        var poly = imports.graphics.render.factory.create('polygon-filled', renderTech);
+        var lines = [];
+
+        var limSin = 6000, fSin = 300 / limSin;
+        var limRad = 6000, fRad = Math.PI / limRad;
+
+        for (var i = 0; i < limSin / 2; i++) {
+            lines.push([i * fSin,40 + Math.sin(i / 120) * 2]);
+        }
+
+        for (var i = limSin / 2; i < limSin; i++) {
+            lines.push([i * fSin,40 + Math.sin(i / 200) * 30]);
+        }
+
+        for (var i = limSin / 2; i < limSin; i++) {
+                    lines.push([limSin * fSin + Math.cos(i / 30)*10+i/200,i*fSin*0.9 - 120]);
+        }
+
+        for (var i = 0; i < limRad; i++) {
+            var R = 130 + ((i > limRad / 2) ? (Math.sin(i / 60)) : 0) * 5;
+            lines.push([150 + Math.cos(fRad * i) * R,150 + Math.sin(fRad * i) * R]);
+        }
+
+
+        var VBO = imports.graphics.Path.fromArray(lines),
+                data0 = 0, outData;
+
+        //VBO;
+        var timeIn = +(new Date()),
+                nTests = 6;
+        if (algo == 3) {
+            outData = VBO;
+        } else {
+            for (var itest = 0; itest < nTests; itest++) {
+                if (0 && algo == 2) {
+                    data0 = simp.densitySieve(VBO, applySieve);
+                } else {
+                    data0 = imports.graphics.Path.fromArray(simp(lines, [], delta, applySieve).points);
+                }
+            }
+            outData = data0;
+        }
+        var timeOut = +(new Date());
+        document.getElementById('s' + divIndex).innerHTML =
+                delta + ' ^ ' + applySieve + '<br/> reduced from ' + lines.length +
+                        ' to ' + outData.indexes.length +
+                        "<br /> took <b>" + (timeOut - timeIn) + "</b>/" + nTests + " ~(" + Math.round((timeOut - timeIn) / nTests) + ") " + " ms<br>" +
+                        simp.__LastOperationCounter + " iterations";
+        poly.polygon([outData]);
+
+        poly.setBounds([
+            [0,0],
+            [400,300]
+        ]);
+        poly.setAttributes(renderOptions);
+
+        return {
+            poly: poly,
+            timeTook: Math.round((timeOut - timeIn) / nTests)
+        };
+    }
+    var shapes = {
+        'poly delta' : [initPoly,0.7,0,0],
+        'poly delta sieve' : [initPoly,0.3,1,0],
+
+        // 'poly delta sieve10' : [initPoly,1,10],
+        // 'poly delta sieve/10' : [initPoly,1,0.1],
+
+        // 'poly Rdelta' : [initPoly,1,0,1],
+        //'poly Rdelta sieve' : [initPoly,1,1,1],
+        //'poly sieve' : [initPoly,1,1,2],
+
+        'truePoly' : [initPoly,1,1,3]
+
+        // 'poly delta10' : [initPoly,10,0],
+        // 'poly delta10 sieve' : [initPoly,10,1]
+    };
+
+    function start () {
+
+        var table = document.getElementById('tbody');
+        var rows = [];
+        //  rows.push(['*'].concat(listRenders));
+
+        var executionList = [], index = 0;
+        //precache
+        for (var shape in shapes) {
+            var line = ["<br/><p id='p" + index + "'>" + shape + ": <span id='s" + index + "'></span></p>"];
+            line.push('<div id="d' + index + '" class="testdiv"></div>');
+            executionList.push({
+                shape: shapes[shape],
+                divIndex: index
+            });
+            index++;
+            rows.push(line);
+        }
+
+        document.getElementById('graphics').innerHTML = rows.join("\n");
+
+        function renderTick (i, delta, sieve) {
+            setTimeout(function() {
+                var cmd = executionList[i];
+                var div = document.getElementById('d' + cmd.divIndex);
+                div.innerHTML = '';
+               // try {
+                    cmd.graphics = cmd.shape[0](cmd.divIndex, '', cmd.shape[1] * delta, sieve * cmd.shape[2], cmd.shape[3]);
+                    cmd.pane = cmd.graphics.poly.createPane();
+                    div.appendChild(cmd.pane.holder());
+                    cmd.pane.addShape(cmd.graphics.poly);
+                    cmd.pane.declineUpdate();
+
+                    setTimeout(function() {
+                        var tin = +(new Date());
+                        cmd.pane.flush();
+                        var tout = +(new Date());
+                        var timetook = tout - tin;
+                        document.getElementById('s' + cmd.divIndex).innerHTML += '<br/>render:' + timetook +
+                                "<br />total: <b>" + (cmd.graphics.timeTook + timetook) + "</b>";
+                    }, 10 * i);
+
+                    /*
+                } catch (e) {
+                    div.innerHTML = '<p>ERROR</p>' + e;
+                    window.console && console.error("shapeError", e);
+                }
+            /* */
+            }, 100 * i);
+        }
+
+        //flow execution
+
+        function renderFlow () {
+            var delta = parseFloat(document.getElementById('delta').value);
+            var sieve = parseFloat(document.getElementById('sieve').value);
+            for (var i in executionList) {
+                renderTick(i, delta, sieve);
+
+                /* */
+            }
+        }
+
+        ;
+
+        renderFlow();
+
+        window.renderFlow = renderFlow;
+    }
+
+
+</script>
+<div id="options">
+    delta: <input id='delta' value="0.025" onchange='renderFlow()'><br/>
+    sieve: <input id='sieve' value="0.5" onchange='renderFlow()'><br/>
+
+    <span id='resultLog'></span></div>
+<div id='graphics'></div>
+</body>

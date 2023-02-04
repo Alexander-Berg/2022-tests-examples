@@ -1,0 +1,47 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - vyacheslav
+      groups: []
+labels:
+  order: '10000000'
+config_mode: easy2
+---
+l7_upstream_macro:
+  by_dc_scheme:
+    balancer:
+      attempts: 1
+      backend_timeout: 600s
+      backend_read_timeout: 120s
+      backend_write_timeout: 60s
+      connect_timeout: 70ms
+      retry_http_responses:
+        codes: [5xx]
+      fast_attempts: 2
+      max_pessimized_endpoints_share: 0.2
+      max_reattempts_share: 0.15
+      retry_non_idempotent: false
+      health_check:
+        delay: '5s'
+        request: 'GET /ping HTTP/1.0\n\n'
+    dc_balancer:
+      attempts: 1
+      method: LOCAL_THEN_BY_DC_WEIGHT
+      weights_section_id: bygeo
+    dcs:
+    - backend_ids:
+      - tv-api_testing_backend_sas
+      name: sas
+    on_error:
+      static:
+        content: Service unavailable
+        status: 504
+  id: tv-api_testing_morda
+  matcher:
+    and_:
+      - host_re: (tv-back\.tst\.tv\.yandex\.net)|(tv-api-cloud\.tst\.tv\.yandex\.net)|(tv\.tst\.content\.yandex\.net)
+      - path_re: '/v8/morda(/.*)?'
+  monitoring:
+    uuid: tv-api_testing_morda
+  version: 0.0.1

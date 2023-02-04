@@ -1,0 +1,53 @@
+auth:
+  staff:
+    owners:
+      logins:
+      - idastan97
+      groups: []
+labels:
+  order: '00010000'
+---
+regexp_section:
+    matcher:
+        match_fsm:
+            host: (api\\.chat\\.dev\\.common\\.yandex\\.ru|chat\\.ws\\.dev\\.common\\.yandex\\.ru|chats\\.messenger\\.test\\.yandex\\.ru|chat-internal-dev\\.yandex\\.net)
+    modules:
+        - balancer2:
+            attempts: 3
+            unique_policy: {}
+            rr: {weights_file: ./controls/traffic_control.weights}       
+            backends:
+                -   name: prod
+                    weight: 1
+                    modules:
+                        - report: {ranges: default, uuid: requests_to_backend}
+                        - balancer2:
+                            attempts: 3
+                            unique_policy: {}
+                            connection_attempts: !f count_backends()
+                            attempts_rate_limiter:
+                                limit: 0.3
+                            rr: {}
+                            generated_proxy_backends:
+                                proxy_options:
+                                    allow_connection_upgrade: true
+                                    connect_timeout: 300ms
+                                    backend_timeout: 5s
+                                    backend_read_timeout: 600s
+                                    backend_write_timeout: 600s
+                                    client_read_timeout: 600s
+                                    client_write_timeout: 600s
+                                include_backends:
+                                    type: BY_ID
+                                    ids:
+                                        - development
+                -   name: fallback
+                    weight: -1
+                    modules:
+                        -   errordocument:
+                                status: 504
+                                content: "Service unavailable"
+            on_error:
+                errordocument:
+                    status: 504
+                    content: "Service unavailable"

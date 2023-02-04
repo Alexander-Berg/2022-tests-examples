@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<!--
+Title:
+Пробки: проверка данных прогноза пробок
+
+Description:
+Проверка данных прогноза пробок.
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+regress
+
+Estimated time:
+90000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть страницу и элементы на ней. 
+
+  Expectation:
+  Карта отобразилась корректно со спаном Москвы, с включенным слоем пробок.
+  На карте линии пробок, сверху кнопки "offset", "level", "localtime", "timestamp", "isotime", "delete".
+  
+Step:
+  Action:
+  Открыть инструменты разработчика командами Windows: Ctrl + Shift + I если у вас MacOS: ⌥ + ⌘ + I, вкладку Console.
+  Последовательно выполнить клик в кнопки "isotime", "timestamp", "localtime", "level", "offset". 
+
+  Expectation:
+  В консоли по клику в кнопки с картой появляются строки с данными(по клику в "isotime" строка "isotime: undefined")по клику в остальные кнопки корректные значения.
+
+Step:
+  Action:
+  Выполнить клик в кнопку "delete". 
+
+  Expectation:
+  Слой пробок исчезает с карты, карта отображается корректно.
+
+Step:
+  Action:
+  Последовательно выполнить клик в кнопки "isotime", "timestamp", "localtime", "level", "offset". 
+
+  Expectation:
+  В консоли по клику в кнопки с картой появляются строки с данными(по клику в "isotime" строка "isotime: undefined"), timestamp и level со значением null.
+-->
+<html>
+<head>
+    <title>API 2.0</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <script src="../helper.js"></script>
+    <script type=text/javascript>
+        Api('init');
+        function init(ymaps) {
+            var myMap = new ymaps.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 10,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+            var forecastProvider = new ymaps.traffic.provider.Forecast({
+                autoUpdate: true
+            }, {
+                timeOffset: 30 * 60
+            });
+            forecastProvider.setMap(myMap);
+            myMap.layers.options.set({
+                trafficJamOpenBalloonOnClick: false
+            });
+            var deleteButton = new ymaps.control.Button({data: {content: 'delete'}}, {selectOnClick: false});
+            deleteButton.events.add('click', function () {
+                forecastProvider.setMap(null);
+            });
+            myMap.controls.add(deleteButton);
+            var trafficButton = new ymaps.control.Button({data: {content: 'isotime'}}, {selectOnClick: false});
+            trafficButton.events.add('click', function () {
+                console.log('isotime: ' + forecastProvider.state.get('isotime'));
+            });
+            myMap.controls.add(trafficButton);
+            var timestampButton = new ymaps.control.Button({data: {content: 'timestamp'}}, {selectOnClick: false});
+            timestampButton.events.add('click', function () {
+                console.log('timestamp: ' + forecastProvider.state.get('timestamp'));
+            });
+            myMap.controls.add(timestampButton);
+            var localtimeButton = new ymaps.control.Button({data: {content: 'localtime'}}, {selectOnClick: false});
+            localtimeButton.events.add('click', function () {
+                console.log('localtime: ' + forecastProvider.state.get('localtime'));
+            });
+            myMap.controls.add(localtimeButton);
+            var levelButton = new ymaps.control.Button({data: {content: 'level'}}, {selectOnClick: false});
+            levelButton.events.add('click', function () {
+                console.log('level: ' + forecastProvider.state.get('level'));
+            });
+            myMap.controls.add(levelButton);
+            var offsetButton = new ymaps.control.Button({data: {content: 'offset'}}, {selectOnClick: false});
+            offsetButton.events.add('click', function () {
+                console.log('timeOffset: ' + forecastProvider.state.get('timeOffset'));
+            });
+            myMap.controls.add(offsetButton);
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+<p><a href="https://tech.yandex.ru/maps/archive/doc/jsapi/2.0/ref/reference/traffic.provider.Archive-docpage/" target="_blank">Docs</a></p>
+</body>
+</html>

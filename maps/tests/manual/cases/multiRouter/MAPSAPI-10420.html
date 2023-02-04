@@ -1,0 +1,133 @@
+<!DOCTYPE HTML>
+<!--
+Title:
+Мультимаршрут: валидация данных мультимаршрута
+
+Description:
+Проверка корректной валидации данных мультимаршрута. 
+Памятка по терминам: https://wiki.yandex-team.ru/eva/testing/Projects/maps-api/
+
+Components: 
+multiRouter
+
+Estimated time:
+60000
+
+Precondition:
+Открыть ссылку ${currentPagePath}
+
+Step:
+  Action:
+  Осмотреть карту и элементы на ней. 
+
+  Expectation:
+  При загрузке первоначально загружается карта со спаном Москвы, затем спан меняется на спан с маршрутом авто из 2 точек("A","B").
+  Маршрут имеет основную нитку, могут быть альтернативные, сверху слева кнопка "meta", снизу слева "mode".
+  Через 2 секунды после загрузки под контейнером появляются 18 строк "OK".
+
+Step:
+  Action:
+  Выполнить клик в кнопку "meta".
+
+  Expectation:
+  Спан карты и маршрут без изменений, под контейнером с картой появляются еще 14 строк, 7 и 14 строки: "[Object object]", остальные: "OK".
+-->
+<html>
+<head>
+    <title>2.1</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            ymaps = ym;
+
+            var map = myMap = new ym.Map('map', {
+                center: [55.72725771214265, 37.640390506634006],
+                zoom: 10,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+
+            addGrid(map);
+            var log = new Log();
+
+            var multiRoute = new ymaps.multiRouter.MultiRoute({
+                referencePoints: ['Москва, Ленинский проспект', 'Кулаков переулок']
+            }, {
+                editorDrawOver: false,
+                wayPointDraggable: true,
+                viaPointDraggable: true,
+                boundsAutoApply: true,
+                zoomMargin: 30,
+                preset: "islands#multiRouterBig"
+            });
+
+            map.geoObjects.add(multiRoute);
+
+            var setButton = new ymaps.control.Button('meta');
+            setButton.events.add('click', function () {
+                var data = multiRoute.getWayPoints().get(0).properties._data;
+                validateValue(data.index, 0);
+                validateValue(data.request, "Москва, Ленинский проспект");
+                validateValue(data.address, "Россия, Москва, Ленинский проспект");
+                validateValue(data.description, "Россия, Москва");
+                validateValue(data.name, "Ленинский проспект");
+                validateValue(data.geocoderMetaData.toString(), "[object Object]");
+                __log__(data.geocoderMetaData);
+                var data2 = multiRoute.getWayPoints().get(1).properties._data;
+                validateValue(data2.index, 1);
+                validateValue(data2.request, "Кулаков переулок");
+                validateValue(data2.address, "Россия, Москва, Кулаков переулок");
+                validateValue(data2.description, "Россия, Москва");
+                validateValue(data2.name, "Кулаков переулок");
+                validateValue(data2.geocoderMetaData.toString(), "[object Object]");
+                __log__(data2.geocoderMetaData);
+            });
+
+            map.controls
+                    .add(setButton);
+
+            var modeButton = new ymaps.control.Button('mode');
+            modeButton.events
+                    .add('select', function () {
+                        multiRoute.model.setParams({routingMode: 'masstransit'}, true);
+                    })
+                    .add('deselect', function () {
+                        multiRoute.model.setParams({routingMode: 'auto'}, true);
+                    });
+            map.controls.add(modeButton, {position: {bottom: 35, left: 5}});
+
+            setTimeout(function () {
+                var data = multiRoute.getWayPoints().get(0).properties._data;
+                validateValue(data.index, 0);
+                validateValue(data.request, "Москва, Ленинский проспект");
+                validateValue(data.address, "Россия, Москва, Ленинский проспект");
+                validateValue(data.description, "Россия, Москва");
+                validateValue(data.name, "Ленинский проспект");
+                validateValue(data.geocoderMetaData, "[object Object]");
+                validateValue(data.geocoderMetaData.kind, "street");
+                validateValue(data.geocoderMetaData.text, "Россия, Москва, Ленинский проспект");
+                validateValue(data.geocoderMetaData.precision, "street");
+                validateValue(data.geocoderMetaData.AddressDetails.Country.AddressLine, "Россия, Москва, Ленинский проспект");
+                validateValue(data.geocoderMetaData.AddressDetails.Country.CountryName, "Россия");
+                validateValue(data.geocoderMetaData.AddressDetails.Country.CountryNameCode, "RU");
+                var data2 = multiRoute.getWayPoints().get(1).properties._data;
+                validateValue(data2.index, 1);
+                validateValue(data2.request, "Кулаков переулок");
+                validateValue(data2.address, "Россия, Москва, Кулаков переулок");
+                validateValue(data2.description, "Россия, Москва");
+                validateValue(data2.name, "Кулаков переулок");
+                validateValue(data2.geocoderMetaData, "[object Object]");
+            }, 2000)
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>

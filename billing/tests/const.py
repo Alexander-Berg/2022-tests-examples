@@ -1,0 +1,16 @@
+from datetime import datetime
+
+import arrow
+
+CLIENT_ID = 1
+CLIENT_SD_ID = 2
+PERSON_ID = 2
+GENERAL_CONTRACT_ID = 666
+GENERAL_SD_CONTRACT_ID = 6666
+SPENDABLE_CONTRACT_ID = 667
+COMMON_DT = arrow.get(datetime(2020, 1, 1, 10, 54, 0)).datetime
+COMMON_DT_TS = 1577876040
+RUSSIA_REGION = 225
+UR_PERSON = 'ur'
+YT_PERSON = 'yt'
+TAXI_RU_FIRM = 13

@@ -1,0 +1,288 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script src="../../../helper.js"></script>
+    <script type=text/javascript>
+
+        Api('init');
+
+        function init(ymaps) {
+            var map = myMap = new ymaps.Map('map', {
+                center: [59.976469003480716, 30.290052050069413],
+                zoom: 9,
+                behaviors: ['default', 'scrollZoom'],
+                controls: ['fullscreenControl']
+            });
+            addGrid(map);
+            __log__("Поставь точку. Проверь ошибки и работу корректора в режиме перетаскивания и рисования");
+            var placemark = new ymaps.GeoObject({
+                geometry: {type: "Point"}, properties: {
+                    balloonContent: 'text', hintContent: 'text'
+                }
+            }, {preset: 'islands#greenIcon', draggable: true, openBalloonOnClick: false});
+
+            placemark.options.set({
+
+                editorDrawingCorrector: function (coords, index) {
+                    var coord = coords.slice();
+                    coord[0] += 10;
+                    coord[1] += 10;
+                    return ymaps.vow.resolve(coord);
+                },
+                editorDrawingCorrectorTimeout: 100,
+
+                editorDraggingCorrector: function (coords, index) {
+                    var coord = coords.slice();
+                    coord[0] = Math.round(coord[0] / 10) * 10;
+                    coord[1] = Math.round(coord[1] / 10) * 10;
+                    return ymaps.vow.resolve(coord);
+
+                },
+                editorDraggingCorrectorTimeout: 1500
+            });
+
+            var myPolyline = new ymaps.Polyline([], {}, {});
+
+            myPolyline.options.set({
+                editorDrawingCorrector: function (coords, index) {
+                    var coord = coords[index].slice();
+                    coord[0] += 10;
+                    coord[1] += 10;
+                    var deferred = ymaps.vow.defer();
+                    setTimeout(function () {
+                        deferred.resolve(coord);
+                    }, 100);
+                    return deferred.promise();
+                },
+                editorDrawingCorrectorTimeout: 200,
+                editorDraggingCorrector: function (coords, index) {
+                    var coord = coords[index].slice();
+                    coord[0] -= 10;
+                    coord[1] -= 10;
+                    return ymaps.vow.resolve(coord);
+                },
+                editorDraggingCorrectorTimeout: 1500
+            });
+
+            var myPolygon = new ymaps.Polygon([], {}, {});
+
+            myPolygon.options.set({
+                editorDrawingCorrector: function (coords, pathIndex, vertexIndex) {
+                    var coord = coords[pathIndex][vertexIndex].slice();
+                    coord[0] += 10;
+                    coord[1] += 10;
+                    var deferred = ymaps.vow.defer();
+                    setTimeout(function () {
+                        deferred.resolve(coord);
+                    }, 200);
+                    return deferred.promise();
+                },
+                editorDrawingCorrectorTimeout: 100,
+                editorDraggingCorrector: function (coords, pathIndex, vertexIndex) {
+                    var coord = coords[pathIndex][vertexIndex].slice();
+                    coord[0] -= 10;
+                    coord[1] -= 10;
+                    var deferred = ymaps.vow.defer();
+                    setTimeout(function () {
+                        deferred.resolve(coord);
+                    }, 1000);
+                    return deferred.promise();
+                },
+                editorDraggingCorrectorTimeout: 1500
+            });
+
+            var placemarkMulti = new ymaps.GeoObject({
+                        geometry: {type: "MultiPoint", coordinates: []}, properties: {
+                            balloonContent: 'text', hintContent: 'text'
+                        }
+                    }, {preset: 'islands#greenIcon', draggable: true, openBalloonOnClick: false}),
+
+                    myPolylineMulti = new ymaps.GeoObject({
+                        geometry: {type: "MultiLineString", coordinates: []}, properties: {
+                            balloonContent: 'text', hintContent: 'text'
+                        }
+                    }, {preset: 'islands#greenIcon', draggable: true, openBalloonOnClick: false}),
+
+                    myPolygonMulti = new ymaps.GeoObject({
+                        geometry: {type: "MultiPolygon", coordinates: []}, properties: {
+                            balloonContent: 'text', hintContent: 'text'
+                        }
+                    }, {preset: 'islands#greenIcon', draggable: true, openBalloonOnClick: false}),
+                    geoObject = new ymaps.GeoObject({
+                        // Описываем геометрию геообъекта.
+                        geometry: {
+                            // Тип геометрии - "Ломаная линия".
+                            type: "GeometryCollection",
+                            // Указываем координаты вершин ломаной.
+                            geometries: []
+                        },
+                        // Описываем свойства геообъекта.
+                        properties: {
+                            // Содержимое хинта.
+                            hintContent: "Я геообъект",
+                            // Содержимое балуна.
+                            balloonContent: "Меня можно перетащить"
+                        }
+                    }, {
+                        // Задаем опции геообъекта.
+                        // Включаем возможность перетаскивания ломаной.
+                        draggable: true,
+                        // Цвет линии.
+                        strokeColor: "#FFFF00",
+                        // Ширина линии.
+                        strokeWidth: 5,
+                        fillOpacity: 1,
+                        fillColor: '#44F',
+                        opacity: 0.5
+                    }),
+                    circle = new ymaps.Circle([]);
+            map.geoObjects
+                    .add(placemark)
+                    .add(placemarkMulti)
+                    .add(myPolyline)
+                    .add(myPolylineMulti)
+                    .add(myPolygon)
+                    .add(myPolygonMulti)
+                    .add(geoObject)
+                    .add(circle);
+
+            var editButton = new ymaps.control.Button({data: {content: 'edit'}, options: {selectOnClick: true}});
+            var frameButton = new ymaps.control.Button({data: {content: 'frame'}, options: {selectOnClick: true}});
+            var placemarkButton = new ymaps.control.Button({
+                data: {content: 'placemark'},
+                options: {selectOnClick: true}
+            });
+            var placemarkMultiButton = new ymaps.control.Button({
+                data: {content: 'placemarkMulti'},
+                options: {selectOnClick: true}
+            });
+            var myPolylineButton = new ymaps.control.Button({
+                data: {content: 'myPolyline'},
+                options: {selectOnClick: true}
+            });
+            var myPolylineMultiButton = new ymaps.control.Button({
+                data: {content: 'myPolylineMulti'},
+                options: {selectOnClick: true}
+            });
+            var myPolygonButton = new ymaps.control.Button({
+                data: {content: 'myPolygon'},
+                options: {selectOnClick: true}
+            });
+            var myPolygonMultiButton = new ymaps.control.Button({
+                data: {content: 'myPolygonMulti'},
+                options: {selectOnClick: true}
+            });
+            var circleButton = new ymaps.control.Button({data: {content: 'circle'}, options: {selectOnClick: true}});
+
+            editButton.events
+                    .add('select', function () {
+                        placemark.editor.startEditing();
+                        placemarkMulti.editor.startEditing();
+                        myPolyline.editor.startEditing();
+                        myPolylineMulti.editor.startEditing();
+                        myPolygon.editor.startEditing();
+                        myPolygonMulti.editor.startEditing();
+                        geoObject.editor.startEditing();
+                        circle.editor.startEditing();
+                    })
+                    .add('deselect', function () {
+                        placemark.editor.stopEditing();
+                        placemarkMulti.editor.stopEditing();
+                        myPolyline.editor.stopEditing();
+                        myPolylineMulti.editor.stopEditing();
+                        myPolygon.editor.stopEditing();
+                        myPolygonMulti.editor.stopEditing();
+                        geoObject.editor.stopEditing();
+                        circle.editor.stopEditing();
+                    });
+            frameButton.events
+                    .add('select', function () {
+                        placemark.editor.startFraming();
+                        placemarkMulti.editor.startFraming();
+                        myPolyline.editor.startFraming();
+                        myPolylineMulti.editor.startFraming();
+                        myPolygon.editor.startFraming();
+                        myPolygonMulti.editor.startFraming();
+                        geoObject.editor.startFraming();
+                        circle.editor.startFraming();
+                    })
+                    .add('deselect', function () {
+                        placemark.editor.stopFraming();
+                        placemarkMulti.editor.stopFraming();
+                        myPolyline.editor.stopFraming();
+                        myPolylineMulti.editor.stopFraming();
+                        myPolygon.editor.stopFraming();
+                        myPolygonMulti.editor.stopFraming();
+                        geoObject.editor.stopFraming();
+                        circle.editor.stopFraming();
+                    });
+            placemarkButton.events
+                    .add('select', function () {
+                        placemark.editor.startDrawing();
+                    })
+                    .add('deselect', function () {
+                        placemark.editor.stopDrawing();
+                    });
+            placemarkMultiButton.events
+                    .add('select', function () {
+                        placemarkMulti.editor.startDrawing();
+                    })
+                    .add('deselect', function () {
+                        placemarkMulti.editor.stopDrawing();
+                    });
+            myPolylineButton.events
+                    .add('select', function () {
+                        myPolyline.editor.startDrawing();
+                    })
+                    .add('deselect', function () {
+                        myPolyline.editor.stopDrawing();
+                    });
+            myPolylineMultiButton.events
+                    .add('select', function () {
+                        myPolylineMulti.editor.startDrawing();
+                    })
+                    .add('deselect', function () {
+                        myPolylineMulti.editor.stopDrawing();
+                    });
+            myPolygonButton.events
+                    .add('select', function () {
+                        myPolygon.editor.startDrawing();
+                    })
+                    .add('deselect', function () {
+                        myPolygon.editor.stopDrawing();
+                    });
+            myPolygonMultiButton.events
+                    .add('select', function () {
+                        myPolygonMulti.editor.startDrawing();
+                    })
+                    .add('deselect', function () {
+                        myPolygonMulti.editor.stopDrawing();
+                    });
+            circleButton.events
+                    .add('select', function () {
+                        circle.editor.startDrawing();
+                    })
+                    .add('deselect', function () {
+                        circle.editor.stopDrawing();
+                    });
+            map.controls
+                    .add(editButton)
+                    .add(frameButton)
+                    .add(placemarkButton)
+                    .add(placemarkMultiButton)
+                    .add(myPolylineButton)
+                    .add(myPolylineMultiButton)
+                    .add(myPolygonButton)
+                    .add(myPolygonMultiButton)
+                    .add(circleButton);
+
+        }
+    </script>
+</head>
+<body style="position: relative; padding: 0; margin: 0;">
+<div id="map" style="height: 512px; width: 512px;"></div>
+</body>
+</html>
