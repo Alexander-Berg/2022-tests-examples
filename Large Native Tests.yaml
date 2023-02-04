@@ -1,0 +1,69 @@
+service: autocheck # Do not change service, CI hardcode
+title: Запуск Large и Native тестов
+
+shared:
+  default-attempts: &default-attempts
+    attempts:
+      max: 10
+      backoff: exp
+      initial-backoff: 30s
+      max-backoff: 10m
+
+ci:
+  release-title-source: flow
+  secret: sec-01fbmgvxk3rszdpvkmn3p15aqc
+  runtime:
+    sandbox-owner: REVIEW-CHECK-FAT # Только для задач, у которых мы не смогли определить владельца для запуска
+
+  actions:
+    large-flow: # Do not change action id, CI hardcode
+      title: Запуск пары Large/Native
+      flow: run-flow
+
+  flows:
+    run-flow:
+      jobs:
+        init-task:
+          title: Инициализация Large/Native тестов
+          task: autocheck/start_large_flow
+          <<: *default-attempts
+          input:
+            request: ${flow-vars.request}
+
+        execute-task:
+          title: Запуск тестов
+          task: autocheck/start_large
+          needs: init-task
+          <<: *default-attempts
+          multiply:
+            by: ${tasks.init-task.response.jobs}
+            title: ${by.title}, ${by.target}
+            description: ${by.test_info}
+          input:
+            arcadia_url: ${by.arcadia_url}
+            arcadia_base: ${not_null(by.arcadia_base, '')}
+            arcadia_patch: ${not_null(by.arcadia_patch, '')}
+            autocheck_revision: ${not_null(by.distbuild_priority.priority_revision, `0`)}
+            binary_executor_release_type: stable
+            expected_test_info: ${by.test_info}
+            is_precommit: ${not_null(by.precommit, `false`)}
+            targets: ${by.target}
+            native_target: ${not_null(by.native_target, '')}
+            native_specification: ${not_null(by.native_specification, '')}
+            report_to_ci: true
+            ci_endpoints: stable
+            ci_check_id: ${by.id.iteration_id.check_id}
+            ci_iteration_number: ${by.id.iteration_id.number}
+            ci_task_id: ${by.id.task_id}
+            ci_type: ${by.check_type}
+          runtime:
+            sandbox:
+              priority: ${by.precommit && 'BACKGROUND:NORMAL' || 'BACKGROUND:LOW'}
+              hints:
+                - ${by.id.iteration_id.check_id}
+                - ${by.id.iteration_id.check_id}/HEAVY
+                - ${by.id.iteration_id.check_id}/HEAVY/${by.id.iteration_id.number}
+              tags:
+                - autocheck
+                - autocheck-heavy
+                - ${(by.native_target == null || by.native_target == '') && 'autocheck-large' || 'autocheck-native'}
