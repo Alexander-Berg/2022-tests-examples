@@ -1,0 +1,102 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <title>map.options.restrictMapArea</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <!-- YUI -->
+    <script type="text/javascript" src="../../../../tests/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../../../tests/yui3combo/combo.css" />
+    <script type="text/javascript" src="../../../../tests/run-test-case.js"></script>
+    <!-- Code -->
+    <script type="text/javascript">
+        initAPI({
+            lang: "ru-RU",
+            mode: "debug"
+        });
+    </script>
+    <style type="text/css">
+        #container { width: 400px; height: 300px; background: #ccc; }
+    </style>
+</head>
+
+<body class="yui3-skin-sam">
+<div id="container" height='100px' width='100px'></div>
+</body>
+
+<script type="text/javascript">
+
+    var eq = function (a, b) {
+        return Math.abs(a[0] - b[0]) < 1e-7 && Math.abs(a[1] - b[1]) < 1e-7;
+    };
+
+    function getTestCase(Y) {
+        return {
+            name: "map.options.restrictMapArea",
+            debug: false,
+
+            setUp: function () {
+                this.geoMap = new ymaps.Map('container', {
+                    bounds: [[35, 35], [45, 45]],
+                    type: "yandex#map",
+                    behaviors: ['drag', 'scrollZoom']
+                }, {
+                    avoidFractionalZoom: false,
+                    restrictMapArea: true
+                });
+            },
+
+            tearDown: function () {
+                this.geoMap.destroy();
+            },
+
+            testRestrictMapAreaChangeCenterGeo: function () {
+                var mapCenter = this.geoMap.getCenter();
+                this.geoMap.setCenter([20,20]);
+                Y.assert(eq(this.geoMap.getCenter(), mapCenter), "Неверно отработал сдвиг центра");
+
+            },
+
+            testRestrictMapAreaChangeCenterPix: function () {
+                var mapGlobalPixelCenter = this.geoMap.getGlobalPixelCenter();
+                this.geoMap.setGlobalPixelCenter([mapGlobalPixelCenter[0] + 400, mapGlobalPixelCenter[1] + 400]);
+                Y.assert(
+                    eq(this.geoMap.getGlobalPixelCenter(), mapGlobalPixelCenter),
+                    "Неверно отработало изменение глобальных пиксельных координат центра"
+                );
+            },
+
+            testRestrictMapAreaZoomOut: function () {
+                var mapZoom = this.geoMap.getZoom();
+                this.geoMap.setZoom(4);
+                Y.assert(Math.abs(this.geoMap.getZoom() - mapZoom) < 1e-6 , "Неверно отработало изменение зума");
+            },
+
+            testRestrictMapAreaBeringStrait: function () {
+                this.geoMap.destroy();
+                this.geoMap = new ymaps.Map('container', {
+                    center: [65, 170],
+                    zoom: 5,
+                    type: "yandex#map",
+                    behaviors: ['drag', 'scrollZoom']
+                }, {
+                    restrictMapArea: true
+                });
+
+                var mapGlobalPixelCenter = this.geoMap.getGlobalPixelCenter();
+                this.geoMap.setGlobalPixelCenter([mapGlobalPixelCenter[0] + 1000, mapGlobalPixelCenter[1] + 400]);
+
+                Y.assert(
+                    eq(this.geoMap.getGlobalPixelCenter(), mapGlobalPixelCenter),
+                    "Неверно отработало изменение глобальных пиксельных координат возле через Берингов пролив"
+                );
+            }
+        }
+    }
+
+    ymaps.ready(function () {
+        runTestCase();
+    });
+
+</script>
+</html>

@@ -1,0 +1,153 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <title>Placemark</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <!-- YUI -->
+    <script type="text/javascript" src="../../../../tests/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../../../tests/yui3combo/combo.css" />
+    <script type="text/javascript" src="../../../../tests/run-test-case.js"></script>
+    <!-- Code -->
+    <script type="text/javascript">
+        initAPI({
+            lang: "ru-RU",
+            load: "package.full,util.dom.element,util.math.areEqual",
+            mode: "dev"
+        });
+    </script>
+    <script type="text/javascript" src="../../../../tests/util/event-eye.js"></script>
+</head>
+
+<body class="yui3-skin-sam">
+    <div id="testMap" style="height: 500px; width: 760px; overflow: hidden; position: relative;">
+    </div>
+</body>
+
+<script type="text/javascript">
+    getTestCase = function (Y) {
+        var equals = ymaps.util.math.areEqual;
+        return {
+            name: 'Placemark',
+
+            setUp: function () {
+                // Карта.
+                this.geoMap = new ymaps.Map("testMap", {
+                    center: [37, 56],
+                    zoom: 4,
+                    type: "yandex#map"
+                });
+            },
+
+            tearDown: function () {
+                this.geoMap.destroy();
+            },
+
+            testPositionInConstructor: function () {
+                var placemark = new ymaps.Placemark([37, 56]);
+
+                Y.assert(
+                    equals(placemark.geometry.getCoordinates(), [37, 56])
+                );
+            },
+
+            testHashInConstructor: function () {
+                var placemark = new ymaps.Placemark({
+                    type: "Point",
+                    coordinates: [37, 56]
+                });
+
+                Y.assert(
+                    equals(placemark.geometry.getCoordinates(), [37, 56])
+                );
+            },
+
+            testGeometryInConstructor: function () {
+                var geometry = new ymaps.geometry.Point([37, 56]);
+                var placemark = new ymaps.Placemark(geometry);
+
+                Y.assert(
+                    equals(placemark.geometry.getCoordinates(), [37, 56])
+                );
+            },
+
+            testAdd: function () {
+                var placemark = new ymaps.Placemark([37, 56], {
+                    iconContent: "test"
+                });
+                this.geoMap.geoObjects.add(placemark);
+
+                var parentElement = placemark.getOverlay().getIconLayout().getParentElement(),
+                    topNode = ymaps.util.dom.element.find(parentElement, ".ymaps-image-with-content");
+
+                Y.assert(
+                    topNode,
+                    "Метка не добавилась"
+                );
+                this.geoMap.geoObjects.remove(placemark);
+            },
+
+            testRemove: function () {
+                var placemark = new ymaps.Placemark([37, 56], {
+                    iconContent: "test"
+                });
+                
+                this.geoMap.geoObjects.add(placemark);
+                this.geoMap.geoObjects.remove(placemark);
+
+                var parentElement = this.geoMap.container.getElement();
+                Y.assert(
+                    !ymaps.util.dom.element.find(parentElement, ".ymaps-b-placemark_theme_blue"),
+                    "Метка не удалилась"
+                );
+            },
+
+            testOptions: function () {
+                var placemark = new ymaps.Placemark([37, 56], {
+                    iconContent: "12"
+                }, {
+                    preset: "twirl#redDotIcon"
+                });
+                this.geoMap.geoObjects.add(placemark);
+
+                var parentElement = placemark.getOverlay().getIconLayout().getParentElement();
+                Y.assert(
+                    ymaps.util.dom.element.find(parentElement, ".ymaps-image"),
+                    "Не применилась опция из конструктора"
+                );
+
+                placemark.options.set("preset", "twirl#redIcon");
+                parentElement = placemark.getOverlay().getIconLayout().getParentElement();
+                var contentNode = ymaps.util.dom.element.find(parentElement, ".ymaps-image-with-content-content");
+
+                Y.assert(
+                    contentNode.firstChild.firstChild.innerHTML == "12",
+                    "Не применилась опция из .options"
+                );
+                this.geoMap.geoObjects.remove(placemark);
+            },
+
+            testBalloon: function () {
+                var placemark = new ymaps.Placemark([37, 56], {
+                    balloonContent: "test test"
+                });
+                this.geoMap.geoObjects.add(placemark);
+                placemark.balloon.open();
+
+                var parentElement = this.geoMap.container.getElement(),
+                    balloonNode = ymaps.util.dom.element.find(parentElement, ".ymaps-b-balloon"),
+                    balloonContent = ymaps.util.dom.element.find(parentElement, ".ymaps-b-balloon__content-body");
+                
+                Y.assert(
+                    balloonNode && balloonContent.firstChild.firstChild.innerHTML == "test test",
+                    "Не не открылся балун"
+                );
+
+                this.geoMap.geoObjects.remove(placemark);
+            }
+        };
+    };
+    ymaps.ready(runTestCase);
+</script>
+</html>
+

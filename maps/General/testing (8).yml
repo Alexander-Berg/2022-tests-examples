@@ -1,0 +1,135 @@
+annotations:
+  project: maps-front-sputnica
+meta:
+  id: maps-front-sputnica_testing
+  project_id: maps-front-sputnica
+  inherit_acl: true
+spec:
+  deploy_units:
+    app:
+      endpoint_sets:
+        - port: 80
+      images_for_boxes: {}
+      network_defaults:
+        network_id: _MAPSTESTQNETS_
+      tvm_config:
+        mode: enabled
+        blackbox_environment: Test
+        client_port: 2
+        clients:
+          - source:
+              alias: front-sputnica
+              app_id: 2011156
+            secret_selector:
+              alias: 'sec-01efp7vqrzwb07j2xt2pthgxev:ver-01efp7vx4vc1pf1rrqx1axpcj9'
+              id: APP_TVM_SECRET_FRONT_SPUTNICA
+            destinations:
+              - alias: maps-core-factory
+                app_id: 2018892
+              - alias: blackbox
+                app_id: 239
+      multi_cluster_replica_set:
+        replica_set:
+          clusters:
+            - cluster: sas
+              spec:
+                constraints:
+                  antiaffinity_constraints:
+                    - key: rack
+                      max_pods: 1
+                replica_count: 1
+            - cluster: vla
+              spec:
+                constraints:
+                  antiaffinity_constraints:
+                    - key: rack
+                      max_pods: 1
+                replica_count: 1
+          deployment_strategy:
+            max_unavailable: 1
+          pod_template_spec:
+            spec:
+              disk_volume_requests:
+                - id: maps-front-sputnica_testing-disk-0
+                  storage_class: hdd
+                  quota_policy:
+                    bandwidth_guarantee: 5242880
+                    bandwidth_limit: 10485760
+                    capacity: 16106127360
+                  labels:
+                    used_by_infra: true
+              resource_requests:
+                memory_guarantee: 1073741824
+                memory_limit: 1073741824
+                network_bandwidth_guarantee: 10485760
+                vcpu_guarantee: 500
+                vcpu_limit: 500
+              host_infra:
+                monitoring:
+                  unistats:
+                    - workload_id: app_workload
+                      port: 7032
+                      path: /unistat
+              secret_refs:
+                'sec-01efp7vqrzwb07j2xt2pthgxev:ver-01efp7vx4vc1pf1rrqx1axpcj9':
+                  secret_id: sec-01efp7vqrzwb07j2xt2pthgxev
+                  secret_version: ver-01efp7vx4vc1pf1rrqx1axpcj9
+              pod_agent_payload:
+                spec:
+                  boxes:
+                    - id: app_box
+                      rootfs: {}
+                      static_resources:
+                        - resource_ref: usr.share.yandex.maps.hosts
+                          mount_point: /usr/share/yandex/maps/hosts
+                        - resource_ref: usr.share.yandex.maps.inthosts
+                          mount_point: /usr/share/yandex/maps/inthosts
+                        - resource_ref: var.cache.geobase.geodata6.bin
+                          mount_point: /var/cache/geobase
+                  mutable_workloads:
+                    - workload_ref: app_workload
+                  resources:
+                    static_resources:
+                      - id: usr.share.yandex.maps.hosts
+                        url: 'sbr:2607945220'
+                        verification:
+                          checksum: 'EMPTY:'
+                          check_period_ms: 180000
+                      - id: usr.share.yandex.maps.inthosts
+                        url: 'sbr:2627473320'
+                        verification:
+                          checksum: 'EMPTY:'
+                          check_period_ms: 180000
+                      - id: var.cache.geobase.geodata6.bin
+                        url: 'rbtorrent:4998224955cd6c55279c1c6ff244ee1bd9760150'
+                        verification:
+                          checksum: 'MD5:9ea41b69a07e29c8f4535753fed26f50'
+                          check_period_ms: 180000
+                  workloads:
+                    - id: app_workload
+                      box_ref: app_box
+                      env:
+                        - name: APP_ENV
+                          value:
+                            literal_env:
+                              value: testing
+                      liveness_check:
+                        tcp_check:
+                          port: 80
+                      readiness_check:
+                        http_get:
+                          expected_answer: ""
+                          port: 80
+                          path: /ping
+                          time_limit:
+                            max_execution_time_ms: 1000
+                      stop_policy:
+                        container:
+                          command_line: bash -c "/detach.sh"
+                          time_limit:
+                            max_execution_time_ms: 20000
+                            max_restart_period_ms: 30000
+                            min_restart_period_ms: 30000
+                        max_tries: 2
+                      transmit_logs: true
+  revision_info: {}

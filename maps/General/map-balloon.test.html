@@ -1,0 +1,230 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <title>map.Balloon</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <!-- YUI -->
+    <script type="text/javascript" src="../../../test/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../../test/yui3combo/combo.css"/>
+    <script type="text/javascript" src="../../../test/run-test-case.js"></script>
+    <!-- Code -->
+    <script type="text/javascript">
+        initAPI({
+            lang: "ru-RU",
+            load: "package.full,map.Balloon,util.dom.element,templateLayoutFactory",
+            mode: "dev"
+        });
+    </script>
+    <script type="text/javascript" src="../../../test/util/event-eye.js"></script>
+</head>
+
+<body class="yui3-skin-sam"><div id="map" style="width: 400px; height: 400px;"></div></body>
+
+<script type="text/javascript">
+    function getTestCase (Y) {
+        return {
+            name: "map.Balloon",
+            debug: false,
+
+            setUp: function () {
+                this.geoMap = new ymaps.Map('map', {
+                    center: [0, 0],
+                    zoom: 5,
+                    type: "yandex#map",
+                    behaviors: ['drag', 'scrollZoom']
+                });
+                this.balloon = new ymaps.map.Balloon(this.geoMap);
+            },
+
+            tearDown: function () {
+                this.balloon.destroy();
+                this.geoMap.destroy();
+            },
+
+            testOpenNoPosition: function () {
+                try {
+                    this.balloon.open();
+                    Y.fail('Нет ошибки при открытии балуна без позиции');
+                } catch (e) {
+                    Y.assert(
+                        e.message == "map.Balloon.open: не передана позиция",
+                        "Неверное сообщение об ошибке: " + e.message
+                    );
+                }
+            },
+
+            testOpen: function() {
+                eventEye.observe(this.balloon, ["open", "close"]);
+
+                var balloon = this.balloon.open([0, 0]);
+                
+                Y.assert(
+                    balloon && balloon.isOpen(),
+                    "Возвращено неправильное значение"
+                );
+                Y.assert(
+                    ymaps.util.dom.element.find(this.geoMap.container.getElement(), ".ymaps-b-balloon"),
+                    "Балун не открылся"
+                );
+                Y.assert(
+                    eventEye.length() == 1 &&
+                    eventEye.check(0, {
+                        type: "open",
+                        target: this.balloon
+                    }),
+                    "Неверные события: кол-во " + eventEye.length()
+                );
+            },
+
+            testClose: function() {
+                this.balloon.open([0, 0]);
+                eventEye.observe(this.balloon, ["open", "close"]);
+
+                var errFlag;
+                this.balloon.close(function (err) {
+                    errFlag = !!err;
+                });
+
+                Y.assert(
+                    errFlag === false,
+                    "Неправильно отработал callback"
+                );
+                Y.assert(
+                    !ymaps.util.dom.element.find(this.geoMap.container.getElement(), ".ymaps-b-balloon"),
+                    "Балун не закрылся"
+                );
+                Y.assert(
+                    eventEye.length() == 1 &&
+                    eventEye.check(0, {
+                        type: "close",
+                        target: this.balloon
+                    }),
+                    "Неверные события: кол-во " + eventEye.length()
+                );
+            },
+
+            testIsOpen: function() {
+                this.balloon.open([0, 0]);
+                Y.assert(
+                    this.balloon.isOpen(),
+                    "Неверное значение после открытия"
+                );
+                this.balloon.close();
+                Y.assert(
+                    !this.balloon.isOpen(),
+                    "Неверное значение после закрытия"
+                );
+            },
+            
+            testCapturing: function () {
+                this.balloon.open([0, 0]);
+                eventEye.observe(this.balloon, ["open", "close"]);
+
+                var capturedBalloon;
+                this.balloon.capture(function (err, balloon) {
+                    Y.assert(
+                        !err && balloon,
+                        "Неправильные аргументы в обработчике захвата балуна"
+                    );
+                    capturedBalloon = balloon;
+                });
+
+                Y.assert(
+                    !capturedBalloon.isOpen() &&
+                    eventEye.length() == 1 &&
+                    eventEye.check(0, {
+                        type: "close",
+                        target: this.balloon
+                    }),
+                    "Захваченный балун не закрыт"
+                );
+            },
+
+            testHoldCapturing: function () {
+                var balloon = this.balloon.open([0, 0]);
+                balloon.events.add("beforedestroy", function (e) {
+                    e.preventDefault();
+                });
+                eventEye.observe(this.balloon, ["open", "close"]);
+
+                var captureError;
+                this.balloon.capture(function (err, balloon) {
+                    Y.assert(
+                        err && !balloon,
+                        "Неправильные аргументы в обработчике захвата балуна"
+                    );
+                    captureError = err;
+                });
+
+                Y.assert(
+                    captureError == "Destruction has been canceled" &&
+                    !eventEye.length(),
+                    "Неверное кол-во событий"
+                );
+            },
+
+            testData: function () {
+                var balloon = this.balloon.open([0, 0], {
+                    content: "hey"
+                });
+                
+                Y.assert(
+                    balloon.getData().content == "hey",
+                    "Данные не переданы"
+                );
+            },
+
+            testContent: function () {
+                var balloon = this.balloon.open([0, 0], "test");
+
+                var contentNode = ymaps.util.dom.element.find(balloon.getOverlay().getLayout().getParentElement(), ".ymaps-b-balloon__content-body").firstChild;
+                Y.assert(
+                    contentNode.firstChild.innerHTML == "test",
+                    "Неверный контент"
+                );
+
+                balloon = this.balloon.open([0, 0], ymaps.util.dom.element.create({
+                    html: "ping",
+                    attr: {
+                        id: "testContent"
+                    }
+                }));
+
+                var node = document.getElementById('testContent');
+                Y.assert(
+                    node.innerHTML == "ping",
+                    "Неверный контент"
+                );
+            },
+
+            testOptions: function () {
+                this.geoMap.options.set(
+                    "balloonContentBodyLayout",
+                    ymaps.templateLayoutFactory.createClass('<span id="trololo">$[mapContent]</span>')
+                );
+                this.balloon.open([0, 0], {
+                    mapContent: "map"
+                });
+
+                Y.assert(
+                    document.getElementById('trololo'),
+                    "Неправильный родитель опций"
+                );
+
+                this.balloon.open([0, 0], {
+                    selfContent: "self"
+                }, {
+                    contentBodyLayout: ymaps.templateLayoutFactory.createClass('<div id="bugaga">$[selfContent]</div>')
+                });
+
+                Y.assert(
+                    document.getElementById('bugaga') && !document.getElementById('trololo'),
+                    "Опции не переданы"
+                );
+            }
+        }
+    }
+    ymaps.ready(runTestCase);
+</script>
+</html>

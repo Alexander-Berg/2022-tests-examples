@@ -1,0 +1,227 @@
+<!doctype html>
+<html>
+<head>
+    <title>zoom control</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <!-- YUI -->
+    <script type="text/javascript" src="../../../test/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../../test/yui3combo/combo.css"/>
+    <script type="text/javascript" src="../../../test/run-test-case.js"></script>
+    <!-- Code -->
+    <script type="text/javascript">
+        initAPI({
+            lang: "ru-RU",
+            load: "package.full,util.dom.element,util.dom.style",
+            mode: "debug",
+            ns: "ym"
+        });
+    </script>
+</head>
+
+<body class="yui3-skin-sam"></body>
+
+</div>
+<style>
+    html, html body {
+        width: 100%;
+        height: 100%;
+    }
+
+    .zoom-in, .zoom-out {
+        border: 5px solid green;
+        background-color: white;
+        font-size: 20px;
+        font-weight: bold;
+        width: 30px;
+        heigth: 30px;
+        text-align: center;
+        vertical-align: middle;
+    }
+</style>
+<script type="text/javascript">
+
+    function getTestCase (Y) {
+
+        var map = new ym.Map('map', {
+                    center: [55.777153093859496, 37.639130078124964],
+                    zoom: 10
+                }),
+                mapElement = document.getElementById('map');
+
+        return {
+            name: "controls",
+
+            // Проверка ошибок при добавлении и удалении с карты
+            testFast: function () {
+                var zoomControl = new ym.control.ZoomControl();
+                map.controls.add(zoomControl, {top: 100, left: 100});
+                map.controls.remove(zoomControl);
+                map.controls.add(zoomControl, {bottom: 100, right: 100});
+                map.controls.remove(zoomControl);
+
+                var smallZoomControl = new ym.control.SmallZoomControl();
+                map.controls.add(smallZoomControl, {top: 200, left: 200});
+                map.controls.remove(smallZoomControl);
+                map.controls.add(smallZoomControl, {bottom: 200, right: 200});
+                map.controls.remove(smallZoomControl);
+            },
+
+            // Проверка scaleclick
+            testButtonClick: function () {
+                if (document.documentMode >= 10) {
+                    return;
+                }
+                map.setZoom(5);
+                var zoomControl = new ym.control.ZoomControl(),
+                        dom = ym.util.dom;
+                
+                map.controls.add(zoomControl, {top: 200, left: 200});
+                zoomControl.getLayout();
+                var parentElement = zoomControl.getLayout().getParentElement(),
+                    scaleZone = dom.element.find(parentElement, '.ymaps-b-zoom__scale-bg'),
+                    marker = dom.element.find(parentElement, '.ymaps-b-zoom__mark'),
+                    scaleZoneOffset = dom.style.getOffset(scaleZone, true),
+                    markerOffset = dom.style.getOffset(marker, true);
+
+                Y.Event.simulate(scaleZone, 'click', {
+                    "clientX": scaleZoneOffset[0] + 5,
+                    "clientY": markerOffset[1] + 20
+                });
+
+                Y.assert(map.getZoom() == 8, 'ZoomControl неверный зум после клика по scaleclick (ниже маркера)');
+
+                Y.Event.simulate(scaleZone, 'click', {
+                    "clientX": scaleZoneOffset[0] + 5,
+                    "clientY": markerOffset[1] - 10
+                });
+
+                Y.assert(map.getZoom() == 4, 'ZoomControl неверный зум после клика по scaleclick (выше маркера)');
+                map.controls.remove(zoomControl);
+            },
+
+            // Хинты
+            testHintClick: function () {
+                if (document.documentMode >= 10) {
+                    return;
+                }
+                map.setZoom(7);
+
+                var zoomControl = new ym.control.ZoomControl(),
+                        dom = ym.util.dom;
+
+                map.controls.add(zoomControl, {bottom: 200, right: 200});
+
+                zoomControl.state.set('hints', [
+                    {
+                        index: 4,
+                        value: "value"
+                    }
+                ]);
+
+                var parentElement = zoomControl.getLayout().getParentElement(),
+                        parentElementOffset = dom.style.getOffset(parentElement, true);
+
+                Y.Event.simulate(parentElement, 'mouseover', {
+                    "clientX": parentElementOffset[0] + 5,
+                    "clientY": parentElementOffset[1] + 5
+                });
+
+                var someHintElement = dom.element.find(parentElement, '.ymaps-b-zoom__hint'),
+                        someHintElementOffset = dom.style.getOffset(someHintElement, true);
+
+                Y.Event.simulate(someHintElement, 'click', {
+                    "clientX": someHintElementOffset[0] + 2,
+                    "clientY": someHintElementOffset[1] + 2
+                });
+
+                Y.assert(map.getZoom() == 4, 'ZoomControl после клика по хинту не изменился зум');
+
+                Y.Event.simulate(parentElement, 'mouseout', {
+                    "clientX": parentElementOffset[0] - 1,
+                    "clientY": parentElementOffset[1] - 1
+                });
+
+                zoomControl.options.set('noTips', true);
+
+                Y.Event.simulate(parentElement, 'mouseover', {
+                    "clientX": parentElementOffset[0] + 5,
+                    "clientY": parentElementOffset[1] + 5
+                });
+
+                Y.assert(dom.element.find(parentElement, '.ymaps-b-zoom__hint') == null,
+                        'ZoomControl не скрыл хинты после установления опции noTips');
+
+                map.controls.remove(zoomControl);
+            },
+
+            // Драг маркера
+            testDrag: function () {
+                if (document.documentMode >= 10) {
+                    return;
+                }
+                
+                map.setZoom(7);
+
+                var zoomControl = new ym.control.ZoomControl(),
+                        dom = ym.util.dom;
+
+                map.controls.add(zoomControl, {left: 20, bottom: 50});
+                zoomControl.getLayout();
+                var parentElement = zoomControl.getLayout().getParentElement(),
+                        marker = dom.element.find(parentElement, '.ymaps-b-zoom__mark'),
+                        markerOffset = dom.style.getOffset(marker, true);
+
+                var draggerCaptureElement = parentElement.attachEvent ? document.body : document.documentElement;
+
+                Y.Event.simulate(marker, 'mousedown', {
+                    "clientX": markerOffset[0] + 2,
+                    "clientY": markerOffset[1] + 2,
+                    "button": 0
+                });
+                
+                Y.Event.simulate(draggerCaptureElement, 'mousemove', {
+                    "clientX": markerOffset[0] + 2,
+                    "clientY": markerOffset[1] + 3,
+                    "button": 0
+                });
+                
+                Y.Event.simulate(draggerCaptureElement, 'mousemove', {
+                    "clientX": markerOffset[0] + 2,
+                    "clientY": markerOffset[1] + 10,
+                    "button": 0
+                });
+                
+                Y.Event.simulate(draggerCaptureElement, 'mousemove', {
+                    "clientX": markerOffset[0] + 2,
+                    "clientY": markerOffset[1] + 20,
+                    "button": 0
+                });
+
+                Y.Event.simulate(draggerCaptureElement, 'mousemove', {
+                    "clientX": markerOffset[0] + 5,
+                    "clientY": markerOffset[1] + 30,
+                    "button": 0
+                });
+
+                Y.Event.simulate(draggerCaptureElement, 'mouseup', {
+                    "clientX": markerOffset[0] + 5,
+                    "clientY": markerOffset[1] + 30,
+                    "button": 0
+                });
+                
+               this.wait(function () {
+                   Y.assert(map.getZoom() == 11, 'ZoomControl зум не изменился после драга');
+                   map.controls.remove(zoomControl);
+               }, 400);
+            }
+
+        };
+    }
+    ym.ready(runTestCase);
+
+</script>
+
+<div id='map' style='width:100%;height:90%;overflow:hidden;'></div>
+
+</body>
+</html>

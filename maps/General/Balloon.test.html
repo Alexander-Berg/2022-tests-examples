@@ -1,0 +1,271 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <title>Balloon</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <!-- YUI -->
+    <script type="text/javascript" src="../../test/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../test/yui3combo/combo.css" />
+    <script type="text/javascript" src="../../test/run-test-case.js"></script>
+    <script type="text/javascript" src="../../test/util/event-eye.js"></script>
+    <!-- Code -->
+    <script type="text/javascript">
+        initAPI({
+            load: "Map,templateLayoutFactory,Balloon",
+            mode: "debug"
+        });
+    </script>
+    <style type="text/css">
+        #container { width: 400px; height: 300px; background: #ccc; }
+    </style>
+</head>
+
+<body class="yui3-skin-sam">
+
+<script type="text/javascript">
+    function byId (id) { return document.getElementById(id); }
+
+    function getTestCase(Y) {
+        var balloon,
+            pos = geoMap.getCenter(),
+            contentLayout = ymaps.templateLayoutFactory.createClass('$[balloonContent]<span id="tst">$[a]$[x]</span>'),
+            data = { a: 'b' },
+            options = { contentLayout: contentLayout, panelMaxMapArea: 0 },
+            failOnReject = function (msg) {
+                Y.fail('Promise was rejected: ' + msg);
+            },
+            testFlow;
+
+        return {
+//            debug: true,
+            name: "Balloon",
+
+            setUp: function () {
+                testFlow = this;
+
+                window.balloon = balloon = new ymaps.Balloon(geoMap);
+                balloon.options.set(options).setParent(geoMap.options);
+            },
+
+            tearDown: function () {
+                balloon.destroy();
+            },
+
+            testOpen: function () {
+                var test = this;
+
+                eventEye.observe(balloon, ['open']);
+
+                balloon.open(pos).then(function () {
+                    testFlow.resume(function () {
+                        Y.assert(balloon.getOverlaySync().getMap(), 'Оверлей не добавился на карту');
+                        Y.assert(eventEye.length() == 1 && eventEye.check(0, { type: 'open' }), 'Неправильно отработали события');
+                    });
+                }, failOnReject);
+
+                test.wait();
+            },
+
+            testClose: function () {
+                eventEye.observe(balloon, ['open', 'close']);
+
+                balloon.open(pos).then(function () {
+                    return balloon.close();
+                }, failOnReject).then(function () {
+                    testFlow.resume(function () {
+                        Y.assert(!balloon.getOverlaySync().getMap(), 'Оверлей остался на карте');
+                        Y.assert(
+                            eventEye.length() == 2
+                            && eventEye.check(0, { type: 'open' })
+                            && eventEye.check(1, { type: 'close' }),
+                            'Неправильно отработали события'
+                        );
+                    });
+                }, failOnReject);
+
+                testFlow.wait();
+            },
+
+            testUserclose: function () {
+                eventEye.observe(balloon, ['open', 'userclose', 'close']);
+
+                balloon.events.add('close', function () {
+                    testFlow.resume(function () {
+                        Y.assert(!balloon.getOverlaySync().getMap(), 'Оверлей остался на карте');
+                        Y.assert(!balloon.isOpen(), 'isOpen == true.');
+                        Y.assert(
+                                eventEye.length() == 3
+                                        && eventEye.check(0, { type: 'open' })
+                                        && eventEye.check(1, { type: 'userclose' })
+                                        && eventEye.check(2, { type: 'close' }),
+                                'Неправильно отработали события'
+                        );
+                    });
+                });
+
+                balloon.open(pos).then(function () {
+                    balloon.getOverlaySync().getBalloonLayoutSync().events.fire('userclose');
+                });
+
+                testFlow.wait();
+            },
+
+            testIsOpen: function () {
+                balloon.open(pos).then(function () {
+                    testFlow.resume(function () {
+                        Y.assert(balloon.isOpen(), 'isOpen != true после open.');
+                        testFlow.wait();
+                    });
+
+                    return balloon.close();
+                }, failOnReject).then(function () {
+                    testFlow.resume(function () {
+                        Y.assert(!balloon.isOpen(), 'isOpen != false после close.');
+                    });
+                }, failOnReject);
+
+                testFlow.wait();
+            },
+
+            testGetOverlay: function () {
+                balloon.setPosition(pos);
+                balloon.getOverlay().then(function (overlay) {
+                    testFlow.resume(function () {
+                        Y.assert(overlay == balloon.getOverlaySync(), 'Не создался оверлей.');
+                    });
+                }, failOnReject);
+
+                testFlow.wait();
+            },
+
+            testPosition: function () {
+                balloon.setPosition(pos).then(function () {
+                    testFlow.resume(function () {
+                        Y.assert(balloon.getPosition().toString() == pos.toString(), 'Позиция не изменилась.');
+                    });
+                }, failOnReject);
+
+                testFlow.wait();
+            },
+
+            testData: function () {
+                balloon.setData(data).then(function () {
+                    testFlow.resume(function () {
+                        Y.assert(balloon.getData().toString() == data.toString(), 'Данные не совпадают');
+
+                        testFlow.wait();
+                    });
+
+                    return balloon.open(pos);
+                }, failOnReject).then(function () {
+                    testFlow.resume(function () {
+                        Y.assert(data.a == byId('tst').innerHTML, 'Данные не применились в макет после открытия');
+                    });
+                }, failOnReject);
+
+                testFlow.wait();
+            },
+
+            testAutoPan: function () {
+                var res = '',
+                    unexpectedAutoPan;
+
+                balloon.options.set('autoPanDuration', 200);
+                balloon.events
+                    .add('autopanbegin', function () { res += 'begin-'; })
+                    .add('autopanend', function () { res += 'end-'; });
+
+                // проверка autoPan после открытия вне области видимости
+                balloon.open([130, 45]).then(function () {console.log(1);
+                    balloon.events.once('autopanend', function () {console.log(2);
+                        setTimeout(function () {console.log(3);
+                            // проверка autoPan после перемещения
+                            balloon.setPosition([0, 0]).then(function () {console.log(4);
+                                balloon.events.once('autopanend', function () {console.log(5);
+                                    setTimeout(function () {console.log(6);
+                                        // проверка одноразовой отмены autoPan
+                                        balloon.events.add('autopanbegin', unexpectedAutoPan = function () {console.log(7);
+                                            testFlow.resume(function () {
+                                                Y.Assert.fail('Автопан должен был быть отменен.');
+                                            });
+                                        });
+                                        balloon.options.set('autoPan', false);
+                                        balloon.setPosition([-100, -100]);
+                                        // TODO в действительности autoPan происходит по изменению Shape-а, но такого события нет
+                                        setTimeout(function () {console.log(8);
+                                            balloon.options.unset('autoPan');
+                                            balloon.events.remove('autopanbegin', unexpectedAutoPan);
+
+                                            // Проверка ручного вызова autoPan;
+                                            geoMap.setCenter([100, 100]);
+                                            balloon.autoPan().then(function () {console.log(9);
+                                                testFlow.resume(function () {console.log(10);
+                                                    Y.Assert.areEqual('begin-end-begin-end-begin-end-', res);
+                                                });
+                                            }, failOnReject);
+                                        }, 50);
+                                    }, 0);
+                                });
+                            }, failOnReject);
+                        }, 0);
+                    });
+                }, failOnReject);
+
+                testFlow.wait();
+            },
+
+            testCloseWhileAutoPan: function () {
+                var promise;
+
+                balloon.open([130, 45]).then(function () {
+                    geoMap.setCenter([0, 0]);
+                    geoMap.panTo([130, 45]);
+                    balloon.close();
+                    promise = balloon.autoPan();
+
+                    promise.always(function () {
+                        testFlow.resume(function () {
+                            Y.assert(promise.isRejected(), 'Промис не был отменен.');
+                        });
+                    });
+                });
+
+                testFlow.wait();
+            },
+
+            testAutoPanCheckZoomRange: function () {
+                geoMap.setCenter([55.6, 37.5], 18);
+
+                balloon.events.add('autopanend', function () {
+                    testFlow.resume(function () {
+                        Y.Assert.areEqual(13, geoMap.getZoom(), 'Несуществующий в этой точке зум: ' + geoMap.getZoom());
+                    });
+                });
+
+                balloon.options.set('autoPanCheckZoomRange', true);
+                balloon.open([74.61, 102.41]);
+
+                testFlow.wait();
+            }
+        }
+    }
+    ymaps.ready(function () {
+        geoMap = new ymaps.Map('container', {
+            center: [39, 54],
+            type: "yandex#map",
+            zoom: 1,
+            behaviors: ['drag', 'scrollZoom']
+        });
+
+        mapCenter = geoMap.options.get('projection').toGlobalPixels(geoMap.getCenter(), geoMap.getZoom());
+
+        runTestCase();
+    });
+
+</script>
+
+    <div id="container"></div>
+
+</body>
+</html>

@@ -1,0 +1,427 @@
+components: tgo
+testing:
+  - regress
+
+specs-integration:
+  aliases:
+    - &Инфо_Content
+        - info: |
+            - Dev. Set. -> Misc -> Debug config enable - On
+            - Использовать интенты:
+              [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download-2.b60e70b.png){title=QR-код}
+        
+              `yandexnavi://reset_exp`
+              [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download.7ed8e87.png){title=QR-код}
+
+              `yandexnavi://set_ad_page_id?page_id=null`
+              [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download-4.7e0aa5e.png){title=QR-код iOS}
+        
+              iOS: `yandexnavi://set_ad_page_id?page_type=zero_speed_yas_source&page_id=R-IM-588231-9`
+              [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download-5.2e69065.png){title=QR-код Android}
+
+              Android: `yandexnavi://set_ad_page_id?page_type=zero_speed_yas_source&page_id=R-IM-588230-9`
+              [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download-14.7a6b2c6.png){title=QR-код}
+
+              `yandexnavi://add_exp?navi_feature_tgo_zsb=enabled&navi_zero_ads_use_yas_ad=enabled&navi_feature_zsb_statuses_logging=enabled&navi_feature_day_night_fast_switch=enabled&navi_ad_product_cooldown_zero_speed_banner=10&navi_ads_logging_zsb_closing_errors=enabled`
+            - Перезапустить приложение
+    - &Инфо_Appinstall
+        - info: |
+            - Dev. Set. -> Misc -> Debug config enable - On
+            - Использовать интенты:
+              [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download-2.b60e70b.png){title=QR-код}
+        
+              `yandexnavi://reset_exp`
+              [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download.7ed8e87.png){title=QR-код}
+
+              `yandexnavi://set_ad_page_id?page_id=null`
+              [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download-6.5d85e88.png){title=QR-код iOS}
+        
+              iOS: `yandexnavi://set_ad_page_id?page_type=zero_speed_yas_source&page_id=R-IM-588231-8`
+              [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download-7.3fdbc9f.png){title=QR-код Android}
+
+              Android: `yandexnavi://set_ad_page_id?page_type=zero_speed_yas_source&page_id=R-IM-588230-8`
+              [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download-9.43e8582.png){title=QR-код}
+
+              `yandexnavi://add_exp?navi_feature_tgo_transition_to_external_browser_dialog=enabled&navi_feature_tgo_zsb=enabled&navi_zero_ads_use_yas_ad=enabled&navi_feature_zsb_statuses_logging=enabled&navi_feature_day_night_fast_switch=enabled&navi_ad_product_cooldown_zero_speed_banner=10&navi_ads_logging_zsb_closing_errors=enabled`
+            - Перезапустить приложение
+
+specs:
+  Логирование Content РСЯ в ZSB:
+    - *Инфо_Content
+    - info: Девайс подключен к инструментам снятия логов или открыта Log-view панель
+    - do: |
+        - Запустить проигрывание MAPKITSIM-4261
+        - Дождаться остановки движения перед светофором
+    - assert: |
+        - Приложение перешло в режим ведения
+        - На остановке появляется баннер ZSB
+        В логах приходят события:
+        - `direct-yan.bb.pin.show` с параметром `DirectType: Content`
+        - `geoadv.bb.zsbRequest` с параметром `has_yas`
+        - `Native 'CONTENT' ad loaded` только для Android
+    - do: Тап на надпись/картинку в баннере
+    - assert: |
+        - Открывается вебвью.
+        - В логах приходит событие: `direct-yan.bb.pin.tap` с параметром `DirectType: Content`
+    - do: Закрыть вебвью тапом по Х или <-
+    - assert: |
+        - Вебвью закрывается.
+        - В логах приходит событие: `direct-yan.bb.hide` с параметром  `Reason =  discard_webview_closed`
+
+    - platforms:
+        - ios
+        - android
+    - testing:
+        - acceptance_navi
+    - tags:
+        - metric
+
+
+  Логирование открытия вебвью Content РСЯ в ZSB:
+    - *Инфо_Content
+    - info: Девайс подключен к инструментам снятия логов или открыта Log-view панель
+    - do: |
+        - Запустить проигрывание MAPKITSIM-4261
+        - Дождаться остановки движения перед светофором
+    - assert: |
+        - Приложение перешло в режим ведения
+        - На остановке появляется баннер ZSB
+    - do: Тап на надпись/картинку в баннере
+    - assert: |
+        - Открывается вебвью.
+        - В логах приходит событие: `direct-yan.bb.pin.tap` с параметром `DirectType: Content`
+        - В логах приходят события: `geoadv.bb.pin.tap` и `geoadv.bb.action.openSite`
+    - do: Закрыть вебвью тапом по Х или <-
+    - assert: |
+        - Вебвью закрывается.
+        - В логах приходит событие: `direct-yan.bb.hide` с параметром  `Reason =  discard_webview_closed`
+
+    - platforms:
+        - ios
+        - android
+    - testing:
+        - acceptance_navi
+    - tags:
+        - metric
+
+
+  UI вебвью Content РСЯ в ZSB:
+    - *Инфо_Content
+    - info: |
+        - Девайс в вертикальной ориентации
+    - do: |
+        - Запустить проигрывание MAPKITSIM-4261
+        - Дождаться остановки движения перед светофором
+    - assert: |
+        - Приложение перешло в режим ведения
+        - На остановке появляется баннер ZSB
+    - do: Тап на надпись/картинку в баннере
+    - assert: |
+        - Открывается вебвью.
+    - do: Повернуть девайс в горизонтальную ориентацию
+    - assert: |
+        - Вебвью не скрывается
+
+    - platforms:
+        - ios
+        - android
+    - testing:
+        - acceptance_navi
+
+
+  Логирование AppInstall РСЯ в ZSB:
+    - *Инфо_Appinstall
+    - info: Девайс подключен к инструментам снятия логов или открыта Log-view панель
+    - do: |
+        - Запустить проигрывание MAPKITSIM-4261
+        - Дождаться остановки движения перед светофором
+    - assert: |
+        - Приложение перешло в режим ведения
+        - На остановке появляется баннер ZSB
+        В логах приходят события:
+        - `direct-yan.bb.pin.show` с параметром `DirectType: AppInstall`
+        - `geoadv.bb.zsbRequest` с параметром `has_yas`
+        - `Native 'APP_INSTALL' ad loaded` только для Android
+    - do: Тап на надпись/картинку/кнопку(установить/скачать/загрузить) в баннере
+    - assert: |
+        - iOS: Открывается вебвью со страницей AppStore рекламируемого приложения
+        - Android: Появляется поп-ап с кнопками Отмена и Установить.
+        - В логах приходит событие: `direct-yan.bb.pin.tap` с параметром `DirectType: AppInstall`
+
+    - platforms:
+        - ios
+        - android
+    - testing:
+        - acceptance_navi
+    - tags:
+        - metric
+
+
+  UI и Логика показа/скрытия AppInstall ZSB с рекламой РСЯ (баннер):
+    - *Инфо_Appinstall
+    - do: |
+        - Запустить проигрывание MAPKITSIM-4261
+        - Дождаться остановки движения перед светофором
+    - assert: |
+        - Приложение перешло в режим ведения
+        - На остановке появляется баннер ZSB
+        - Дизайн содержит несколько элементов. Не все могут присутствовать в рекламе.
+          - Изображение.
+          - Название рекламодателя (например "Яндекс.Директ").
+          - Ограничение по возрасту (например "18+").
+          - Заголовок.
+          - Кнопка.
+          - Текст предупреждения (например "Проектная декларация на сайте ...").
+    - do: |
+        - Не взаимодействовать с картой, контроллами и самим баннером ZSB
+        - Сменить ориентацию устройства
+    - assert: |
+        - UI баннера не искажается, элементы остаются на своих местах, после возврата ориентации
+        - При смене ориентации баннер не скрывается.
+    - do: |
+        - Не взаимодействовать с картой, контроллами и самим баннером ZSB
+        - Продолжить движение с отображаемым ZSB.
+    - assert: ZSB автоматически скрывается.
+
+    - platforms:
+        - ios
+        - android
+    - testing:
+        - acceptance_navi
+
+
+  UI и Логика показа/скрытия Content ZSB с рекламой РСЯ(баннер):
+    - *Инфо_Content
+    - do: |
+        - Запустить проигрывание MAPKITSIM-4261
+        - Дождаться остановки движения перед светофором
+    - assert: |
+        - Приложение перешло в режим ведения
+        - На остановке появляется баннер ZSB
+        - Дизайн содержит несколько элементов. Не все могут присутствовать в рекламе.
+           - Изображение.
+           - Название рекламодателя (например "Яндекс.Директ").
+           - Ограничение по возрасту (например "18+").
+           - Заголовок.
+           - Текст предупреждения (например "Проектная декларация на сайте ...").
+    - do: |
+        - Не взаимодействовать с картой, контроллами и самим баннером ZSB
+        - Сменить ориентацию устройства
+    - assert: |
+        - UI баннера не искажается, элементы остаются на своих местах, после возврата ориентации
+        - При смене ориентации баннер не скрывается.
+    - do: |
+        - Не взаимодействовать с картой, контроллами и самим баннером ZSB
+        - Продолжить движение с отображаемым ZSB.
+    - assert: ZSB автоматически скрывается.
+
+    - platforms:
+        - ios
+        - android
+    - testing:
+        - acceptance_navi
+
+
+  Логика тапа по баннеру AppInstall ZSB с рекламой РСЯ:
+    - *Инфо_Appinstall
+    - do: |
+        - Запустить проигрывание MAPKITSIM-4261
+        - Дождаться остановки движения перед светофором
+    - assert: |
+        - Приложение перешло в режим ведения
+        - На остановке появляется баннер ZSB
+    - do: Раскрыть баннер свайпом вверх.
+    - assert: Баннер не высвайпывается.
+    - do: Тап по картинке/надписи/кнопке(установить/скачать/загрузить) в баннере.
+    - assert: |
+        - iOS: Открывается вебвью со страницей AppStore рекламируемого приложения
+        - Android: Появляется поп-ап с кнопками Отмена и Установить.
+    - do: Сменить ориентацию устройства
+    - assert: |
+        - iOS: Вебвью не закрывается, ориентацию не меняет (отображается только в портретной ориентации)
+        - Android: Поп-ап не закрывается, UI не ломается
+    - do: Дождаться смены темы день/ночь
+    - assert: |
+        - iOS: Вебвью меняет тему в зависимости от актуальной.
+        - Android: Поп-ап меняет тему, в зависимости от актуальной.
+
+    - platforms:
+        - ios
+        - android
+    - testing:
+        - acceptance_navi
+
+
+  Логика закрытия пользователем AppInstall ZSB с рекламой РСЯ - Тап по крестику, свайп вниз:
+    - *Инфо_Appinstall
+    - do: |
+        - Запустить проигрывание MAPKITSIM-4261
+        - Дождаться остановки движения перед светофором
+    - assert: |
+        - Приложение перешло в режим ведения
+        - На остановке появляется баннер ZSB
+    - do: Закрыть баннер свайпом вниз/тапом по крестику
+    - assert: При свайпе вниз/тапе по крестику баннер закрывается, из режима ведения навигатор не выходит.
+
+    - platforms:
+        - ios
+        - android
+    - testing:
+        - acceptance_navi
+
+
+  Логика тапа по баннеру Content ZSB с рекламой РСЯ:
+    - *Инфо_Content
+    - do: |
+        - Запустить проигрывание MAPKITSIM-4261
+        - Дождаться остановки движения перед светофором
+    - assert: |
+        - Приложение перешло в режим ведения
+        - На остановке появляется баннер ZSB
+    - do: Раскрыть баннер свайпом вверх.
+    - assert: Баннер не высвайпывается.
+    - do: Тап по картинке/надписи в баннере.
+    - assert: Открывается вебвью.
+    - do: Несколько раз сменить ориентацию
+    - assert: |
+        - Вебвью не закрывается
+        - UI не искажается.
+    - do: Закрыть вебвью любым способом
+    - assert: |
+        - Вебвью закрывается
+        - ЗСБ скрывается
+
+    - platforms:
+        - ios
+        - android
+    - testing:
+        - acceptance_navi
+
+
+  Логика и Логирование кнопок в поп-апе AppInstall РСЯ в ZSB:
+    - *Инфо_Appinstall
+    - info: Девайс подключен к инструментам снятия логов или открыта Log-view панель
+    - do: |
+        - Запустить проигрывание MAPKITSIM-4261
+        - Дождаться остановки движения перед светофором
+    - assert: |
+        - Приложение перешло в режим ведения
+        - На остановке появляется баннер ZSB
+    - do: Тап на надпись/картинку/кнопку(установить/скачать/загрузить) в баннере
+    - assert: Появляется поп-ап с кнопками Отмена и Установить.
+    - do: Тап по кнопке Отменить
+    - assert: |
+        - Поп-ап закрывается, сам баннер остается на экране
+        - В логах приходит сбоытие `direct-yan.bb.action.dialog.cancel`
+    - do: |
+        - Тап на надпись/картинку/кнопку(установить/скачать/загрузить) в баннере
+        - Тап по кнопке Отменить в появившемся поп-апе
+    - assert: |
+        - Поп-ап закрывается, сам баннер остается на экране
+        - В логах не приходит событие `direct-yan.bb.action.dialog.cancel`
+    - do: |
+        - Тап на надпись/картинку/кнопку(установить/скачать/загрузить) в баннере
+        - Тап Установить в поп-апе
+    - assert: |
+        - Происходит переход в Play Маркет
+        В логах приходят события:
+        - `direct-yan.bb.action.dialog.ok`
+        - `direct-yan.bb.hide (Reason: discard_external_browser_opened)`
+    - do: Вернуться в навигатор.
+    - assert: Поп-ап и баннер отсутствуют.
+
+    - platforms:
+        - android
+    - testing:
+        - acceptance_navi
+    - tags:
+        - metric
+
+
+  Логирование закрытия Content РСЯ в ZSB - Тап по карте:
+    - *Инфо_Content
+    - info: Девайс подключен к инструментам снятия логов или открыта Log-view панель
+    - do: |
+        - Запустить проигрывание MAPKITSIM-4261
+        - Дождаться остановки движения перед светофором
+    - assert: |
+        - Приложение перешло в режим ведения
+        - На остановке появляется баннер ZSB
+    - do: Тап по карте
+    - assert: |
+        - Баннер закрывается
+        - В логах приходит событие: `direct-yan.bb.hide` с параметром `Reason = discard_map_interaction`
+
+    - platforms:
+        - ios
+        - android
+    - testing:
+        - acceptance_navi
+    - tags:
+        - metric
+
+
+  Логирование закрытия Content РСЯ в ZSB - Свайп вниз:
+    - *Инфо_Content
+    - info: Девайс подключен к инструментам снятия логов или открыта Log-view панель
+    - do: |
+        - Запустить проигрывание MAPKITSIM-4261
+        - Дождаться остановки движения перед светофором
+    - assert: |
+        - Приложение перешло в режим ведения
+        - На остановке появляется баннер ZSB
+    - do: Закрыть баннер свайпом вниз
+    - assert: |
+        - Баннер закрывается
+        - В логах приходит событие: `direct-yan.bb.hide` с параметром `Reason = discard_swipe`
+
+    - platforms:
+        - ios
+        - android
+    - testing:
+        - acceptance_navi
+    - tags:
+        - metric
+
+
+  Логирование закрытия Content РСЯ в ZSB - Тап по крестику:
+    - *Инфо_Content
+    - info: Девайс подключен к инструментам снятия логов или открыта Log-view панель
+    - do: |
+        - Запустить проигрывание MAPKITSIM-4261
+        - Дождаться остановки движения перед светофором
+    - assert: |
+        - Приложение перешло в режим ведения
+        - На остановке появляется баннер ZSB
+    - do: Тап по крестику
+    - assert: |
+        - Баннер закрывается
+        - В логах приходит событие: `direct-yan.bb.hide` с параметром `Reason = discard_button`
+
+    - platforms:
+        - ios
+        - android
+    - testing:
+        - acceptance_navi
+    - tags:
+        - metric
+
+
+  Логика закрытия пользователем AppInstall ZSB с рекламой РСЯ - Тап по карте:
+    - *Инфо_Appinstall
+    - do: |
+        - Запустить проигрывание MAPKITSIM-4261
+        - Дождаться остановки движения перед светофором
+    - assert: |
+        - Приложение перешло в режим ведения
+        - На остановке появляется баннер ZSB
+    - do: Тап по карте
+    - assert: |
+        - Рекламный баннер закрывается
+        - Отображается таббар и другие контролы на карте
+
+    - platforms:
+        - ios
+        - android
+    - testing:
+        - acceptance_navi

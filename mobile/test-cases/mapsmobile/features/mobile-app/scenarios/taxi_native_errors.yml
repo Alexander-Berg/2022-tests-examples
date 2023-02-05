@@ -1,0 +1,348 @@
+components: taxi_native_errors
+testing:
+  - regress
+
+specs:
+
+  Отображение ошибки при построении маршрута такси в офлайне:
+    - info: |
+        Местоположение определено
+        Загружен кеш области из блока 'Рядом с вами'
+        Автомобильный маршрут был построен последним
+    - do: Запустить приложение
+    - assert: Отображается главный экран приложения
+    - do: Влючить авиарежим
+    - do: Построить маршрут любым способом
+    - assert: |
+        Отображается экран вариантов маршрута
+        Построен автомобильный офлайн маршрут
+    - do: Тап по табу такси среди табов с типами маршрутов
+    - assert: |
+        Отображается ошибка об отсутствии интернет-соединения
+        Ниже кнопка 'Повторить'
+    - do: Тап на Повторить
+    - assert: Нативная карточка отображается в состоянии загрузки данных после чего снова отображается ошибка
+    - do: Выключить авиа-режим
+    - do: Тап Попробовать еще раз
+    - assert: |
+        Нативная карточка отображается в состоянии загрузки данных после чего строится маршрут
+        Отображается стоимость для каждого тарифа и время поездки
+
+    - platforms:
+        - ios
+        - android
+    - tags:
+        - assessors
+        - use_map
+        - mapkit_ready
+        - newbie
+    - testing:
+        - lite_acceptance_maps
+    - integration_run:
+        - mapkit
+
+  Заказ такси в регионах, где недоступна оплата наличными:
+    - info: |
+        Пользователь авторизован
+        К аккаунту привязана карта
+        Включен эксперимент taxi_native_order_in_taxi_tab - ALWAYS_OPEN
+        ММП в регионе, где недоступна оплата такси наличными (например. Саратовская область, пос. Озинки)
+        Маршрут такси был построен последним
+    - do: Построить произвольный маршрут
+    - assert: |
+        Отображается экран выбора маршрута на табе такси
+        Маршрут такси не построен
+        В превью маршрута отображается ошибка 'Этот способ оплаты недоступен. Пожалуйста, выберите другой'
+        Стоимость поездки не отображается
+    - do: Тап Способы оплаты
+    - assert: |
+        Открывается экран выбора способа оплаты
+    - do: Выбрать любую карту
+    - assert: |
+        Чекбокс напротив выбранной карты активен
+    - do: Тап Готово
+    - assert: |
+        Способ оплаты изменился на выбранный ранее
+        Построен маршрут на такси
+        В превью маршрута отображается информация о примерной стоимости поездки
+        Стоимость поездки указана в рублях '₽'
+        Внизу экрана отображается кнопка 'Заказать такси'
+
+    - tags:
+        - assessors
+        - use_map
+    - platforms:
+        - ios
+        - android
+
+
+  Отображение ошибки Пользователь заблокирован в нативном такси:
+    - info: |
+        Устройство подключено к Чарльзу во внутренней сети (отключить тунель-> настроить Чарльз-> включить туннель)
+        В дебаг-панели:
+          Webview -> Taxi webview base url -> testing
+          Environment -> Passport Environment ->testing
+          Environment -> Mobmaps Proxy host -> testing
+          Environment -> PaymentSDK Environment ->testing
+        Для экспериментов taxi_native_order_in_taxi_tab и taxi_open_webview установлено значение -> web_view_always_open
+        Авторизоваться аккаунтом тестового паспорта yndx-kripp-le-ami606 gen2752
+    - do: Построить произвольный маршрут на такси
+    - assert: В сниффере отображается ручка https://mobmaps-proxy-api-ext.c.maps.yandex.net/v1/taxi/orders/estimate
+    - do: Установить rewrite правило с помощью https://wiki.yandex-team.ru/maps/mobile/testing/shablon/ так, чтобы в ручку возвращался код 403
+    - assert: Подмена в сниффере включена
+    - do: Закрыть маршрут и построить новый маршрут
+    - assert: В табе такси отображается ошибка с текстом о блокировке пользователя
+
+    - platforms:
+        - ios
+        - android
+    - testing:
+        - acceptance_maps
+    - tags:
+        - advertisement
+
+
+  Отображение ошибки У пользователя есть задолженность в нативном такси:
+    - info: |
+        Устройство подключено к Чарльзу во внутренней сети (отключить тунель-> настроить Чарльз-> включить туннель)
+        В дебаг-панели:
+          Webview -> Taxi webview base url -> testing
+          Environment -> Passport Environment ->testing
+          Environment -> Mobmaps Proxy host -> testing
+          Environment -> PaymentSDK Environment ->testing
+        Для экспериментов taxi_native_order_in_taxi_tab и taxi_open_webview установлено значение -> web_view_always_open
+        Авторизоваться аккаунтом тестового паспорта yndx-kripp-le-ami606 gen2752
+    - do: Построить произвольный маршрут на такси
+    - assert: Построен маршрут на такси
+    - do: Тап Заказать
+    - assert:
+        В сниффере отображается ручка https://mobmaps-proxy-api-ext.c.maps.yandex.net/v1/taxi/orders/draft
+        Открыввается вебвью с поиском машины
+    - do: Отменить поиск авто и вернуться на главный экран
+    - do: |
+        Установить rewrite правило с помощью https://wiki.yandex-team.ru/maps/mobile/testing/shablon/ так, чтобы:
+        в ручку возвращался код 406 Not Acceptable,
+        а в Body приходил текст:
+          {
+          "error": {
+          "code": "DEBT_USER",
+          "text": "У вас долг..."
+          }
+          }
+    - assert: Подмена в сниффере включена
+    - do: Тап на Заказать
+    - assert: В табе такси отображается ошибка с текстом "Оплата только наличными"
+
+    - platforms:
+        - ios
+        - android
+    - testing:
+        - acceptance_maps
+    - tags:
+        - advertisement
+        - newbie
+
+
+  Отображение ошибки 'Такси не работает' в карточке с пином нативного такси:
+    - info: |
+        Устройство подключено к Чарльзу во внутренней сети (отключить тунель-> настроить Чарльз-> включить туннель)
+        В дебаг-панели установить:
+          `Webview -> Taxi webview base url -> testing`
+          `Environment -> Passport Environment -> testing`
+          `Environment -> Mobmaps Proxy host -> testing`
+          `Environment -> PaymentSDK Environment -> testing`
+        Авторизоваться аккаунтом тестового паспорта `yndx-kripp-le-ami606 gen2752`
+        Открыт главный экран приложения
+    - do: |
+        Использовать интент [collapsed-image](https://jing.yandex-team.ru/files/linakolpakova/такси.png){title=QR-код}
+
+        `yandexmaps://add_exp?taxi_tab_on_main_screen&taxi_native_order_in_taxi_tab=always_open`
+    - do: Перезапустить приложение
+    - do: Тап на таб Такси
+    - assert: В сниффере отображается ручка `https://mobmaps-proxy-api-ext.c.maps.yandex.net/v1/taxi/orders/estimate`
+    - do: Установить rewrite правило с помощью `https://wiki.yandex-team.ru/maps/mobile/testing/shablon/` так, чтобы в ручку возвращался код 410
+    - assert: Подмена в сниффере включена
+    - do: Подвинуть жестом карту
+    - assert: В шторе такси отображается ошибка с текстом "Такси не работает" и кнопкой "Понятно"
+    - do: Тап на "Понятно"
+    - assert: Штора такси закрылась
+
+    - platforms:
+        - ios
+        - android
+
+
+  Отображение ошибки 'Такси не работает' в карточке с тарифами:
+    - info: |
+        Устройство подключено к Чарльзу во внутренней сети (отключить тунель-> настроить Чарльз-> включить туннель)
+        В дебаг-панели установить:
+          `Webview -> Taxi webview base url -> testing`
+          `Environment -> Passport Environment -> testing`
+          `Environment -> Mobmaps Proxy host -> testing`
+          `Environment -> PaymentSDK Environment -> testing`
+        Авторизоваться аккаунтом тестового паспорта `yndx-kripp-le-ami606 gen2752`
+        Открыт главный экран приложения
+    - do: |
+        Использовать интент [collapsed-image](https://jing.yandex-team.ru/files/gringauz/frame.png){title=QR-код}
+
+        `yandexmaps://add_exp?taxi_native_order_in_taxi_tab=always_open`
+    - do: Перезапустить приложение
+    - do: Построить маршрут на такси
+    - assert: В сниффере отображается ручка `https://mobmaps-proxy-api-ext.c.maps.yandex.net/v1/taxi/orders/estimate`
+    - do: Установить rewrite правило с помощью `https://wiki.yandex-team.ru/maps/mobile/testing/shablon/` так, чтобы в ручку возвращался код 410
+    - assert: Подмена в сниффере включена
+    - do: Поменять конечную точку маршрута
+    - assert: В шторе такси отображается ошибка с текстом "Такси не работает" без кнопок
+
+    - platforms:
+        - ios
+        - android
+
+
+  Отображение неизвестной ошибки при неработающей ручке v1/taxi/startup:
+    - info: |
+        Устройство подключено к Чарльзу во внутренней сети (отключить тунель-> настроить Чарльз-> включить туннель)
+        В дебаг-панели установить:
+          `Webview -> Taxi webview base url -> testing`
+          `Environment -> Passport Environment -> testing`
+          `Environment -> Mobmaps Proxy host -> testing`
+          `Environment -> PaymentSDK Environment -> testing`
+        Пользователь не авторизован
+        Открыт главный экран приложения
+    - do: |
+        Использовать интент [collapsed-image](https://jing.yandex-team.ru/files/gringauz/frame.png){title=QR-код}
+
+        `yandexmaps://add_exp?taxi_native_order_in_taxi_tab=always_open`
+    - do: Перезапустить приложение
+    - do: Построить маршрут на такси
+    - assert: Отображаются тарифы такси и кнопка авторизации
+    - do: Установить rewrite правило с помощью `https://wiki.yandex-team.ru/maps/mobile/testing/shablon/` в ручку `https://mobmaps-proxy-api-ext.c.maps.yandex.net/v1/taxi/startup` так, чтобы в ручку возвращался код 403
+    - assert: Подмена в сниффере включена
+    - do: Тап на кнопку авторизации
+    - do: Авторизоваться аккаунтом тестового паспорта `yndx-kripp-le-ami606 gen2752`
+    - assert: Отображается ошибка с кнопкой повтора
+    - do: Выключить rewrite правило в сниффере
+    - do: Тап на кнопку повтора
+    - assert: Загрузились тарифы такси, показан выбранный способ оплаты и кнопка "Заказать"
+
+    - platforms:
+        - ios
+        - android
+
+
+  Отображение ошибки 'Такси не работает' при неработающей ручке v1/taxi/startup:
+    - info: |
+        Устройство подключено к Чарльзу во внутренней сети (отключить тунель-> настроить Чарльз-> включить туннель)
+        В дебаг-панели установить:
+          `Webview -> Taxi webview base url -> testing`
+          `Environment -> Passport Environment -> testing`
+          `Environment -> Mobmaps Proxy host -> testing`
+          `Environment -> PaymentSDK Environment -> testing`
+        Пользователь не авторизован
+        Открыт главный экран приложения
+    - do: |
+        Использовать интент [collapsed-image](https://jing.yandex-team.ru/files/gringauz/frame.png){title=QR-код}
+
+        `yandexmaps://add_exp?taxi_native_order_in_taxi_tab=always_open`
+    - do: Перезапустить приложение
+    - do: Построить маршрут на такси
+    - assert: Отображаются тарифы такси и кнопка авторизации
+    - do: Установить rewrite правило с помощью `https://wiki.yandex-team.ru/maps/mobile/testing/shablon/` в ручку `https://mobmaps-proxy-api-ext.c.maps.yandex.net/v1/taxi/startup` так, чтобы в ручку возвращался код 410
+    - assert: Подмена в сниффере включена
+    - do: Тап на кнопку авторизации
+    - do: Авторизоваться аккаунтом тестового паспорта `yndx-kripp-le-ami606 gen2752`
+    - assert: Отображается ошибка с текстом "Такси не работает" без кнопок
+
+    - platforms:
+        - ios
+        - android
+
+
+  Отображение ошибки 'Такси не работает' при неработающей ручке v1/taxi/orders/draft:
+    - info: |
+        Устройство подключено к Чарльзу во внутренней сети (отключить тунель-> настроить Чарльз-> включить туннель)
+        В дебаг-панели установить:
+          `Webview -> Taxi webview base url -> testing`
+          `Environment -> Passport Environment ->testing`
+          `Environment -> Mobmaps Proxy host -> testing`
+          `Environment -> PaymentSDK Environment ->testing`
+        Авторизоваться аккаунтом тестового паспорта `yndx-kripp-le-ami606 gen2752`
+        Открыт главный экран приложения
+    - do: |
+        Использовать интент [collapsed-image](https://jing.yandex-team.ru/files/gringauz/frame.png){title=QR-код}
+
+        `yandexmaps://add_exp?taxi_native_order_in_taxi_tab=always_open`
+    - do: Перезапустить приложение
+    - do: Построить маршрут на такси
+    - do: Установить rewrite правило с помощью `https://wiki.yandex-team.ru/maps/mobile/testing/shablon/` в ручку `https://mobmaps-proxy-api-ext.c.maps.yandex.net/v1/orders/draft` так, чтобы в ручку возвращался код 410
+    - assert: Подмена в сниффере включена
+    - do: Тап на "Заказать"
+    - assert: В шторе такси отображается ошибка с текстом "Такси не работает" без кнопок
+
+    - platforms:
+        - ios
+        - android
+
+
+  Отображение ошибки о том, что такси не работает в данном регионе:
+    - info: Открыт главный экран приложения
+    - do: |
+        Использовать интент [collapsed-image](https://jing.yandex-team.ru/files/linakolpakova/такси.png){title=QR-код}
+
+        `yandexmaps://add_exp?taxi_tab_on_main_screen&taxi_native_order_in_taxi_tab=always_open`
+    - do: Перезапустить приложение
+    - do: Тап на таб Такси
+    - do: Установить пин в океан
+    - assert: |
+        В пине отображается кирпич
+        Отображается ошибка с текстом "Сюда машину не заказать" и кнопкой "Изменить маршрут"
+    - do: Тап на кнопку "Изменить маршрут"
+    - assert: Открылся экран выбора точки
+    - do: Выбрать точку в пределах Москвы любым способом
+    - assert: |
+        Пин такси указывает в выбранную точку
+        В поле "Откуда" отображается адрес этой точки
+        В пине отображается либо кружок, либо время в минутах
+
+    - platforms:
+        - ios
+        - android
+    - tags:
+        - assessors
+
+
+  Отображение пина такси, если такси не доступно в данном регионе:
+    - info: |
+        Открыт главный экран приложения
+        Девайс в вертикальной ориентации
+    - do: |
+        Использовать интент [collapsed-image](https://jing.yandex-team.ru/files/linakolpakova/такси.png){title=QR-код}
+
+        `yandexmaps://add_exp?taxi_tab_on_main_screen&taxi_native_order_in_taxi_tab=always_open`
+    - do: Перезапустить приложение
+    - do: Тап на таб Такси
+    - do: Установить пин в океан
+    - assert: |
+        В пине отображается кирпич
+        Отображается ошибка с текстом "Сюда машину не заказать" и кнопкой "Изменить маршрут"
+    - do: Тап на кнопку "Изменить маршрут"
+    - assert: Открылся экран выбора точки
+    - do: Тап Назад
+    - assert: |
+        Пин такси указывает в ранее установленную точку
+        В пине отображается кирпич
+        Отображается ошибка с текстом "Сюда машину не заказать" и кнопкой "Изменить маршрут"
+    - do: Сменить ориентацию девайса на горизонтальную
+    - assert: |
+        Пин такси указывает в ранее установленную точку
+        В пине отображается кирпич
+        Отображается ошибка с текстом "Сюда машину не заказать" и кнопкой "Изменить маршрут"
+
+    - platforms:
+        - ios
+        - android
+    - tags:
+        - assessors
+
+##добавить тк на получение ошибки о долге, блокировке, Не поддерживается такой способ оплаты,
+##Стоимость могла измениться, Вы уже заказали такси, Не удалось построить маршрут

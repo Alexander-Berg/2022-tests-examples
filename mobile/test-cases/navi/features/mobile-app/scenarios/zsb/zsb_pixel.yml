@@ -1,0 +1,223 @@
+components: zsb_pixel
+testing:
+  - regress
+
+specs-integration:
+  aliases:
+    - &Инфо_аудит
+      - info: |
+          - Dev. Set. -> Misc -> Debug config enable - On
+          - Использовать интенты:
+            [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download-2.b60e70b.png){title=QR-код}
+
+            `yandexnavi://reset_exp`
+            [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download.7ed8e87.png){title=QR-код}
+
+            `yandexnavi://set_ad_page_id?page_id=null`
+            [collapsed-image](https://jing.yandex-team.ru/files/vikelvar/testing_zsb_pixel_audit.png){title=QR-код}
+
+            `yandexnavi://set_ad_page_id?page_type=zero_speed&page_id=navi_zero_speed_banner_10/testing_zsb_pixel_audit`
+            [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download-1.ce82061.png){title=QR-код}
+
+            `yandexnavi://add_exp?navi_feature_zsb_statuses_logging=enabled&navi_feature_day_night_fast_switch=enabled&navi_ad_product_cooldown_zero_speed_banner=10&navi_ads_logging_zsb_closing_errors=enabled`
+          - Перезапустить приложение
+          - Девайс подключен к инструментам снятия логов или открыта Log-view панель
+    - &Инфо_е2е
+      - info: |
+          - Dev. Set. -> Misc -> Debug config enable - On
+          - Использовать интенты:
+            [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download-2.b60e70b.png){title=QR-код}
+
+            `yandexnavi://reset_exp`
+            [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download.7ed8e87.png){title=QR-код}
+
+            `yandexnavi://set_ad_page_id?page_id=null`
+            [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download-3.7a72e0a.png){title=QR-код}
+
+            `yandexnavi://set_ad_page_id?page_type=zero_speed&page_id=navi_zero_speed_banner_7/testing_e2e_zsb_audit`
+            [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download-1.ce82061.png){title=QR-код}
+
+            `yandexnavi://add_exp?navi_feature_zsb_statuses_logging=enabled&navi_feature_day_night_fast_switch=enabled&navi_ad_product_cooldown_zero_speed_banner=10&navi_ads_logging_zsb_closing_errors=enabled`
+          - Перезапустить приложение
+          - Девайс подключен к инструментам снятия логов или открыта Log-view панель
+
+specs:
+  Логирование двух url для ZSB-Pixel на iOS:
+    - *Инфо_аудит
+    - do: |
+        - Запустить проигрывание MAPKITSIM-4261
+        - Дождаться остановки движения перед светофором
+    - assert: |
+        - Приложение перешло в режим ведения
+        - На остановке появляется баннер ZSB
+    - do: Тап по баннеру
+    - assert: Баннер раскрывается
+    - do: Закрыть баннер и остановить симуляцию движения
+    - assert: Баннер скрылся, симуляция движения остановлена
+    - do: Найти `reportLoad` в логах
+    - assert: |
+        Отображается одно событие, которое имеет url `yandex::maps::navikit::ads:: <info>: AdPixelLogger: : Successful reportLoad with url: https://verify.yandex.ru/verify?platformid=4&a.si=123&a.te=123&a.aap=123&a.A=ev&a.evn=load`
+    - do: Найти `reportImpression` в логах
+    - assert: |
+        - Отображается два события имеющих url
+        - Например `std::ndk1::enable_if: AdPixelLoggerImpl reportImpressionrequest failed with status: 404 url: https://ad.doubleclick.net/123123123123?ord=dda1b373b9d51eb570397383173e9012`
+        - `yandex::maps::navikit::ads::: AdPixelLogger: : Error in reportImpression with url: https://ad.doubleclick.net/123123123123?ord=dda1b373b9d51eb570397383173e9012`
+    - do: Найти `reportMRC50` в логах
+    - assert: |
+        Приходит событие содержащее url `reportMRC50 with url: https://verify.yandex.ru/verify?platformid=4&a.si=123&a.te=123&a.aap=123&a.A=ev&a.evn=MRCViewable`
+    - do: Найти `reportMRC100` в логах
+    - assert: |
+        Приходит событие содержащее url: `Successful reportMRC100 with url: https://verify.yandex.ru/verify?platformid=4&a.si=123&a.te=123&a.aap=123&a.A=ev&a.evn=MRC100Viewable`
+    - do: Найти `reportClick` в логах
+    - assert: |
+        Приходит событие содержащее url: `AdPixelLogger: : Successful reportClick with url: https://verify.yandex.ru/verify?platformid=4&a.si=123&a.te=123&a.aap=123&a.A=cl`
+
+    - platforms:
+        - ios
+    - testing:
+        - acceptance_navi
+    - tags:
+        - metric
+
+
+  Логирование двух url для ZSB-Pixel на android:
+    - *Инфо_аудит
+    - do: |
+        - Запустить проигрывание MAPKITSIM-4261
+        - Дождаться остановки движения перед светофором
+    - assert: |
+        - Приложение перешло в режим ведения
+        - На остановке появляется баннер ZSB
+    - do: Тап по баннеру
+    - assert: Баннер раскрывается
+    - do: Найти `reportLoad` в логах
+    - assert: |
+        Отображается одно событие, которое имеет url `yandex::maps::navikit::ads:: <info>: AdPixelLogger: : Successful reportLoad with url: https://verify.yandex.ru/verify?platformid=4&a.si=123&a.te=123&a.aap=123&a.A=ev&a.evn=load`
+    - do: Найти `reportImpression` в логах
+    - assert: |
+        - Отображается два события имеющих url
+        - Например: `std::ndk1::enable_if: AdPixelLoggerImpl reportImpressionrequest failed with status: 404 url: https://ad.doubleclick.net/123123123123?ord=dda1b373b9d51eb570397383173e9012`
+        - `yandex::maps::navikit::ads::: AdPixelLogger: : Error in reportImpression with url: https://ad.doubleclick.net/123123123123?ord=dda1b373b9d51eb570397383173e9012`
+    - do: Найти `reportMRC50` в логах
+    - assert: |
+        Отображается событие содержащее url: `reportMRC50 with url: https://verify.yandex.ru/verify?platformid=4&a.si=123&a.te=123&a.aap=123&a.A=ev&a.evn=MRCViewable`
+    - do: Найти `reportMRC100` в логах
+    - assert: |
+        Отображается событие содержащее url: `Successful reportMRC100 with url: https://verify.yandex.ru/verify?platformid=4&a.si=123&a.te=123&a.aap=123&a.A=ev&a.evn=MRC100Viewable`
+    - do: Найти `reportClick` в логах
+    - assert: |
+        Отображается событие содержащее url: `AdPixelLogger: : Successful reportClick with url: https://verify.yandex.ru/verify?platformid=4&a.si=123&a.te=123&a.aap=123&a.A=cl`
+
+    - platforms:
+        - android
+    - testing:
+        - acceptance_navi
+    - tags:
+        - metric
+
+
+  Логирование MRC50 в ZSB Pixel:
+    - *Инфо_е2е
+    - do: |
+        - Запустить проигрывание MAPKITSIM-4261
+        - Дождаться остановки движения перед светофором
+    - assert: |
+        - Приложение перешло в режим ведения
+        - На остановке появляется баннер ZSB
+        - После показа баннера в логах должны быть 2 сообщения с подстрокой  **reportMRC50** с интервалом 1 секунда:
+        - `Start timer for reportMRC50  with id: ...`
+        - `Successful reportMRC50 with url: ...`
+
+    - platforms:
+        - ios
+        - android
+    - testing:
+        - acceptance_navi
+    - tags:
+        - metric
+
+
+  Новое дополнительное логирование ZSB:
+    - *Инфо_е2е
+    - do: |
+        - Запустить проигрывание MAPKITSIM-4261
+        - Не производить никаких действий с картой и контролами
+    - assert: |
+        - Отправляется запрос на сервер за рекламой, на успешное завершение которого приходит лог:
+        - `RequestHandler` c url-запросом `uri=https://verify.yandex.ru/verify?platformid=4&a.si=7&a.te=7852&a.aap=2975&a.A=ev&a.evn=load`
+    - do: |
+        - Не производить никаких действий с картой и контролами
+        - Дождаться остановки движения перед светофором
+    - assert: |
+        - На остановке появляется баннер ZSB
+        - В логи приходят события:
+        - Показ: `RequestHandler` c url-запросом `uri=https://verify.yandex.ru/verify?platformid=4&a.si=7&a.te=7852&a.aap=2975&a.A=im`
+        - Показ 50% креатива: `RequestHandler` c url-запросом `uri=https://verify.yandex.ru/verify?platformid=4&a.si=7&a.te=7852&a.aap=2975&a.A=ev&a.evn=MRCViewable`
+        - Показ 100% креатива: `RequestHandler` c url-запросом `uri=https://verify.yandex.ru/verify?platformid=4&a.si=7&a.te=7852&a.aap=2975&a.A=ev&a.evn=MRC100Viewable`
+    - do: Тап на баннер
+    - assert: |
+        В логи приходит событие: `RequestHandler` c url-запросом `uri=https://verify.yandex.ru/verify?platformid=4&a.si=7&a.te=7852&a.aap=2975&a.A=cl`
+
+    - platforms:
+        - ios
+        - android
+    - testing:
+        - acceptance_navi
+    - tags:
+        - metric
+
+
+  Новое дополнительное логирование ZSB - отсутствующий интернет:
+    - *Инфо_е2е
+    - do: |
+        - Запустить проигрывание MAPKITSIM-4261
+        - Не производить никаких действий с картой и контролами
+    - assert: |
+        - Отправляется запрос на сервер за рекламой, на успешное завершение которого приходит лог:
+        - `RequestHandler` c url-запросом `uri=https://verify.yandex.ru/verify?platformid=4&a.si=7&a.te=7852&a.aap=2975&a.A=ev&a.evn=load`
+    - do: |
+        - Не производить никаких действий с картой и контролами
+        - Дождаться остановки движения перед светофором
+    - assert: |
+        - На остановке появляется баннер ZSB
+        - В логи приходят события:
+        - Показ: `RequestHandler` c url-запросом `uri=https://verify.yandex.ru/verify?platformid=4&a.si=7&a.te=7852&a.aap=2975&a.A=im`
+        - Показ 50% креатива: `RequestHandler` c url-запросом `uri=https://verify.yandex.ru/verify?platformid=4&a.si=7&a.te=7852&a.aap=2975&a.A=ev&a.evn=MRCViewable`
+        - Показ 100% креатива: `RequestHandler` c url-запросом `uri=https://verify.yandex.ru/verify?platformid=4&a.si=7&a.te=7852&a.aap=2975&a.A=ev&a.evn=MRC100Viewable`
+    - do: |
+        - Отключить интернет на устройстве или включить авиарежим
+        - Тап на баннер
+    - assert: |
+        В логи приходит три события:
+        - `RequestHandler` c url-запросом `uri=https://verify.yandex.ru/verify?platformid=4&a.si=7&a.te=7852&a.aap=2975&a.A=cl`
+        - std::__ndk1::enable_if: Couldn't fetch "https://verify.yandex.ru/verify?platformid=4&a.si=7&a.te=7852&a.aap=2975&a.A=cl" because of: Couldn't connect
+
+    - platforms:
+        - ios
+        - android
+    - testing:
+        - acceptance_navi
+    - tags:
+        - metric
+
+
+  Логирование тапа по ZSB Pixel баннеру:
+    - *Инфо_е2е
+    - do: |
+        - Запустить проигрывание MAPKITSIM-4261
+        - Дождаться остановки движения перед светофором
+    - assert: |
+        - Приложение перешло в режим ведения
+        - На остановке появляется баннер ZSB
+    - do: Тап по баннеру ZSB
+    - assert: |
+        - В логи не приходят события `geoadv.bb.pin.tap` и `mapkit.search.logger.billboard.click` с параметром `reason: user_action_tap`
+        - Отображается одно событие, которое имеет url `yandex::maps::navikit::ads:: <info>: AdPixelLogger: : Successful reportLoad with url: https://verify.yandex.ru/verify?platformid=4&a.si=123&a.te=123&a.aap=123&a.A=ev&a.evn=load`
+
+    - platforms:
+        - ios
+        - android
+    - testing:
+        - acceptance_navi
+    - tags:
+        - metric

@@ -1,0 +1,120 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <title>map.addon.balloon</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <!-- YUI -->
+    <script type="text/javascript" src="../../../../test/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../../../test/yui3combo/combo.css"/>
+    <script type="text/javascript" src="../../../../test/run-test-case.js"></script>
+    <!-- Code -->
+    <script type="text/javascript">
+        initAPI({
+            lang: "ru-RU",
+            load: "Map,map.addon.balloon,system.browser,util.css",
+            mode: "debug"
+        });
+    </script>
+    <script type="text/javascript" src="../../../../test/util/event-eye.js"></script>
+</head>
+
+<body class="yui3-skin-sam"><div id="map" style="width: 400px; height: 400px;"></div></body>
+
+<script type="text/javascript">
+    function getTestCase (Y) {
+        var testFlow;
+
+        return {
+            name: "map.addon.balloon",
+            debug: false,
+
+            setUp: function () {
+                geoMap = new ymaps.Map('map', {
+                    center: [0, 0],
+                    zoom: 5,
+                    type: "yandex#map",
+                    behaviors: ['drag', 'scrollZoom']
+                });
+
+                testFlow = this;
+            },
+
+            tearDown: function () {
+                geoMap.destroy();
+            },
+
+            testOpenEvent: function () {
+                geoMap.events.add('balloonopen', function (e) {
+                    testFlow.resume(function () {
+                        Y.assert(
+                                e.get('type') == 'balloonopen' &&
+                                e.get('currentTarget') == geoMap &&
+                                e.get('target') == geoMap
+                        );
+                    });
+                });
+                geoMap.balloon.open();
+
+                testFlow.wait();
+            },
+
+            testCloseEvent: function () {
+                geoMap.balloon.open().then(function () {
+                    geoMap.events.add('balloonclose', function (e) {
+                        testFlow.resume(function () {
+                            Y.assert(
+                                    e.get('type') == 'balloonclose' &&
+                                    e.get('currentTarget') == geoMap &&
+                                    e.get('target') == geoMap
+                            );
+                        });
+                    }, testFlow);
+
+                    geoMap.balloon.close();
+                    testFlow.wait();
+                });
+
+                testFlow.wait();
+            },
+
+            // MAPSAPI-3420
+            testMAPSAPI3420: function () {
+                geoMap.balloon.open([0, 0]).then(function () {
+                    testFlow.resume(function () {
+                        geoMap.balloon.close().then(function () {
+                            testFlow.resume(function () {
+                                geoMap.events.add('balloonopen', function (e) {
+                                    testFlow.resume(function () {
+                                        Y.assert(
+                                            e.get('type') == 'balloonopen' &&
+                                            e.get('currentTarget') == geoMap &&
+                                            e.get('target') == geoMap
+                                        );
+                                    });
+                                });
+                                geoMap.balloon.open([0, 0]);
+
+                                testFlow.wait();
+                            });
+                        });
+                        testFlow.wait();
+                    });
+                });
+
+                testFlow.wait();
+            },
+
+            testMapDestroy: function () {
+                geoMap.balloon.open([0, 0]);
+                geoMap.destroy();
+                Y.assert(
+                    !document.getElementsByClassName('.' + ymaps.util.css.addPrefix('balloon-overlay')).length,
+                    'Элемент .balloon-overlay не удалился'
+                );
+            }
+        }
+    }
+    ymaps.ready(runTestCase);
+</script>
+</html>

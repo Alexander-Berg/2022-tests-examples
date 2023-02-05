@@ -1,0 +1,5 @@
+#!/bin/bash
+psql \
+    -c "DROP DATABASE IF EXISTS \"$POSTGRES_DATABASE\"" \
+    -c "CREATE DATABASE \"$POSTGRES_DATABASE\"" \
+    -U $POSTGRES_USER

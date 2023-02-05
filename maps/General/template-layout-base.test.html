@@ -1,0 +1,120 @@
+<!doctype html>
+<html>
+<head>
+    <title>Template-layout</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <!-- YUI -->
+    <script type="text/javascript" src="../../../../../test/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../../../../test/yui3combo/combo.css"/>
+    <script type="text/javascript" src="http://yandex.st/jquery/1.6.4/jquery.min.js"></script>
+    <script type="text/javascript" src="../../../../../test/run-test-case.js"></script>
+    <!-- Code -->
+    <script type="text/javascript">
+        initAPI({
+            lang: "ru-RU",
+            load: "package.full",
+            mode: "debug"
+        });
+    </script>
+</head>
+
+<body class="yui3-skin-sam"></body>
+<div id="map" style='width:600px;height:400px'>
+
+</div>
+<style>
+    html, html body {
+        width: 100%;
+        height: 100%;
+    }
+
+</style>
+<script type="text/javascript">
+
+    function getTestCase (Y) {
+
+        var map = new ymaps.Map('map', {
+            center: [55.777153093859496, 37.639130078124964],
+            zoom: 10
+        });
+
+        return {
+            name: "templateLayoutBase",
+            testChangeDataOnClear: function () {
+                // Изменение данных в clear не должно инициализировать собственный вызов.
+                var i = 0;
+                var button = new ymaps.control.Button({
+                    data: {
+                        content: 'Красная кнопка',
+                        title: 'Нажмите на кнопку'
+                    }
+                }, {
+                    layout: ymaps.templateLayoutFactory.createClass(
+                            // Если кнопка не нажата, к ней применится css-стиль 'myButton'
+                            // Если кнопка нажата, к ней применятся css-стили 'myButton' и 'myButtonSelected'.
+                            "<div class='myButton [if state.selected]myButtonSelected[endif]' title='$[data.title]'>" +
+                            "$[data.content]" +
+                            "</div>", {
+                                clear: function () {
+                                    ++i;
+                                    button.data.set('sadas', '123');
+                                    this.constructor.superclass.clear.call(this);
+                                }
+                            }
+                    )
+                });
+                map.controls.add(button);
+
+                // Форсируем создание макета.
+                button.getLayout();
+
+                // Тоже самое, что и button.rebuild();
+                button.data.set('content', '123');
+
+                Y.assert(i == 1, "Метод \"clear\" проинициализировал собственный рекурсивный вызов. (" + i + ")");
+            },
+
+            testChangeDataOnBuild: function () {
+                // Изменение данных в clear не должно инициализировать собственный вызов.
+                var result = [];
+                var button = new ymaps.control.Button({
+                    data: {
+                        content: 'Красная кнопка',
+                        title: 'Нажмите на кнопку'
+                    }
+                }, {
+                    layout: ymaps.templateLayoutFactory.createClass(
+                            // Если кнопка не нажата, к ней применится css-стиль 'myButton'
+                            // Если кнопка нажата, к ней применятся css-стили 'myButton' и 'myButtonSelected'.
+                            "<div class='myButton [if state.selected]myButtonSelected[endif]' title='$[data.title]'>" +
+                            "$[data.content]" +
+                            "</div>", {
+                                build: function () {
+                                    result.push('build');
+                                    button.data.set('title', 'zzzzz');
+                                    this.constructor.superclass.build.call(this);
+                                },
+
+                                clear: function () {
+                                    result.push('clear');
+                                    this.constructor.superclass.clear.call(this);
+                                }
+                            }
+                    )
+                });
+                map.controls.add(button);
+
+                // Форсируем создание макета.
+                button.getLayout();
+
+                Y.assert(result.join(' ') == 'build clear build',
+                        "Метод \"build\" проинициализировал собственный рекурсивный вызов. (" + i + ")");
+            }
+        }
+    }
+    ymaps.ready(runTestCase);
+
+</script>
+
+</body>
+</html>

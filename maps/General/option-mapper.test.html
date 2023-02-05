@@ -1,0 +1,83 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <title>option.Mapper</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <!-- YUI -->
+    <script type="text/javascript" src="../../../test/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../../test/yui3combo/combo.css"/>
+    <script type="text/javascript" src="../../../test/run-test-case.js"></script>
+    <!-- Code -->
+    <script type="text/javascript">
+        initAPI({
+            lang: "ru-RU",
+            load: "option.Mapper",
+            mode: "debug",
+            ns: "ym"
+        });
+    </script>
+</head>
+
+<body class="yui3-skin-sam"></body>
+
+<script type="text/javascript">
+    function getTestCase (Y) {
+        return {
+            name: "option.Mapper",
+            testOptionMapper: function() {
+                var mapper = new ym.option.Mapper('prefixed'),
+                    eventCounter = 0;
+
+                mapper.events.add('rulechange', function () { eventCounter++; });
+                Y.assert(mapper.resolve('contentLayout', 'balloon')[0] == 'balloonContentLayout' && eventCounter == 0,
+                         'Неправильно отработало задание правила по умолчанию');
+
+                mapper.setRule({
+                    name: ['hint'],
+                    rule: 'plain'
+                });
+                Y.assert(mapper.resolve('contentLayout', 'hint')[0] == 'contentLayout' && eventCounter == 1,
+                         'Неправильно отработало задание правила на имя');
+
+                mapper.setRule({
+                    key: ['contentLayout'],
+                    rule: function (key, name) { return name + 'CL' }
+                });
+                Y.assert(mapper.resolve('contentLayout', 'balloon')[0] == 'balloonCL' &&
+                         mapper.resolve('contentLayout', 'hint')[0] == 'contentLayout' &&
+                         eventCounter == 2,
+                         'Неправильно отработало задание правила на ключ');
+
+                mapper.setRule({
+                    key: 'contentLayout',
+                    name: ['hint'],
+                    rule: 'prefixed'
+                });
+                Y.assert(mapper.resolve('contentLayout', 'balloon')[0] == 'balloonCL' &&
+                         mapper.resolve('contentLayout', 'hint')[0] == 'hintContentLayout' &&
+                         eventCounter == 3,
+                         'Неправильно отработало задание правила на имя и ключ');
+
+                mapper.unsetRule({ key: 'contentLayout' }).unsetRule({ name: 'hint' }).unsetRule({
+                    key: ['contentLayout'],
+                    name: 'hint'
+                });
+                Y.assert(mapper.resolve('contentLayout', 'balloon')[0] == 'balloonContentLayout' &&
+                         mapper.resolve('contentLayout', 'hint')[0] == 'hintContentLayout' &&
+                         eventCounter == 6,
+                         'Неправильно отработало удаление правила');
+                
+                mapper.setRule({
+                    key: 'position',
+                    name: ['trafficControl'],
+                    rule: ['prefixed', 'plain']
+                });
+                var result = mapper.resolve('position', 'trafficControl');
+                Y.assert(result[0] == 'trafficControlPosition' && result[1] == 'position', "Неверно сработал маппинг, заданный массивом строк.");
+            }
+        }
+    }
+    ym.ready(runTestCase);
+</script>
+</html>

@@ -1,0 +1,77 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <title>Map</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <!-- YUI -->
+    <script type="text/javascript" src="../../../test/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../../test/yui3combo/combo.css" />
+    <script type="text/javascript" src="../../../test/run-test-case.js"></script>
+    <!-- Code -->
+    <script type="text/javascript">
+        initAPI({
+            lang: "ru-RU",
+            mode: "debug"
+        });
+    </script>
+    <style type="text/css">
+        #container { width: 400px; height: 300px; background: #ccc; }
+    </style>
+</head>
+
+<body class="yui3-skin-sam">
+    <div id="container" height='100px' width='100px'></div>
+</body>
+
+<script type="text/javascript">
+
+    function getTestCase(Y) {
+        return {
+            name: "Map",
+            debug: true,
+
+            testZoomRangeOrder: function() {
+                var geoMap = new ymaps.Map('container', {
+                        center: [55.751945, 37.610061],
+                        type: "yandex#map",
+                        zoom: 17
+                    }),
+                    layer = new ymaps.Layer(function() {return null;}, { tileTransparent: true });
+                geoMap.controls.add('zoomControl');
+                layer.getZoomRange = function () {
+                    var promise = new ymaps.util.Promise(),
+                        timeout,
+                        mapType = geoMap.getType();
+                    function resolvePromise() {
+                        promise.resolve([0, 5]);
+                    }
+                    if (mapType == 'yandex#publicMapHybrid') {
+                        timeout = 1000;
+                    } else {
+                        timeout = 0;
+                    }
+                    window.setTimeout(resolvePromise, timeout);
+                    return promise;
+                };
+                geoMap.layers.add(layer);
+
+
+                geoMap.setType("yandex#map");
+
+                geoMap.setType("yandex#publicMap");
+                geoMap.zoomRange.get().then(function(zoomRange) {
+                    Y.assert(geoMap.getZoom() == 17, "Неправильно выставился зум карты");
+                });
+
+                window.map = geoMap;
+            }
+        }
+    }
+
+    ymaps.ready(function () {
+        runTestCase();
+    });
+
+</script>
+</html>

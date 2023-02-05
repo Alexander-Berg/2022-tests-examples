@@ -1,0 +1,184 @@
+components: geoad_webview
+testing:
+  - regress
+
+specs-integration:
+  aliases:
+    - &ИнфоGeoAdWebView
+      - info: |
+          - Dev. Set. -> Misc -> Debug config enable - On
+          - Использовать интенты:
+            [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download-2.b60e70b.png){title=QR-код}
+
+            `yandexnavi://reset_exp`
+            [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download.7ed8e87.png){title=QR-код}
+
+            `yandexnavi://set_ad_page_id?page_id=null`
+            [collapsed-image](https://jing.yandex-team.ru/files/vikelvar/testing_overview_resolve_webview.png){title=QR-код}
+
+            `yandexnavi://set_ad_page_id?page_type=overview_geo_ad&page_id=overview_banner_6/testing_overview_resolve_webview`
+            [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download-1.362dc3c.png){title=QR-код}
+
+            `yandexnavi://add_exp?navi_feature_day_night_fast_switch=enabled&navi_overview_ads_priority_for_RU=overview_geo_ad,brand_route,via&navi_ads_overview_ad_queue=geo_ad_location,geo_ad_route,geo_ad_route_end,direct,yas&navi_ad_product_cooldown_overview_banner=60`
+          - Перезапустить приложение
+
+specs:
+  GeoAd WebView - проверка логирования:
+    - *ИнфоGeoAdWebView
+    - info: Девайс подключен к инструментам снятия логов или открыта лог-панель
+    - do: Построить маршрут по Москве
+    - assert: |
+        Маршрут строится
+        Над карточкой обзора появляется GeoAD баннер
+        В логах приходят события:
+        - `geoadv.bb.pin.show` (навигатор)
+        - `mapkit.search.logger.billboard.show` (мапкит)
+        - `route.geo-ad-visibility` с параметром `visible: true`
+    - do: Тап по баннеру GeoAd
+    - assert: |
+        Открывается вебвью
+        GeoAD баннер скрывается
+        В логах приходят события:
+        - `route.geo-ad-click` с параметром `isUri: true`
+        - `geoadv.bb.action.openSite` с параметром `product: overview_banner`
+        - `geoadv.bb.pin.tap` с параметром `product: overview_banner`
+        - `mapkit.search.logger.billboard.click` с параметром `product: overview_banner`
+        - `mapkit.search.logger.billboard.action.open_site` с параметром `product: overview_banner`
+        - `route.geo-ad-visibility` с параметром `visible: false`
+
+    - platforms:
+      - ios
+      - android
+    - testing:
+      - acceptance_navi
+    - tags:
+        - metric
+
+
+  GeoAd WebView - проверка вебвью:
+    - *ИнфоGeoAdWebView
+    - info: Устройство в вертикальной ориентации
+    - do: Построить маршрут по Москве
+    - assert: |
+        Маршрут строится
+        Над карточкой обзора появляется GeoAD баннер
+    - do: Тап по GeoAD баннеру
+    - assert: |
+        Баннер GeoAd скрывается
+        Открывается вебвью с кнопками назад (в виде стрелочки) и закрыть (в виде крестика)
+    - do: Закрыть вебвью
+    - assert: |
+        Вебвью закрывается
+        Баннер GeoAd не отображается
+    - do: |
+        Подождать одну минуту
+        Повернуть девайс в горизонтальную ориентацию
+        Построить маршрут по Москве
+    - assert: |
+        Маршрут строится
+        Над карточкой обзора появляется GeoAD баннер
+    - do: Тап по GeoAD баннеру
+    - assert: |
+        Баннер GeoAd скрывается
+        Открывается вебвью с кнопками назад (в виде стрелочки) и закрыть (в виде крестика)
+    - do: Произвести поворот устройства с горизонтальной ориентации в вертикальную
+    - assert: Вебвью не скрывается
+    - do: Произвести поворот устройства с вертикальной ориентации в горизонтальную
+    - assert: Вебвью не скрывается
+
+    - platforms:
+      - ios
+      - android
+    - testing:
+      - acceptance_navi
+
+
+  GeoAd WebView - закрытие вебвью тапом по крестику:
+    - *ИнфоGeoAdWebView
+    - do: Построить маршрут по Москве
+    - assert: |
+        Маршрут строится
+        Над карточкой обзора появляется GeoAD баннер
+    - do: Тап по GeoAD баннеру
+    - assert: |
+        Баннер GeoAd скрывается
+        Открывается вебвью с кнопками назад (в виде стрелочки) и закрыть (в виде крестика)
+    - do: Тап по крестику на вебвью
+    - assert: |
+        Вебвью закрывается
+        Открывается экран карты с построенным маршрутом
+        Над обзором маршрута не отображается GeoAD баннер
+
+    - platforms:
+      - ios
+      - android
+    - testing:
+      - acceptance_navi
+
+
+  GeoAd WebView - закрытие вебвью тапом по кнопке "Назад" в вебвью:
+    - *ИнфоGeoAdWebView
+    - do: Построить маршрут по Москве
+    - assert: |
+        Маршрут строится
+        Над карточкой обзора появляется GeoAD баннер
+    - do: Тап по GeoAD баннеру
+    - assert: |
+        Баннер GeoAd скрывается
+        Открывается вебвью с кнопками назад (в виде стрелочки) и закрыть (в виде крестика)
+    - do: Тап на стрелочку Назад в вебвью
+    - assert: |
+        Вебвью закрывается
+        Открывается экран карты с построенным маршрутом
+        Над обзором маршрута не отображается GeoAD баннер
+
+    - platforms:
+      - ios
+      - android
+    - testing:
+      - acceptance_navi
+
+
+  GeoAd WebView - закрытие вебвью свайпом вниз:
+    - *ИнфоGeoAdWebView
+    - do: Построить маршрут по Москве
+    - assert: |
+        Маршрут строится
+        Над карточкой обзора появляется GeoAD баннер
+    - do: Тап по GeoAD баннеру
+    - assert: |
+        Баннер GeoAd скрывается
+        Открывается вебвью с кнопками назад (в виде стрелочки) и закрыть (в виде крестика)
+    - do: Свайпнуть вниз по вебвью
+    - assert: |
+        Вебвью закрывается
+        Открывается экран карты с построенным маршрутом
+        Над обзором маршрута не отображается GeoAD баннер
+
+    - platforms:
+      - ios
+      - android
+    - testing:
+      - acceptance_navi
+
+
+  GeoAd WebView - закрытие вебвью тапом по системной кнопке Back:
+    - *ИнфоGeoAdWebView
+    - do: Построить маршрут по Москве
+    - assert: |
+        Маршрут строится
+        Над карточкой обзора появляется GeoAD баннер
+    - do: Тап по GeoAD баннеру
+    - assert: |
+        Баннер GeoAd скрывается
+        Открывается вебвью с кнопками назад (в виде стрелочки) и закрыть (в виде крестика)
+    - do: Тап на системную кнопку Back
+    - assert: |
+        Вебвью закрывается
+        Открывается экран карты с построенным маршрутом
+        Над обзором маршрута не отображается GeoAD баннер
+
+    - platforms:
+      - android
+    - testing:
+      - acceptance_navi

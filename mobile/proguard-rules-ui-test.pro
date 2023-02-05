@@ -1,0 +1,4 @@
+-keep class androidx.test.** { *; }
+-keep class javax.inject.** { *; }
+-keep class org.junit.** { *; }
+-keep class org.hamcrest.** { *; }

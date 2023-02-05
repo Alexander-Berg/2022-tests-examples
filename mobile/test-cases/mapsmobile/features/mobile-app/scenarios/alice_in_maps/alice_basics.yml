@@ -1,0 +1,270 @@
+components: alice_basics
+testing:
+  - regress
+tags:
+  - assessors
+  - not_suitable_for_farm
+integration_run:
+  - alicekit
+
+aliases:
+  - &info_voice_activation_on_and_mic_on
+    - info: Установлена локаль на устройстве ru_RU
+    - do: Выключить эксперименты `use_datasync_settings` и `new_maps_settings` (Меню -> Настройки -> Debug-Panel - Experiments)
+    - do: Перезапустить приложение
+    - do: Включить Алису (Меню -> Настройки -> Основные -> Алиса)
+    - do: Включить голосовую активацию Алисы (Меню -> Настройки -> Основные -> Алиса)
+    - do: В настройках приложения на устройстве выдать доступ к микрофону девайса
+    - do: Открыть главный экран приложения
+
+specs:
+  Анимированное появление Алисы на главном экране:
+    - info: |
+        Проверка для релизных сборок
+        Установлена локаль на устройстве ru_RU
+    - do: |
+        Установить старую версию приложения, в которой пользователь не увидит Алису:
+        [collapsed-image](https://jing.yandex-team.ru/files/linakolpakova/1052.png){title=QR-код для Android}
+
+        `https://beta.m.soft.yandex.ru/description?app=maps&platform_shortcut=android&branch=releases_10.5.2-store`
+        [collapsed-image](https://jing.yandex-team.ru/files/linakolpakova/1342.png){title=QR-код для iOS}
+
+        `https://beta.m.soft.yandex.ru/description?app=maps&platform_shortcut=iphoneos&branch=release-13.4.2`
+    - do: Запустить старую версию карт
+    - assert: Приложение запущено
+    - do: Закрыть приложение, выгрузив из памяти
+    - do: Обновить приложение на актуальную версию
+    - assert: Приложение обновлено
+    - do: Запустить приложение
+    - assert: |
+        На экране отображается интро Алисы
+        Присутствует кнопка разрешения доступа к микрофону
+    - do: Тап по кнопке разрешения доступа к микрофону
+    - assert: |
+        Отображается главный экран приложения
+        Кнопка микрофона трансформируется в кнопку Алисы
+        Под кнопкой Алисы по очереди появляются 3 приветственных бабла с сообщениями
+
+    - platforms:
+        - ios
+        - android
+    - tags:
+        - refactor_ready
+
+
+  Скроллинг текста в шторе Алисы:
+    - *info_voice_activation_on_and_mic_on
+    - do: Вызвать Алису
+    - do: Произнести запрос, напр., "Расскажи новости"
+    - assert: |
+        Шрифт текста становится более мелким (так как текста много)
+        Текст автоматически скроллится по мере того, как Алиса озвучивает его
+    - do: Тап на текст
+    - assert: Текст больше не скроллится
+    - do: Проскроллить текст вручную
+    - assert: |
+        Текст скроллится
+        Экран Алисы не закрывается
+
+    - platforms:
+        - ios
+        - android
+    - tags:
+        - not_suitable_for_farm
+        - refactor_ready
+
+
+  Алиса. Таймауты на закрытие плашки:
+    - *info_voice_activation_on_and_mic_on
+    - do: Вызвать Алису
+    - do: Не вводить команды, ждать автоматического закрытия по таймауту
+    - assert: |
+        Через 10 секунд центр окникса становится треугольным
+        Через 2 секунды после изменения формы центра окникса, плашка Алисы закрывается
+    - do: Вызвать Алису
+    - do: Дать любую команду
+    - do: Тап по окниксу
+    - assert: Плашка закрывается через ~2 секунды
+
+    - platforms:
+        - ios
+        - android
+    - tags:
+        - not_suitable_for_farm
+        - refactor_ready
+
+
+  Прерывание сети при взаимодействии с Алисой:
+    - info: Включен интернет
+    - *info_voice_activation_on_and_mic_on
+    - do: Вызвать Алису
+    - assert: Отображается штора Алисы
+    - do: Выключить интернет
+    - do: Вызвать Алису
+    - do: Подождать несколько секунд
+    - assert: Алиса показывает сообщение "Без интернета я как без рук"
+    - do: Включить интернет
+    - do: Вызвать Алису
+    - do: Сказать "Алиса, где поесть?"
+    - assert: Алиса выполняет поиск
+
+    - platforms:
+        - ios
+        - android
+    - tags:
+        - not_suitable_for_farm
+        - refactor_ready
+    - testing:
+        - acceptance_maps
+
+
+  Алиса. Сворачивание и разворачивание приложения в момент активной записи речи:
+    - *info_voice_activation_on_and_mic_on
+    - do: Вызвать Алису
+    - assert: |
+        Отображается штора Алисы
+        Началась запись речи
+    - do: Свернуть приложение
+    - do: Развернуть приложение
+    - assert: Отображается главный экран приложения
+
+    - platforms:
+        - ios
+        - android
+    - tags:
+        - not_suitable_for_farm
+        - refactor_ready
+
+
+  Алиса. Сворачивание и разворачивание приложения при воспроизведения фразы Алисой:
+    - *info_voice_activation_on_and_mic_on
+    - do: Вызвать Алису
+    - assert: Отображается штора Алисы
+    - do: Попросить Алису рассказать что-нибудь (напр., новости)
+    - assert: Алиса начинает говорить
+    - do: Свернуть приложение
+    - do: Развернуть приложение
+    - assert: Отображается главный экран приложения
+
+    - platforms:
+        - ios
+        - android
+    - tags:
+        - not_suitable_for_farm
+        - refactor_ready
+
+
+  Алиса. Начало разговора:
+    - *info_voice_activation_on_and_mic_on
+    - do: Вызвать Алису
+    - assert: Отображается штора Алисы
+    - do: Попросить Алису рассказать что-нибудь (напр., новости)
+    - assert: Алиса начинает говорить
+
+    - platforms:
+        - ios
+        - android
+    - tags:
+        - not_suitable_for_farm
+        - refactor_ready
+
+
+  Алиса. Запуск Алисы в режиме сети 4G:
+    - info: |
+        Установлена сим-карта
+        Режим сети 4G
+    - *info_voice_activation_on_and_mic_on
+    - do: Вызвать Алису
+    - assert: Отображается штора Алисы
+
+    - platforms:
+        - ios
+        - android
+    - tags:
+        - not_suitable_for_farm
+        - refactor_ready
+
+
+  Алиса. Запуск Алисы в режиме сети 2G:
+    - info: |
+        Установлена сим-карта
+        Режим сети 2G
+    - *info_voice_activation_on_and_mic_on
+    - do: Вызвать Алису
+    - assert: Отображается штора Алисы
+
+    - platforms:
+        - ios
+        - android
+    - tags:
+        - not_suitable_for_farm
+        - refactor_ready
+
+
+  Алиса. Запуск Алисы в режиме сети 3G:
+    - info: |
+        Установлена сим-карта
+        Режим сети 3G
+    - *info_voice_activation_on_and_mic_on
+    - do: Вызвать Алису
+    - assert: Отображается штора Алисы
+
+    - platforms:
+        - ios
+        - android
+    - tags:
+        - not_suitable_for_farm
+        - refactor_ready
+
+
+  Сброс последней сессии Алисы при перезапуске приложения:
+    - *info_voice_activation_on_and_mic_on
+    - do: Активировать Алису
+    - assert: |
+        Открылась штора Алисы
+        Проигрывается звук начала записи с микрофона
+    - do: Пообщаться с Алисой голосом/саджестами
+    - assert: Алиса поддерживает разговор
+    - do: Закрыть штору Алисы
+    - assert: Отображается главный экран приложения
+    - do: Активировать Алису
+    - assert: |
+        Открылась штора Алисы
+        Отображается фраза последнего диалога
+    - do: Перезапустить приложение
+    - assert: |
+        Приложение перезапущено
+        Отображается главный экран
+    - do: Активировать Алису
+    - assert: |
+        Открылась штора Алисы
+        Проигрывается звук начала записи с микрофона
+        Фраза последнего диалога не отображается
+
+    - platforms:
+        - android
+        - ios
+    - tags:
+        - not_suitable_for_farm
+        - refactor_ready
+    - testing:
+        - acceptance_maps
+
+
+  Закрытие шторы Алисы тапом по карте за областью шторы:
+    - *info_voice_activation_on_and_mic_on
+    - do: Вызвать Алису голосом/тапом по кнопке
+    - assert: Отображается штора Алисы
+    - do: Тап по карте за областью шторы
+    - assert: |
+        Штора Алисы закрылась
+        Отображается главный экран приложения
+
+    - platforms:
+        - ios
+        - android
+    - tags:
+        - not_suitable_for_farm
+        - refactor_ready
+    - testing:
+        - acceptance_maps

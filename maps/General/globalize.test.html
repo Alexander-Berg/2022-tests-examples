@@ -1,0 +1,72 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <title>event.globalize</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <!-- YUI -->
+    <script type="text/javascript" src="../../../test/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../../test/yui3combo/combo.css" />
+    <script type="text/javascript" src="../../../test/run-test-case.js"></script>
+    <!-- Code -->
+    <script type="text/javascript">
+        initAPI({
+            lang: "ru-RU",
+            load: "event.Manager,event.PriorityManager,Event,event.globalize",
+            mode: "debug"
+        });
+    </script>
+</head>
+
+<body class="yui3-skin-sam"></body>
+<div id="test"></div>
+<script type="text/javascript">
+    function getTestCase(Y) { return {
+        name: 'event.globalize',
+
+        testGlobalize: function () {
+            var Class1 = function () {
+                    this.events = new ymaps.event.Manager({ controllers: [ class1Controller ] });
+                    this.name = 'class1';
+                },
+                Class2 = function () {
+                    this.events = new ymaps.event.PriorityManager({ controllers: [ class2Controller ] });
+                    this.name = 'class2';
+                },
+                callback = function (e) {
+                    var target = e.get('target');
+                    res += target.name + '/' + target.instanceName + '-';
+                },
+                globalCallback = function (e) {
+                    var target = e.get('target');
+                    res += 'g/' + target.name + '/' + target.instanceName + '-';
+                },
+                res = '';
+
+            var class1Controller = ymaps.event.globalize(Class1),
+                class2Controller = ymaps.event.globalize(Class2);
+
+            var instance1 = new Class1(),
+                instance2 = new Class2(),
+                instance3 = new Class1();
+
+            instance1.instanceName = 'inst1';
+            instance2.instanceName = 'inst2';
+            instance3.instanceName = 'inst3';
+
+            instance1.events.add('click', callback);
+            instance1.events.fire('click', new ymaps.Event({ target: instance1 }));
+
+            Class1.getMetaEventManager().add(['click', 'dblclick'], globalCallback);
+            Class2.getMetaEventManager().add('click', globalCallback);
+            instance1.events.fire('click', new ymaps.Event({ target: instance1 }));
+            instance2.events.fire('click', new ymaps.Event({ target: instance2 }));
+            instance3.events.fire('click', new ymaps.Event({ target: instance3 }));
+            instance3.events.fire('dblclick', new ymaps.Event({ target: instance3 }));
+
+            Y.assert(res == 'class1/inst1-g/class1/inst1-class1/inst1-g/class2/inst2-g/class1/inst3-g/class1/inst3-', 'Неправильно отработал глобальный контроллер');
+        }
+    }}
+    ymaps.ready(runTestCase);
+</script>
+</html>

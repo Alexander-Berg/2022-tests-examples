@@ -1,0 +1,317 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <title>geometry.base.Polygon</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <!-- YUI -->
+    <script type="text/javascript" src="../../../../tests/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../../../tests/yui3combo/combo.css" />
+    <script type="text/javascript" src="../../../../tests/run-test-case.js"></script>
+    <!-- Code -->
+    <script type="text/javascript">
+        initAPI({
+            lang: "ru-RU",
+            load: "geometry.base.Polygon,projection.wgs84Mercator,util.json",
+            mode: "dev"
+        });
+    </script>
+    <script type="text/javascript" src="../../../../tests/util/event-eye.js"></script>
+</head>
+
+<body class="yui3-skin-sam"></body>
+
+<script type="text/javascript">
+    function getTestCase(Y) { return {
+        name: "geometry.base.Polygon",
+
+        setUp: function () {
+            this.poly = new ymaps.geometry.base.Polygon([
+                [[1, 2], [3, 4]],
+                [[5, 6], [7, 8], [5, 6]]
+            ]);
+            eventEye.observe(this.poly, "change");
+        },
+
+        testAutoClose:  function() {
+            var coords = [
+                [[1, 2], [3, 4]],
+                [[5, 6], [7, 8]]
+            ];
+            this.poly = new ymaps.geometry.base.Polygon(coords);
+
+            Y.assert(
+                this.poly.getLength() == 2 &&
+                this.poly.get(0).length == 3 && this.poly.get(1).length == 3 &&
+                coords.length == 2 && coords[0].length == 2 && coords[1].length == 2,
+                "Неверный результат для пустого конструктора"
+            );
+        },
+
+        testEmptyConstructor:  function() {
+            this.poly = new ymaps.geometry.base.Polygon();
+
+            Y.assert(
+                this.poly.getLength() == 0 &&
+                this.poly.getBounds() == null,
+                "Неверный результат для пустого конструктора"
+            );
+        },
+
+        testGetType:  function() {
+            Y.assert(
+                this.poly.getType() == "Polygon",
+                "Неверный результат getType"
+            );
+        },
+
+        testGetBounds: function () {
+            Y.assert(
+                this.poly.getBounds() == "1,2,7,8",
+                "Неверный результат getBounds 1"
+            );
+
+            this.poly.set(0, [[0, 0]]);
+            Y.assert(
+                this.poly.getBounds() == "0,0,7,8",
+                "Неверный результат getBounds 2"
+            );
+
+            this.poly.freeze();
+            this.poly.set(1, [[10, 10]]);
+            Y.assert(
+                this.poly.getBounds() == "0,0,10,10",
+                "Неверный результат getBounds 3"
+            );
+
+            this.poly.getChildGeometry(0).set(0, [3, 3]);
+            Y.assert(
+                this.poly.getBounds() == "3,3,10,10",
+                "Неверный результат getBounds 4"
+            );
+        },
+
+        testGetLength:  function() {
+            Y.assert(
+                this.poly.getLength() == 2,
+                "Неверный результат getLength"
+            );
+        },
+
+        testGetCoordinates: function () {
+            var coordinates = this.poly.getCoordinates();
+            Y.assert(
+                coordinates.length == 2 &&
+                coordinates[0].length == 3 && coordinates[0] == "1,2,3,4,1,2" &&
+                coordinates[1].length == 3 && coordinates[1] == "5,6,7,8,5,6",
+                "Неверный результат getCoordinates"
+            );
+        },
+
+        testSetCoordinates: function () {
+            this.poly.setCoordinates([[[1, 2], [4, 5]], [[2, 3], [6, 7]]]);
+
+            Y.assert(
+                this.poly.getLength() == 2 &&
+                this.poly.getCoordinates() == "1,2,4,5,1,2,2,3,6,7,2,3",
+                "Неверный результат setCoordinates"
+            );
+        },
+
+        testGet:  function() {
+            Y.assert(
+                this.poly.get(0) == "1,2,3,4,1,2" &&
+                this.poly.get(1) == "5,6,7,8,5,6" &&
+                !this.poly.get(2),
+                "Неверный результат get"
+            );
+        },
+
+        testGetChildGeometry:  function() {
+            var firstPath = this.poly.getChildGeometry(0);
+            Y.assert(
+                firstPath.getCoordinates() == "1,2,3,4,1,2" &&
+                this.poly.getChildGeometry(1).getCoordinates() == "5,6,7,8,5,6" &&
+                !this.poly.getChildGeometry(2) &&
+                firstPath == this.poly.getChildGeometry(0),
+                "Неверный результат getChildGeometry"
+            );
+        },
+
+        testSet: function () {
+            var result = this.poly.set(0, [[0, 0], [1, 1]]);
+            Y.assert(
+                result == this.poly && this.poly.getCoordinates() == "0,0,1,1,0,0,5,6,7,8,5,6" &&
+                eventEye.length() == 1 && eventEye.check(0, {
+                    "type": "change",
+                    "target": this.poly,
+                    "oldCoordinates": "1,2,3,4,1,2,5,6,7,8,5,6",
+                    "newCoordinates": "0,0,1,1,0,0,5,6,7,8,5,6"
+                }),
+                "Неверный результат set"
+            );
+        },
+
+        testRemove:  function() {
+            var result = this.poly.remove(0);
+
+            Y.assert(
+                result == "1,2,3,4,1,2" &&
+                this.poly.getLength() == 1 &&
+                this.poly.get(0) == "5,6,7,8,5,6" &&
+                eventEye.length() == 1 && eventEye.check(0, {
+                    "type": "change",
+                    "target": this.poly,
+                    "oldCoordinates": "1,2,3,4,1,2,5,6,7,8,5,6",
+                    "newCoordinates": "5,6,7,8,5,6"
+                }),
+                "Неверный результат remove"
+            );
+
+            Y.assert(
+                !this.poly.remove(3),
+                "Неверный результат remove(3)"
+            )
+        },
+
+        testInsert:  function () {
+            var result = this.poly.insert(3, [[1, 0], [5, 4]]);
+
+            Y.assert(
+                result == this.poly && this.poly.getCoordinates() == "1,2,3,4,1,2,5,6,7,8,5,6,1,0,5,4,1,0" &&
+                eventEye.length() == 1 && eventEye.check(0, {
+                    "type": "change",
+                    "target": this.poly,
+                    "oldCoordinates": "1,2,3,4,1,2,5,6,7,8,5,6",
+                    "newCoordinates": "1,2,3,4,1,2,5,6,7,8,5,6,1,0,5,4,1,0"
+                }),
+                "Неверный результат insert"
+            );
+        },
+
+        testSplice:  function () {
+            var result = this.poly.splice(0, 2, [[4, 1], [1, 4]], [[1, 4], [4, 1]]);
+            
+            Y.assert(
+                result.length == 2 && result[0] == "1,2,3,4,1,2" &&
+                result[1] == "5,6,7,8,5,6" &&
+                this.poly.getLength() == 2 && this.poly.getCoordinates() == "4,1,1,4,4,1,1,4,4,1,1,4" &&
+                eventEye.length() == 1 && eventEye.check(0, {
+                    "type": "change",
+                    "target": this.poly,
+                    "oldCoordinates": "1,2,3,4,1,2,5,6,7,8,5,6",
+                    "newCoordinates": "4,1,1,4,4,1,1,4,4,1,1,4"
+                }),
+                "Неверный результат splice"
+            );
+        },
+
+        testFreezing:  function () {
+            var result = this.poly.freeze();
+            Y.assert(
+                result == this.poly && this.poly.isFrozen(),
+                "Неверный результат freeze"
+            );
+
+            this.poly.unfreeze();
+            Y.assert(
+                eventEye.length() == 0 && !this.poly.isFrozen(),
+                "Неверный результат unfreeze без изменений"
+            );
+            
+            this.poly.freeze().setCoordinates([[[0, 0]], []]).remove(0);
+            this.poly.setFillRule("nonZero");
+            Y.assert(
+                eventEye.length() == 0 && this.poly.getLength() == 1,
+                "Неверный результат изменения неактивной геометрии"
+            );
+
+            this.poly.unfreeze();
+            Y.assert(
+                this.poly.getLength() == 1 &&
+                eventEye.length() == 1 && eventEye.check(0, {
+                    "type": "change",
+                    "target": this.poly,
+                    "oldCoordinates": "1,2,3,4,1,2,5,6,7,8,5,6",
+                    "newCoordinates": "",
+                    "oldFillRule": "evenOdd",
+                    "newFillRule": "nonZero"
+                }),
+                "Неверный результат изменения неактивной геометрии после unfreeze"
+            );
+        },
+
+        testEventPropagation:  function () {
+            this.poly.setCoordinates([[[1, 2], [3, 4]]]);
+            eventEye.reset();
+            this.poly.getChildGeometry(0).set(1, [6, 6]);
+            
+            Y.assert(
+                this.poly.getCoordinates() == "1,2,6,6,1,2" &&
+                eventEye.length() == 1 && eventEye.check(0, {
+                    "type": "change",
+                    "target": this.poly,
+                    "oldCoordinates": "1,2,3,4,1,2",
+                    "newCoordinates": "1,2,6,6,1,2"
+                }),
+                "Неверный результат setCoordinates"
+            );
+        },
+
+        testFromEncodedCoordinates:  function () {
+            var toJSON = ymaps.util.json.to,
+                expected = [
+                    [
+                        [32.06169, 43.32006], [32.76482, 52.28859], [57.37419, 50.52997], [47.53044, 44.33806],
+                        [32.06169, 43.32006]
+                    ],
+                    [
+                        [76.66344, 46.26446], [80.88219, 56.15117], [88.265, 55.55794], [89.31969, 44.5309],
+                        [76.66344, 46.26446]
+                    ]
+                ],
+                geometry = ymaps.geometry.base.Polygon.fromEncodedCoordinates(
+                    "-jjpAfwClQKaugoAUtmIAFqCdwFkKuX_2stp_9qEof8y9xP_cHfw_w==;kMqRBIzwwQJ-X0AA9tuWABqncACy8vb_4hcQAKC9V_-G4T7_uHMaAA=="
+                );
+            Y.Assert.areEqual(toJSON(expected), toJSON(geometry.getCoordinates()));
+        },
+
+        testToEncodedCoordinates:  function () {
+            var geometry = new ymaps.geometry.base.Polygon([
+                    [
+                        [32.06169, 43.32006], [32.76482, 52.28859], [57.37419, 50.52997], [47.53044, 44.33806],
+                        [32.06169, 43.32006]
+                    ],
+                    [
+                        [76.66344, 46.26446], [80.88219, 56.15117], [88.265, 55.55794], [89.31969, 44.5309],
+                        [76.66344, 46.26446]
+                    ]
+                ]),
+                encoded = ymaps.geometry.base.Polygon.toEncodedCoordinates(geometry);
+            Y.Assert.areEqual(
+                encoded,
+                "-jjpAfwClQKaugoAUtmIAFqCdwFkKuX_2stp_9qEof8y9xP_cHfw_w==;kMqRBIzwwQJ-X0AA9tuWABqncACy8vb_4hcQAKC9V_-G4T7_uHMaAA==",
+                "Неправильная кодировка"
+            );
+        },
+
+        testContains: function () {
+            this.poly.getChildGeometry(1).set(2, [8, 5]);
+            Y.assert(this.poly.contains([7, 6]), 'Внутренняя');
+            Y.assert(this.poly.contains([8, 5]), 'На контуре');
+            Y.assert(!this.poly.contains([0, 0]), 'Не принадлежит');
+        },
+
+        testClosest: function () {
+            this.poly.getChildGeometry(1).set(2, [8, 6]);
+
+            var closest = this.poly.getClosest([7, 4]).position;
+            Y.assert(closest[0] == 7 && closest[1] == 6, 'Снизу' + closest.toString());
+
+            closest = this.poly.getClosest([-1, -1]).position;
+            Y.assert(closest[0] == 1 && closest[1] == 2, 'Снизу слева' + closest.toString());
+        }
+    }}
+    ymaps.ready(runTestCase);
+</script>
+</html>

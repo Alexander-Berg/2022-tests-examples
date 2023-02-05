@@ -1,0 +1,190 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <title>geometry.component.RenderFlow</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <!-- YUI -->
+    <script type="text/javascript" src="../../../../test/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../../../test/yui3combo/combo.css" />
+    <script type="text/javascript" src="../../../../test/run-test-case.js"></script>
+    <!-- Code -->
+    <script type="text/javascript">
+        initAPI({
+            lang: "ru-RU",
+            load: "Map,geometry.Point,geometry.LineString,geometry.Polygon,geometry.Circle,geometry.Rectangle",
+            mode: "debug"
+        });
+    </script>
+    <script type="text/javascript" src="../../../../test/util/event-eye.js"></script>
+</head>
+
+<body class="yui3-skin-sam">
+    <div id="container" style="width: 600px; height: 400px;"></div>
+</body>
+
+<script type="text/javascript">
+    function getTestCase(Y) { return {
+        name: "geometry.component.RenderFlow",
+//        debug: true,
+
+        setUp: function () {
+            this.geometries = [
+                new ymaps.geometry.Point([0, 179]),
+                new ymaps.geometry.LineString([[1, 2], [3, 4], [5, 6]]),
+                new ymaps.geometry.Polygon([[[1, 2], [3, 4]], [[5, 6], [7, 8], [5, 6]]]),
+                new ymaps.geometry.Circle([10, 5], 2000000),
+                new ymaps.geometry.Rectangle([[1, 2], [3, 4]])
+            ];
+
+            geoMap = new ymaps.Map('container', {
+                center: [54, 39],
+                type: "yandex#map",
+                zoom: 3,
+                behaviors: ['drag', 'scrollZoom']
+            }, {
+                coordRendering: 'shortestPath'
+            });
+
+            for (var i = 0; i < this.geometries.length; i++) {
+                this.geometries[i].options.setParent(geoMap.options);
+                this.geometries[i].setMap(geoMap);
+            }
+
+            eventEye.observe(this.geometries, ["pixelgeometrychange"]);
+        },
+
+        tearDown: function () {
+            geoMap.destroy();
+        },
+
+        testGetPixelGeometryWithNoParams: function () {
+            var pixels = this.geometries[2].getPixelGeometry();
+            Y.assert(
+                eventEye.length() == 0,
+                "После вызова метода произошло событие"
+            );
+        },
+
+        testChangeNonAffectingOption: function () {
+            this.geometries[0].options.set('simplification', false);
+            Y.assert(
+                eventEye.length() == 0,
+                "Изменение невлияющей опции вызвало событие"
+            );
+        },
+
+        testChangeAffectingOption: function () {
+            var oldPixels = this.geometries[2].getPixelGeometry().getCoordinates();
+
+            this.geometries[2].options.set('simplification', false);
+            Y.assert(
+                eventEye.length() == 1,
+                "Изменение влияющей опции не вызвало событие"
+            );
+
+            Y.Assert.areEqual(
+                floorRecursive(oldPixels).toString(),
+                floorRecursive(eventEye.prop(0, 'pixelGeometry').getCoordinates()).toString(),
+                "Пиксели изменились, хотя симплификация не имеет смысла"
+                // по сути здесь и события не должно быть, но сравнение координат - накладная операция
+            );
+        },
+
+        testSetSameValue: function () {
+            this.geometries[2].options.set('projection', this.geometries[2].options.get('projection'));
+            Y.Assert.areEqual(
+                0, eventEye.length(),
+                "Опции задано то же (предыдущее) значение, а событие сработало"
+            );
+        },
+
+        testChangeSetOfOptions: function () {
+            this.geometries[2].options.set({
+                simplification: false,
+                syke: true,
+                projection: this.geometries[2].options.get('projection'),
+                pixelRendering: 'static'
+            });
+
+            Y.Assert.areEqual(
+                1, eventEye.length(),
+                "Более одного события при изменении нескольких опций"
+            );
+        },
+
+        testZoomChange: function () {
+            geoMap.setZoom(1);
+
+            Y.Assert.areEqual(
+                this.geometries.length, eventEye.length(),
+                "После зума количество событий не равно количеству геометрий"
+            );
+        },
+
+        testCenterChange: function () {
+            var worldSize = 256 * Math.pow(2, geoMap.getZoom()),
+                pixelCenter = geoMap.getGlobalPixelCenter();
+
+            geoMap.setGlobalPixelCenter([pixelCenter[0] + worldSize * 0.8, pixelCenter[1]]);
+
+            Y.Assert.areEqual(
+                this.geometries.length - 1, eventEye.length(),
+                "Должны были перепрыгнуть все геометрии, кроме точки"
+            );
+
+            eventEye.reset();
+            pixelCenter = geoMap.getGlobalPixelCenter();
+
+            geoMap.setGlobalPixelCenter([pixelCenter[0] + worldSize * 0.2, pixelCenter[1]]);
+
+            Y.Assert.areEqual(
+                1, eventEye.length(),
+                "Должна перепрыгнуть только точка"
+            );
+        },
+
+        testGeometryChange: function () {
+            this.geometries[4].setCoordinates([[3, 4], [1, 2]]);
+
+            Y.assert(
+                eventEye.length() == 1,
+                "Событие не кинулось после смены координат"
+            );
+        },
+
+        testRadiusChange: function () {
+            this.geometries[3].setRadius(200000);
+
+            Y.assert(
+                eventEye.length() == 1,
+                "Событие не кинулось после смены радиуса круга"
+            );
+        },
+
+        testFillRuleChange: function () {
+            this.geometries[2].setFillRule('nonZero');
+
+            Y.assert(
+                eventEye.length() == 1,
+                "Событие не кинулось после смены алгоритма заливки"
+            );
+        }
+    }}
+    ymaps.ready(runTestCase);
+
+    function floorRecursive (array) {
+        var result = [];
+
+        for (var i = 0; i < array.length; i++) {
+            if (isNaN(array[i])) {
+                result.push(floorRecursive(array[i]));
+            } else {
+                result.push(Math.floor(array[i]));
+            }
+        }
+
+        return result;
+    }
+</script>
+</html>

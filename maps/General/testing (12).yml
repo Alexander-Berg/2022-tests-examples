@@ -1,0 +1,144 @@
+annotations:
+  project: 'maps-front-renins-rock'
+meta:
+  id: 'maps-front-renins-rock_testing'
+  account_id: 'abc:service:37634'
+  project_id: 'maps-front-renins-rock'
+  inherit_acl: true
+spec:
+  account_id: 'abc:service:37634'
+  deploy_units:
+    app:
+      endpoint_sets:
+        - port: 80
+      images_for_boxes: {}
+      network_defaults:
+        network_id: _MAPSTESTQNETS_
+      tvm_config:
+        mode: "enabled"
+        blackbox_environment: "Test"
+        client_port: 2
+        clients:
+          - destinations:
+              - alias: "blackbox"
+                app_id: 239
+              - alias: "moira"
+                app_id: 2012240
+            secret_selector:
+              alias: "sec-01fvw6bgxw36pxd3cfwxbk1rq6:ver-01fvw6bgy8pvfk6xsxn6cb16nd"
+              id: "client_secret"
+            source:
+              alias: "front-renins-rock"
+              app_id: 2033395
+      multi_cluster_replica_set:
+        replica_set:
+          clusters:
+            - cluster: man
+              spec:
+                constraints:
+                  antiaffinity_constraints:
+                    - key: rack
+                      max_pods: 1
+                replica_count: 1
+            - cluster: sas
+              spec:
+                constraints:
+                  antiaffinity_constraints:
+                    - key: rack
+                      max_pods: 1
+                replica_count: 1
+            - cluster: vla
+              spec:
+                constraints:
+                  antiaffinity_constraints:
+                    - key: rack
+                      max_pods: 1
+                replica_count: 1
+          deployment_strategy:
+            max_unavailable: 1
+          pod_template_spec:
+            spec:
+              disk_volume_requests:
+                - id: 'maps-front-renins-rock_testing_disk-0'
+                  storage_class: hdd
+                  quota_policy:
+                    capacity: 16106127360
+                    bandwidth_guarantee: 15728640
+                    bandwidth_limit: 31457280
+                  labels:
+                    used_by_infra: true
+              resource_requests:
+                # 1 Gb
+                memory_guarantee: 1073741824
+                memory_limit: 1073741824
+                vcpu_guarantee: 250
+                vcpu_limit: 250
+              host_infra:
+                monitoring:
+                  unistats:
+                    - workload_id: app_workload
+                      port: 7032
+                      path: /unistat
+              secret_refs:
+                'sec-01fvw6bgxw36pxd3cfwxbk1rq6:ver-01fvw6bgy8pvfk6xsxn6cb16nd':
+                  secret_id: 'sec-01fvw6bgxw36pxd3cfwxbk1rq6'
+                  secret_version: 'ver-01fvw6bgy8pvfk6xsxn6cb16nd'
+              pod_agent_payload:
+                spec:
+                  boxes:
+                    - id: app_box
+                      rootfs: {}
+                      static_resources:
+                        - resource_ref: usr.share.yandex.maps.inthosts
+                          mount_point: /usr/share/yandex/maps/inthosts
+                        - resource_ref: usr.share.yandex.maps.hosts
+                          mount_point: /usr/share/yandex/maps/hosts
+                  resources:
+                    static_resources:
+                      - id: usr.share.yandex.maps.hosts
+                        url: 'sbr:1680456916'
+                        verification:
+                          checksum: 'EMPTY:'
+                          check_period_ms: 180000
+                      - id: usr.share.yandex.maps.inthosts
+                        url: 'sbr:1453987780'
+                        verification:
+                          checksum: 'EMPTY:'
+                          check_period_ms: 180000
+                  mutable_workloads:
+                    - workload_ref: app_workload
+                  workloads:
+                    - id: app_workload
+                      box_ref: app_box
+                      env:
+                        - name: APP_ENV
+                          value:
+                            literal_env:
+                              value: testing
+                        - name: client_secret
+                          value:
+                            secret_env:
+                              alias: >-
+                                sec-01fvw6bgxw36pxd3cfwxbk1rq6:ver-01fvw6bgy8pvfk6xsxn6cb16nd
+                              id: client_secret
+                      liveness_check:
+                        tcp_check:
+                          port: 80
+                      readiness_check:
+                        http_get:
+                          port: 80
+                          path: /ping
+                          any: true
+                          time_limit:
+                            max_execution_time_ms: 1000
+                      stop_policy:
+                        container:
+                          command_line: bash -c "/detach.sh"
+                          time_limit:
+                            max_execution_time_ms: 20000
+                            max_restart_period_ms: 30000
+                            min_restart_period_ms: 30000
+                        max_tries: 2
+                      transmit_logs: true
+      patchers_revision: 9
+  revision_info: {}

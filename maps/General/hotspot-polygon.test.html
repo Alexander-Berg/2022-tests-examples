@@ -1,0 +1,205 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <title>hotspot.shape.geometry.Polygon</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <!-- YUI -->
+    <script type="text/javascript" src="../../../../../test/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../../../../test/yui3combo/combo.css" />
+    <script type="text/javascript" src="../../../../../test/run-test-case.js"></script>
+    <!-- Code -->
+    <script type="text/javascript">
+        initAPI({
+            lang: "ru-RU",
+            ns: "ym",
+            load: "geometry.pixel.Polygon,package.full,overlay.staticGraphics.Polygon,hotspot.shape.geometry.Polygon,hotspot.overlayContainer",
+            mode: "debug"
+        });
+    </script>
+
+    <style type="text/css">
+        #container { width: 800px; height: 600px; background: #ccc; }
+    </style>
+</head>
+
+<body class="yui3-skin-sam">
+
+<script type="text/javascript">
+    var beginTest = function() {
+        // подготавливаем карту
+        geoMap = new ym.Map('container', {
+            center: [39, 54],
+            type: "yandex#map",
+            zoom: 0,
+            behaviors: ['drag', 'scrollZoom', 'multiTouch']
+        });
+        geoMap.controls
+            .add('zoomControl')
+            .add('mapTools');
+        runTestCase();
+    },
+        cursor;
+        
+    function getTestCase(Y) {
+        return {
+            name: "hotspot.shape.geometry.Polygon",
+            debug: true,
+            
+            testContains: function() {
+                var contours = [
+                        [[0, 0], [0, 4], [10, 4], [10, 0]],
+                        [[3, 2], [3, 5], [7, 5], [7, 2]]
+                    ],
+                    pixelGeometry = new ym.geometry.pixel.Polygon(contours),
+                    polygon = new ym.hotspot.shape.geometry.Polygon(pixelGeometry, {fill: true}),
+                    pointIn1 = [1, 1],
+                    pointIn2 = [3, 5],
+                    pointOut = [4, 3];
+                
+                Y.assert(polygon.contains(pointIn1), "Ошибка - точка на самом деле попадает в полигон.");
+                Y.assert(polygon.contains(pointIn2), "Ошибка - точка лежит на границе.");
+                Y.assert(!polygon.contains(pointOut), "Ошибка - точка находится в вырезе.");
+                
+                contours = [
+                    [[0, 0], [0, 4], [10, 4], [10, 0]]
+                ];
+                pixelGeometry = new ym.geometry.pixel.Polygon(contours),
+                polygon = new ym.hotspot.shape.geometry.Polygon(pixelGeometry, {stroke: true, strokeWidth: 2, fill: false});
+                pointOut = [5, 2];
+                pointIn1 = [0, 0];
+                
+                Y.assert(polygon.contains(pointIn1), "Ошибка - точка лежит внутри обводки.");
+                Y.assert(!polygon.contains(pointOut), "Ошибка - внутри полигона, но вне обводки.");
+            },
+            
+            testComtainsOutline: function () {
+                var contours = [
+                        [[0, 0], [0, 4], [10, 4], [10, 0]],
+                        [[3, 2], [3, 5], [7, 5], [7, 2]]
+                    ],
+                    pixelGeometry = new ym.geometry.pixel.Polygon(contours),
+                    polygon = new ym.hotspot.shape.geometry.Polygon(pixelGeometry, {fill: true}),
+                    pointIn1 = [1, 1],
+                    pointIn2 = [3, 5],
+                    pointOut = [4, 3];
+                
+                Y.assert(polygon.contains(pointIn1), "Ошибка - точка на самом деле попадает в полигон.");
+                Y.assert(polygon.contains(pointIn2), "Ошибка - точка лежит на границе.");
+                Y.assert(!polygon.contains(pointOut), "Ошибка - точка находится в вырезе.");
+                
+                contours = [
+                    [[0, 0], [0, 4], [10, 4], [10, 0]]
+                ];
+                pixelGeometry = new ym.geometry.pixel.Polygon(contours),
+                polygon = new ym.hotspot.shape.geometry.Polygon(pixelGeometry, {outline: true, strokeWidth: 2, fill: false});
+                pointOut = [5, 2];
+                pointIn1 = [0, 0];
+                
+                Y.assert(polygon.contains(pointIn1), "Ошибка - точка лежит внутри обводки (при задании outline).");
+                Y.assert(!polygon.contains(pointOut), "Ошибка - внутри полигона, но вне обводки (при задании outline).");
+            },
+            
+            testGetBounds: function() {
+                var contours = [
+                        [[0, 0], [0, 4], [10, 4], [10, 0]],
+                        [[3, 2], [3, 5], [7, 5], [7, 2]]
+                    ],
+                    pixelGeometry = new ym.geometry.pixel.Polygon(contours),
+                    polygon = new ym.hotspot.shape.geometry.Polygon(pixelGeometry, {fill: true}),
+                    bounds = polygon.getBounds();
+                Y.assert(bounds[0][0] == [0] && bounds[1][0] == 10, "Неверно определились границы закрашенного полигона.");
+            },
+            
+            testAdd: function () {
+                // TODO замыкание + 1px
+                // TODO Zoom
+                var contour = [[50, 10], [500, 250], [40, 250], [50, 11]],
+                    holes = [
+                        [[70, 100], [200, 230], [110, 280], [70, 101]],
+                        [[110, 175], [210, 310], [300, 100], [110, 176]]
+                    ],
+                    options = {
+                        graphicsStrokeColor: '#ff0000',
+                        graphicsFillColor:   '#6699ff',
+                        graphicsStrokeWidth: 30
+                    },
+                    coordinates = [contour].concat(holes);
+
+                geoMap.cursors.push('arrow');
+
+                /* графика */
+                gPolygon = drawGraphicPolygon(coordinates, options),
+
+                /* хотспот */
+                hPolygon = drawHotspotPolygon(coordinates, options.graphicsStrokeWidth);
+
+                /* отображение */
+                //drawHotspotRepresentation(hPolygon);
+            }
+        }
+    }
+
+    function drawGraphicPolygon (coordinates, options) {
+        var geometry = new ym.geometry.Polygon(coordinates),
+            polygon = new ym.overlay.staticGraphics.Polygon(geometry, new ym.option.Manager(options));
+        polygon.setMap(geoMap);
+        return polygon;
+    }
+
+    function drawHotspotPolygon (coordinates, strokeWidth) {
+        var geometry = new ym.geometry.pixel.Polygon(coordinates),
+            hotspot = new ym.hotspot.Shape({pixelGeometry: geometry}, {fill: true, stroke: true, strokeWidth: strokeWidth}),
+            container = ym.hotspot.overlayContainer.get(geoMap);
+        container.add([hotspot]);
+        hotspot.events
+            .add("mouseenter", onMouseEnter, 'hPolygon')
+            .add("mouseleave", onMouseLeave, 'hPolygon');
+        return hotspot;
+    }
+
+    function drawHotspotRepresentation (hotspot) {
+        // TODO hotspot.getPixels()
+        // TODO graphicsGlobalOpacity сдвигает вправо, graphicsFillOpacity работает очень странно
+
+
+        drawGraphicPolygon(hotspot.getRenderedGeometry()._coordinates, {
+            graphicsFillOpacity: '0.4',
+            graphicsStrokeColor: '#00ff00',
+            graphicsFillColor:   '#6699ff',
+            graphicsStrokeWidth: 0,
+            graphicsStrokeStyle: '2 2'
+        });
+        
+        hotspot.getRenderedGeometry()._createContours();
+        for (var i = 0, l = hotspot.getRenderedGeometry()._coordinates.length; i < l; i++) {
+            drawGraphicPolygon([hotspot.getRenderedGeometry()._coordinates[i]], {
+                graphicsFillOpacity: '0.4',
+                graphicsStrokeColor: false,
+                graphicsFillColor:   '#ff0000',
+                graphicsStrokeWidth: 0
+            });
+        }
+    }
+
+    function onMouseEnter () {
+        cursor = geoMap.cursors.push('pointer');
+    }
+
+    function onMouseLeave () {
+        cursor.remove();
+    }
+
+    //ym.ready(runTestCase);
+    ym.ready(beginTest);
+</script>
+
+    <div id="container"></div>
+
+<script type="text/javascript">
+
+
+</script>
+
+</body>
+</html>

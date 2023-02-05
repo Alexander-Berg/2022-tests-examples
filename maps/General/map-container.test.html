@@ -1,0 +1,116 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <title>map.container</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <!-- YUI -->
+    <script type="text/javascript" src="../../../test/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../../test/yui3combo/combo.css" />
+    <script type="text/javascript" src="../../../test/run-test-case.js"></script>
+    <!-- Code -->
+    <script type="text/javascript">
+        initAPI({
+            lang: "ru-RU",
+            mode: "debug"
+        });
+    </script>
+    <style type="text/css">
+        #container { width: 400px; height: 300px; background: #ccc; }
+    </style>
+</head>
+<body class="yui3-skin-sam">
+<div id="container" height='100px' width='100px'></div>
+
+<script type="text/javascript">
+    var eq = function (a, b) {
+        return Math.abs(a[0] - b[0]) == 0 && Math.abs(b[1] - a[1]) == 0;
+    };
+
+    function getTestCase(Y) {
+        return {
+            name: "map.container",
+            debug: false,
+
+            setUp: function () {
+                var containerStyle = document.querySelector('#container').style;
+                containerStyle.display = "none";
+
+                this.myMap = new ymaps.Map('container', {
+                    center: [54, 39],
+                    zoom: 10
+                }, {
+                    autoFitToViewport: 'ifNull'
+                });
+
+                containerStyle.display = "block";
+            },
+
+            tearDown: function () {
+                this.listeners.removeAll();
+                this.myMap.destroy();
+            },
+
+            testAutoFitToViewportIfNull: function () {
+                this.listeners = this.myMap.events.group().add('sizechange', function () {
+                    this.resume(function () {
+                        Y.assert(!eq(this.myMap.container.getSize(), [0, 0]), this.myMap.container.getSize());
+                    });
+                }, this);
+                var testCase = this;
+
+                testCase.wait(function () {
+                    Y.fail("Не сработал ассерт проверки размеров");
+                }, 1000);
+            },
+
+            testAutoFitToViewportAlways: function () {
+                this.myMap.options.set('autoFitToViewport', 'always');
+
+                this.listeners = this.myMap.events.group().add('sizechange', function () {
+                    this.resume(function () {
+                        this.listeners.removeAll();
+                        this.listeners.add('sizechange', function () {
+                            this.resume(function () {
+                                Y.assert(
+                                    eq(this.myMap.container.getSize(), [222, 333]),
+                                    "autoFitToViewport с опцией always не сработал"
+                                );
+                            });
+                        }, this);
+
+                        var containerStyle = document.querySelector('#container').style;
+                        containerStyle.display = 'none';
+                        containerStyle.width = "222px";
+                        containerStyle.height = "333px";
+                        containerStyle.display = "block";
+
+                        testCase.wait(function () {
+                            Y.fail("Не сработал ассерт проверки размеров");
+                        }, 1000);
+                    });
+                }, this);
+            },
+
+            testAutoFitToViewportChangeOption: function () {
+                this.myMap.options.set('autoFitToViewport', 'none');
+
+                this.listeners = this.myMap.events.group().add('sizechange', function () {
+                    this.resume(function () {
+                        Y.fail("Сработал sizechange");
+                    });
+                }, this);
+
+                var _this = this;
+                this.wait(function () {
+                    Y.assert(eq(_this.myMap.container.getSize(), [0, 0]));
+                }, 300);
+            }
+        }
+    }
+    ymaps.ready(function () {
+        runTestCase();
+    });
+</script>
+</body>
+</html>

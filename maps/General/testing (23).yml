@@ -1,0 +1,129 @@
+annotations:
+  project: maps-front-moira-int
+meta:
+  account_id: 'abc:service:3856'
+  id: maps-front-moira-int_testing
+  project_id: maps-front-moira-int
+  inherit_acl: true
+spec:
+  account_id: 'abc:service:3856'
+  deploy_units:
+    app:
+      endpoint_sets:
+        - port: 80
+      images_for_boxes: {}
+      network_defaults:
+        network_id: _MAPSTESTQNETS_
+      tvm_config:
+        mode: enabled
+        blackbox_environment: Test
+        client_port: 2
+        clients:
+          - source:
+              alias: maps.front-moira-int.testing
+              app_id: 2012240
+            secret_selector:
+              alias: 'sec-01er20zzzj9yqhtyjt8mksgsnb:ver-01er2105awmf0tpqkesjwvxpw9'
+              id: APP_TVM_SECRET_MAPS.FRONT_MOIRA_INT.TESTING
+            destinations:
+              - alias: maps.front-moira-int.testing
+                app_id: 2012240
+      multi_cluster_replica_set:
+        replica_set:
+          clusters:
+            - cluster: sas
+              spec:
+                constraints:
+                  antiaffinity_constraints:
+                    - key: rack
+                      max_pods: 1
+                replica_count: 1
+            - cluster: vla
+              spec:
+                constraints:
+                  antiaffinity_constraints:
+                    - key: rack
+                      max_pods: 1
+                replica_count: 1
+            - cluster: man
+              spec:
+                replica_count: 1
+          deployment_strategy:
+            max_unavailable: 1
+          pod_template_spec:
+            spec:
+              disk_volume_requests:
+                - id: maps-front-moira-int_testing-disk-0
+                  storage_class: hdd
+                  quota_policy:
+                    bandwidth_guarantee: 5242880
+                    bandwidth_limit: 10485760
+                    capacity: 16106127360
+                  labels:
+                    used_by_infra: true
+              resource_requests:
+                memory_guarantee: 1073741824
+                memory_limit: 1073741824
+                vcpu_guarantee: 250
+                vcpu_limit: 250
+              host_infra:
+                monitoring:
+                  unistats:
+                    - workload_id: app_workload
+                      port: 7032
+                      path: /unistat
+              secret_refs:
+                'sec-01er20zzzj9yqhtyjt8mksgsnb:ver-01er2105awmf0tpqkesjwvxpw9':
+                  secret_id: sec-01er20zzzj9yqhtyjt8mksgsnb
+                  secret_version: ver-01er2105awmf0tpqkesjwvxpw9
+              pod_agent_payload:
+                spec:
+                  boxes:
+                    - id: app_box
+                      rootfs: {}
+                      static_resources:
+                        - resource_ref: usr.local.app.resources.secrets
+                          mount_point: /usr/local/app/resources/secrets
+                  mutable_workloads:
+                    - workload_ref: app_workload
+                  resources:
+                    static_resources:
+                      - id: usr.local.app.resources.secrets
+                        verification:
+                          checksum: 'EMPTY:'
+                          check_period_ms: 180000
+                        files:
+                          files:
+                            - file_name: secrets.json
+                              secret_data:
+                                id: secret.moira-int-testing-db
+                                alias: >-
+                                  sec-01er20zzzj9yqhtyjt8mksgsnb:ver-01er2105awmf0tpqkesjwvxpw9
+                  workloads:
+                    - id: app_workload
+                      box_ref: app_box
+                      env:
+                        - name: TZ
+                          value:
+                            literal_env:
+                              value: Europe/Moscow
+                      liveness_check:
+                        tcp_check:
+                          port: 80
+                      readiness_check:
+                        http_get:
+                          port: 80
+                          path: /ping
+                          any: true
+                          time_limit:
+                            max_execution_time_ms: 1000
+                      stop_policy:
+                        container:
+                          command_line: bash -c "/detach.sh"
+                          time_limit:
+                            max_execution_time_ms: 20000
+                            max_restart_period_ms: 30000
+                            min_restart_period_ms: 30000
+                        max_tries: 2
+                      transmit_logs: true
+  revision_info: {}

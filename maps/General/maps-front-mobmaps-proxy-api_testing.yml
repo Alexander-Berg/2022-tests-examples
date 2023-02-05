@@ -1,0 +1,43 @@
+l7_upstream_macro:
+  version: 0.1.1
+  id: maps-front-mobmaps-proxy-api_testing
+  matcher:
+      path_re: '/turbo/v1(.*)?'
+  rewrite:
+    - target: PATH
+      pattern:
+        re: '/turbo/v1(.*)?'
+      replacement: ' /v1/turboapp%1'
+  by_dc_scheme:
+    dc_balancer:
+      weights_section_id: bygeo
+      method: BY_DC_WEIGHT
+      attempts: 1
+    balancer:
+      attempts: 2
+      max_reattempts_share: 0.2
+      max_pessimized_endpoints_share: 0.2
+      health_check:
+        delay: 5s
+        request: >-
+          GET /ping HTTP/1.1\nHost:
+          front-jsapi.tst.slb.maps.yandex.net\nUser-agent: l7-balancer\n\n
+      retry_http_responses:
+        codes:
+          - 5xx
+      backend_timeout: 5s
+      connect_timeout: 0.5s
+    dcs:
+      - name: man
+        backend_ids:
+          - maps-front-mobmaps-proxy-api_external-testing_man
+      - name: sas
+        backend_ids:
+          - maps-front-mobmaps-proxy-api_external-testing_sas
+      - name: vla
+        backend_ids:
+          - maps-front-mobmaps-proxy-api_external-testing_vla
+    on_error:
+      static:
+        status: 504
+        content: Service unavailable

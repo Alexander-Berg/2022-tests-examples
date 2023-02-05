@@ -1,0 +1,97 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <title>traffic.BaseMultiSource</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <!-- YUI -->
+    <script type="text/javascript" src="../../../../tests/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../../../tests/yui3combo/combo.css" />
+    <script type="text/javascript" src="../../../../tests/run-test-case.js"></script>
+    <!-- Code -->
+    <script type="text/javascript">
+        initAPI({
+            lang: "ru-RU",
+            mode: "debug",
+            load: "traffic.BaseMultiSource,Map,option.Manager"
+        });
+    </script>
+</head>
+
+<body class="yui3-skin-sam"></body>
+
+<script type="text/javascript">
+    function getTestCase(Y) { return {
+        name: "traffic.BaseMultiSource",
+        testBaseMultiSource_single: function() {
+            var tileUrlTemplate = 'http://jft.maps.yandex.net/tiles?l=trj&%c&v=5f82a212ae3a&tm=43200',
+                keyTemplate = '%c&l=trj&tm=43200&v=5f82a212ae3a&test=1',
+                multiSource = new ymaps.traffic.BaseMultiSource(tileUrlTemplate, keyTemplate);
+
+            var map = new ymaps.Map('map', { center: [37.621587,55.74954], zoom: 10, behaviors: []}),
+                layer = {
+                    getMap: function() {
+                        return map;
+                    },
+                    options: new ymaps.option.Manager(),
+
+                    id: 'trj'
+                },
+                numOfCalls = 0,
+                fCallback1 = function() { numOfCalls += 1; },
+                fCallback2 = function(data) {
+                    numOfCalls += 1;
+                    var result = data.length;
+                    Y.assert(result > 0, 'Неверно выполнилась подгрзузка данных.');
+                    Y.assert(numOfCalls == 1, "Функция была вызвана неверное число раз(!=2).");
+                };
+            multiSource.requestObjects(layer, [619, 320], 10, fCallback1);
+            multiSource.addLayer(layer.id, layer);
+            multiSource.requestObjects(layer, [619, 320], 10, fCallback2);
+        },
+
+        testBaseMultiSource_multi: function() {
+            var tileUrlTemplate = 'http://jft.maps.yandex.net/tiles?l=trj,trje&%c&v=5f82a212ae3a&tm=43200',
+                keyTemplate = '%c&l=trj&tm=43200&v=5f82a212ae3atest=2',
+                multiSource = new ymaps.traffic.BaseMultiSource(tileUrlTemplate, keyTemplate);
+
+            var map = new ymaps.Map('map', { center: [37.621587,55.74954], zoom: 10, behaviors: []}),
+                layer_traffic = {
+                    getMap: function() {
+                        return map;
+                    },
+                    options: new ymaps.option.Manager(),
+                    id: 'trj'
+                },
+                layer_info = {
+                    getMap: function() {
+                        return map;
+                    },
+                    options: new ymaps.option.Manager(),
+                    id: 'trje'
+                },
+                numOfCalls = 0,
+                fCallback1 = function() { numOfCalls += 1; },
+                fCallback2 = function(data) {
+                    numOfCalls += 1;
+                    var result = data.length;
+                    Y.assert(result > 0, 'Неверно выполнилась подгрзузка данных(1).');
+                    Y.assert(numOfCalls == 1, "Функция была вызвана неверное число раз(!=1).");
+                },
+                fCallback3 = function(data) {
+                    numOfCalls += 1;
+                    var result = data.length;
+                    Y.assert(result > 0, 'Неверно выполнилась подгрзузка данных(2).');
+                    Y.assert(numOfCalls == 2, "Функция была вызвана неверное число раз(!=2).");
+                };
+            multiSource.requestObjects(layer_traffic, [619, 320], 10, fCallback1);
+            multiSource.addLayer(layer_traffic.id, layer_traffic);
+            multiSource.addLayer(layer_info.id, layer_info);
+            multiSource.requestObjects(layer_traffic, [619, 320], 10, fCallback2);
+            multiSource.requestObjects(layer_info, [619, 320], 10, fCallback3);
+        }
+    }}
+    ymaps.ready(runTestCase);
+</script>
+<div id="map"></div>
+</html>

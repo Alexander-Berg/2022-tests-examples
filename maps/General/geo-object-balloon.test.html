@@ -1,0 +1,303 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <title>geoObject.Balloon</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <!-- YUI -->
+    <script type="text/javascript" src="../../../test/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../../test/yui3combo/combo.css"/>
+    <script type="text/javascript" src="../../../test/run-test-case.js"></script>
+    <!-- Code -->
+    <script type="text/javascript">
+        initAPI({
+            lang: "ru-RU",
+            load: "package.full,util.extend,util.array,util.dom.element",
+            mode: "dev"
+        });
+    </script>
+    <script type="text/javascript" src="../../../test/util/event-eye.js"></script>
+</head>
+
+<body class="yui3-skin-sam"><div id="map" style="width: 400px; height: 400px;"></div></body>
+
+<script type="text/javascript">
+    function getTestCase (Y) {
+        return {
+            name: "geoObject.Balloon",
+            debug: false,
+
+            _should: {
+                ignore: {
+                    testNoMapOpen: false,
+                    testOpen: false,
+                    testClose: false,
+                    testCloseOnNoPoint: false,
+                    testIsOpen: false,
+                    testCapturing: false,
+                    testHoldCapturing: false,
+                    testHideIconOnBalloonOpenForPlacemark: false
+                }
+            },
+
+            setUp: function () {
+                this.geoMap = new ymaps.Map("map", {
+                    center: [55, 55],
+                    zoom: 4,
+                    type: "yandex#map"
+                });
+
+                this.placemark = new ymaps.GeoObject({
+                    geometry: {
+                        type: "Point",
+                        coordinates: [55, 55]
+                    }
+                });
+
+                this.polyline = new ymaps.GeoObject({
+                    geometry: {
+                        type: "LineString",
+                        coordinates: [[55, 55], [60, 60]]
+                    }
+                });
+
+                this.polygon = new ymaps.GeoObject({
+                    geometry: {
+                        type: "Polygon",
+                        coordinates: [[[55, 55], [40, 40], [55, 40]]]
+                    }
+                });
+
+                this.geoObjects = [
+                    this.placemark, this.polyline, this.polygon
+                ];
+            },
+
+            tearDown: function () {
+                this.geoMap.destroy();
+            },
+            
+            testNoMapOpen: function () {
+                ymaps.util.array.each(this.geoObjects, function (geoObject) {
+                    try {
+                        geoObject.balloon.open();
+                        Y.fail('Нет ошибки');
+                    } catch (e) {
+                        Y.assert(
+                            e.message == "geoObject.Balloon.open: геообъект не добавлен на карту",
+                            "Неверное сообщение об ошибке: " + e.message
+                        );
+                    }
+                }, this);
+            },
+
+            testOpen: function () {
+                ymaps.util.array.each(this.geoObjects, function (geoObject) {
+                    this.geoMap.geoObjects.add(geoObject);
+                    eventEye.observe(geoObject.balloon, ["open", "close"]);
+
+                    var balloon = geoObject.balloon.open();
+                    Y.assert(
+                        balloon && balloon.isOpen() &&
+                        ymaps.util.dom.element.find(this.geoMap.container.getElement(), ".ymaps-b-balloon") &&
+                        eventEye.length() == 1 &&
+                        eventEye.check(0, {
+                            type: "open",
+                            target: geoObject.balloon
+                        }),
+                        "Неверный результат на " + geoObject.geometry.getType()
+                    );
+                    this.geoMap.geoObjects.remove(geoObject);
+                }, this);
+            },
+
+            testClose: function () {
+                ymaps.util.array.each(this.geoObjects, function (geoObject) {
+                    this.geoMap.geoObjects.add(geoObject);
+                    geoObject.balloon.open();
+
+                    eventEye.observe(geoObject.balloon, ["open", "close"]);
+
+                    geoObject.balloon.close();
+
+                    Y.assert(
+                        !ymaps.util.dom.element.find(this.geoMap.container.getElement(), ".ymaps-b-balloon") &&
+                        eventEye.length() == 1 &&
+                        eventEye.check(0, {
+                            type: "close",
+                            target: geoObject.balloon
+                        }),
+                        "Неверный результат на " + geoObject.geometry.getType()
+                    );
+                }, this);
+            },
+
+            testCloseOnNoPoint: function () {
+                this.geoMap.geoObjects.add(this.polyline);
+                this.polyline.balloon.open();
+                eventEye.observe(this.polyline.balloon, ["open", "close"]);
+
+                this.polyline.geometry.setCoordinates([]);
+                Y.assert(
+                    !ymaps.util.dom.element.find(this.geoMap.container.getElement(), ".ymaps-b-balloon") &&
+                    eventEye.length() == 1 &&
+                    eventEye.check(0, {
+                        type: "close",
+                        target: this.polyline.balloon
+                    }),
+                    "Неверный результат на " + this.polyline.geometry.getType()
+                );
+            },
+
+            testIsOpen: function () {
+                ymaps.util.array.each(this.geoObjects, function (geoObject) {
+                    this.geoMap.geoObjects.add(geoObject);
+                    geoObject.balloon.open();
+                    Y.assert(
+                        geoObject.balloon.isOpen(),
+                        "Неверный результат после open на " + geoObject.geometry.getType()
+                    );
+                    geoObject.balloon.close();
+                    Y.assert(
+                        !geoObject.balloon.isOpen(),
+                        "Неверный результат после close на " + geoObject.geometry.getType()
+                    );
+                    geoObject.balloon.open().close();
+                    Y.assert(
+                        !geoObject.balloon.isOpen(),
+                        "Неверный результат после open.close на " + geoObject.geometry.getType()
+                    );
+                    var capturedBalloon;
+                    geoObject.balloon.capture(function (err, balloon) {
+                        capturedBalloon = balloon;
+                    });
+                    Y.assert(
+                        !geoObject.balloon.isOpen(),
+                        "Неверный результат после capture на " + geoObject.geometry.getType()
+                    );
+                    capturedBalloon.open(this.geoMap.getGlobalPixelCenter());
+                    Y.assert(
+                        geoObject.balloon.isOpen(),
+                        "Неверный результат после capture + open на " + geoObject.geometry.getType()
+                    );
+                }, this);
+            },
+
+            testCapturing: function () {
+                ymaps.util.array.each(this.geoObjects, function (geoObject) {
+                    this.geoMap.geoObjects.add(geoObject);
+                    geoObject.balloon.open();
+                    eventEye.observe(geoObject.balloon, ["open", "close"]);
+
+                    var capturedBalloon;
+                    geoObject.balloon.capture(function (err, balloon) {
+                        Y.assert(
+                            !err && balloon,
+                            "Неправильные аргументы в обработчике захвата балуна"
+                        );
+                        capturedBalloon = balloon;
+                    });
+
+                    Y.assert(
+                        !capturedBalloon.isOpen() &&
+                        eventEye.length() == 1 &&
+                        eventEye.check(0, {
+                            type: "close",
+                            target: geoObject.balloon
+                        }),
+                        "Захваченный балун не закрыт"
+                    );
+                }, this);
+            },
+
+            testHoldCapturing: function () {
+                ymaps.util.array.each(this.geoObjects, function (geoObject) {
+                    this.geoMap.geoObjects.add(geoObject);
+                    // TODO странный баг если передавать [0, 0]
+                    var balloon = geoObject.balloon.open(),
+                        listeners = balloon.events.group().add("beforedestroy", function (e) {
+                            e.preventDefault();
+                        });
+                    eventEye.observe(geoObject.balloon, ["open", "close"]);
+
+                    var captureError;
+                    geoObject.balloon.capture(function (err, balloon) {
+                        Y.assert(
+                            err && !balloon,
+                            "Неправильные аргументы в обработчике захвата балуна"
+                        );
+                        captureError = err;
+                    });
+
+                    Y.assert(
+                        captureError == "Destruction has been canceled" &&
+                        !eventEye.length(),
+                        "Неверное кол-во событий"
+                    );
+                    listeners.removeAll();
+                }, this);
+            },
+
+            testHideIconOnBalloonOpenForPlacemark: function () {
+                this.geoMap.geoObjects.add(this.placemark);
+
+                this.placemark.balloon.open();
+                this.placemark.events.add("overlaychange", function (event) {
+                    console.log("overlaychange", event.get("oldOverlay"), event.get("newOverlay"));
+                });
+
+                Y.assert(
+                    !ymaps.util.dom.element.find(this.geoMap.container.getElement(), ".ymaps-image-with-content"),
+                    "1"
+                );
+
+                var group = this.placemark.events.group().add("overlaychange", function () {
+                    group.removeAll();
+                    this.resume(function () {
+                        Y.assert(
+                            ymaps.util.dom.element.find(this.geoMap.container.getElement(), ".ymaps-image-with-content"),
+                            "2"
+                        );
+//                        console.log("_2");
+
+                        this.placemark.options.unset("hideIconOnBalloonOpen");
+                        Y.assert(
+                            !ymaps.util.dom.element.find(this.geoMap.container.getElement(), ".ymaps-image-with-content"),
+                            "3"
+                        );
+//                        console.log("_3");
+
+                        this.placemark.options.set("hideIconOnBalloonOpen", true);
+                        Y.assert(
+                            !ymaps.util.dom.element.find(this.geoMap.container.getElement(), ".ymaps-image-with-content"),
+                            "4"
+                        );
+//                        console.log("_4");
+
+                        // TODO 2.1 блок закомментирвоан из-за проблем с системой событий.
+                        // TODO 2.1 overlaychange срабатывает на событие текущего обработыика.
+//                        var group1 = this.placemark.events.group().add("overlaychange", function (event) {
+////                            debugger;
+////                            console.log("_6");
+//                            group1.removeAll();
+//                            this.resume(function () {
+////                                console.log("_7");
+//                                Y.assert(
+//                                    ymaps.util.dom.element.find(this.geoMap.container.getElement(), ".ymaps-image-with-content"),
+//                                    "5"
+//                                );
+//                            });
+//                        }, this);
+//                        this.placemark.balloon.close();
+////                        console.log("_5");
+//                        this.wait();
+                    }, this);
+                }, this);
+                this.placemark.options.set("hideIconOnBalloonOpen", false);
+                this.wait();
+            }
+        }
+    }
+    ymaps.ready(runTestCase);
+</script>
+</html>

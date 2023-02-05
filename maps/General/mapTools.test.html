@@ -1,0 +1,106 @@
+<!doctype html>
+<html>
+<head>
+    <title>controls</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <!-- YUI -->
+    <script type="text/javascript" src="../../../test/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../../test/yui3combo/combo.css"/>
+    <script type="text/javascript" src="../../../test/run-test-case.js"></script>
+    <!-- Code -->
+    <script type="text/javascript">
+        initAPI({
+            lang: "ru-RU",
+            load: "package.full,util.dom.element",
+            mode: "debug"
+        });
+    </script>
+</head>
+<style>
+    html, html body {
+        width: 100%;
+        height: 100%;
+    }
+</style>
+<body class="yui3-skin-sam" style="width: 100%; heigth: 100%"></body>
+
+<script type="text/javascript">
+
+function getTestCase (Y) {
+    
+    map = new ymaps.Map('map', {
+                center: [55.777153093859496, 37.639130078124964],
+                zoom: 10
+            });
+
+    return {
+        name: "controls",
+
+        testMapTools: function () {
+            var mapTools = new ymaps.control.MapTools({ items: ["drag", "magnifier", "ruler"]}),
+                button = new ymaps.control.Button({ data: { content: "Кнопа" } });
+            mapTools.add(button);
+            Y.assert(mapTools.get(0) == mapTools.getDefaultGroup(), "Неверно отработал метод mapTools.get.");
+            map.controls.add(mapTools);
+            Y.assert(mapTools.getDefaultGroup().get("drag"), "Неверно работает доступ к предустановленным кнопкам.");
+            map.behaviors.get('ruler').getState();
+            var dragButton = mapTools.getDefaultGroup().get('drag'),
+                rulerButton = mapTools.getDefaultGroup().get('ruler'),
+                res = '';
+            dragButton.events.add('deselect', function () {
+                res += 'deselect_';
+            });     
+            
+            rulerButton.events.add('select', function () {
+                res += 'select_';
+            });
+            
+            var correctTarget = false;
+            mapTools.events.add('click', function (e) {
+                if (e.get('target') == rulerButton) {
+                    correctTarget = true;
+                }
+            });
+            
+            //Y.Event.simulate(rulerButton.getLayout().getParentElement(), 'click');
+            //Y.assert(res == 'deselect_select_', "Неверный порядок событий при смене кнопки");
+            //Y.assert(correctTarget, "Клик на кнопке не поймался на группе.");
+            
+            mapTools.getDefaultGroup().add(new ymaps.control.Button('test'), 1);
+            mapTools.getDefaultGroup().get(1).disable();
+            mapTools.getDefaultGroup().get('ruler').disable();
+            mapTools.getDefaultGroup().get('ruler').enable();
+        },
+        
+        testDefaultDragSelected: function () {
+            var mapTools2 = new ymaps.control.MapTools({ items: ["drag", "magnifier", "ruler"]});
+            map.controls.add(mapTools2);
+            mapTools2.getDefaultGroup().get(0).disable();
+            mapTools2.getDefaultGroup().get(1).enable();
+            mapTools2.getDefaultGroup().get(1).disable();
+            Y.assert(mapTools2.getDefaultGroup().getSelectedIndex() == 0, "После отжатия кнопки не была выбрана кнопка по умолчанию.");
+            map.controls.remove(mapTools2);
+        },
+
+        testMagnifierDefaultSelected: function () {
+            var mapTools = new ymaps.control.MapTools({ items: ["drag", "magnifier", "ruler"]});
+            map.controls.add(mapTools);
+            var drag = mapTools.getDefaultGroup().get("drag");
+            var magnifier = mapTools.getDefaultGroup().get("magnifier");
+            drag.options.set('selectedByDefault', false);
+            magnifier.options.set('selectedByDefault', true);
+
+            magnifier.select();
+            magnifier.deselect();
+            Y.assert(magnifier.isSelected() == true, 'Не сработала опция selectedByDefault');
+        }
+    };
+}
+ymaps.ready(runTestCase);
+
+</script>
+
+<div id='map' style="width: 70%; height: 60%;"></div>
+
+</body>
+</html>

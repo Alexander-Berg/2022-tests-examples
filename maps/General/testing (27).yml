@@ -1,0 +1,155 @@
+annotations:
+  project: maps-front-jsapi-v2-1
+meta:
+  id: maps-front-jsapi-v2-1-79_testing
+  project_id: maps-front-jsapi-v2-1
+  inherit_acl: true
+spec:
+  deploy_units:
+    app:
+      endpoint_sets:
+        - port: 80
+      images_for_boxes: {}
+      network_defaults:
+        network_id: _MAPSTESTQNETS_
+      patchers_revision: 13
+      tvm_config:
+        mode: enabled
+        blackbox_environment: Test
+        client_port: 2
+        clients:
+          - source:
+              alias: jsapi-v2-1
+              app_id: 2028374
+            secret_selector:
+              alias: secrets_file
+              id: tvmSecret
+            destinations:
+              - alias: apikeys
+                app_id: 2015781
+              - alias: apikeysInt
+                app_id: 2006077
+              - alias: coreRendererTilesOsm
+                app_id: 2024693
+      multi_cluster_replica_set:
+        replica_set:
+          clusters:
+            - cluster: sas
+              spec:
+                constraints:
+                  antiaffinity_constraints:
+                    - key: rack
+                      max_pods: 1
+                replica_count: 1
+            - cluster: vla
+              spec:
+                constraints:
+                  antiaffinity_constraints:
+                    - key: rack
+                      max_pods: 1
+                replica_count: 1
+          deployment_strategy:
+            max_unavailable: 1
+          pod_template_spec:
+            spec:
+              disk_volume_requests:
+                - id: maps-front-jsapi-app_testing-disk-0
+                  storage_class: hdd
+                  quota_policy:
+                    bandwidth_guarantee: 5242880
+                    bandwidth_limit: 10485760
+                    capacity: 16106127360
+                  labels:
+                    used_by_infra: true
+              resource_requests:
+                memory_guarantee: 5368709120
+                memory_limit: 5368709120
+                vcpu_guarantee: 2000
+                vcpu_limit: 2000
+              host_infra:
+                monitoring:
+                  unistats:
+                    - workload_id: app_workload
+                      port: 7032
+                      path: /unistat
+              secret_refs:
+                secrets_file:
+                  secret_id: sec-01f7jz775p418n0ezqq5q8220y
+                  secret_version: ver-01g38wej336v0rqwgezsx2kme9
+              pod_agent_payload:
+                spec:
+                  boxes:
+                    - id: app_box
+                      rootfs: {}
+                      static_resources:
+                        - resource_ref: etc.yandex.jsapi-v2-1
+                          mount_point: /etc/yandex/jsapi-v2-1
+                        - resource_ref: usr.share.yandex.maps.inthosts
+                          mount_point: /usr/share/yandex/maps/inthosts
+                        - resource_ref: usr.share.yandex.maps.hosts
+                          mount_point: /usr/share/yandex/maps/hosts
+                        - resource_ref: var.cache.geobase.geodata6.bin
+                          mount_point: /var/cache/geobase/geodata6.bin
+                      init:
+                        - command_line: >-
+                            /bin/bash -c 'mv /var/cache/geobase/geodata6.bin /var/cache/geobase/tmp && mv /var/cache/geobase/tmp/geodata6.bin /var/cache/geobase/geodata6.bin && rm -rf /var/cache/geobase/tmp'
+                  mutable_workloads:
+                    - workload_ref: app_workload
+                  resources:
+                    static_resources:
+                      - id: etc.yandex.jsapi-v2-1
+                        verification:
+                          checksum: 'EMPTY:'
+                          check_period_ms: 180000
+                        files:
+                          files:
+                            - file_name: secrets.json
+                              multi_secret_data:
+                                secret_alias: secrets_file
+                      - id: usr.share.yandex.maps.inthosts
+                        url: 'sbr:3098264437'
+                        verification:
+                          checksum: 'EMPTY:'
+                          check_period_ms: 180000
+                      - id: usr.share.yandex.maps.hosts
+                        url: 'sbr:3017115348'
+                        verification:
+                          checksum: 'EMPTY:'
+                          check_period_ms: 180000
+                      - id: var.cache.geobase.geodata6.bin
+                        url: 'sbr:3227726018'
+                        verification:
+                          checksum: 'EMPTY:'
+                          check_period_ms: 180000
+                  workloads:
+                    - id: app_workload
+                      box_ref: app_box
+                      env:
+                        - name: TZ
+                          value:
+                            literal_env:
+                              value: Europe/Moscow
+                        - name: MAPS_APP_CONFIG_OVERRIDE
+                          value:
+                            literal_env:
+                              value: '{ }'
+                      liveness_check:
+                        tcp_check:
+                          port: 80
+                      readiness_check:
+                        http_get:
+                          port: 80
+                          path: /ping
+                          any: true
+                          time_limit:
+                            max_execution_time_ms: 1000
+                      stop_policy:
+                        container:
+                          command_line: bash -c "/detach.sh"
+                          time_limit:
+                            max_execution_time_ms: 20000
+                            max_restart_period_ms: 30000
+                            min_restart_period_ms: 30000
+                        max_tries: 2
+                      transmit_logs: true
+  revision_info: {}

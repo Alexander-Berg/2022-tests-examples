@@ -1,0 +1,48 @@
+# DOCs https://wiki.yandex-team.ru/mobvteam/sandbox-runner/#shag3sozdatkonfiguracijuteamcityszapuskomvsandbox
+_testing_template: &testing
+  secrets:
+    some-value:sec-01e8mp73ydq4541wbrkba0rhvn[automation-oauth-token]: OAUTH_TOKEN
+    some-value:sec-01e8mp73ydq4541wbrkba0rhvn[sandbox-oauth-token]: SANDBOX_TOKEN
+  cmd:
+    # FIXME(MAPSANDROID-16488): Explicit boot is redundant since newer TSR boots emulator earlier with its own options. It disables animations too
+    - ./gradlew :android:yandexmaps:bootAndroidEmulators -s -Pemulator.args="-partition-size 1024 -no-audio -no-boot-anim -no-snapshot -no-window -verbose"
+    - $ANDROID_HOME/platform-tools/adb shell settings put global window_animation_scale 0
+    - $ANDROID_HOME/platform-tools/adb shell settings put global transition_animation_scale 0
+    - $ANDROID_HOME/platform-tools/adb shell settings put global animator_duration_scale 0
+    - $ANDROID_HOME/platform-tools/adb shell settings put secure mock_location 1
+    - $ANDROID_HOME/platform-tools/adb shell reboot
+    - $ANDROID_HOME/platform-tools/adb logcat >> ../../../../../log1/logcat.log &
+    - |
+      error=0
+
+      ./gradlew \
+          :a:yM:connectedAndroidTest \
+          :a:yM:allureClearAndroidResults \
+          :a:yM:allureFetchAndroidResults \
+          :a:yM:allureReport \
+          --continue --stacktrace \
+          -Pru.yandex:debugAppIdSuffix=.pr \
+          %env.additional_gradle_args% \
+          || error=1
+
+      ./gradlew --stacktrace :tools:aybolit:run --args=" \
+          --allureExportPath=%env.ARCADIA_ROOT%/mobile/geo/maps/maps/android/yandexmaps/build/reports/allure-report/export \
+          --link=\"%env.aybolit_link%\" \
+          --name=\"%env.aybolit_name%\" \
+          --slackHook=\"%env.aybolit_slack_hook%\" \
+      " || error=1
+
+      exit $error
+  android-sdk:
+    platforms(28,29,30,31)+tools(30.0.3)+ndk(23.1.7779620)+system-images(android-29;google_apis;x86_64)+packages(cmake;3.10.2.4988404)
+  emulator_system_images:
+    android-29;google_apis;x86_64
+  emulator_disk_size:
+    2
+  junit:
+    - '**/android/yandexmaps/build/outputs/androidTest-results/connected'
+  env:
+    additional_gradle_args: ""
+    CPU_CORES: 8
+  multislot:
+    MEDIUM

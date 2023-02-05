@@ -1,0 +1,124 @@
+apply plugin: 'com.android.application'
+apply plugin: 'kotlin-android'
+
+boolean isCiBuild = project.hasProperty('CI')
+
+println "Building on ${isCiBuild ? "CI" : "local machine"}"
+
+if (isCiBuild) {
+    apply plugin: 'upload-beta-android'
+    uploadBeta {
+        uploadReleaseOnly = false
+        applicationName = 'metrokit'
+    }
+}
+
+int buildNumber = Integer.MAX_VALUE // Local build always overrides the one from CI
+if (isCiBuild) {
+    buildNumber = System.getenv('BUILD_NUMBER') as int
+}
+
+android {
+    compileSdkVersion 28
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    defaultConfig {
+        applicationId "com.yandex.metrokit.testapp"
+        minSdkVersion 16
+        targetSdkVersion 28
+        versionCode buildNumber
+        versionName "1.0"
+
+        ndk.abiFilters supportedAbis
+
+        signingConfig signingConfigs.debug
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+        }
+    }
+
+    flavorDimensions 'env'
+
+    productFlavors {
+        envProd {
+            dimension 'env'
+            applicationIdSuffix '.prod'
+            versionNameSuffix '-prod'
+            manifestPlaceholders = [
+                    metroKitEnvironment : 'prod',
+                    appName : 'MKTA.Prod'
+            ]
+        }
+
+        envTest {
+            dimension 'env'
+            applicationIdSuffix '.test'
+            versionNameSuffix '-test'
+            manifestPlaceholders = [
+                    metroKitEnvironment : 'test',
+                    appName : 'MKTA.Test'
+            ]
+        }
+
+        envDev {
+            dimension 'env'
+            applicationIdSuffix '.dev'
+            versionNameSuffix '-dev'
+            manifestPlaceholders = [
+                    metroKitEnvironment : 'dev',
+                    appName : 'MKTA.Dev'
+            ]
+        }
+    }
+
+    sourceSets {
+        main.java.srcDirs += 'src/main/java'
+        main.java.srcDirs += 'src/main/kotlin'
+    }
+
+    signingConfigs {
+        debug {
+            storeFile file("debug.keystore")
+            storePassword "password"
+            keyAlias "YandexMapsDebug"
+            keyPassword "password"
+        }
+    }
+
+    lintOptions {
+        disable 'RtlHardcoded'
+    }
+}
+
+configurations.all {
+    resolutionStrategy.cacheChangingModulesFor 0, 'seconds'
+}
+
+dependencies {
+    implementation "org.jetbrains.kotlin:kotlin-stdlib:$versions.kotlin"
+    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-core:$versions.kotlin_coroutines"
+    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:$versions.kotlin_coroutines"
+
+    implementation 'androidx.appcompat:appcompat:1.0.2'
+    implementation 'androidx.cardview:cardview:1.0.0'
+    implementation 'androidx.recyclerview:recyclerview:1.0.0'
+    implementation 'androidx.constraintlayout:constraintlayout:2.0.0-beta2'
+
+    implementation 'com.google.android.gms:play-services-location:11.6+'
+
+    implementation('com.yandex:metrokit@aar') { changing = true }
+    implementation('com.yandex:runtime@aar') { changing = true }
+    implementation('com.yandex:mapkit@aar') { changing = true }
+
+    implementation 'com.yandex.android:mobmetricalib-internal:3.4.0'
+    implementation 'com.android.support.constraint:constraint-layout:1.1.3'
+}
+
+apply from: rootProject.file("tools/asan/asan.gradle")

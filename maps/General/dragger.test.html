@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html>
+<title>util.Dragger</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<!-- YUI -->
+<script type="text/javascript" src="../../../test/yui3combo/combo.js"></script>
+<link rel="stylesheet" href="../../../test/yui3combo/combo.css"/>
+<script type="text/javascript" src="../../../test/run-test-case.js"></script>
+<!-- Code -->
+<script type="text/javascript">
+    initAPI({
+        lang: "ru-RU",
+        load: "util.Dragger,domEvent.manager,DomEvent,system.browser",
+        mode: "debug",
+        ns: "ym"
+    });
+</script>
+
+<body class="yui3-skin-sam">
+<div id="node" style="width: 200px; height: 200px; background-color: #a52a2a;"></div>
+</body>
+<script type="text/javascript">
+
+    function getTestCase (Y) {
+        return {
+            name: "util.Dragger",
+
+            _should: {
+                ignore: {
+//                    testEvents: true,
+//                    testCancelEvent: true,
+//                    testAutoStart: true,
+//                    testByRightButton: true
+                }
+            },
+
+            testEvents: function () {
+                var dragger = new ym.util.Dragger(), result = '';
+                dragger.events.add(['start', 'move', 'stop'], function (event) {
+                    var delta = event.get('delta'), position = event.get('position');
+                    result += event.get('type') + ' ' + position[0] + '_' + position[1] + '_' + delta[0] + '_' + delta[1] + '_';
+                });
+
+                dragger.start(new ym.DomEvent({
+                    clientX: 20,
+                    clientY: 20,
+                    button: 2,
+                    get: function (key) {
+                        return this[key];
+                    }
+                }, "mousedown"));
+
+                Y.Event.simulate(document.documentElement, 'mousemove', {clientX: 20, clientY: 20});
+                Y.Event.simulate(document.documentElement, 'mousemove', {clientX: 53, clientY: 53});
+                Y.Event.simulate(document.documentElement, 'mousemove', {clientX: 99, clientY: 99});
+                Y.Event.simulate(document.documentElement, 'mouseup', {clientX: 99, clientY: 99, button: 2});
+                Y.assert(result == 'start 20_20_0_0_move 53_53_33_33_move 99_99_46_46_stop 99_99_0_0_', 'Неверная информация в событиях.');
+            },
+
+            testCancelEvent: function () {
+                var dragger = new ym.util.Dragger(),
+                        result,
+                        eventData = {
+                            position: [30, 50],
+                            get: function (key) {
+                                return this[key];
+                            }
+                        };
+
+                dragger.events.add('cancel', function () {
+                    result = true;
+                });
+
+                dragger.start(eventData);
+
+                // Смещаем на значение меньше тремора.
+                Y.Event.simulate(document.documentElement, 'mousemove', {clientX: 31, clientY: 51});
+                Y.Event.simulate(document.documentElement, 'mouseup', {clientX: 31, clientY: 51});
+
+                Y.assert(result, 'Не было получено событие "cancel" при отмене работы драггера.');
+            },
+
+            testAutoStart: function () {
+                var node = document.getElementById('node'),
+                        dragger = new ym.util.Dragger({
+                            autoStartElement: node
+                        }),
+                        result = '';
+
+                dragger.events.add('start', function (event) {
+                    result = 'start!';
+                });
+
+                Y.Event.simulate(node, 'mousedown', {clientX: 20, clientY: 20});
+                Y.Event.simulate(document.documentElement, 'mousemove', {clientX: 20, clientY: 20});
+                Y.Event.simulate(document.documentElement, 'mousemove', {clientX: 220, clientY: 220});
+                Y.assert(result == 'start!', 'Не сработала опция autoStartElement.');
+            },
+
+            testByRightButton: function () {
+                var node = document.getElementById('node'),
+                    dragger = new ym.util.Dragger({
+                        byRightButton: true,
+                        autoStartElement: node
+                    }), result = '';
+
+                dragger.events.add('start', function (event) {
+                    result = 'start!';
+                });
+
+                var event = new ym.DomEvent({
+                    clientX: 20,
+                    clientY: 20,
+                    button: 2,
+                    get: function (key) {
+                        return this[key];
+                    },
+                    preventDefault: function () {}
+                });
+
+                ym.domEvent.manager.fire(node, 'mousedown', event);
+
+                Y.Event.simulate(document.documentElement, 'mousemove', {clientX: 20, clientY: 20, button: 2});
+                Y.Event.simulate(document.documentElement, 'mousemove', {clientX: 220, clientY: 220, button: 2});
+                Y.assert(result == 'start!', 'Не сработала опция byRightButton.');
+            }
+        }
+    }
+    ym.ready(runTestCase);
+</script>
+</html>

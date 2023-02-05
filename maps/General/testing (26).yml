@@ -1,0 +1,128 @@
+annotations:
+  project: maps-front-keyserv
+meta:
+  id: maps-front-keyserv_testing
+  project_id: maps-front-keyserv
+  account_id: 'abc:service:2272'
+  inherit_acl: true
+spec:
+  deploy_units:
+    app:
+      endpoint_sets:
+        - port: 80
+      images_for_boxes: {}
+      network_defaults:
+        network_id: _MAPSTESTQNETS_
+      tvm_config:
+        mode: enabled
+        blackbox_environment: ProdYaTeam
+        client_port: 2
+        clients:
+          - source:
+              alias: keyserv-admin.testing
+              app_id: 2018129
+            secret_selector:
+              alias: main_secret
+              id: APP_TVM_SECRET_KEYSERV_ADMIN.TESTING
+            destinations:
+              - alias: blackbox
+                app_id: 239
+              - alias: blackboxInternal
+                app_id: 223
+      multi_cluster_replica_set:
+        replica_set:
+          clusters:
+            - cluster: man
+              spec:
+                constraints:
+                  antiaffinity_constraints:
+                    - key: rack
+                      max_pods: 1
+                replica_count: 1
+            - cluster: sas
+              spec:
+                constraints:
+                  antiaffinity_constraints:
+                    - key: rack
+                      max_pods: 1
+                replica_count: 1
+            - cluster: vla
+              spec:
+                constraints:
+                  antiaffinity_constraints:
+                    - key: rack
+                      max_pods: 1
+                replica_count: 1
+          deployment_strategy:
+            max_unavailable: 1
+          pod_template_spec:
+            spec:
+              disk_volume_requests:
+                - id: maps-front-keyserv_testing-disk-0
+                  storage_class: hdd
+                  quota_policy:
+                    bandwidth_guarantee: 5242880
+                    bandwidth_limit: 10485760
+                    capacity: 16106127360
+                  labels:
+                    used_by_infra: true
+              resource_requests:
+                memory_guarantee: 1073741824
+                memory_limit: 1073741824
+                vcpu_guarantee: 250
+                vcpu_limit: 250
+              host_infra:
+                monitoring:
+                  unistats:
+                    - workload_id: app_workload
+                      port: 7032
+                      path: /unistat
+              secret_refs:
+                main_secret:
+                  secret_id: sec-01ewme3fwcam5xye0d01gvyvxk
+                  secret_version: ver-01ewme3n6yw6k985yawn1h87wm
+              pod_agent_payload:
+                spec:
+                  boxes:
+                    - id: app_box
+                      rootfs: {}
+                      static_resources:
+                        - resource_ref: usr.share.yandex.maps.inthosts
+                          mount_point: /usr/share/yandex/maps/inthosts
+                  mutable_workloads:
+                    - workload_ref: app_workload
+                  resources:
+                    static_resources:
+                      - id: usr.share.yandex.maps.inthosts
+                        url: 'sbr:2726671438'
+                        verification:
+                          checksum: 'EMPTY:'
+                          check_period_ms: 180000
+                  workloads:
+                    - id: app_workload
+                      box_ref: app_box
+                      env:
+                        - name: APP_ENV
+                          value:
+                            literal_env:
+                              value: testing
+                      liveness_check:
+                        tcp_check:
+                          port: 80
+                      readiness_check:
+                        http_get:
+                          port: 80
+                          path: /ping
+                          any: true
+                          time_limit:
+                            max_execution_time_ms: 1000
+                      stop_policy:
+                        container:
+                          command_line: bash -c "/detach.sh"
+                          time_limit:
+                            max_execution_time_ms: 20000
+                            max_restart_period_ms: 30000
+                            min_restart_period_ms: 30000
+                        max_tries: 2
+                      transmit_logs: true
+  revision_info: {}

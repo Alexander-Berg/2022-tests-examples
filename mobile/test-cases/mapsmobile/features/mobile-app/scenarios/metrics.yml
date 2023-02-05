@@ -1,0 +1,1485 @@
+testing:
+  - regress
+
+components: metrics
+specs:
+  Логирование событий в поиске по категориям:
+    - info: |
+        Для просмотра логов подключить девайс к mac, либо воспользоваться Device log внутри приложения
+    - do: Тап на таб 'Поиск'
+    - assert: |
+        Открыт экран поиска
+    - do: Тап на поисковую категорию 'Где поесть?'
+    - assert: |
+        В логах появилось событие 'search.open-category' с параметрами
+          category_id='food'
+          name='Где поесть'
+        Также появилось событие 'search.get-search-results' с параметрами
+          reqid вида 1592929490008975-2657006138-vla1-1055-vla-addrs-nmeta-new-8031
+          online=true
+          on_route=false
+          input=categories
+          text="Где поесть"
+          search_type='rubric'
+    - do: Поменять спан/зум карты, что бы изменились результаты поиска
+    - assert: |
+        Есть событие 'search.get-reask-results' с параметрами
+          'serpid' совпадает с reqid из 'search.get-search-results' в предыдущем пункте
+          'reqid' вида 1592929490008975-2657006138-vla1-1055-vla-addrs-nmeta-new-8031
+          НЕ совпадает с reqid в search.get-search-results из предыдущего пункта
+          online=true
+          on_route=false
+    - do: Тап по второму результату в поиске (если есть объявление директа, то его не считаем)
+    - assert: |
+        Открыта карточка организации
+        В логах есть событие search.open-place-view с параметрами
+          reqid совпадает с reqid в search.get-reask-results из предыдущего пункта
+          source=search-snippet
+          logId вида dHlwZT1iaXpmaW5kZXI7aWQ9MTIyNjgxMzk1NQ==
+          uri вида ymapsbm1://org?oid=1226813955
+          search_number=1
+        Нет никаких других событий с префиксом 'search.' или 'place.'
+    - do: Тап на крестик в карточке организации
+    - assert: |
+        Карточка закрыта
+        Открыты результаты поиска
+    - do: Тап на любой пин результата поиска на карте (у организации должен быть телефон и сайт)
+    - assert: |
+        Открыта карточка организации
+        В логах :
+        Есть событие search.close-place-card (пока только на iOS), uri совпадает с  предыдущим uri
+        Есть событие search.show-place-card с параметрами
+          reqid совпадает с reqid в search.get-reask-results из предыдущего шага
+          source=search-pin
+          logId вида dHlwZT1iaXpmaW5kZXI7aWQ9MTIyNjgxMzk1NQ==
+          uri вида ymapsbm1://org?oid=1226813955
+          search_number есть и не равен 1
+        Нет никаких других событий с префиксом 'search.' или 'place.'
+
+    - testing:
+      - acceptance_maps
+    - platforms:
+        - ios
+        - android
+
+
+  Логирование карточки организации из поиска:
+    - info: Для просмотра логов подключить девайс к mac, либо воспользоваться Device log внутри приложения
+    - do: Произвести поиск по категории "Где поесть?"
+    - assert: |
+        В логах появилось событие 'search.open-category' с параметрами
+          category_id='food'
+          name='Где поесть'
+        Также появилось событие 'search.get-search-results' с параметрами
+          reqid вида 1592929490008975-2657006138-vla1-1055-vla-addrs-nmeta-new-8031
+          online=true
+          on_route=false
+          input=categories
+          text="Где поесть"
+          search_type='rubric'
+    - do: Тап на любой пин результата поиска на карте (у организации должен быть телефон и сайт)
+    - assert: |
+        Открыта карточка организации
+          В логах:
+          Есть событие search.show-place-card с параметрами
+          reqid совпадает с reqid в search.get-reask-results из предыдущего шага
+          source=search-pin
+          logId вида dHlwZT1iaXpmaW5kZXI7aWQ9MTIyNjgxMzk1NQ==
+          uri вида ymapsbm1://org?oid=1226813955
+          search_number есть и не равен 1
+          Нет никаких других событий с префиксом 'search.' или 'place.'
+    - do: Тап по какому-либо табу в карточке
+    - assert: |
+        В логах появилось событие place.open-tab с параметрами
+          logId
+          uri
+          reqid
+          Которые совпадают с параметрами из предыдущего шага
+
+    - testing:
+        - acceptance_maps
+    - tags:
+        - use_map
+    - platforms:
+        - ios
+        - android
+
+  Логирование тапов по кнопкам action-бара карточки организации из поиска:
+    - info: Для просмотра логов подключить девайс к mac, либо воспользоваться Device log внутри приложения
+    - do: Произвести поиск по категории "Где поесть?"
+    - do: Тап на любой пин результата поиска на карте (у организации должен быть телефон и сайт)
+    - assert: Открыта карточка организации
+    - do: Тап на Поделиться
+    - assert: |
+        В логах появилось событие place.share-place с параметрами
+          logId
+          uri
+          reqid
+    - do: Открыть сайт организации
+    - assert: |
+        В логах появилось событие place.open-site с параметрами
+          logId
+          uri
+          reqid
+          Которые совпадают с параметрами из предыдущих шагов
+    - do: |
+        Тап на кнопку совершения звонка
+        Если у организации несколько номеров телефонов, то затем тап на один из номеров
+    - assert: |
+        В логах появилось событие place.make-call с параметрами
+          logId
+          uri
+          reqid
+          Которые совпадают с параметрами из предыдущих шагов
+    - do: Построить маршрут до организации тапом на кнопку Маршрут
+    - assert: |
+        В логах появилось событие place.make-route с параметрами
+          logId
+          uri
+          reqid
+          Которые совпадают с параметрами из предыдущих шагов
+
+    - testing:
+        - acceptance_maps
+    - tags:
+        - use_map
+    - platforms:
+        - ios
+        - android
+
+
+  Логирование показа рекламных категорий в поиске в режиме ведения [iOS]:
+    - info: |
+        Для просмотра логов подключить девайс к mac, либо воспользоваться Device log внутри приложения
+        Открыт спан Москвы
+        Происходит ведение по автомаршруту
+    - do: Тап на кнопку поиска
+    - assert: |
+        В логах появилось событие search.categories с перечислением категорий, в списке присутствуют
+        рекламные категории вида ac_auto_log_id_campaign_15077
+    - do: Тап "Ещё" в категориях
+    - assert: |
+        В логах появилось событие search.show-more-categories с перечислением категорий
+    - do: Тап по любой рекламной категории
+    - assert: |
+        В логах появилось событие search.open-category с параметрами:
+          category_id вида ac_auto_log_id_campaign_15077
+          name вида 'KFC'
+          "source" : "main-search-screen"
+
+    - testing:
+        - acceptance_maps
+    - tags:
+        - advertisement
+    - platforms:
+        - ios
+
+
+  Логирование событий тапа по пои:
+    - info: |
+        Для просмотра логов подключить девайс к mac, либо воспользоваться Device log внутри приложения
+    - do: Тап на пои кафе/ресторана
+    - assert: |
+        В логах появилось событие 'search.open-organization' с параметрами
+          category_id='food'
+          name='Где поесть'
+    - do: Тап на пои магазина
+    - assert: |
+        В логах появилось событие 'search.open-organization' с параметрами
+          category_id='store'
+          name='Где поесть'
+    - do: Тап на пои тренажерного зала/стадиона
+    - assert: |
+        В логах появилось событие 'search.open-organization' с параметрами
+          category_id='sport'
+          name='Где поесть'
+
+    - testing:
+      - acceptance_maps
+    - platforms:
+        - ios
+        - android
+
+
+  Логирование показа рекламных категорий в табе "Поиск":
+    - info: Для просмотра логов подключить девайс к mac, либо воспользоваться Device log внутри приложения
+    - do: |
+        (Android) Использовать интент [collapsed-image](https://jing.yandex-team.ru/files/zaidova/Снимок%20экрана%202022-04-21%20в%2014.13.34.png){title=QR-код}
+
+        `yandexmaps://add_exp?new_search_screen=null`
+    - do: (Android) Перезапустить приложение
+    - do: Тап по табу "Поиск"
+    - assert: |
+        В логах появилось событие `search.categories`
+        Категории в параметрах события `search.categories` соответствуют показанным на экране
+        Рекламные категории, показанные на экране, имеют вид `ac_auto_log_id_campaign_15077`
+    - do: Тап "Еще" в категориях
+    - assert: |
+        В логах появились события `search.categories` и `search.show-more-categories`
+        Категории в параметрах событий соответствуют показанным на экране
+        Рекламные категории, показанные на экране, имеют вид `ac_auto_log_id_campaign_15077`
+    - do: Тап по любой рекламной категории
+    - assert: |
+        В логах появилось событие `search.open-category` с параметрами:
+          `category_id` вида `ac_auto_log_id_campaign_15077`
+          `name` соответствует названию выбранной рекламной категории
+          `source=main-search-screen`
+
+    - testing:
+        - acceptance_maps
+    - tags:
+        - advertisement
+    - platforms:
+        - android
+        - ios
+
+
+  Логирование показа рекламных категорий в табе Поиск с экспериментом new_search_screen=two_rows [Android]:
+    - info: |
+        Для просмотра логов подключить девайс к mac, либо воспользоваться Device log внутри приложения
+    - do: Использовать интент [collapsed-image](https://jing.yandex-team.ru/files/zaidova/Снимок%20экрана%202022-04-21%20в%2014.28.31.png){title=QR-код}
+
+        `yandexmaps://add_exp?new_search_screen=two_rows`
+    - do: Перезапустить приложение
+    - assert: Открыт главный экран
+    - do: Тап по табу Поиск
+    - assert: |
+        В логах появилось событие `search.categories`
+        Категории в параметрах события `search.categories` соответствуют показанным на экране
+        Рекламные категории, показанные на экране, имеют вид `ac_auto_log_id_campaign_15077`
+    - do: Тап Еще в категориях
+    - assert: |
+        В логах появились события `search.categories` и `search.show-more-categories`
+        Категории в параметрах событий соответствуют показанным на экране
+        Рекламные категории, показанные на экране, имеют вид `ac_auto_log_id_campaign_15077`
+    - do: Тап по любой рекламной категории
+    - assert: |
+        В логах появилось событие `search.open-category` с параметрами:
+          `category_id` вида `ac_auto_log_id_campaign_15077`
+          `name` соответствует названию выбранной рекламной категории
+          `source=main-search-screen`
+
+    - testing:
+        - acceptance_maps
+    - tags:
+        - advertisement
+    - platforms:
+        - android
+
+
+  Логирование показа рекламных категорий в табе Поиск с экспериментом new_search_screen=three_rows [Android]:
+    - info: |
+        Для просмотра логов подключить девайс к mac, либо воспользоваться Device log внутри приложения
+    - do: Использовать интент [collapsed-image](https://jing.yandex-team.ru/files/zaidova/Снимок%20экрана%202022-04-21%20в%2014.32.27.png){title=QR-код}
+
+        `yandexmaps://add_exp?new_search_screen=three_rows`
+    - do: Перезапустить приложение
+    - assert: Открыт главный экран
+    - do: Тап по табу Поиск
+    - assert: |
+        В логах появилось событие `search.categories`
+        Категории в параметрах события `search.categories` соответствуют показанным на экране
+        Рекламные категории, показанные на экране, имеют вид `ac_auto_log_id_campaign_15077`
+    - do: Тап Еще в категориях
+    - assert: |
+        В логах появились события `search.categories` и `search.show-more-categories`
+        Категории в параметрах событий соответствуют показанным на экране
+        Рекламные категории, показанные на экране, имеют вид `ac_auto_log_id_campaign_15077`
+    - do: Тап по любой рекламной категории
+    - assert: |
+        В логах появилось событие `search.open-category` с параметрами:
+          `category_id` вида `ac_auto_log_id_campaign_15077`
+          `name` соответствует названию выбранной рекламной категории
+          `source=main-search-screen`
+
+    - testing:
+        - acceptance_maps
+    - tags:
+        - advertisement
+    - platforms:
+        - android
+
+
+  Логирование показа рекламных категорий экрана поиска из поисковой строки с экспериментом new_search_screen=null [Android] :
+    - info: |
+        Для просмотра логов подключить девайс к mac, либо воспользоваться Device log внутри приложения
+    - do: Использовать интент [collapsed-image](https://jing.yandex-team.ru/files/zaidova/Снимок%20экрана%202022-04-21%20в%2014.13.34.png){title=QR-код}
+
+        `yandexmaps://add_exp?new_search_screen=null`
+    - do: Перезапустить приложение
+    - assert: Открыт главный экран
+    - do: Тап на поисковую строку
+    - assert: |
+        Открыт поисковый экран с категориями, отображенными в карусели
+        В логах появилось событие `search.categories`
+        Категории в параметрах события `search.categories` соответствуют показанным в карусели
+
+    - testing:
+        - acceptance_maps
+    - tags:
+        - advertisement
+    - platforms:
+        - android
+
+
+  Логирование показа рекламных категорий экрана поиска из поисковой строки с экспериментом new_search_screen=two_rows [Android]:
+    - info: |
+        Для просмотра логов подключить девайс к mac, либо воспользоваться Device log внутри приложения
+    - do: Использовать интент [collapsed-image](https://jing.yandex-team.ru/files/zaidova/Снимок%20экрана%202022-04-21%20в%2014.28.31.png){title=QR-код}
+
+        `yandexmaps://add_exp?new_search_screen=two_rows`
+    - do: Перезапустить приложение
+    - assert: Открыт главный экран
+    - do: Тап на поисковую строку
+    - assert: |
+        В логах появилось событие `search.categories`
+        Категории в параметрах события `search.categories` соответствуют показанным на экране
+        Рекламные категории, показанные на экране, имеют вид `ac_auto_log_id_campaign_15077`
+    - do: Тап Еще в категориях
+    - assert: |
+        В логах появились события `search.categories` и `search.show-more-categories`
+        Категории в параметрах событий соответствуют показанным на экране
+        Рекламные категории, показанные на экране, имеют вид `ac_auto_log_id_campaign_15077`
+    - do: Тап по любой рекламной категории
+    - assert: |
+        В логах появилось событие `search.open-category` с параметрами:
+          `category_id` вида `ac_auto_log_id_campaign_15077`
+          `name` соответствует названию выбранной рекламной категории
+          `source=main-search-screen`
+
+    - testing:
+        - acceptance_maps
+    - tags:
+        - advertisement
+    - platforms:
+        - android
+
+
+  Логирование показа рекламных категорий экрана поиска из поисковой строки с экспериментом new_search_screen=three_rows [Android]:
+    - info: |
+        Для просмотра логов подключить девайс к mac, либо воспользоваться Device log внутри приложения
+    - do: Использовать интент [collapsed-image](https://jing.yandex-team.ru/files/zaidova/Снимок%20экрана%202022-04-21%20в%2014.32.27.png){title=QR-код}
+
+        `yandexmaps://add_exp?new_search_screen=three_rows`
+    - do: Перезапустить приложение
+    - assert: Открыт главный экран
+    - do: Тап на поисковую строку
+    - assert: |
+        В логах появилось событие `search.categories`
+        Категории в параметрах события `search.categories` соответствуют показанным на экране
+        Рекламные категории, показанные на экране, имеют вид `ac_auto_log_id_campaign_15077`
+    - do: Тап Еще в категориях
+    - assert: |
+        В логах появились события `search.categories` и `search.show-more-categories`
+        Категории в параметрах событий соответствуют показанным на экране
+        Рекламные категории, показанные на экране, имеют вид `ac_auto_log_id_campaign_15077`
+    - do: Тап по любой рекламной категории
+    - assert: |
+        В логах появилось событие `search.open-category` с параметрами:
+          `category_id` вида `ac_auto_log_id_campaign_15077`
+          `name` соответствует названию выбранной рекламной категории
+          `source=main-search-screen`
+
+    - testing:
+        - acceptance_maps
+    - tags:
+        - advertisement
+    - platforms:
+        - android
+
+
+  Голосовой поиск вдоль маршрута:
+    - info: |
+        Алиса выключена (Меню -> Настройки -> Основные)
+        Для просмотра логов подключить девайс к mac, либо воспользоваться Device log внутри приложения
+    - do: Построить произвольный автомаршрут и перейти в ведение по маршруту
+    - do: Открыть поиск
+    - do: Произвести голосовой поиск по сетевому запросу
+    - assert: |
+        Отобразились результаты поиска
+        В логах появилось событие search.get-search-results с параметрами
+          reqid вида 1592929490008975-2657006138-vla1-1055-vla-addrs-nmeta-new-8031
+          online=true
+          on_route=true
+          input=voice
+          text
+          search_type='chain'
+    - do: Тап на пин одной из найденных организаций на карте (организация с фотографиями)
+    - assert: |
+        В логах появилось событие search.show-place-card с параметрами
+          toponym -> false
+          source -> search-pin
+          category: категория организации например "Магазин продуктов"
+          uri;
+          name: вида "KFC"
+          advertisement -> true/false
+          reqid;
+          search_number;
+          on_route -> true
+          logId;
+          parameters: варьируется
+          card_type -> org
+          related_advert -> not_related_advert
+          tabs_list: перечисление табов организации
+          нет никаких других событий с префиксом 'search.' или 'place.'
+    - do: Открыть таб Фото
+    - assert: |
+        В логах появилось событие place.open-tab с параметрами
+          logId, uri, reqid совпадают с предыдущим пунктом
+          tab_title=photo
+
+    - testing:
+        - acceptance_maps
+    - tags:
+        - use_map
+    - platforms:
+        - ios
+        - android
+
+
+  Логирование текстового поиска топонима с использованием саджеста:
+    - info: Для просмотра логов подключить девайс к mac, либо воспользоваться Device log внутри приложения
+    - do: Тап на поисковую строку
+    - do: Ввести любой адрес
+    - do: Тап на саджест
+    - assert: |
+        Открыталась карточка топонима
+        В логах появилось событие suggest.choose-result
+        Пример параметров:
+        Params for suggest.choose-result:
+          text -> (указан введенный адрес)
+          type -> toponym
+          pos -> 0
+          nah -> false
+          timestamp -> 1.611236623036E9
+          result -> {"title":"(указан введенный адрес)",...,"isOffline":false}
+          source -> search
+    - do: Вернуться на главный экран приложения
+    - do: Тап на поисковую строку
+    - do: Ввести любой адрес
+    - do: Тап на саджест
+    - assert: |
+        В логах появилось событие search.get-search-results
+        Пример параметров:
+        Params for search.get-search-results:
+          search_type -> toponyms
+          text -> null
+          input -> suggest
+          reqId -> 1611237143749289-3076616988-sas1-5896-sas-addrs-nmeta-new-8031
+          count -> 2
+          count_direct -> 0
+          count_orgdirect -> 0
+          count_discovery -> 0
+          count_spec_promo -> 0
+          count_goods -> 0
+          count_transit -> 0
+          count_related_adverts -> 10
+          with_advertisement -> false
+          online -> true
+          on_route -> false
+          is_serp -> false
+          with_misspell -> false
+          changed_work_status -> false
+          results_metadata -> {"closed_for_visitors":0}
+    - do: Тап на любое poi на карте
+    - do: Тап на поисковой пин искомой улицы
+    - assert: |
+        В логах появилось событие search.show-place-card
+        Пример параметров:
+        Params for search.show-place-card:
+          toponym -> true
+          source -> search-navotvet
+          category -> null
+          name -> (указан введенный адрес)
+          advertisement -> false
+          uri -> ymapsbm1://geo?ll=37.590%2C54.196&  ...  B5%2C%206
+          reqid -> 1611237143749289-3076616988-sas1-5896-sas-addrs-nmeta-new-8031
+          search_number -> 0
+          on_route -> false
+          logId -> dHlwZT1nZW9jb2RlcjthZGRyZXNzPVJ1c3NpYSwgVHVsYSwgRnJ1bnplIFN0cmVldCwgNi8zNy41ODk5MjIsNTQuMTk2NDc4LzE=
+          parameters -> {"stories_count":0,"posts_count":0}
+          card_type -> toponym
+          related_advert -> not_related_advert
+          tabs_list -> main,photo
+        reqId в search.show-place-card и в search.get-search-results совпадают
+
+    - testing:
+        - acceptance_maps
+    - platforms:
+        - ios
+        - android
+
+  Логирование событий при построении маршрутов:
+    - info: |
+        Для просмотра логов подключить девайс к mac, либо воспользоваться Device log внутри приложения
+    - do: Построить маршрут любым способом
+    - assert: |
+        Открыт экран выбора вариантов маршрута
+        В логах
+        6 событий route.request-route (по одному на route_type car, transport, pedestrian, bike, taxi)
+        6 событий route.success (route_type аналогично)
+        1 событие routes.show-route, параметры
+        auto_opened=true
+        route_type - совпадает с типом открытой вкладки
+    - do: Переключить вкладку на автомаршрут (либо на любой другой а потом на автомобильный)
+    - assert: |
+        В логах появилось событие routes.show-route, параметры
+          route_type=car
+          auto_opened=false
+          reqid - такой же, как reqid для авто в событии route.request-route
+    - do: Переключиться на альтернативный маршрут
+    - assert: |
+        В логах появилось событие routes.switch-route-variants, параметры
+          route_number=1
+          route_type=car
+          reqid - такой же, как reqid для авто в событии route.request-route
+    - do: Тап Поехали
+    - assert: |
+        В логах есть событие route.start-navigation, параметры
+          reqid - такой же, как reqid для авто в событии route.request-route
+          oute_number=1
+          route_type=car
+
+    - testing:
+        - acceptance_maps
+    - platforms:
+        - ios
+        - android
+
+
+  Проверка тега highlighted при отображении геопродукта:
+    - info: |
+        Для просмотра логов подключить девайс к mac, либо воспользоваться Device log внутри приложения
+        Фильтр для трекинга (iOS) SearchResultCard
+    - do: |
+        Ввести произвольный запрос, например: 'Где поесть' и тап ”Найти'/на кнопку поиска на клавиатуре
+    - assert: |
+        Отображаются результаты поиска с карточками организаций
+        На карте отображаются поисковые пины
+        Кнопка определения местоположения не подсвечивается синим цветом
+    - do: Открыть карточку любой организации с геопродуктом
+    - assert: |
+        Открывается карточка организации с геопродуктом:
+        В названии организации есть зеленая стрелка
+        Может присутствовать блок с рекламой
+        В логах отображается тег highlighted с параметром true
+    - do: |
+        Раскрыть карточку любой другой организации с СТА-кнопкой, но без геопродукта (Пин данной организации на карте отображается синим кружком и не выигрывает войну пинов)
+    - assert: В логах отображается тег highlighted с параметром false
+    - do: |
+        Раскрыть карточку любой другой организации без СТА-кнопки и геопродукта (Пин данной организации на карте отображается синим кружком и не выигрывает войну пинов)
+    - assert: |
+        iOS: В логах отображается тег highlighted с параметром = nil
+        Android: В логах отсутствует тег highlighted (если нет рекламы, то и highlighted не будет)
+
+    - platforms:
+        - ios
+        - android
+    - testing:
+        - acceptance_maps
+    - tags:
+        - advertisement
+
+
+  Логирование открытия карточки подмешанного геопродукта:
+    - info: |
+        Для просмотра логов подключить девайс к mac, либо воспользоваться Device log внутри приложения
+    - do: Произвести поиск по одной организации
+    - assert: |
+        Отображается экран результатов поиска.
+        На спане карты присутствуют пины подмешанного геопродукта
+    - do: Тап на пин подмешанного геопродукта
+    - assert: |
+        Открыта карточка организации.
+        В логах есть событие search.reask-for-related-adverts с параметром advert_type -> business
+
+    - platforms:
+        - ios
+        - android
+    - testing:
+        - acceptance_maps
+    - tags:
+        - advertisement
+        - use_map
+
+
+  Проверка логирования рекламы провязанного директа:
+    - info: |
+        Для просмотра логов подключить девайс к mac, либо воспользоваться Device log внутри приложения
+        Авторизоваться в приложении под аккаунтом, привязанным к стафу
+        Отображается главный экран приложения
+        На спане карты отображается город Москва
+    - do: Тап на строку поиска
+    - do: Ввести поисковой запрос 'Окна рехау'
+    - do: Тап по кнопке Найти
+    - assert: Отображается список результатов поиска
+    - do: |
+        Пролистать список до отображения рекламы провязанного директа
+        (Если такие организации не отобразились, нужно немного изменить спан карты и повторить поиск)
+    - assert: |
+        Отображается реклама провязанного директа
+        В логах отображается событие mapkit_search.geo_object_list_item_shown
+    - do: Тап на сниппет с провязанным директом
+    - assert: |
+        Отображается карточка организации
+        В логах отображается событие search.open-place-view
+        В событии есть строка card_type - org_with_direct
+        Присутствует строка с logId вида dHlwZT1iaXpmaW5kZXI7aWQ9MTIyNjgxMzk1NQ==
+        Также отображаются:
+          - search.open-direct
+          - mapkit_search.geo_object_card_shown
+
+    - platforms:
+        - ios
+        - android
+    - testing:
+        - acceptance_maps
+    - tags:
+        - advertisement
+
+
+  Проверка логирования рекламы непровязанного директа:
+    - info: |
+        Директ отбражается только на русской локали
+        Для просмотра логов подключить девайс к mac, либо воспользоваться Device log внутри приложения
+        Авторизоваться в приложении под аккаунтом, привязанным к стафу
+        Отображается главный экран приложения
+        На спане карты отображается город Москва
+    - do: Тап на строку поиска
+    - do: Ввести поисковой запрос 'Окна рехау'
+    - do: Тап по кнопке Найти
+    - assert: Отображается список результатов поиска
+    - do: |
+        Пролистать список до отображения рекламы непровязанного директа
+        (Если такие организации не отобразились, нужно немного изменить спан карты и повторить поиск)
+    - assert: |
+        Отображается реклама непровязанного директа
+        В логах отображается событие mapkit_search.geo_object_list_item_shown
+        В логах отображается событие search.show-direct
+    - do: Тап по поисковому пину организации с непровязанным директом
+    - assert: |
+        Отображается мини-карточка организации
+        В логах отображается событие search.show-place-card
+        В событии есть строка card_type - direct
+        Присутствуют строки:
+          - logId вида dHlwZT1iaXpmaW5kZXI7aWQ9MTIyNjgxMzk1NQ==
+          - mapkit_search.geo_object_card_shown
+    - do: Развернуть карточку
+    - assert: |
+        В логах отображается событие search.open-place-view
+        В событии есть строка card_type - direct
+        logId в search.show-place-card и в search.open-place-view совпадают
+    - do: Закрыть карточку
+    - assert: Отображается список результатов поиска
+    - do: Тап на сниппет с непровязанным директом
+    - assert: |
+        Отображается карточка организации
+        В логах отображается событие search.open-place-view
+        Также отдельным событием отображается search.open-direct
+
+    - platforms:
+        - ios
+        - android
+    - testing:
+        - acceptance_maps
+    - tags:
+        - advertisement
+
+
+  Логирование таба "С собой":
+    - info: |
+        Для просмотра логов подключить девайс к mac, либо воспользоваться Device log внутри приложения
+        Включен эксперимент show_eda_takeaway
+    - do: Открыть полную карточку кафе/ресторана с возможностью самовывоза
+    - assert: |
+        Открыта полная карточка организации
+        Присутствует таб "С собой"
+    - do: Тап на таб "С собой"
+    - assert: |
+        Открыто WebView для соответствующей организации
+        Логируется событие place.open-tab
+        В событии place.open-tab присутствует поле tab_title со значением eda_takeaway
+
+    - testing:
+        - acceptance_maps
+    - platforms:
+        - ios
+        - android
+
+
+  Трекинг веломаршрута:
+    - info: |
+        Для просмотра логов подключить девайс к mac, либо воспользоваться Device log внутри приложения
+        Фильтр для трекинга TransportNavigationTrackerImpl
+        Включен эксперимент routes_tracking
+        Построен веломаршрут
+    - do: Тап на Поехали
+    - assert:
+        Логируется событие старта трекинга resume YMKTransportNavigation routeType bicycle
+    - do: Свернуть приложение
+    - assert:
+        Приложение находится в фоне
+    - do: Развернуть приложение
+    - assert: |
+        Открыт экран ведения веломаршрута
+        Логируется событие остановки трекинга suspend YMKTransportNavigation routeType bicycle
+        Логируется событие старта трекинга resume YMKTransportNavigation routeType bicycle
+    - do: Покинуть экран ведения
+    - assert:
+        Логируется событие остановки трекинга suspend YMKTransportNavigation routeType bicycle
+
+    - testing:
+        - acceptance_maps
+    - platforms:
+        - ios
+
+
+  Трекинг пешего маршрута:
+    - info: |
+        Для просмотра логов подключить девайс к mac, либо воспользоваться Device log внутри приложения
+        Фильтр для трекинга TransportNavigationTrackerImpl
+        Включен эксперимент routes_tracking
+        Построен пеший маршрут
+    - do: Тап на Начать
+    - assert:
+        Логируется событие старта трекинга resume YMKTransportNavigation routeType pedestrian
+    - do: Свернуть приложение
+    - assert:
+        Приложение находится в фоне
+    - do: Развернуть приложение
+    - assert: |
+        Открыт экран ведения пешего маршрута
+        Логируется событие остановки трекинга suspend YMKTransportNavigation routeType pedestrian
+        Логируется событие старта трекинга resume YMKTransportNavigation routeType pedestrian
+    - do: Покинуть экран ведения
+    - assert:
+        Логируется событие остановки трекинга suspend YMKTransportNavigation routeType pedestrian
+
+    - testing:
+        - acceptance_maps
+    - platforms:
+        - ios
+
+
+  Логирование событий при поиске по категориям:
+    - info: |
+        Для просмотра логов подключить девайс к mac, либо воспользоваться Device log внутри приложения
+    - do: Тап на таб 'Поиск'
+    - assert: |
+        Открыт экран поиска
+    - do: Тап на поисковую категорию 'Где поесть?'
+    - assert: |
+        В логах появилось событие 'search.open-category' с параметрами
+          category_id='food'
+          name='Где поесть'
+        Также появилось событие 'search.get-search-results' с параметрами
+          reqid вида 1592929490008975-2657006138-vla1-1055-vla-addrs-nmeta-new-8031
+          online=true
+          on_route=false
+          input=categories
+          text="Где поесть"
+          search_type='rubric'
+    - do: Поменять спан/зум карты, что бы изменились результаты поиска
+    - assert: |
+        Есть событие 'search.get-reask-results' с параметрами
+          'serpid' совпадает с reqid из 'search.get-search-results' в предыдущем пункте
+          'reqid' вида 1592929490008975-2657006138-vla1-1055-vla-addrs-nmeta-new-8031
+          НЕ совпадает с reqid в search.get-search-results из предыдущего пункта
+          online=true
+          on_route=false
+    - do: Тап по второму результату в поиске (если есть объявление директа, то его не считаем)
+    - assert: |
+        Открыта карточка организации
+        В логах есть событие search.open-place-view с параметрами
+          reqid совпадает с reqid в search.get-reask-results из предыдущего пункта
+          source=search-snippet
+          logId вида dHlwZT1iaXpmaW5kZXI7aWQ9MTIyNjgxMzk1NQ==
+          uri вида ymapsbm1://org?oid=1226813955
+          search_number=1
+        Нет никаких других событий с префиксом 'search.' или 'place.'
+    - do: Тап на крестик в карточке организации
+    - assert: |
+        Карточка закрыта
+        Открыты результаты поиска
+    - do: Тап на любой пин результата поиска на карте (у организации должен быть телефон и сайт)
+    - assert: |
+        Открыта карточка организации
+        В логах :
+        Есть событие search.close-place-card, uri совпадает с  предыдущим uri
+        Нет никаких других событий с префиксом 'search.' или 'place.'
+
+    - testing:
+        - acceptance_maps
+    - platforms:
+        - ios
+        - android
+
+  Трекинг ОТ-маршрута:
+    - info: |
+        Для просмотра логов подключить девайс к mac, либо воспользоваться Device log внутри приложения
+        Фильтр для трекинга TransportNavigationTrackerImpl
+        Включен эксперимент routes_tracking
+        Построен маршрут на общественном транспорте
+    - do: Тап на Поехали
+    - assert:
+        Логируется событие старта трекинга resume YMKTransportNavigation routeType masstransit
+    - do: Свернуть приложение
+    - assert:
+        Приложение находится в фоне
+    - do: Развернуть приложение
+    - assert: |
+        Открыт экран ведения ОТ-маршрута
+        Логируется событие остановки трекинга suspend YMKTransportNavigation routeType masstransit
+        Логируется событие старта трекинга resume YMKTransportNavigation routeType masstransit
+    - do: Покинуть экран ведения
+    - assert:
+        Логируется событие остановки трекинга suspend YMKTransportNavigation routeType masstransit
+
+    - testing:
+        - acceptance_maps
+    - platforms:
+        - ios
+        - android
+
+
+  Логирование построения маршрута из геопродуктовой организации:
+    - info: |
+        Для просмотра логов подключить девайс к mac, либо воспользоваться Device log внутри приложения
+        Открыта карточка геопродуктовой организации
+    - do: Тап на кнопку построения маршрута
+    - assert: |
+        Маршрут построен
+        В логах появилось событие mapkit_search.geo_object_card_action
+
+    - testing:
+        - acceptance_maps
+    - platforms:
+        - ios
+        - android
+
+  Логирование звонка в геопродуктовую организацию:
+    - info: |
+        Для просмотра логов подключить девайс к mac, либо воспользоваться Device log внутри приложения
+        Открыта карточка геопродуктовой организации
+    - do: Тап на кнопку вызова и отменить вызов
+    - assert: В логах появилось событие mapkit_search.geo_object_card_action
+
+    - testing:
+        - acceptance_maps
+    - platforms:
+        - ios
+        - android
+
+
+  Логирование взаимодействия с СТА-кнопкой в геопродуктовой организации:
+    - info: |
+        Для просмотра логов подключить девайс к mac, либо воспользоваться Device log внутри приложения
+        Открыта карточка геопродуктовой организации
+    - do: Тап на СТА-кнопку (заказать/бронировать/Посмотреть меню/Перейти в instagram)
+    - assert: В логах появилось событие mapkit_search.geo_object_card_advert_action
+
+    - testing:
+        - acceptance_maps
+    - platforms:
+        - ios
+        - android
+
+
+  Логирование успешного бесплатного бронирования самоката:
+    - info: |
+        Пользователь авторизован
+        ММП в Москве
+        Зум карты от 21 до ~14
+        Открыт спан г. Москва
+    - do: |
+        Использовать интент [collapsed-image](https://jing.yandex-team.ru/files/nikmakarov23/kicksharing_on.6198b78.png){title=QR-код}
+
+        `yandexmaps://add_exp?kicksharing_on`
+    - do: Перезапустить приложение
+    - do: Включить слой самокатов
+    - do: Тап на пин самоката
+    - assert: Открылась карточка самоката
+    - do: Тап забронировать
+    - assert: |
+        В логах появляется событие scooters.session.update с параметрами :
+        status_to : booked_free
+        status_from : null
+
+    - testing:
+        - acceptance_maps
+    - platforms:
+        - ios
+        - android
+
+
+  Логирование успешного платного бронирования самоката:
+    - info: |
+        Кейс нельзя пройти на продовых сборках с подписью store и на сборках из TF
+        Пользователь авторизован
+        Зум карты от 21 до ~14
+        Открыт спан г. Москва/Краснодар/Санкт-Петербург в зависимости от самокатного сезона
+    - do: |
+        Использовать интент [collapsed-image](https://jing.yandex-team.ru/files/nikmakarov23/kicksharing_on.6198b78.png){title=QR-код}
+
+        `yandexmaps://add_exp?kicksharing_on`
+    - do: Перезапустить приложение
+    - do: Включить слой самокатов
+    - do: Тап на пин самоката
+    - assert: Открылась карточка самоката
+    - do: Тап забронировать
+    - assert: |
+        В логах появляется событие scooters.session.update с параметрами :
+        status_to : booked_free (если бронирование бесплатное) / booked_paid (если бронирование платное)
+        status_from : null
+
+    - testing:
+        - acceptance_maps
+    - platforms:
+        - ios
+        - android
+
+  Логирование включение/отключение аннотаций в автоведении :
+    - info: |
+        Для просмотра логов подключить девайс к mac, либо воспользоваться Device log внутри приложения
+        Звук у аннотаций включен
+        Построен произвольный автомаршрут
+    - do: Запустить ведение по маршруту
+    - assert: |
+        Отображается экран ведения по автомаршруту
+        Присутствует отключения аннотаций
+    - do: Открыть меню ведения
+    - do: Тап на кнопку отключения аннотаций
+    - assert: |
+        Кнопка поменяла свое состояние
+        В логах появилось событие 'application.settings.update' с параметрами
+          id -> voice_annotations
+          oldValue -> All
+          newValue -> Disable
+    - do: Тап на кнопку включения аннотаций
+    - assert: |
+        Кнопка поменяла свое состояние
+        В логах появилось событие 'application.settings.update' с параметрами
+          id -> voice_annotations
+          oldValue -> Disable
+          newValue -> All
+
+    - platforms:
+        - ios
+        - android
+    - testing:
+        - acceptance_maps
+
+
+  Логирование включение/отключение аннотаций в ведении в настройках приложения :
+    - info: |
+        Для просмотра логов подключить девайс к mac, либо воспользоваться Device log внутри приложения
+        Звук у аннотаций включен
+        Открыт экран настроек звука (настройки - маршруты - звук)
+    - do: Тап на свитчер Проигрывать уведомления
+    - assert: |
+        Свитчер поменял свое состояние
+        В логах появилось событие 'settings.set-audio-mode' с параметрами
+          Params for settings.set-audio-mode:
+          mode -> off
+    - do: Тап на свитчер Проигрывать уведомления
+    - assert: |
+        Свитчер поменял свое состояние
+        В логах появилось событие 'settings.set-audio-mode' с параметрами
+          Params for settings.set-audio-mode:
+          mode -> on
+
+    - platforms:
+        - ios
+        - android
+    - testing:
+        - acceptance_maps
+
+
+
+  Логирование включение/отключение аннотаций в пешеходном ведении:
+    - info: |
+        Для просмотра логов подключить девайс к mac, либо воспользоваться Device log внутри приложения
+        Звук у аннотаций включен
+        Построен произвольный пеший маршрут
+    - do: Запустить ведение по маршруту
+    - assert: |
+        Отображается экран ведения по пешеходному маршруту
+        Присутствует кнопка отключения аннотаций
+    - do: Тап на кнопку отключения аннотаций
+    - assert: |
+        Кнопка поменяла свое состояние
+        В логах появилось событие 'guidance.set-audio-mode' с параметрами
+          mode -> off
+          route_type -> pedestrian
+    - do: Тап на кнопку включения аннотаций
+    - assert: |
+        Кнопка поменяла свое состояние
+        В логах появилось событие 'guidance.set-audio-mode' с параметрами
+          mode -> on
+          route_type -> pedestrian
+
+    - platforms:
+        - ios
+        - android
+    - testing:
+        - acceptance_maps
+
+
+  Проверка логирования кнопки "Поделиться маршрутом":
+    - info: |
+        Устройство подключено к инструменту для снятия логов
+        Построен произвольный маршрут
+    - do: Тап в навбаре кнопку в виде трех вертикальных кнопок
+    - assert: Открыт экран Маршрут
+    - do: Тап Поделиться маршрутом
+    - assert: В логи приходит событие routes.share-route
+
+    - platforms:
+        - ios
+
+
+  Проверка логирования создания нового списка закладок через лонгтап:
+    - info: Устройство подключено к инструменту для просмотра логов
+    - do: Лонгтап в произвольной точке на карте
+    - assert: Открыт экран Что здесь?
+    - do: Тап Сохранить
+    - assert: Открыт экран Добавить место
+    - do: Тап Создать новый список
+    - assert: |
+        Открыт экран Создать список
+        В логи приходит событие bookmarks.list.update.show с параметрами is_new -> true и source -> long-tap
+    - do: |
+        Добавить произвольные название и описание списка
+        Тап сохранить
+    - assert: |
+        В логи приходит событие bookmarks.list.update.complete со следующими параметрами:
+        is_new -> true
+        name -> "имя списка"
+        has_comment -> true
+
+    - platforms:
+        - android
+    - tags:
+        - assessors
+
+
+  Проверка логирования создания нового списка закладок через карточку организации:
+    - info: |
+        Устройство подключено к инструменту для просмотра логов
+        Открыта карточка организации, не добавленной в избранное
+    - do: Тап сохранить
+    - assert: Открыт экран Добавить место
+    - do: Тап Создать новый список
+    - assert: |
+        Открыт экран Создать список
+        В логи приходит событие bookmarks.list.update.show с параметрами is_new -> true и source -> card
+    - do: |
+        Добавить произвольные название и описание списка
+        Тап сохранить
+    - assert: |
+        В логи приходит событие bookmarks.list.update.complete со следующими параметрами:
+        is_new -> true
+        name -> "имя списка"
+        has_comment -> true
+
+    - platforms:
+        - android
+    - tags:
+        - assessors
+
+
+  Проверка логирования редактирования списка закладок:
+    - info: |
+        Устройство подключено к инструменту для просмотра логов
+        Открыт экран Закладки
+        В списке закладок добавлен пользовательский список
+    - do: Тап кнопку с тремя точками напротив пользовательского списка
+    - assert: Открыт экран редактирования списка
+    - do: Тап редактировать
+    - assert: |
+        Открыт экран Редактировать список
+        В логи приходит событие bookmarks.list.update.show с параметрами is_new -> false и source -> bookmark-lists
+    - do: |
+        Отредактировать название списка
+        Тап Сохранить
+    - assert: |
+        В логи приходит событие bookmarks.list.update.complete со следующими параметрами: is_new -> false и name -> "измененное имя списка"
+
+    - platforms:
+        - android
+    - tags:
+        - assessors
+
+
+  Логирование при открытии карточки с активной и прошедшей записью:
+    - info: |
+        Для просмотра логов подключить устройство к компьютеру, либо воспользоваться Device log внутри приложения
+        iOS: Включен эксперимент bookings_personal
+        Пользователь авторизован
+        У пользователя имеется активная запись на услугу
+        Запись сделана через [Кофейню Кирилла](https://jing.yandex-team.ru/files/vikelvar/qr-code-1.gif)
+        Отображается главный экран приложения
+    - do: Открыть карточку, в которой была сделана запись
+    - do: Посмотреть логи
+    - assert: |
+        В логах отображается событие place.card.show
+        Присутствует параметр id=your_booking
+    - do: Закрыть карточку организации
+    - do: Изменить дату на девайсе на дату позднее записи
+    - do: Открыть карточку, в которой была сделана запись
+    - do: Посмотреть логи
+    - assert: |
+        В логах отображается событие place.card.show
+        Присутствует параметр id=book_again
+
+    - platforms:
+        - ios
+        - android
+    - testing:
+        - acceptance_maps
+
+
+  Логирование тапа на кнопку "Перенести запись":
+    - info: |
+        Для просмотра логов подключить устройство к компьютеру, либо воспользоваться Device log внутри приложения
+        iOS: Включен эксперимент bookings_personal
+        Пользователь авторизован
+        У пользователя имеется активная запись на услугу
+        Запись сделана через [Кофейню Кирилла](https://jing.yandex-team.ru/files/vikelvar/qr-code-1.gif)
+        Отображается карточка в которой была сделана запись
+    - do: Тап на "Перенести запись" в виджете бронирования
+    - do: Посмотреть логи
+    - assert: |
+        В логах отображается событие place.card.click
+        Присутствует параметр id = your_booking_update
+
+    - platforms:
+        - ios
+        - android
+    - testing:
+        - acceptance_maps
+
+
+  Логирование тапа на кнопку "Отменить запись":
+    - info: |
+        Для просмотра логов подключить устройство к компьютеру, либо воспользоваться Device log внутри приложения
+        iOS: Включен эксперимент bookings_personal
+        Пользователь авторизован
+        У пользователя имеется активная запись на услугу (на 2+ дня вперед)
+        Запись сделана через [Кофейню Кирилла](https://jing.yandex-team.ru/files/vikelvar/qr-code-1.gif)
+        Отображается карточка в которой была сделана запись
+    - do: Тап на "Отменить запись" в виджете бронирования
+    - do: Посмотреть логи
+    - assert: |
+        В логах отображается событие place.card.click
+        Присутствует параметр id = your_booking_cancel
+
+    - platforms:
+        - ios
+        - android
+    - testing:
+        - acceptance_maps
+
+
+  Логирование тапа на кнопку "Оценить место" и отправки отзыва:
+    - info: |
+        Для просмотра логов подключить устройство к компьютеру, либо воспользоваться Device log внутри приложения
+        iOS: Включен эксперимент bookings_personal
+        Пользователь авторизован
+        У пользователя имеется прошедшая запись на услугу
+        Запись была сделана через [Кофейню Кирилла](https://jing.yandex-team.ru/files/vikelvar/qr-code-1.gif)
+        (Достаточно перевести время на девайсе, чтобы запись была прошедшей)
+        Отображается карточка в которой была сделана запись
+        По кнопке "Оценить место" нет отзывов на модерации (иначе если есть, то кнопка Оценить место не появляется)
+    - do: Тап на "Оценить место" в виджете бронирования
+    - assert: Отображается экран написания отзыва
+    - do: Посмотреть логи
+    - assert: |
+        В логах отображается событие place.add-review.attempt
+        Присутствует параметр source = place-card-booking
+    - do: Написать и отправить отзыв
+    - do: Посмотреть логи
+    - assert: |
+        В логах отображается событие place.add-review.submit
+        Присутствует параметр source = place-card-booking
+
+    - platforms:
+        - ios
+        - android
+    - testing:
+        - acceptance_maps
+
+
+  Логирование тапа на кнопку "Записаться снова":
+    - info: |
+        Для просмотра логов подключить устройство к компьютеру, либо воспользоваться Device log внутри приложения
+        iOS: Включен эксперимент bookings_personal
+        Пользователь авторизован
+        У пользователя имеется прошедшая запись на услугу
+        Запись была сделана через [Кофейню Кирилла](https://jing.yandex-team.ru/files/vikelvar/qr-code-1.gif)
+        Достаточно перевести время на девайсе, чтобы запись была прошедшей
+        Отображается карточка в которой была сделана запись
+    - do: Тап на "Записаться снова" в виджете бронирования
+    - do: Посмотреть логи
+    - assert: |
+        В логах отображается событие place.card.click
+        Присутствует параметр id = book_again
+
+    - platforms:
+        - ios
+        - android
+    - testing:
+        - acceptance_maps
+
+
+  Логирование показа рекламных категорий экрана поиска из поисковой строки с экспериментом new_search_screen:
+    - info: |
+        Для просмотра логов подключить девайс к mac, либо воспользоваться Device log внутри приложения
+    - do: Использовать интент [collapsed-image](https://jing.yandex-team.ru/files/zaidova/Снимок%20экрана%202022-04-21%20в%2014.13.34.png){title=QR-код}
+
+        `yandexmaps://add_exp?new_search_screen=null`
+    - do: Перезапустить приложение
+    - assert: Открыт главный экран
+    - do: Тап на поисковую строку
+    - assert: |
+        Открыт поисковый экран с категориями, отображенными в карусели
+        В логах появилось событие `search.categories-ad`
+        Следом приходит событие `search.categories` с такими же параметрами
+
+    - testing:
+        - acceptance_maps
+    - tags:
+        - advertisement
+    - platforms:
+        - android
+
+
+  Логирование кнопки "Записаться онлайн" в блоке контактов карточки организации:
+    - info: |
+        Для просмотра логов подключить устройство к компьютеру, либо воспользоваться Device log внутри приложения
+        Включены эксперименты: booking_personal_calls_in_card, booking_personal
+        Открыта карточка организации с поддержкой бронирования (напр., Be-Goody по адресу площадь Киевского вокзала, 2, Москва)
+    - do: Раскрыть карточку организации
+    - assert: |
+        Отображается полная карточка организации
+        В карточке есть кнопка "Записаться онлайн"
+    - do: Проскроллить до блока "Контакты"
+    - assert: Под списком номеров телефонов отображается кнопка "Запишитесь онлайн"
+    - do: Тап на "Запишитесь онлайн"
+    - assert: В логи приходит событие `place.card.click` с параметрами `id=booking_button_in_contacts` и `source = place-card`
+
+    - platforms:
+        - ios
+    - testing:
+        - acceptance_maps
+
+
+  Логирование тапа на текстовое объявление у геопродуктовой карточки в поисковой выдаче:
+    - info: |
+        `Рекламное текстовое объявление` может присутствовать в геопродуктовой карточке
+        Девайс подключен к инструменту для просмотра логов
+        Открыт спан Москвы
+    - do: Тап по поисковой строке
+    - assert: Открыт экран поиска
+    - do: Выбрать категорию Салоны красоты
+    - assert: |
+        Отображаются результаты поиска с карточками организаций
+        На карте отображаются поисковые пины
+    - do: Найти в результатах поиска геопродуктовую карточку с рекламным текстовым объявлением
+    - assert: В объявлении присутствует только текст без дополнительных символов и иконок
+    - do: Тап на текстовое объявление
+    - assert: |
+        В логи приходит событие `place.open-adv-text`
+        В логи НЕ приходит событие `place.open-adv-promo-details`
+
+    - platforms:
+        - ios
+        - android
+    - testing:
+        - acceptance_maps
+    - tags:
+        - assessors
+
+
+  Логирование тапа на текстовое объявление у геопродуктовой карточки:
+    - info: |
+        Рекламное текстовое объявление - текстовое сообщение, состоящее из заголовка и описания, может присутствовать в геопродуктовой карточке
+        Как выглядит рекламное текстовое объявление [collapsed-image](https://jing.yandex-team.ru/files/alina-butba/photo_2022-06-30%2013.40.01.jpeg){title=Скрин}
+        Девайс подключен к инструменту для просмотра логов
+        Открыт спан Москвы
+    - do: Тап по поисковой строке
+    - assert: Открыт экран поиска
+    - do: Выбрать категорию Салоны красоты
+    - assert: |
+        Отображаются результаты поиска с карточками организаций
+        На карте отображаются поисковые пины
+    - do: Найти в результатах поиска геопродуктовую карточку с рекламным текстовым объявлением
+    - assert: В объявлении присутствует только текст без дополнительных символов и иконок
+    - do: Тап на карточку организации
+    - assert: Открыта полная карточка организации
+    - do: Тап на рекламное текстовое объявление
+    - assert: |
+        В логи приходит событие `place.open-adv-text`
+        В логи НЕ приходит событие `place.open-adv-promo-details`
+
+    - platforms:
+        - ios
+        - android
+    - testing:
+        - acceptance_maps
+    - tags:
+        - assessors
+
+
+  Логирование различных статусов заказа такси:
+    - info: Перед созданием заказа можно указать в комментарии к нему:`speed-90, wait-10`. Для того, чтобы такси приехало быстрее и статусы сменялись быстрее.
+    - preconditions: |
+        ТК проходить на дев-сборке
+        Для просмотра логов подключить устройство к компьютеру, либо воспользоваться Device log внутри приложения
+        Устройство подключено к Чарльзу во внутренней сети (отключить тунель-> настроить Чарльз-> включить туннель)
+        Установить в дебаг-панели:
+          `Webview -> Taxi webview base url -> testing`
+          `Environment -> Passport Environment ->testing`
+          `Environment -> Mobmaps Proxy host -> testing`
+          `Environment -> PaymentSDK Environment ->testing`
+        Авторизоваться аккаунтом тестового паспорта `yndx-kripp-le-ami606` `gen2752`
+        Отображается главный экран
+    - do: |
+        Включить эксперименты, используя интент: [collapsed-image](https://jing.yandex-team.ru/files/tdon/такси.png){title=QR-код}
+
+        `yandexmaps://add_exp?taxi_native_order_in_taxi_tab=always_open`
+    - do: Перезагрузить приложение с выгрузкой из памяти
+    - do: Построить произвольный маршрут на такси
+    - do: Тап на кнопку заказа такси
+    - assert: Отображается вебвью такси
+    - do: Закрыть вебвью
+    - do: Вернуться на главный экран приложения
+    - assert: |
+        Отображается главный экран приложения
+        Присутствует плашка такси со статусом "Поиск машины..."
+        В логах отображаются события taxi.status-update с параметром status->search
+    - do: Дождаться смены статуса в плашке на "Будет через N мин"
+    - assert: |
+        Отображается плашка такси со статусом "Будет через N мин"
+        В логах отображаются события taxi.status-update с параметром status->driving
+    - do: Дождаться смены статуса в плашке на "Машина ожидает"
+    - assert: |
+        Отображается плашка такси со статусом "Машина ожидает"
+        В логах отображаются события taxi.status-update с параметром status->waiting
+    - do: Дождаться смены статуса в плашке на "N мин в пути"
+    - assert: |
+        Отображается плашка такси со статусом "N мин в пути"
+        В логах отображаются события taxi.status-update с параметром status->transporting
+    - do: Дождаться окончания поездки
+    - assert: |
+        На главном экране МЯК не отображается плашка со статусом заказа такси
+        В логах отображается событие taxi.status-update с параметром status->complete
+
+    - platforms:
+        - android
+        - ios
+    - testing:
+        - acceptance_maps
+
+
+  Логирование вопроса "Вы владелец организации?" в Меню:
+    - info: Для просмотра логов подключить устройство к компьютеру, либо воспользоваться Device log внутри приложения
+    - do: |
+        Включить эксперимент, используя интент [collapsed-image](https://jing.yandex-team.ru/files/tdon/testvadelec.png){title=QR-код}
+
+        `yandexmaps://add_exp?potential_company_owners`
+    - do: Авторизоваться под аккаунтом `test.vladelec@yandex.ru`/`testtestov22` (Имя:Тест, Фамилия:Тест. Ответ на контрольный вопрос:vaz)
+    - do: Перезагрузить приложение с выгрузкой из памяти
+    - do: Произвести любой поиск, например по категории
+    - do: Закрыть результаты поиска
+    - do: Перейти в Меню
+    - assert: |
+        Пользователь авторизован
+        Над экшн-кнопками отображается вопрос "... - это ваша организация?" с кнопками Да и Нет
+        В логах отображается событие `menu.main-menu.show` c параметрами `id=is_your_organization_snippet` и `item_type=snippet`
+    - do: Тап на Нет
+    - assert: |
+        Вместо вопроса отображается текст "Спасибо за ваш ответ"
+        В логах отображается событие `menu.main-menu.click` c параметрами `id=is_your_organization_snippet_no` и `item_type=snippet`
+    - do: Свернуть Меню
+    - do: Развернуть Меню
+    - assert: Над экшн-кнопками отображается вопрос по новой организации "... - это ваша организация?" с кнопками Да и Нет
+    - do: Тап на Да
+    - assert: Происходит переход в вебвью
+    - do: Вернуться назад
+    - assert: В логах отображается событие `menu.main-menu.click` c параметрами `id=is_your_organization_snippet_yes` и `item_type=snippet`
+
+    - platforms:
+        - android
+    - testing:
+        - acceptance_maps
+
+
+  Логирование ответа Да на вопрос "Вы владелец организации?" в карточке организации:
+    - info: |
+        Для просмотра логов подключить устройство к компьютеру, либо воспользоваться Device log внутри приложения
+        Если не получилось найти организацию из текущего опроса в Меню, можно ответить в нем Да или Нет, свернуть/развернуть Меню - появится опрос по новой организации
+    - do: |
+        Включить эксперимент, используя интент [collapsed-image](https://jing.yandex-team.ru/files/tdon/testvadelec.png){title=QR-код}
+
+        `yandexmaps://add_exp?potential_company_owners`
+    - do: Авторизоваться под аккаунтом `test.vladelec@yandex.ru`/`testtestov22` (Имя:Тест, Фамилия:Тест. Ответ на контрольный вопрос:vaz)
+    - do: Перезагрузить приложение с выгрузкой из памяти
+    - do: Произвести любой поиск, например по категории
+    - do: Закрыть результаты поиска
+    - do: Перейти в Меню
+    - assert: |
+        Пользователь авторизован
+        Над экшн-кнопками отображается вопрос "... - это ваша организация?" с кнопками Да и Нет
+    - do: Выйти из меню
+    - do: Найти организацию из вопроса через поиск
+    - do: Открыть полную карточку организации
+    - assert: |
+        Над табами отображается вопрос "Вы владелец этой организации?" с кнопками Да и Нет
+        В логах отображается событие `place.card.show` c параметром  `id=is_your_organization_snippet`
+    - do: Тап на Да
+    - assert: Происходит переход в вебвью
+    - do: Вернуться назад
+    - assert: |
+        Открыта полная карточка организации
+        Вместо вопроса отображается текст "Спасибо за ваш ответ"
+        В логах отображается событие `place.card.click` c параметром `id=is_your_organization_snippet_yes`
+
+    - platforms:
+        - android
+    - testing:
+        - acceptance_maps
+
+
+  Логирование ответа Нет на вопрос "Вы владелец организации?" в карточке организации:
+    - info: |
+        Для просмотра логов подключить устройство к компьютеру, либо воспользоваться Device log внутри приложения
+        Если не получилось найти организацию из текущего опроса в Меню, можно ответить в нем Да или Нет, свернуть/развернуть Меню - появится опрос по новой организации
+    - do: |
+        Включить эксперимент, используя интент [collapsed-image](https://jing.yandex-team.ru/files/tdon/testvadelec.png){title=QR-код}
+
+        `yandexmaps://add_exp?potential_company_owners`
+    - do: Авторизоваться под аккаунтом `test.vladelec@yandex.ru`/`testtestov22` (Имя:Тест, Фамилия:Тест. Ответ на контрольный вопрос:vaz)
+    - do: Перезагрузить приложение с выгрузкой из памяти
+    - do: Произвести любой поиск, например по категории
+    - do: Закрыть результаты поиска
+    - do: Перейти в Меню
+    - assert: |
+        Пользователь авторизован
+        Над экшн-кнопками отображается вопрос "... - это ваша организация?" с кнопками Да и Нет
+    - do: Выйти из меню
+    - do: Найти организацию из вопроса через поиск
+    - do: Открыть полную карточку организации
+    - assert: |
+        Над табами отображается вопрос "Вы владелец этой организации?" с кнопками Да и Нет
+        В логах отображается событие `place.card.show` с параметром `id=is_your_organization_snippet`
+    - do: Тап на Нет
+    - assert: |
+        Вместо вопроса отображается текст "Спасибо за ваш ответ"
+        В логах отображается событие `place.card.click` c параметром `id=is_your_organization_snippet_no`
+
+    - platforms:
+        - android
+    - testing:
+        - acceptance_maps
+

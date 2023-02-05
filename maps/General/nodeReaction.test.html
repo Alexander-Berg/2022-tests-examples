@@ -1,0 +1,136 @@
+<!doctype html>
+<html>
+<head>
+    <title>util.dom.reaction</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <!-- YUI -->
+    <script type="text/javascript" src="../../../../tests/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../../../tests/yui3combo/combo.css"/>
+    <script type="text/javascript" src="../../../../tests/run-test-case.js"></script>
+    <!-- Code -->
+    <script type="text/javascript">
+        initAPI({
+            lang: "ru-RU",
+            mode: "debug",
+            load: "util.dom.reaction.hold,util.dom.className,util.dom.element,util.dom.reaction.hover,domEvent.override.common,domEvent.managerOverrides.desktop"
+        });
+    </script>
+</head>
+
+<body class="yui3-skin-sam"></body>
+<style>
+    div.test {
+        width: 100px;
+        height: 100px;
+        background-color: #FF8;
+        display: inline-block;
+        margin: 10px;
+    }
+
+    .tested {
+        background-color: #8F8;
+    }
+</style>
+<div class='test' id='testElement1'>тестер</div>
+
+<script type="text/javascript">
+
+    function getTestCase (Y) {
+        var element1 = document.getElementById('testElement1');
+
+        return {
+            name: "util.dom.reaction",
+
+            testHover: function () {
+                var status = '',
+                        callback1 = function (e) {
+                            status = 'on';
+                        },
+                        callback2 = function (e) {
+                            status = 'off'
+                        },
+
+                        reaction = ymaps.util.dom.reaction.hover.reaction({
+                            element: element1,
+                            toggleCssClass: 'tested',
+                            onEnable: callback1,
+                            onDisable: callback2
+                        });
+
+                Y.Event.simulate(element1, 'mouseover', { target: element1 });
+                this.wait(function () {
+
+                    Y.assert(ymaps.util.dom.className.has(element1, 'tested'), 'Не добавления класса по hover');
+                    Y.assert(status == 'on', 'Не отработки колбека по hover');
+
+                    Y.Event.simulate(element1, 'mouseout', { target: element1, relatedTarget: document.body });
+                    // Y.Event.simulate(element1, 'mouseover', { target: document.body });
+                    this.wait(function () {
+
+                        Y.assert(!ymaps.util.dom.className.has(element1, 'tested'), 'Не снятия класса по hover');
+                        Y.assert(status == 'off', 'Не отработки колбека закрытия по hover');
+
+                        reaction.disable();
+                    }, 100);
+                }, 100);
+            },
+
+            testHoverBlock: function () {
+                var status = '',
+                        callback1 = function (e) {
+                            return false;
+                        },
+                        reaction = ymaps.util.dom.reaction.hover.reaction({
+                            element: element1,
+                            toggleCssClass: 'tested',
+                            onEnable: callback1
+                        });
+
+                Y.Event.simulate(element1, 'mouseover', { target: element1 });
+                this.wait(function () {
+
+                    Y.assert(!ymaps.util.dom.className.has(element1, 'tested'), 'Добаление класса произошло');
+                }, 100);
+            },
+
+            testHold: function () {
+                var status = '',
+                        callback1 = function (e) {
+                            status = 'on';
+                        },
+                        callback2 = function (e) {
+                            status = 'off'
+                        },
+
+                        reaction = ymaps.util.dom.reaction.hold.reaction({
+                            element: element1,
+                            toggleCssClass: 'tested',
+                            onEnable: callback1,
+                            onDisable: callback2
+                        });
+
+                Y.Event.simulate(element1, 'mouseover', { target: element1 });
+                this.wait(function () {
+
+                    Y.assert(!ymaps.util.dom.className.has(element1, 'tested'), 'ложное срабатывание');
+
+                    Y.Event.simulate(element1, 'mousedown', { target: element1 });
+                    this.wait(function () {
+                        Y.assert(ymaps.util.dom.className.has(element1, 'tested'), 'Не добавления класса по hover');
+
+                        Y.assert(status == 'on', 'Не отработки колбека по hold');
+
+                        Y.Event.simulate(element1, 'mouseup', { target: element1, relatedTarget: element1 });
+                        this.wait(function () {
+                            Y.assert(!ymaps.util.dom.className.has(element1, 'tested'), 'Не снятия класса по mouseup');
+                            Y.assert(status == 'off', 'Не отработки колбека закрытия по mouseup');
+                            reaction.disable();
+                        }, 100);
+                    }, 100);
+                }, 100);
+            }
+        }
+    }
+    ymaps.ready(runTestCase);
+</script>
+</html>

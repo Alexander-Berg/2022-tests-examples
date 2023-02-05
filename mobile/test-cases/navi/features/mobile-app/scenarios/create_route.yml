@@ -1,0 +1,820 @@
+components: create_route
+testing:
+  - regress
+
+specs:
+  Построение маршрута в перекрытые участки:
+    - info: На карте найти перекрытый участок дороги. (Обозначен ДС в виде дорожного знака "Кирпич" и серыми пробками)
+    - do: Построить маршрут в перекрытый участок дороги
+    - assert: |
+        - На табах вариантов маршрута показывается иконка о построении маршрута в перекрытие
+        - Время в пути не показывается
+        - Показывается плашка с предупреждением о перекрытии и указанием времени в пути без учета перекрытия
+        - На перекрытом отрезке маршрута пробки отображаются черным цветом
+    - do: Тап Поехали
+    - assert: |
+        - В ETA перекрытый участок отображается черным цветом
+        - На линии маршрута, в месте начала перекрытия, отображается иконка перекрытия
+    - do: Выбрать альтернативный маршрут без перекрытия
+    - assert: Иконка перекрытия скрывается и не отображается на новом маршруте
+
+    - platforms:
+      - motrex
+      - autochip
+      - geely
+      - carsharing_t3
+      - ios
+      - nissan
+      - t3am
+      - android
+    - tags:
+      - assessors
+      - mapkit_ready
+    - testing:
+      - acceptance_navi
+    - integration_run:
+      - mapkit
+
+
+  Построение и сброс маршрута:
+    - do: Лонгтап на карте в произвольном месте
+    - assert: Открывается лонгтап меню
+    - do: Тап по кнопке «Сюда» в открывшемся меню
+    - assert: Строится маршрут в выбранную точку. Звучит аннотация «Маршрут построен»
+    - do: Тап Поехали
+    - assert: Переход в режим ведения по маршруту
+    - do: Тап по кнопке «Обзор» в таббаре
+    - assert: Открывается экран обзора маршрута
+    - do: Тап Сброс
+    - assert: |
+        - Маршрут удаляется с карты
+        - Фокус возвращается к текущему местоположению
+
+    - platforms:
+      - ios
+      - android
+    - testing:
+      - acceptance_navi
+    - integration_run:
+      - mapkit
+    - tags:
+      - assessors
+      - mapkit_ready
+
+
+  Построение маршрутов внутри стран и через их границы:
+    - do: |
+        - Открыть Поиск тапом по иконке лупы на таббаре
+        - Ввести в поисковую строку "Украина"
+        - Выполнить поиск
+    - assert: |
+        - Происходит возврат на экран "Карта"
+        - В нижней части экрана открывается карточка точки с кнопкой "Маршрут"
+    - do: Тап Маршрут
+    - assert: |
+        - Маршрут построен
+        - Отображается экран обзора маршрута с табами его вариантов и кнопкой "Поехали"
+    - do: |
+        - Сбросить маршрут
+        - Выполнить поиск по запросу "Франция"
+        - Тап "Маршрут" в карточке
+    - assert: |
+        - Маршрут построен
+        - Отображается экран обзора маршрута с табами его вариантов и кнопкой "Поехали"
+
+    - platforms:
+      - ios
+      - android
+    - integration_run:
+      - mapkit
+    - tags:
+      - assessors
+      - mapkit_ready
+
+
+  Построение маршрута с точкой "Отсюда" из карточки организации:
+    - do: |
+        - Тап на любую иконку POI на карте
+        - Раскрыть карточку свайпом вверх
+        - Тап на кнопку “Отсюда” из карточки организации
+    - assert: Точка установлена, отображается плашка с текстом “Укажите пункт назначения”
+    - do: |
+        - Выполнить лонг-тап в любой точке карты
+        - В открывшемся Меню тап кнопку "Сюда"
+    - assert: Произошло построение маршрута в указанную точку
+
+    - platforms:
+      - ios
+      - geely
+      - vaz
+      - carsharing_t3
+      - android
+      - t3am
+    - tags:
+      - assessors
+      - mapkit_ready
+    - testing:
+      - acceptance_navi
+    - integration_run:
+      - mapkit
+
+
+  Построение маршрута по грузовому каркасу в оффлайне:
+    - info: |
+        - Меню - Навигация - Маршруты для грузовиков = вкл
+        - Меню - Настройка - В разделе быстрые настройки Маршруты выбран грузовик
+        - Включить `Dev.Settings -> Misc -> Unlimit intents enabled -> On`
+        - Перезагрузить приложение
+        - Скачать кеш Московской области
+    - do: |
+        - Отключить интернет на устройстве
+        - Построить маршрут `yandexnavi://build_route_on_map?lat_from=55.567738&lon_from=37.601309&lat_to=55.906990&lon_to=37.588813`
+    - assert: |
+        - Маршрут построен
+        - В обзоре отображается текст "Без учета грузовых ограничений"
+        - Курсор в оффлайне при построении маршрута меняется с грузовика на тот, который был установлен до включения грузовой маршрутизации
+    - do: |
+        - Тап Поехали
+        - Запустить симуляцию ведения через дебаг-панель
+    - assert: Движение запущено, звучат аннотации по маршруту
+    - do: |
+        - Включить интернет на устройстве
+        - Подождать от 30-60 сек
+    - assert: |
+        - Звучит фраза "Маршрут перестроен"
+        - Маршрут окрашивается пробками
+    - do: |
+        - Тап по карте
+        - Тап кнопку Обзор маршрута в таббаре
+    - assert: |
+        - На экране обзора отображается иконка Грузовика
+        - В обзоре может отображаться текст о ГК
+    - do: |
+        - Снова отключить интернет на устройстве
+        - Выполнить лонг тап на карте вблизи от маршрута
+        - Тап Через
+    - assert: |
+        - Построен маршрут с промежуточной точкой
+        - На экране обзора отображается текст "Без учета грузовых ограничений"
+        - Курсор в оффлайне при построении маршрута меняется с грузовика на тот, который был установлен до включения грузовой маршрутизации
+
+    - platforms:
+      - ios
+      - android
+    - tags:
+      - assessors
+      - mapkit_ready
+    - testing:
+      - acceptance_navi
+    - integration_run:
+      - mapkit
+
+
+  Тестирование в офлайне - Построение маршрута:
+    - info: Оффлайн кеш не скачан
+    - do: |
+        - Включить авиа-режим
+        - Лонгтап в любом месте карты
+        - Тап Сюда
+    - assert: В верхней части экрана отображается надпись “Поиск маршрута”
+    - do: Выключить авиа-режим
+    - assert: Строится маршрут от вашего местоположения до указанной точки
+    - do: Настройки - Загрузка карт - Скачать карты любого региона
+    - assert: Кеш скачан
+    - do: |
+        - Перейти на экран карты
+        - Подвигать карту так, чтобы на экране отображался город, кеш которого был скачан
+        - Включить авиарежим
+        - Построить маршрут в городе кеш которого скачан
+    - assert: |
+        - Строится оффлайн маршрут
+        - Маршрут окрашен синим цветом
+        - ЕТА отображатеся синим цветом
+        - Отображается уведомление "Маршрут без интернета"
+        - Для Я.Авто плашка показывается только 1 раз при первом поиске
+    - do: |
+        - Выключить авиа-режим
+        - Тап по кнопке “маршрут без интернета”
+    - assert: |
+        - Маршрут окрашивается в цвета пробок
+        - ЕТА окрашивается в цвета пробок
+
+    - platforms:
+      - ios
+      - android
+      - motrex
+      - renault
+      - geely
+      - vaz
+      - carsharing_t3
+      - nissan
+      - t3am
+      - autochip
+      - first_run_hu
+    - tags:
+      - assessors
+      - mapkit_ready
+    - testing:
+      - acceptance_navi
+    - integration_run:
+      - mapkit
+
+
+  Тестирование в офлайне - Построение маршрута между регионами:
+    - info: |
+        - Скачаны кеши двух соседних регионов
+        - Включен авиа-режим
+    - do: |
+        - Построить маршрут из одного региона в другой
+        - Тап Поехали
+    - assert: |
+        - Маршрут строится
+        - Отображается расстояние маршрута, время в пути, ориентировочное время прибытия
+
+    - platforms:
+      - ios
+      - android
+      - motrex
+      - renault
+      - geely
+      - vaz
+      - carsharing_t3
+      - nissan
+      - t3am
+      - autochip
+      - first_run_hu
+    - tags:
+      - assessors
+      - mapkit_ready
+    - testing:
+      - acceptance_navi
+    - integration_run:
+      - mapkit
+
+
+  Построение маршрута - кнопкой Сюда:
+    - do: |
+        - Выполнить лонг-тап в любой точке карты
+        - В открывшемся Меню тап "Сюда"
+    - assert: Произошло построение маршрута в указанную точку
+
+    - testing:
+      - acceptance_navi
+      - smoke_myspin
+    - integration_run:
+      - mapkit
+      - myspin
+    - platforms:
+      - renault
+      - geely
+      - vaz
+      - carsharing_t3
+      - ios
+      - nissan
+      - android
+      - t3am
+      - motrex
+      - autochip
+      - first_run_hu
+    - tags:
+      - assessors
+      - both_myspin
+      - mapkit_ready
+
+
+  Построение маршрута - кнопкой "Что здесь?":
+    - do: Выполнить лонг-тап в любой точке карты
+    - assert: Открывается лонгтап меню
+    - do: В появившемся меню тап “Что здесь?”
+    - assert: Открывается карточка выбранной точки с ее координатами
+    - do: В появившейся карточке тап “Маршрут”
+    - assert: Производится построение маршрута в заданную точку
+
+    - testing:
+      - acceptance_navi
+    - integration_run:
+      - mapkit
+    - platforms:
+      - renault
+      - geely
+      - vaz
+      - carsharing_t3
+      - ios
+      - nissan
+      - android
+      - t3am
+      - motrex
+      - autochip
+      - first_run_hu
+    - tags:
+      - assessors
+      - mapkit_ready
+
+
+  Построение маршрута через саджест:
+    - info: |
+        - На экране карт отображаются саджесты пунктов назначения
+        - Если не отображаются саджесты, то совершить поездки или авторизоваться аккаунтом с добавленными точками в избранное
+    - do: Тап на саджест точки назначения внизу экрана
+    - assert: Производится построение маршрута в заданную точку
+    - do: Тап Поехали
+    - assert: Начинается ведение по маршруту
+
+    - testing:
+      - acceptance_navi
+    - integration_run:
+      - mapkit
+    - platforms:
+      - renault
+      - geely
+      - vaz
+      - carsharing_t3
+      - ios
+      - nissan
+      - android
+      - t3am
+      - motrex
+      - autochip
+    - tags:
+      - assessors
+      - mapkit_ready
+
+
+  Построение маршрута - Мои места (Недавние):
+    - info: Совершить несколько поездок
+    - do: Тап на иконку Моих мест в таббаре
+    - assert: Открывается экран Мои места
+    - do: |
+        - Перейти на вкладку “Недавние”
+        - Тап по любой строке с адресом
+    - assert: Строится маршрут в соответствующую точку
+
+    - testing:
+      - acceptance_navi
+    - integration_run:
+      - mapkit
+    - platforms:
+      - renault
+      - geely
+      - vaz
+      - carsharing_t3
+      - ios
+      - nissan
+      - android
+      - t3am
+      - motrex
+      - autochip
+    - tags:
+      - assessors
+      - mapkit_ready
+
+
+  Построение маршрута - Мои места (Избранное):
+    - info: Добавить точку в Избранное любым способом
+    - do: Тап на иконку Моих мест в таббаре
+    - assert: Открывается экран Мои места с добавленными точками
+    - do: Тап на строку с точкой Избранного
+    - assert: Строится маршрут до точки из закладок
+
+    - testing:
+      - acceptance_navi
+      - smoke_myspin
+    - integration_run:
+      - mapkit
+      - myspin
+    - platforms:
+      - renault
+      - geely
+      - vaz
+      - carsharing_t3
+      - ios
+      - nissan
+      - android
+      - t3am
+      - motrex
+      - autochip
+    - tags:
+      - assessors
+      - both_myspin
+      - mapkit_ready
+
+
+  Построение маршрута - Избранное (на карте):
+    - info: |
+       - Меню - Настройки - Карта и интерфейс - Отображаться избранное на карте - Вкл
+       - Добавить точку в закладки любым способом
+    - do: Тап по любой точке Избранного на карте
+    - assert: Открывается карточка Избранного
+    - do: Тап Поехали
+    - assert: Строится маршрут до выбранной точки
+
+    - testing:
+      - acceptance_navi
+      - smoke_myspin
+    - integration_run:
+      - mapkit
+      - myspin
+    - platforms:
+      - motrex
+      - renault
+      - geely
+      - carsharing_t3
+      - ios
+      - android
+      - autochip
+      - vaz
+      - nissan
+      - t3am
+    - tags:
+      - assessors
+      - both_myspin
+      - mapkit_ready
+
+
+  Сброс маршрута:
+    - do: Построить маршрут любым способом
+    - assert: Маршрут построен
+    - do: Тап на кнопку "Отмена" на карточке обзора маршрута
+    - assert: Маршрут сброшен
+
+    - integration_run:
+      - mapkit
+    - platforms:
+      - renault
+      - geely
+      - vaz
+      - carsharing_t3
+      - ios
+      - nissan
+      - t3am
+      - android
+      - motrex
+      - autochip
+      - autochip
+      - first_run_hu
+    - tags:
+      - assessors
+      - mapkit_ready
+
+
+  Проверка построения маршрута с точкой "Отсюда" (Быстрая проверка):
+    - do: |
+        - Выполнить лонг-тап в любой точке карты
+        - Тап Отсюда
+    - assert: Точка установлена, появилась плашка с текстом “Укажите пункт назначения”.
+    - do: |
+        - Перейти на экран "Поиск" тапом по иконке Лупы в таббаре
+        - Тап на любую категорию
+    - assert: |
+        - Произошел переход на экран карты
+        - На карте отображаются пины результатов поиска
+        - Открыта карточка результатов поиска
+    - do: Тап на любой результат
+    - assert: Открылась карточка организации в максимальное состояние
+    - do: На открывшейся карточке тап на кнопку "Маршрут"
+    - assert: Маршрут построен
+    - do: Тап на кнопку "Отмена"
+    - assert: Маршрут сброшен
+
+    - platforms:
+      - motrex
+      - autochip
+      - android
+      - ios
+      - nissan
+      - renault
+    - testing:
+      - acceptance_navi
+    - integration_run:
+      - mapkit
+    - tags:
+      - assessors
+      - mapkit_ready
+
+
+  Проверка построения маршрута из карточки с точкой "Отсюда":
+    - do: Тап на любую иконку POI на карте
+    - assert: |
+        - Снизу плавно выдвинулся контейнер с карточкой организации
+        - В карточке присутствует кнопка "Маршрут"
+    - do: |
+        - Развернуть карточку в максимальное состояние
+        - Тап на кнопку “Отсюда” из карточки организации
+    - assert: Точка установлена, появилась плашка с текстом “Укажите пункт назначения”
+    - do: |
+        - Выполнить лонг-тап в любой точке карты
+        - В открывшемся Меню тап кнопку "Сюда"
+    - assert: Произошло построение маршрута в указанную точку
+
+    - platforms:
+      - motrex
+      - autochip
+      - android
+      - ios
+      - nissan
+      - renault
+    - testing:
+      - acceptance_navi
+    - integration_run:
+      - mapkit
+    - tags:
+      - assessors
+      - mapkit_ready
+
+
+  Логирование событий при построении маршрута:
+    - info: Установлена debug-сборка
+    - do: Построить маршрут любым способом
+    - assert: В логах приходит событие `route.make-route`
+
+    - testing:
+      - acceptance_navi
+    - platforms:
+      - ios
+      - android
+    - tags:
+      - assessors
+      - mapkit_ready
+      - metric
+    - integration_run:
+      - mapkit
+
+
+  Построение маршрута с точкой "Отсюда" из лонгтап-меню:
+    - do: |
+        - Выполнить лонг-тап в любой точке карты
+        - Тап Отсюда
+    - assert: Точка установлена, появилась плашка с текстом “Укажите пункт назначения”
+    - do: |
+        - Перейти на экран "Поиск" тапом по иконке Лупы в таббаре
+        - Тап на любую категорию
+    - assert: |
+        - Произошел переход на экран карты
+        - На карте отображаются пины результатов поиска
+        - Снизу плавно выдвинулся список организаций
+    - do: Тап на любой результат
+    - assert: Открывается карточка выбранной организации в максимальное состояние
+    - do: Тап "Маршрут"
+    - assert: |
+        - Карточка ранее открытой организации закрылась
+        - Маршрут построен
+        - Отображаются варианты маршрутов
+    - do: Тап "Поехали"
+    - assert: |
+        - Варианты маршрутов скрылись
+        - Произошел переход в ведение по маршруту
+        - Отображается ЕТА плашка
+
+    - platforms:
+      - geely
+      - vaz
+      - carsharing_t3
+      - ios
+      - android
+      - t3am
+      - nissan
+      - renault
+    - tags:
+      - assessors
+      - both_myspin
+      - mapkit_ready
+    - testing:
+      - acceptance_navi
+      - smoke_myspin
+    - integration_run:
+      - mapkit
+      - myspin
+
+
+
+  Построения маршрута интентом в фоне:
+    - info: |
+        Включить `Dev.Settings -> Misc -> Unlimit intents enabled -> On`
+        Перезагрузить приложение
+    - do: |
+        - Навигатор свернут
+        - Отправить интент:
+        `adb shell am broadcast -a ru.yandex.yandexnavi.action.BACKGROUND_ACTION -d "yandexnavi://set_route?route_bytes=CQAAAAMAAAAxXzC2AwAACroB2gW2AQo5ChEJtCVUU1j0KEASBjHCoG1pbhIRCWHUzVmEXlVAEgYxwqBtaW4aEQkMit2ZyT1iQBIGMTUwwqBtKkcKCjE3LjA2LjE5LTASOQoL%2F7PxhQEAAQABAAERAAAAAAAAAAAZAAAAAAAAAAAiCwgAEYmnyNAL8%2Bc%2FKgsIABEnKHlHDcnkPzIMEAAYACAAKAAwADgAOiIKCwgBEWHUzVmEXlVAEQAAAAAAAAAAGAEgACgAMAA4AEAAIigKEgnNt7Lhx8tCQBEAAF45ut1LQBISCdBD8VPqy0JAER34%2F%2FjY3UtAMvQBCqgB4gWkAQgAEjgKEQlYsfQg4EkRQBIGMcKgbWluEhEJm6W1xvgyFUASBjHCoG1pbhoQCX%2BGafBcNEFAEgUzNMKgbRowCAISFFRpbXVyYSBGcnVuemUgU3RyZWV0GhRUaW11cmEgRnJ1bnplIFN0cmVldCIAKhIKBw0cx7FAEAIKBw1VVYVBEAEyBgoECAMYADoYChYIAhIGCAEQAxgDEgQIARAHEgQIARAHIigKEgnNt7Lhx8tCQBEAAF45ut1LQBISCQAAlHzUy0JAEeVg%2BirB3UtAKh0SGwoMCMrv7CMSBXymAuACEgsI1KOTNRIEW9kBcTKLAgq9AeIFuQEIABI4ChEJGcGpXj%2FWHUASBjHCoG1pbhIRCfpFYanqUlNAEgYxwqBtaW4aEAkAAAC8gi9SQBIFNzLCoG0aaAgFEhJLb21zb21vbHNreSBBdmVudWUaGExlZnQsIEtvbXNvbW9sc2t5IEF2ZW51ZSIAKAEyMgow0L3QsCDQmtC%2B0LzRgdC%2B0LzQvtC70YzRgdC60LjQuSDQv9GA0L7RgdC%2F0LXQutGCKgkKBw1VVYVBEAMyBgoECAMYAiIoChIJAACUfNTLQkARAABeObrdS0ASEgkAAHjI4MtCQBEAADZ6zt1LQCofEh0KDAjM9ewjEgWkA%2B4BXBINCKygkzUSBrIFiAOaATLHAQqAAeIFfQgAEjgKEQnEx044iUTmPxIGMMKgc2VjEhEJkYEmgEQNB0ASBjHCoG1pbhoQCbKhDP%2FDY0NAEgUzOMKgbRoSCBMaDEV4aXQgKHJpZ2h0KSIAKgkKBw1VVYVBEAEyBgoECAEYAjoYChYIABIECAEQBRIECAEQBRIGCAEQBhgGIigKEgkAAHjI4MtCQBEAADZ6zt1LQBISCf7ImJvoy0JAEZydyc7Y3UtAKhgSFgoJCLr77CMSAt4DEgkIgKqTNRIC9gQAAAAAAAAAAAAAAAAAAgAAAHJ1AA%3D%3D" -n "ru.yandex.yandexnavi.inhouse/ru.yandex.yandexnavi.intent.BackgroundActionBroadcastReceiver"`
+        - Развернуть Навигатор
+    - assert: В Навигаторе построен маршрут
+
+    - platforms:
+        - android
+    - tags:
+        - assessors
+        - mapkit_ready
+    - integration_run:
+        - mapkit
+
+
+  Построения маршрута интентом при выгруженном навигаторе:
+    - info: |
+        Включить `Dev.Settings -> Misc -> Unlimit intents enabled -> On`
+        Перезагрузить приложение
+    - do: |
+        - Навигатор выгружен из памяти устройства
+        - Отправить интент: `adb shell am broadcast -a ru.yandex.yandexnavi.action.BACKGROUND_ACTION -d "yandexnavi://set_route?route_bytes=CQAAAAMAAAAxXzC2AwAACroB2gW2AQo5ChEJtCVUU1j0KEASBjHCoG1pbhIRCWHUzVmEXlVAEgYxwqBtaW4aEQkMit2ZyT1iQBIGMTUwwqBtKkcKCjE3LjA2LjE5LTASOQoL%2F7PxhQEAAQABAAERAAAAAAAAAAAZAAAAAAAAAAAiCwgAEYmnyNAL8%2Bc%2FKgsIABEnKHlHDcnkPzIMEAAYACAAKAAwADgAOiIKCwgBEWHUzVmEXlVAEQAAAAAAAAAAGAEgACgAMAA4AEAAIigKEgnNt7Lhx8tCQBEAAF45ut1LQBISCdBD8VPqy0JAER34%2F%2FjY3UtAMvQBCqgB4gWkAQgAEjgKEQlYsfQg4EkRQBIGMcKgbWluEhEJm6W1xvgyFUASBjHCoG1pbhoQCX%2BGafBcNEFAEgUzNMKgbRowCAISFFRpbXVyYSBGcnVuemUgU3RyZWV0GhRUaW11cmEgRnJ1bnplIFN0cmVldCIAKhIKBw0cx7FAEAIKBw1VVYVBEAEyBgoECAMYADoYChYIAhIGCAEQAxgDEgQIARAHEgQIARAHIigKEgnNt7Lhx8tCQBEAAF45ut1LQBISCQAAlHzUy0JAEeVg%2BirB3UtAKh0SGwoMCMrv7CMSBXymAuACEgsI1KOTNRIEW9kBcTKLAgq9AeIFuQEIABI4ChEJGcGpXj%2FWHUASBjHCoG1pbhIRCfpFYanqUlNAEgYxwqBtaW4aEAkAAAC8gi9SQBIFNzLCoG0aaAgFEhJLb21zb21vbHNreSBBdmVudWUaGExlZnQsIEtvbXNvbW9sc2t5IEF2ZW51ZSIAKAEyMgow0L3QsCDQmtC%2B0LzRgdC%2B0LzQvtC70YzRgdC60LjQuSDQv9GA0L7RgdC%2F0LXQutGCKgkKBw1VVYVBEAMyBgoECAMYAiIoChIJAACUfNTLQkARAABeObrdS0ASEgkAAHjI4MtCQBEAADZ6zt1LQCofEh0KDAjM9ewjEgWkA%2B4BXBINCKygkzUSBrIFiAOaATLHAQqAAeIFfQgAEjgKEQnEx044iUTmPxIGMMKgc2VjEhEJkYEmgEQNB0ASBjHCoG1pbhoQCbKhDP%2FDY0NAEgUzOMKgbRoSCBMaDEV4aXQgKHJpZ2h0KSIAKgkKBw1VVYVBEAEyBgoECAEYAjoYChYIABIECAEQBRIECAEQBRIGCAEQBhgGIigKEgkAAHjI4MtCQBEAADZ6zt1LQBISCf7ImJvoy0JAEZydyc7Y3UtAKhgSFgoJCLr77CMSAt4DEgkIgKqTNRIC9gQAAAAAAAAAAAAAAAAAAgAAAHJ1AA%3D%3D" -n "ru.yandex.yandexnavi.inhouse/ru.yandex.yandexnavi.intent.BackgroundActionBroadcastReceiver"`
+    - assert: Запускается навигатор с построенным маршрутом
+
+    - platforms:
+      - android
+    - tags:
+      - assessors
+      - mapkit_ready
+    - integration_run:
+      - mapkit
+
+
+  Построение маршрута с промежуточной точкой из карточки организации:
+    - info: Построить маршрут любым способом и подтвердить его
+    - do: |
+        - Перейти на экран "Поиск" тапом по иконке Лупы в таббаре
+        - Тап на любую категорию
+    - assert: |
+        - Произошел переход на экран карты
+        - На карте отображаются пины результатов поиска
+        - Открыть карточку любой организации
+    - do: Тап "Заехать" в карточке
+    - assert: |
+        - На месте организации устанавливается промежуточная точка
+        - Маршрут перестраивается с учетом промежуточной точки
+    - do: Тап "Поехали" в карточке обзора маршрута
+    - assert: |
+        - Происходит переход в режим ведения по маршруту
+        - Экран перемещается к местоположению курсора
+
+    - testing:
+      - acceptance_navi
+    - platforms:
+      - geely
+      - carsharing_t3
+      - ios
+      - android
+      - t3am
+      - motrex
+      - autochip
+    - tags:
+        - assessors
+
+
+  Маршрут к подъезду. Мои Места.:
+    - info:  В Мои Места добавлено здание, которое имеет несколько подъездов, так чтобы в адресе упоминался один из подъездов, добавить можно указав номер подъезда при поиске после ввода адреса дома
+    - do: |
+        - Открыть Мои места
+        - Тап на адрес, для которого есть информация о подъезде
+    - assert: Маршрут строится максимально близко к подъезду
+
+    - platforms:
+      - ios
+      - android
+    - tags:
+      - assessors
+      - mapkit_ready
+    - integration_run:
+      - mapkit
+
+
+  Построение длинного маршрута:
+    - do: |
+        - Построить маршрут длиной более 6000 км
+        - Добавить на маршрут промежуточную точку
+    - assert: Маршрут корректно строится и отображается на экране обзора
+    - do: Тап Поехали
+    - assert: Начинается ведение по маршруту
+
+    - platforms:
+      - ios
+      - android
+    - tags:
+      - assessors
+      - mapkit_ready
+    - integration_run:
+      - mapkit
+
+
+  Построение маршрута c промежуточными точками через черный плюс (выбираем категорию поиска):
+    - info: Построить маршрут любым способом
+    - do: |
+        - Выполнить одиночный тап по черному плюсу на маршруте.
+        - Тап Уточнить
+    - assert: Открывается поиск. В поисковую строку введен адрес, соответствующий примерному местоположению черного плюса
+    - do: |
+        - Удалить текст в поисковой строке
+        - Тап на любую категорию под поисковой строкой
+    - assert: |
+        - Происходит переход на экран карты
+        - На карте отображаются пины результатов поиска
+        - Снизу отображается карточка результатов поиска
+    - do: Тап на любой результат
+    - assert: Открывается карточка выбранной организации в максимальное состояние
+    - do: Тап Заехать
+    - assert: На маршрут добавляется новая промежуточная точка
+
+    - testing:
+      - acceptance_navi
+    - integration_run:
+      - mapkit
+    - platforms:
+      - geely
+      - vaz
+      - carsharing_t3
+      - ios
+      - android
+      - t3am
+      - motrex
+      - autochip
+    - tags:
+      - assessors
+      - mapkit_ready
+
+
+  Настройка "Избегать платных дорог" выключена:
+    - info: |
+        - Настройка работает только для маршрутов построенных онлайн
+        - Меню - Настройки - Избегать платных дорог - Выкл
+    - do: Построить маршрут, который предполагает через платную дорогу. Например Москва - Санкт-Петербург.
+    - assert: |
+        - Маршрут построен
+        - На экране обзора отображаются маршруты со знаком платной дороги
+
+    - platforms:
+      - motrex
+      - autochip
+      - geely
+      - renault
+      - carsharing_t3
+      - ios
+      - android
+      - vaz
+      - t3am
+      - nissan
+    - tags:
+      - assessors
+      - both_myspin
+      - mapkit_ready
+    - testing:
+      - acceptance_navi
+    - integration_run:
+      - mapkit
+      - myspin
+
+
+  Настройка "Избегать платных дорог" включена:
+    - info: В обзоре могут отображаться платные альтернативы если нет маршрутов без платной дороги
+    - do: |
+        - Включить настройку Меню - Настройки - Избегать платных дорог
+        - Построить маршрут через платную дорогу
+    - assert: На экране обзора отсутствуют варианты с платными дорогами
+    - do: Тап Поехали
+    - assert: |
+        - Происходит переход в режим ведения
+        - На карте не отображаются альтернативы, содержащие платные участки
+
+    - platforms:
+      - motrex
+      - autochip
+      - geely
+      - renault
+      - carsharing_t3
+      - ios
+      - android
+      - vaz
+      - t3am
+      - nissan
+    - tags:
+      - assessors
+      - both_myspin
+      - mapkit_ready
+    - testing:
+      - acceptance_navi
+    - integration_run:
+      - mapkit
+      - myspin
+
+
+  Настройка "Избегать платных дорог" офлайн:
+    - info: |
+        - Скачать кеш Московской области
+        - Меню - Настройки - Избегать платных дорог - Включить
+        - Включить авиа режим
+    - do: |
+        - Построить маршрут в загруженном регионе через платную дорогу (например в аэропорт)
+    - assert: |
+        - На экране обзора отображается один маршрут
+        - Маршрут может содержать платный участок дороги если нет другого маршрута, тогда на маршруте будут отображаться пины платной дороги
+    - do: Тап Поехали
+    - assert: |
+        - Происходит переход в режим ведения
+        - На карте не отображаются альтернативы
+    - do: Тап Обзор
+    - assert: В обзоре не отображаются альтернативы через платную дорогу
+
+    - platforms:
+      - ios
+      - android
+    - tags:
+      - assessors
+    - testing:
+      - acceptance_navi
+    - integration_run:
+      - mapkit

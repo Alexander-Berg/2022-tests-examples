@@ -1,0 +1,167 @@
+<!doctype html>
+<html>
+<head>
+    <title>domEvent.manager</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <!-- YUI -->
+    <script type="text/javascript" src="../../../test/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../../test/yui3combo/combo.css" />
+    <script type="text/javascript" src="../../../test/run-test-case.js"></script>
+    <!-- Code -->
+    <script type="text/javascript">
+        initAPI({
+            lang: "ru-RU",
+            load: "theme.browser.current,domEvent.manager,system.browser"
+        });
+    </script>
+</head>
+
+<body class="yui3-skin-sam"></body>
+<div id="outer" style="background-color:red;">
+    hello<span id="inner" style="background-color:green;">world</span>!
+</div>
+
+<script type="text/javascript">
+
+    function getTestCase(Y) { return {
+        name: "domEvent.manager",
+
+        _should: {
+            ignore: {
+//                                                    testAddAndFire: true,
+//                                                    testCapture: true,
+                //                                    testMouseEnterAndMouseLeave: true,
+//                                                    testGroups: true,
+//                                                    testRemove: true
+            }
+        },
+
+        setUp: function () {
+            this.outer = document.getElementById('outer');
+            this.inner = document.getElementById('inner');
+        },
+
+        tearDown: function () {
+
+        },
+
+        testAddAndFire: function () {
+            var res = '',
+                callback1 = function (e) {
+                    res += '1' + this.id + e.get('type') + '/';
+                },
+                callback2 = function (e) {
+                    res += '2' + this.id + e.get('type') + '/';
+                },
+                context1 = { id: '1' },
+                context2 = { id: '2' };
+
+            ymaps.domEvent.manager.add(this.outer, ['click'], callback1, context1);
+            ymaps.domEvent.manager.add(this.inner, 'click', callback2, context2);
+
+            Y.Event.simulate(this.inner, 'click');
+
+            ymaps.domEvent.manager.remove(this.outer, ['click'], callback1, context1);
+            ymaps.domEvent.manager.remove(this.inner, 'click', callback2, context2);
+
+            Y.assert(res == '22click/11click/', 'Неправильно отработало добавление DOM-событий');
+        },
+
+        testCapture: function () {
+            ymaps.domEvent.manager
+                    .add(this.outer, 'click', eventHandler, this)
+                    .add(this.outer, 'click', eventHandler, this, true)
+                    .add(this.outer, 'click', eventHandler, this, false);
+
+            var result = "";
+
+            function eventHandler (event) {
+                result += event.get('eventPhase') + "-";
+            }
+
+            Y.Event.simulate(this.inner, 'click');
+
+            ymaps.domEvent.manager
+                    .remove(this.outer, 'click', eventHandler, this)
+                    .remove(this.outer, 'click', eventHandler, this, true)
+                    .remove(this.outer, 'click', eventHandler, this, false);
+
+            Y.assert(result == '1-3-3-', 'Неправильно порядок поступления событий');
+        },
+
+        testRemove: function () {
+            var res = '',
+                callback1 = function (e) { res += '1' + this.id + e.get('type') + '/'; },
+                callback2 = function (e) { res += '2' + this.id + e.get('type') + '/'; },
+                context1 = { id: '1' },
+                context2 = { id: '2' };
+
+            ymaps.domEvent.manager
+                .add(this.outer, 'click', callback1, context1)
+                .add(this.inner, 'click', callback2, context2);
+
+            ymaps.domEvent.manager.remove(this.outer, 'click', callback1, context1);
+            ymaps.domEvent.manager.remove(this.inner, ['click'], callback2, context2);
+
+            Y.Event.simulate(this.inner, 'click');
+            Y.assert(res == '', 'Неправильно отработало удаление DOM-событий');
+        },
+
+        testMouseEnterAndMouseLeave: function () {
+            var res = '',
+                outerHandler = function (event) {
+                    res += 'Outer(' + event.get("type") + ')';
+                },
+                innerHandler = function (event) {
+                    res += 'Inner('  + event.get("type") + ')';
+                };
+
+            ymaps.domEvent.manager.add(this.outer, ['mouseenter', 'mouseleave'], outerHandler);
+            ymaps.domEvent.manager.add(this.inner, ['mouseenter', 'mouseleave'], innerHandler);
+
+            Y.Event.simulate(this.inner, 'mouseover', { target: this.inner, relatedTarget: document.body });
+            Y.Event.simulate(this.inner, 'mouseout', { target: this.inner, relatedTarget: document.body });
+            Y.Event.simulate(this.outer, 'mouseover', { target: this.outer, relatedTarget: document.body });
+            Y.Event.simulate(this.inner, 'mouseover', { target: this.inner, relatedTarget: this.outer });
+            Y.Event.simulate(this.inner, 'mouseout', { target: this.inner, relatedTarget: document.body });
+
+            ymaps.domEvent.manager.remove(this.outer, ['mouseenter', 'mouseleave'], outerHandler);
+            ymaps.domEvent.manager.remove(this.inner, ['mouseenter', 'mouseleave'], innerHandler);
+
+            Y.assert(
+                res == 'Inner(mouseenter)Outer(mouseenter)Inner(mouseleave)Outer(mouseleave)Outer(mouseenter)Inner(mouseenter)Inner(mouseleave)Outer(mouseleave)',
+                'Неправильно отработал enter/leave с ноды на body'
+            );
+        },
+
+        testGroups: function () {
+            var res = "",
+                callback1 = function () { res += "1"; },
+                callback2 = function () { res += "2"; },
+                callback3 = function () { res += "3"; },
+                group2, group3;
+
+            ymaps.domEvent.manager.add(this.inner, 'click', callback1);
+            group2 = ymaps.domEvent.manager.group(this.inner).add('click', callback2);
+            group3 = ymaps.domEvent.manager.group(this.inner).add('click', callback3);
+
+            group2
+                .remove('click', callback1)
+                .remove('click', callback3);
+            Y.Event.simulate(this.inner, 'click');
+            Y.assert(res == "123", "Через группу удалился не свой обработчик");
+
+            res = "";
+            group2.removeAll();
+            Y.Event.simulate(this.inner, 'click');
+            Y.assert(res == "13", "Группа не удалила свои обработчики или удалила чужие");
+
+            res = "";
+            group3.remove('click', callback3);
+            Y.Event.simulate(this.inner, 'click');
+            Y.assert(res == "1", "Группа не удалила свой обработчик");
+        }
+    }}
+    ymaps.ready(runTestCase);
+</script>
+</html>

@@ -1,0 +1,141 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <title>mapHint</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <!-- YUI -->
+    <script type="text/javascript" src="../../../test/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../../test/yui3combo/combo.css" />
+    <script type="text/javascript" src="../../../test/run-test-case.js"></script>
+    <!-- Code -->
+    <script type="text/javascript">
+        initAPI({
+            lang: "ru-RU",
+            load: "package.full,util.dom.element",
+            mode: "dev"
+        });
+    </script>
+
+    <style type="text/css">
+        #container { width: 600px; height: 400px; background: #ccc; }
+    </style>
+</head>
+
+<body class="yui3-skin-sam">
+
+<script type="text/javascript">
+    function getTestCase(Y) {
+        var options = {},
+            data = 'Hello Yandex!',
+            curHint;
+
+        return {
+            name: "mapHint",
+            debug: false,
+
+            testCapture: function () {
+                geoMap.hint.capture(function(err, hint) {
+                    Y.assert(!err, 'Не удалось захватить');
+                    hint.options.setParent(geoMap.options);
+                    hint.show(geoMap.getCenter());
+                    hint.events.add('beforedestroy', abortEvent);
+                    curHint = window.myHint = hint;
+                }, data, options);
+            },
+
+            testCaptureAgain: function () {
+                geoMap.hint.capture(function(err, hint) {
+                    Y.assert(err, 'Удалось захватить повторно.');
+                }, data, options);
+            },
+
+            testOpenCaptured: function () {
+                curHint.options.set('showTimeout', false);
+                curHint.show(geoMap.getCenter());
+                geoMap.hint.show(geoMap.getCenter(), 'New Show!');
+                Y.assert(
+                    curHint.getOverlay().getElement().innerHTML.indexOf('Hello Yandex!') != -1,
+                    'Удалось открыть захваченный ранее hint с другим контентом'
+                );
+                window.myHint.events.remove('beforedestroy', abortEvent);
+            },
+
+            testDropAndOpen: function () {
+                curHint.events.remove('beforedestroy', abortEvent);
+                var c = geoMap.getCenter();
+                curHint.options.set('showTimeout', false);
+                curHint = geoMap.hint.show([c[0]-10, c[1]-10], 'Third Opened!', { showTimeout: false });
+                Y.assert(
+                    curHint.getOverlay().getElement().innerHTML.indexOf('Third Opened!') != -1,
+                    'Не удалось отцепить старый capture.'
+                );
+            },
+
+            testSingle: function () {
+                Y.assert(
+                    document.getElementsByClassName('ymaps-label').length == 1,
+                    'На карте должен присутствовать только один хинт!'
+                );
+            },
+
+            testEventsHuman: function () {
+                geoMap.events.add('mousemove', function (e) {
+                    geoMap.hint.show(e.get('globalPixelPosition'), 'Hello Yandex!2', {});
+                });
+            },
+
+            testContent: function () {
+                var center = geoMap.getCenter(),
+                    hint = geoMap.hint.show([center[0]-10, center[1]-10], "test", { showTimeout: false });
+
+                var contentNode = ymaps.util.dom.element.find(hint.getOverlay().getLayout().getParentElement(), ".ymaps-label__content").firstChild;
+                
+                Y.assert(
+                    contentNode.firstChild.innerHTML == "test",
+                    "Неверный контент"
+                );
+
+                geoMap.hint.show([center[0]-10, center[1]-10], ymaps.util.dom.element.create({
+                    html: "ping",
+                    attr: {
+                        id: "testContent"
+                    }
+                }), {
+                    showTimeout: null
+                });
+
+                var node = document.getElementById('testContent');
+                Y.assert(
+                    node.innerHTML == "ping",
+                    "Неверный контент"
+                );
+            }
+        }
+
+    }
+
+    function abortEvent(e) {
+        e.stopImmediatePropagation();
+        e.preventDefault();
+    }
+
+    ymaps.ready(function () {
+        window.geoMap = new ymaps.Map('container', {
+             center: [39, 54],
+             type: "yandex#map",
+             zoom: 3,
+             behaviors: ['drag', 'scrollZoom']
+         });
+
+        mapCenter = geoMap.options.get('projection').toGlobalPixels(geoMap.getCenter(), geoMap.getZoom());
+
+        runTestCase();
+    });
+
+</script>
+
+    <div id="container"></div>
+
+</body>
+</html>

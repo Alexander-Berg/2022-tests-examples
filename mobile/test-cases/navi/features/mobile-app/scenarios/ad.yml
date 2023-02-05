@@ -1,0 +1,442 @@
+components: ad
+testing:
+  - regress
+
+specs:
+  Проверка рекламных аннотаций в Турции.:
+    - info: |
+        - На девайсе установлена локаль tr_TR
+        - Рекламу ловить по Стамбулу (любой маршрут)
+        - Перезагрузить приложение
+    - do: Построить любой маршрут по Стамбулу
+    - assert: |
+        - Звучит фраза на турецком о построении маршрута
+        - Звучит фраза "Opet (или другое название бренда, указанное в проверке и в эксперименте) желает Вам безопасной поездки" на турецком языке.
+        - В логах приходят события:
+        - `voice-ad.route-calculated`
+        - `voice-ad.route-finished`
+
+    - platforms:
+        - ios
+        - android
+    - integration_run:
+        - localization
+        - mapkit
+    - tags:
+        - assessors
+        - mapkit_ready
+        - metric
+
+
+  Настройка "Аудиореклама на маршруте" - ВКЛ/ВЫКЛ:
+    - info: |
+        - Установлена сборка 6.00
+          ((https://teamcity.yandex-team.ru/buildConfiguration/MobileNew_Monorepo_Navi_Android_Mobnavi_ReleaseDebug/45899441 Android))
+          ((https://teamcity.yandex-team.ru/buildConfiguration/MobileNew_Monorepo_Navi_iOS_Mobnavi_ReleaseDebug/45965150 iOS))
+        - Меню - Настройки - Карта и интерфейс - Другие настройки - Аудиореклама на маршруте - Off
+        - Developer settings -> Ad -> Force datatesting environment - On
+        - Developer settings -> Ad -> Ad misc features -> Polygon branding - On
+        - Локаль ru_RU
+        - Перезапустить навигатор
+    - do: |
+        - Обновиться до тестируемой сборки
+        - Включить настройку: Developer Settings - Misc - Debug config enable - On
+        - Перезагрузить приложение
+    - assert: Приложение открыто на экране Карта
+    - do: |
+        - Построить маршрут воспользовавшись интентом:
+        [collapsed-image](https://jing.yandex-team.ru/files/shindzhev/download.08706a2.png){title=QR-код}
+
+        `yandexnavi://build_route_on_map?lat_from=55.737510&lon_from=37.584227&lat_to=55.732927&lon_to=37.591351`
+    - do: |
+        - Запустить ведение по маршруту
+    - assert: Аудиореклама не произносится
+    - do: |
+        - Меню - Настройки - Карта и интерфейс - Другие настройки - Аудиореклама на маршруте - On
+    - do: |
+        - Построить маршрут воспользовавшись интентом:
+        [collapsed-image](https://jing.yandex-team.ru/files/shindzhev/download.08706a2.png){title=QR-код}
+
+        `yandexnavi://build_route_on_map?lat_from=55.737510&lon_from=37.584227&lat_to=55.732927&lon_to=37.591351`
+    - do: |
+        - Запустить ведение по маршруту
+    - assert: Аудиореклама произносится
+
+    - platforms:
+        - ios
+        - android
+    - testing:
+        - acceptance_navi
+
+
+  Рекламные аннотации при въезде в полигон. Логирование:
+    - info: |
+        Меню - Настройки:
+        - Developer settings - Ad - Force datatesting environment - On
+        - Developer settings - Ad - Ad misc features - Polygon branding - On
+        - Developer settings - Ad - Ad misc features - Ad Areas - On
+        - Developer Settings - Misc - Debug config enable - On
+        - Девайс подключен к инструменту для снятия логов
+    - do: Перезапустить приложение
+    - assert: На запуске в логи приходит событие `BaseServiceConfigProvider`
+    - do: Выполнить заезд на территорию одного из тестовых полигонов на скорости менее 15 км/ч
+    - assert: |
+        - В логи приходят события:
+        - `location.enter-ad-area` (параметры непустые, содержание проверять не требуется)
+        - `polygon_branding.location_entered`
+        - Параметры:
+        - polygon_id - ID полигона
+        - project_name - Название рекламной кампании в полигоне
+    - do: Дождаться воспроизведения голосовой рекламы
+    - assert: |
+        - В логи приходит событие `polygon_branding.sound_playing`
+        - Параметры:
+        - sound_name - Имя звука на s3
+        - polygon_id - ID полигона, в котором воспроизводился звук
+        - project_name - Название рекламной кампании в полигоне
+    - do: Прервать голосовую рекламу запуском Алисы
+    - assert: |
+        - Рекламная аннотация прерывается
+        - В логи приходит событие `polygon_branding.sound_canceled` - Звук прервался
+        - Параметры:
+        - sound_name - Имя звука на s3
+        - polygon_id - ID полигона, в котором воспроизводился звук
+        - project_name - Название рекламной кампании в полигоне
+    - do: Закрыть Алису.
+    - assert: Голосовая реклама не воспроизводится заново
+    - do: Дождаться выезда из полигона
+    - assert: |
+        - В логи приходит событие `polygon_branding.location_leaved` - Пользователь выехал из такого полигона
+        - Параметры:
+        - polygon_id - ID полигона
+        - project_name - Название рекламной кампании в полигоне
+
+    - platforms:
+        - ios
+        - android
+    - testing:
+        - acceptance_navi
+    - tags:
+        - metric
+        
+
+  Рекламные аннотации при въезде в полигон. Не воспроизведение в фоне:
+    - info: |
+        - Меню - Настройки - Developer Settings - Misc - Debug config enable - On
+        - Developer settings - Ad - Force datatesting environment - On
+        - Developer settings - Ad - Ad misc features - Polygon branding - On
+        - Developer settings - Ad - Ad misc features - Ad Areas - On
+        - Перезапустить приложение
+        - Девайс подключен к инструменту для снятия логов
+    - do: |
+        - Построить маршрут по Тимура Фрунзе в Москве и запустить симуляцию на скорости менее 15 км/ч
+        - Свернуть приложение сразу после запуска симуляции.
+    - assert: |
+        - В логах приходит событие `PolygonBrandingManager: Action suspended`
+        - Рекламная фраза не звучит.
+
+    - platforms:
+        - ios
+        - android
+    - testing:
+        - acceptance_navi
+    - tags:
+        - assessors
+        - metric
+
+
+  Рекламные аннотации при въезде в полигон. Проигрывание рекламной аннотации при сворачивании:
+    - info: |
+        - Меню - Настройки - Developer Settings - Misc - Debug config enable - On
+        - Developer settings - Ad - Force datatesting environment - On
+        - Developer settings - Ad - Ad misc features - Polygon branding - On
+        - Developer settings - Ad - Ad misc features - Ad Areas - On
+        - Приложение выгружено из мультизадачности
+        - Девайс подключен к инструменту для снятия логов
+    - do: |
+        - Запустить приложение
+        - Построить маршрут по Тимура Фрунзе в Москве и запустить симуляцию на скорости менее 15 км/ч
+        - Свернуть приложение сразу после запуска симуляции
+        - Развернуть приложение до выезда из полигона
+    - assert: Рекламная фраза проигрывается
+    - do: |
+        - Сбросить маршрут
+        - Построить маршрут по Тимура Фрунзе в Москве и запустить симуляцию на скорости менее 15 км/ч
+        - Свернуть приложение во время рекламной аннотации
+    - assert: Аннотация доигрывается в фоне и больше не воспроизводится при разворачивании приложения
+
+    - platforms:
+        - ios
+        - android
+    - testing:
+        - acceptance_navi
+    - tags:
+        - assessors
+
+
+  Отсутствие рекламы на myspin в пробке:
+    - info: |
+        - Developer Settings -> Ad -> Force datatesting environment - On
+        - Developer Settings -> Ad -> Status branding -> Status branding speed limits - On
+        - Перезапустить приложение
+    - do: Построить маршрут через пробку и запустить симуляцию движения со скоростью меньше 20 км/ч.
+    - assert: Маршрут построился, курсор перемещается в пробке.
+    - do: Продолжать двигаться несколько секунд в пробке
+    - assert: Над плашкой ETA не возникает рекламного элемента.
+
+    - platforms:
+        - renault
+        - nissan
+    - integration_run:
+        - myspin
+    - tags:
+        - assessors
+
+
+  Отсутствие рекламы на myspin в рекламном полигоне:
+    - info: |
+        - Developer Settings -> Ad -> Force datatesting environment - On
+        - Developer Settings -> Ad -> Status branding -> Status branding speed limits - On
+        - Перезапустить приложение
+    - do: |
+        - Построить маршрут, проходящий через рекламный полигон (https://yandex.ru/maps/?um=constructor%3A729f15e1a537e4bd3052d833e98682fb688fb6947a01185071bb28db805eaa8e&source=constructorLink)
+        - Начать ведение по нему
+        - Запустить симуляцию движения со скоростью менее 20 км/ч
+    - assert: При въезде в рекламный полигон рекламная карточка не показывается
+
+    - platforms:
+        - renault
+        - nissan
+    - integration_run:
+        - myspin
+    - tags:
+        - assessors
+
+
+  Отсутствие рекламы на myspin при заезде на территорию ТЦ:
+    - info: |
+        - Developer Settings -> Ad -> Force datatesting environment - On
+        - Developer Settings -> Ad -> Status branding -> Status branding speed limits - On
+        - Перезапустить приложение
+    - do: |
+        - Заехать на территорию ТЦ (например, ТЦ Гудзон)
+        - Заехать на территорию АЗС “Лукойл”
+    - assert: Рекламная карточка при заезде отсутствует
+
+    - platforms:
+        - renault
+        - nissan
+    - integration_run:
+        - myspin
+    - tags:
+        - assessors
+
+
+  Логирование рекламного пункта в Моих местах:
+    - info: |
+        Инструкция как это протестировать есть на приветственной вики-странице
+        - Установлена локаль ru_RU
+        - Меню - Настройки - Developer Settings - Misc - Debug config enable - On
+        - Developer settings - Ad - Force Datatesing Enviroment - On
+        - yandexnavi://add_exp?navi_special_project_bookmark_cell_rotation_configurations_for_RU=%5B%7B%22project_name%22%3A%20%22bkmark_test%22%2C%20%22configuration%22%3A%20%7B%20%22weight%22%3A%201.0%20%7D%7D%5D%0A
+        - Перезапустить приложение
+    - do: |
+        - Дождаться прогрузки карты и курсора
+        - Открыть раздел Мои места
+    - assert: |
+        - Под блоком с точками Дом/Работа отображается рекламный пункт
+        - В логах приходит событие `bookmark.cell.show`
+    - do: Тап на рекламный пункт
+    - assert: |
+        - Происходит переход в WebView
+        - В логах приходит событие `bookmark.cell.click`
+
+    - platforms:
+        - ios
+        - android
+    - testing:
+        - acceptance_navi
+    - tags:
+        - assessors
+        - metric
+
+
+  Рекламные аннотации при въезде в полигон. Обычное звучание:
+    - info: |
+        - Меню - Настройки - Developer Settings - Misc - Debug config enable - On
+        - Developer settings - Ad - Force datatesting environment - On
+        - Developer settings - Ad - Ad misc features - Polygon branding - On
+        - Developer settings - Ad - Ad misc features - Ad Areas - On
+        - Перезапустить приложение
+    - do: |
+        - Построить маршрут по Тимура Фрунзе в Москве так, чтобы точка финиша, не совпадала с моментом начала аннотации
+        - Запустить симуляцию на скорости менее 15 км/ч
+    - assert: Звучит аннотация финиша, после нее звучит рекламная аннотация (если только пользователь не покинул в этот момент полигон)
+
+    - platforms:
+        - ios
+        - android
+    - testing:
+        - acceptance_navi
+
+
+  Рекламные аннотации при въезде в полигон. Прерывание аннотацией о финише:
+    - info: |
+        - Меню - Настройки - Developer Settings - Misc - Debug config enable - On
+        - Developer settings - Ad - Force datatesting environment - On
+        - Developer settings - Ad - Ad misc features - Polygon branding - On
+        - Developer settings - Ad - Ad misc features - Ad Areas - On
+        - Перезапустить приложение
+    - do: |
+        - Построить маршрут по Тимура Фрунзе в Москве так, чтобы точка финиша, приблизительно, совпадала с моментом начала аннотации
+        Или:
+        - Построить маршрут интентом:
+        - iOS - yandexnavi://build_route_on_map?lat_from=55.7318&lon_from=37.5918&lat_to=55.7328&lon_to=37.5886
+        - Android - yandexnavi://build_route_on_map?lat_from=55.7318\&lon_from=37.5918\&lat_to=55.7328\&lon_to=37.5886
+        - Запустить симуляцию на скорости менее 15 км/ч
+    - assert: Начинает звучать рекламная аннотация, тут же начинает звучать аннотация финиша, реклама прерывается и больше не проигрывается (и не восстанавливается после окончания навигационной аннотации)
+
+    - platforms:
+        - ios
+        - android
+
+
+  Рекламные аннотации при въезде в полигон. Прерывание Алисой:
+    - info: |
+        - Меню - Настройки - Developer Settings - Misc - Debug config enable - On
+        - Developer settings - Ad - Force datatesting environment - On
+        - Developer settings - Ad - Ad misc features - Polygon branding - On
+        - Developer settings - Ad - Ad misc features - Ad Areas - On
+        - Перезапустить приложение
+    - do: |
+        - Построить маршрут через полигон.
+        - Запустить симуляцию на скорости менее 15 км/ч
+        - Тап по кнопке Алисы перед началом рекламной аннотации и закрыть Алису после выезда из полигона
+    - assert: Рекламные аннотации отсутствуют.
+
+    - platforms:
+        - ios
+        - android
+    - testing:
+        - acceptance_navi
+
+
+  Рекламные аннотации при въезде в полигон. Воспроизведение после Алисы:
+    - info: |
+        - Меню - Настройки - Developer Settings - Misc - Debug config enable - On
+        - Developer settings - Ad - Force datatesting environment - On
+        - Developer settings - Ad - Ad misc features - Polygon branding - On
+        - Developer settings - Ad - Ad misc features - Ad Areas - On
+        - Перезапустить приложение
+    - do: |
+        - Построить маршрут через полигон.
+        - Запустить симуляцию на скорости менее 15 км/ч
+        - Тап по кнопке Алисы перед началом рекламной аннотации и закрыть Алису до выезда из полигона
+    - assert: Рекламная аннотация звучит сразу после закрытия плашки Алисы
+
+    - platforms:
+        - ios
+        - android
+
+
+  Рекламные аннотации при въезде в полигон. Ожидания завершения аннотации о финише:
+    - info: |
+        - Меню - Настройки - Developer Settings - Misc - Debug config enable - On
+        - Developer settings - Misc - Debug config enabled - On
+        - Developer settings - Ad - Force datatesting environment - On
+        - Developer settings - Ad - Ad misc features - Polygon branding - On
+        - Developer settings - Ad - Ad misc features - Ad Areas - On
+        - Перезапустить приложение
+    - do: |
+        - Построить маршрут по Тимура Фрунзе в Москве так, чтобы точка финиша, приблизительно, совпадала с моментом начала аннотации
+        Или:
+        - Построить маршрут интентом:
+        - iOS - yandexnavi://build_route_on_map?lat_from=55.7318&lon_from=37.5918&lat_to=55.7328&lon_to=37.5886
+        - Android - yandexnavi://build_route_on_map?lat_from=55.7318\&lon_from=37.5918\&lat_to=55.7328\&lon_to=37.5886
+        - Запустить симуляцию на скорости менее 15 км/ч
+    - assert: Если рекламная аннотация не начала воспроизводиться до начала аннотации финиша, то она звучит сразу после окончания аннотации финиша (если только пользователь не покинул в этот момент полигон)
+
+    - platforms:
+        - ios
+        - android
+
+
+  Отсутствие рекламы в Honda:
+    - info: |
+        - Приложение запущено
+        - Отрыт таб "Поиск"
+    - do: Проверить наличие рекламных категорий поиска
+    - assert: Рекламные категории поиска отсутствуют
+    - do: |
+        - Меню - Настройки - Карта и интерфейс
+        - Доскроллить в самый низ
+    - assert: В разделе Карта и интерфейс отсутствует пункт "Другие настройки"
+
+    - platforms:
+        - honda
+
+
+  Настройка ВКЛ/ВЫКЛ аудиорекламы - локализация:
+    - info: |
+        - Местоположение Москва
+        - Установлена сборка 6.00
+          ((https://beta.m.soft.yandex.ru/description?app=navi&platform_shortcut=android&branch=release-2021-07-02-aacp2-debug Android))
+          ((https://beta.m.soft.yandex.ru/description?app=navi&platform_shortcut=iphoneos&branch=release-2021-07-02-aacp2-debug iOS))
+        - Меню - Настройки - Карта и интерфейс - Другие настройки - Аудиореклама - Off
+        - Обновиться до тестируемой сборки
+    - do: |
+        - Менять в системных настройках устройства локали
+        - Перезапускать приложение и смотреть на перевод названия настройки "Аудиореклама":
+        - ru-RU (русский_Россия)
+        - en_US (английский_США)
+        - fr_FR (французский_Франция)
+        - uk_UA (украинский_Украина)
+        - be_BY (белорусский_Беларусь)
+        - tr_TR (турецкий_Турция)
+    - assert: |
+        "при локали ru-RU текст - "Аудиореклама"
+        "при локали en_US текст - "Audio advertising"
+        "при локали fr_FR текст - "Audio advertising"
+        "при локали uk_UA текст - "Аудіореклама"
+        "при локали be_BY текст - "Audio advertising"
+        "при локали tr_TR текст - "Sesli reklam"
+
+    - platforms:
+        - ios
+        - android
+        
+
+  Рекламные аннотации при въезде в полигон. Логирование завершения воспроизведения:
+    - info: |
+        - Меню - Настройки - Developer Settings - Misc - Debug config enable - On
+        - Developer settings - Ad - Force datatesting environment - On
+        - Developer settings - Ad - Ad misc features - Polygon branding - On
+        - Developer settings - Ad - Ad misc features - Ad Areas - On
+        - Приложение выгружено из мультизадачности
+        - Девайс подключен к инструменту для снятия логов
+    - do: |
+        - Выполнить заезд на территорию одного из тестовых полигонов на скорости менее 15 км/ч
+        - Дождаться воспроизведения голосовой рекламы
+        - Дождаться окончания воспроизведения голосовой рекламы
+    - assert: |
+        - В логах наблюдаем событие `polygon_branding.sound_played` - Звук закончился
+        - Параметры:
+        - sound_name - Имя звука на s3
+        - polygon_id - ID полигона, в котором воспроизводился звук
+        - project_name - Название рекламной кампании в полигоне
+    - do: Построить маршрутя через полигон и запустить симуляцию со скоростю более 15 км/ч
+    - assert: |
+        При въезде в полиго в логах приходит событие `polygon_branding.location_entered`
+        Рекламная аннотация не проигрывается
+    - do: Дождаться выезда из полигона
+    - assert: |
+        - В логи приходит событие `polygon_branding.location_leaved` - Пользователь выехал из такого полигона
+        - Рекламная аннотация не проигрывается
+
+    - platforms:
+        - ios
+        - android
+    - testing:
+        - acceptance_navi
+    - tags:
+        - metric

@@ -1,0 +1,666 @@
+/*
+ * Copyright © 2016 YANDEX. All rights reserved.
+ */
+
+package com.yandex.datasync.internal.operation.network;
+
+import android.content.ContentValues;
+import android.support.annotation.NonNull;
+
+import com.google.gson.Gson;
+import com.yandex.datasync.YDSContext;
+import com.yandex.datasync.internal.api.Api;
+import com.yandex.datasync.internal.api.exceptions.BaseException;
+import com.yandex.datasync.internal.api.exceptions.ExpectedHttpError;
+import com.yandex.datasync.internal.api.exceptions.NetworkException;
+import com.yandex.datasync.internal.api.exceptions.http.GoneException;
+import com.yandex.datasync.internal.database.DatabaseManager;
+import com.yandex.datasync.internal.database.sql.DatabaseDescriptor;
+import com.yandex.datasync.internal.database.sql.SQLiteDatabaseWrapper;
+import com.yandex.datasync.internal.model.DatabaseChangeType;
+import com.yandex.datasync.internal.model.response.DatabaseDto;
+import com.yandex.datasync.internal.model.response.DeltasResponse;
+import com.yandex.datasync.internal.model.response.ErrorResponse;
+import com.yandex.datasync.internal.model.response.SnapshotResponse;
+import com.yandex.datasync.internal.observer.RawDataObserver;
+import com.yandex.datasync.internal.util.DateFormat;
+
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.mockito.InOrder;
+import org.mockito.Mock;
+import org.robolectric.RobolectricTestRunner;
+import org.robolectric.RuntimeEnvironment;
+
+import java.io.IOException;
+import java.util.Date;
+
+import static com.yandex.datasync.util.ResourcesUtil.getTextFromFile;
+import static org.junit.Assert.fail;
+import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.anyObject;
+import static org.mockito.Matchers.anyString;
+import static org.mockito.Matchers.eq;
+import static org.mockito.Matchers.isA;
+import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.when;
+import static org.mockito.MockitoAnnotations.initMocks;
+
+@RunWith(RobolectricTestRunner.class)
+public class DatabaseSyncOperationTest {
+
+    private static final YDSContext MOCK_CONTEXT = YDSContext.APP;
+
+    private static final String MOCK_DATABASE_ID = "user_schedule";
+
+    private static final String MOCK_COLLECTION_ID = "sport";
+
+    private static final String MOCK_COLLECTION_ID_2 = "sport_2";
+
+    private static final String MOCK_USER_ID = "mock_user_id";
+
+    @Mock
+    private Api mockApi;
+
+    @Mock
+    private RawDataObserver mockObserver;
+
+    @Mock
+    private DatabaseSyncOperation.Callback mockCallback;
+
+    private DatabaseManager databaseManager;
+
+    private final Gson gson = new Gson();
+
+    @Before
+    public void setUp() throws IOException {
+        initMocks(this);
+        databaseManager = new DatabaseManager(RuntimeEnvironment.application);
+        databaseManager.init(MOCK_USER_ID);
+    }
+
+    @Test
+    public void testFirstCallSnapshot() throws Exception {
+
+        final DatabaseDto databaseInfo = enqueueDatabaseInfo();
+        enqueueSnapshot();
+
+        final DatabaseSyncOperation operation = new DatabaseSyncOperation(MOCK_CONTEXT,
+                                                                          MOCK_DATABASE_ID,
+                                                                          databaseManager,
+                                                                          mockApi,
+                                                                          mockObserver,
+                                                                          mockCallback);
+        operation.run();
+
+        final InOrder order = inOrder(mockApi, mockObserver, mockCallback);
+
+        order.verify(mockApi).getDatabaseInfo(MOCK_CONTEXT, MOCK_DATABASE_ID);
+        order.verify(mockApi).getDatabaseSnapshot(MOCK_CONTEXT, MOCK_DATABASE_ID);
+        order.verify(mockObserver).notifyDatabaseSynced(MOCK_CONTEXT, databaseInfo);
+        order.verify(mockCallback).onSyncSuccess(MOCK_CONTEXT, databaseInfo);
+
+        order.verifyNoMoreInteractions();
+    }
+
+    @Test
+    public void testFirstCallCollection() throws Exception {
+
+        final DatabaseDto databaseInfo = enqueueDatabaseInfo();
+        enqueueCollectionSnapshot();
+
+        final DatabaseSyncOperation operation = new DatabaseSyncOperation(MOCK_CONTEXT,
+                                                                          MOCK_DATABASE_ID,
+                                                                          databaseManager,
+                                                                          mockApi,
+                                                                          mockObserver,
+                                                                          mockCallback);
+        operation.includeCollection(MOCK_COLLECTION_ID);
+        operation.run();
+
+        final InOrder order = inOrder(mockApi, mockObserver, mockCallback);
+
+        order.verify(mockApi).getDatabaseInfo(MOCK_CONTEXT, MOCK_DATABASE_ID);
+        order.verify(mockApi).getDatabaseSnapshot(MOCK_CONTEXT,
+                                                  MOCK_DATABASE_ID,
+                                                  MOCK_COLLECTION_ID);
+        order.verify(mockObserver).notifyDatabaseSynced(MOCK_CONTEXT, databaseInfo);
+        order.verify(mockCallback).onSyncSuccess(MOCK_CONTEXT, databaseInfo);
+
+        order.verifyNoMoreInteractions();
+    }
+
+    @Test
+    public void testFirstCallWithDatabaseInfo() throws Exception {
+
+        final DatabaseDto databaseInfo = enqueueDatabaseInfo();
+
+        enqueueSnapshot();
+
+        final DatabaseSyncOperation operation = new DatabaseSyncOperation(MOCK_CONTEXT,
+                                                                          databaseInfo,
+                                                                          databaseManager,
+                                                                          mockApi,
+                                                                          mockObserver,
+                                                                          mockCallback);
+        operation.run();
+
+        final InOrder order = inOrder(mockApi, mockObserver, mockCallback);
+
+        order.verify(mockApi).getDatabaseSnapshot(MOCK_CONTEXT, MOCK_DATABASE_ID);
+        order.verify(mockObserver).notifyDatabaseSynced(MOCK_CONTEXT, databaseInfo);
+        order.verify(mockCallback).onSyncSuccess(MOCK_CONTEXT, databaseInfo);
+
+        order.verifyNoMoreInteractions();
+    }
+
+    @Test
+    public void testSnapshotGone() throws Exception {
+        final DatabaseDto databaseInfo = enqueueDatabaseInfo();
+        enqueueSnapshot();
+
+        final DatabaseSyncOperation operation = new DatabaseSyncOperation(MOCK_CONTEXT,
+                                                                          MOCK_DATABASE_ID,
+                                                                          databaseManager,
+                                                                          mockApi,
+                                                                          mockObserver,
+                                                                          mockCallback);
+        operation.run();
+
+        final DatabaseDto databaseInfoUpdated = enqueueDatabaseInfoUpdated();
+        enqueueDatabaseGone(databaseInfo.getRevision());
+        enqueueSnapshot();
+
+        operation.run();
+
+        final InOrder order = inOrder(mockApi, mockObserver, mockCallback);
+
+        order.verify(mockApi).getDatabaseInfo(MOCK_CONTEXT, MOCK_DATABASE_ID);
+        order.verify(mockApi).getDatabaseSnapshot(MOCK_CONTEXT, MOCK_DATABASE_ID);
+        order.verify(mockObserver).notifyDatabaseSynced(MOCK_CONTEXT, databaseInfo);
+        order.verify(mockCallback).onSyncSuccess(MOCK_CONTEXT, databaseInfo);
+
+        order.verify(mockApi).getDatabaseInfo(MOCK_CONTEXT, MOCK_DATABASE_ID);
+        order.verify(mockApi).getDeltas(MOCK_CONTEXT, MOCK_DATABASE_ID, databaseInfo.getRevision());
+
+        order.verify(mockApi).getDatabaseSnapshot(MOCK_CONTEXT, MOCK_DATABASE_ID);
+        order.verify(mockObserver).notifyDatabaseSynced(MOCK_CONTEXT, databaseInfoUpdated);
+        order.verify(mockCallback).onSyncSuccess(MOCK_CONTEXT, databaseInfoUpdated);
+
+        order.verifyNoMoreInteractions();
+    }
+
+    @Test
+    public void testCollectionGone() throws Exception {
+        final DatabaseDto databaseInfo = enqueueDatabaseInfo();
+        enqueueCollectionSnapshot();
+
+        final DatabaseSyncOperation operation = new DatabaseSyncOperation(MOCK_CONTEXT,
+                                                                          MOCK_DATABASE_ID,
+                                                                          databaseManager,
+                                                                          mockApi,
+                                                                          mockObserver,
+                                                                          mockCallback);
+        operation.includeCollection(MOCK_COLLECTION_ID);
+        operation.run();
+
+        final DatabaseDto databaseInfoUpdated = enqueueDatabaseInfoUpdated();
+        enqueueDatabaseGone(databaseInfo.getRevision());
+        enqueueAllCollectionsSnapshot();
+
+        operation.run();
+
+        final InOrder order = inOrder(mockApi, mockObserver, mockCallback);
+
+        order.verify(mockApi).getDatabaseInfo(MOCK_CONTEXT, MOCK_DATABASE_ID);
+        order.verify(mockApi)
+                .getDatabaseSnapshot(MOCK_CONTEXT, MOCK_DATABASE_ID, MOCK_COLLECTION_ID);
+        order.verify(mockObserver).notifyDatabaseSynced(MOCK_CONTEXT, databaseInfo);
+        order.verify(mockCallback).onSyncSuccess(MOCK_CONTEXT, databaseInfo);
+
+        order.verify(mockApi).getDatabaseInfo(MOCK_CONTEXT, MOCK_DATABASE_ID);
+        order.verify(mockApi).getDeltas(MOCK_CONTEXT, MOCK_DATABASE_ID, databaseInfo.getRevision());
+
+        order.verify(mockApi).getDatabaseSnapshot(MOCK_CONTEXT, MOCK_DATABASE_ID, "calendar,sport");
+        order.verify(mockObserver).notifyDatabaseSynced(MOCK_CONTEXT, databaseInfoUpdated);
+        order.verify(mockCallback).onSyncSuccess(MOCK_CONTEXT, databaseInfoUpdated);
+
+        order.verifyNoMoreInteractions();
+    }
+
+    @Test
+    public void testFirstCallNoNetworkOnDatabaseInfo() throws Exception {
+
+        enqueueDatabaseInfoNoNetwork();
+
+        final DatabaseSyncOperation operation = new DatabaseSyncOperation(MOCK_CONTEXT,
+                                                                          MOCK_DATABASE_ID,
+                                                                          databaseManager,
+                                                                          mockApi,
+                                                                          mockObserver,
+                                                                          mockCallback);
+        operation.run();
+
+        final InOrder order = inOrder(mockApi, mockObserver, mockCallback);
+
+        order.verify(mockApi).getDatabaseInfo(MOCK_CONTEXT, MOCK_DATABASE_ID);
+        order.verify(mockObserver).notifyError(isA(NetworkException.class));
+        order.verify(mockCallback).onSyncFailed(MOCK_CONTEXT, MOCK_DATABASE_ID);
+
+        order.verifyNoMoreInteractions();
+    }
+
+    @Test
+    public void testFirstCallSnapshotNoNetworkOnSnapshotRequest() throws Exception {
+
+        enqueueDatabaseInfo();
+        enqueueSnapshotNoNetwork();
+
+        final DatabaseSyncOperation operation = new DatabaseSyncOperation(MOCK_CONTEXT,
+                                                                          MOCK_DATABASE_ID,
+                                                                          databaseManager,
+                                                                          mockApi,
+                                                                          mockObserver,
+                                                                          mockCallback);
+        operation.run();
+
+        final InOrder order = inOrder(mockApi, mockObserver, mockCallback);
+
+        order.verify(mockApi).getDatabaseInfo(MOCK_CONTEXT, MOCK_DATABASE_ID);
+        order.verify(mockObserver).notifyError(isA(NetworkException.class));
+        order.verify(mockCallback).onSyncFailed(MOCK_CONTEXT, MOCK_DATABASE_ID);
+
+        order.verifyNoMoreInteractions();
+    }
+
+    @Test
+    public void testFirstCallCollectionNoNetworkOnSnapshotRequest() throws Exception {
+
+        enqueueDatabaseInfo();
+        enqueueCollectionSnapshotNoNetwork();
+
+        final DatabaseSyncOperation operation = new DatabaseSyncOperation(MOCK_CONTEXT,
+                                                                          MOCK_DATABASE_ID,
+                                                                          databaseManager,
+                                                                          mockApi,
+                                                                          mockObserver,
+                                                                          mockCallback);
+        operation.includeCollection(MOCK_COLLECTION_ID);
+        operation.run();
+
+        final InOrder order = inOrder(mockApi, mockObserver, mockCallback);
+
+        order.verify(mockApi).getDatabaseInfo(MOCK_CONTEXT, MOCK_DATABASE_ID);
+        order.verify(mockObserver).notifyError(isA(NetworkException.class));
+        order.verify(mockCallback).onSyncFailed(MOCK_CONTEXT, MOCK_DATABASE_ID);
+
+        order.verifyNoMoreInteractions();
+    }
+
+    @Test
+    public void testSecondCallSnapshot() throws Exception {
+
+        final DatabaseDto databaseInfo = enqueueDatabaseInfo();
+        enqueueSnapshot();
+
+        final DatabaseSyncOperation operation = new DatabaseSyncOperation(MOCK_CONTEXT,
+                                                                          MOCK_DATABASE_ID,
+                                                                          databaseManager,
+                                                                          mockApi,
+                                                                          mockObserver,
+                                                                          mockCallback);
+        operation.run();
+
+        final DatabaseDto databaseInfoUpdated = enqueueDatabaseInfoUpdated();
+        enqueueDatabaseChanges(databaseInfo.getRevision());
+
+        operation.run();
+
+        final InOrder order = inOrder(mockApi, mockObserver, mockCallback);
+
+        order.verify(mockApi).getDatabaseInfo(MOCK_CONTEXT, MOCK_DATABASE_ID);
+        order.verify(mockApi).getDatabaseSnapshot(MOCK_CONTEXT, MOCK_DATABASE_ID);
+        order.verify(mockObserver).notifyDatabaseSynced(MOCK_CONTEXT, databaseInfo);
+        order.verify(mockCallback).onSyncSuccess(MOCK_CONTEXT, databaseInfo);
+
+        order.verify(mockApi).getDatabaseInfo(MOCK_CONTEXT, MOCK_DATABASE_ID);
+        order.verify(mockApi).getDeltas(MOCK_CONTEXT, MOCK_DATABASE_ID, databaseInfo.getRevision());
+        order.verify(mockObserver).notifyDatabaseSynced(MOCK_CONTEXT, databaseInfoUpdated);
+        order.verify(mockCallback).onSyncSuccess(MOCK_CONTEXT, databaseInfoUpdated);
+
+        order.verifyNoMoreInteractions();
+    }
+
+    @Test
+    public void testSecondCallSnapshotNoNetwork() throws Exception {
+        final DatabaseDto databaseInfo = enqueueDatabaseInfo();
+        enqueueSnapshot();
+
+        final DatabaseSyncOperation operation = new DatabaseSyncOperation(MOCK_CONTEXT,
+                                                                          MOCK_DATABASE_ID,
+                                                                          databaseManager,
+                                                                          mockApi,
+                                                                          mockObserver,
+                                                                          mockCallback);
+        operation.run();
+
+        enqueueDatabaseInfoUpdated();
+        enqueueDatabaseChangesNoNetwork(databaseInfo.getRevision());
+
+        operation.run();
+
+        final InOrder order = inOrder(mockApi, mockObserver, mockCallback);
+
+        order.verify(mockApi).getDatabaseInfo(MOCK_CONTEXT, MOCK_DATABASE_ID);
+        order.verify(mockApi).getDatabaseSnapshot(MOCK_CONTEXT, MOCK_DATABASE_ID);
+        order.verify(mockObserver).notifyDatabaseSynced(MOCK_CONTEXT, databaseInfo);
+        order.verify(mockCallback).onSyncSuccess(MOCK_CONTEXT, databaseInfo);
+
+        order.verify(mockApi).getDatabaseInfo(MOCK_CONTEXT, MOCK_DATABASE_ID);
+        order.verify(mockApi).getDeltas(MOCK_CONTEXT, MOCK_DATABASE_ID, databaseInfo.getRevision());
+        order.verify(mockObserver).notifyError(isA(NetworkException.class));
+        order.verify(mockCallback).onSyncFailed(MOCK_CONTEXT, MOCK_DATABASE_ID);
+
+        order.verifyNoMoreInteractions();
+    }
+
+    @Test
+    public void testSecondCallCollection() throws Exception {
+
+        final DatabaseDto databaseInfo = enqueueDatabaseInfo();
+        enqueueCollectionSnapshot();
+
+        final DatabaseSyncOperation operation = new DatabaseSyncOperation(MOCK_CONTEXT,
+                                                                          MOCK_DATABASE_ID,
+                                                                          databaseManager,
+                                                                          mockApi,
+                                                                          mockObserver,
+                                                                          mockCallback);
+        operation.includeCollection(MOCK_COLLECTION_ID);
+        operation.run();
+
+        final DatabaseDto databaseInfoUpdated = enqueueDatabaseInfoUpdated();
+        enqueueDatabaseChanges(databaseInfo.getRevision());
+
+        operation.run();
+
+        final InOrder order = inOrder(mockApi, mockObserver, mockCallback);
+
+        order.verify(mockApi).getDatabaseInfo(MOCK_CONTEXT, MOCK_DATABASE_ID);
+        order.verify(mockApi)
+                .getDatabaseSnapshot(MOCK_CONTEXT, MOCK_DATABASE_ID, MOCK_COLLECTION_ID);
+        order.verify(mockObserver).notifyDatabaseSynced(MOCK_CONTEXT, databaseInfo);
+        order.verify(mockCallback).onSyncSuccess(MOCK_CONTEXT, databaseInfo);
+
+        order.verify(mockApi).getDatabaseInfo(MOCK_CONTEXT, MOCK_DATABASE_ID);
+        order.verify(mockApi).getDeltas(MOCK_CONTEXT, MOCK_DATABASE_ID, databaseInfo.getRevision());
+        order.verify(mockObserver).notifyDatabaseSynced(MOCK_CONTEXT, databaseInfoUpdated);
+        order.verify(mockCallback).onSyncSuccess(MOCK_CONTEXT, databaseInfoUpdated);
+
+        order.verifyNoMoreInteractions();
+    }
+
+    @Test
+    public void testSecondCallCollectionNoNetwork() throws Exception {
+        final DatabaseDto databaseInfo = enqueueDatabaseInfo();
+        enqueueCollectionSnapshot();
+
+        final DatabaseSyncOperation operation = new DatabaseSyncOperation(MOCK_CONTEXT,
+                                                                          MOCK_DATABASE_ID,
+                                                                          databaseManager,
+                                                                          mockApi,
+                                                                          mockObserver,
+                                                                          mockCallback);
+        operation.includeCollection(MOCK_COLLECTION_ID);
+        operation.run();
+
+        enqueueDatabaseInfoUpdated();
+        enqueueDatabaseChangesNoNetwork(databaseInfo.getRevision());
+
+        operation.run();
+
+        final InOrder order = inOrder(mockApi, mockObserver, mockCallback);
+
+        order.verify(mockApi).getDatabaseInfo(MOCK_CONTEXT, MOCK_DATABASE_ID);
+        order.verify(mockApi)
+                .getDatabaseSnapshot(MOCK_CONTEXT, MOCK_DATABASE_ID, MOCK_COLLECTION_ID);
+        order.verify(mockObserver).notifyDatabaseSynced(MOCK_CONTEXT, databaseInfo);
+        order.verify(mockCallback).onSyncSuccess(MOCK_CONTEXT, databaseInfo);
+
+        order.verify(mockApi).getDatabaseInfo(MOCK_CONTEXT, MOCK_DATABASE_ID);
+        order.verify(mockApi).getDeltas(MOCK_CONTEXT, MOCK_DATABASE_ID, databaseInfo.getRevision());
+        order.verify(mockObserver).notifyError(isA(NetworkException.class));
+        order.verify(mockCallback).onSyncFailed(MOCK_CONTEXT, MOCK_DATABASE_ID);
+
+        order.verifyNoMoreInteractions();
+    }
+
+    @Test
+    public void testSecondCallIncludeNewCollection() throws Exception {
+        final DatabaseDto databaseInfo = enqueueDatabaseInfo();
+        enqueueCollectionSnapshot();
+
+        DatabaseSyncOperation operation = new DatabaseSyncOperation(MOCK_CONTEXT,
+                                                                    MOCK_DATABASE_ID,
+                                                                    databaseManager,
+                                                                    mockApi,
+                                                                    mockObserver,
+                                                                    mockCallback);
+        operation.includeCollection(MOCK_COLLECTION_ID);
+
+        operation.run();
+
+        final DatabaseDto databaseInfoUpdated = enqueueDatabaseInfoUpdated();
+        enqueueDatabaseChanges(databaseInfo.getRevision());
+        enqueueCollectionSnapshot(MOCK_COLLECTION_ID_2);
+
+        operation = new DatabaseSyncOperation(MOCK_CONTEXT,
+                                              MOCK_DATABASE_ID,
+                                              databaseManager,
+                                              mockApi,
+                                              mockObserver,
+                                              mockCallback);
+
+        operation.includeCollection(MOCK_COLLECTION_ID_2);
+
+        operation.run();
+
+        final InOrder order = inOrder(mockApi, mockObserver, mockCallback);
+
+        order.verify(mockApi).getDatabaseInfo(MOCK_CONTEXT, MOCK_DATABASE_ID);
+        order.verify(mockApi).getDatabaseSnapshot(MOCK_CONTEXT, MOCK_DATABASE_ID, MOCK_COLLECTION_ID);
+        order.verify(mockObserver).notifyDatabaseSynced(MOCK_CONTEXT, databaseInfo);
+        order.verify(mockCallback).onSyncSuccess(MOCK_CONTEXT, databaseInfo);
+
+        order.verify(mockApi).getDatabaseInfo(MOCK_CONTEXT, MOCK_DATABASE_ID);
+        order.verify(mockApi).getDeltas(MOCK_CONTEXT, MOCK_DATABASE_ID, databaseInfo.getRevision());
+
+        order.verify(mockApi).getDatabaseSnapshot(MOCK_CONTEXT, MOCK_DATABASE_ID, MOCK_COLLECTION_ID_2);
+
+        order.verify(mockObserver).notifyDatabaseSynced(MOCK_CONTEXT, databaseInfoUpdated);
+        order.verify(mockCallback).onSyncSuccess(MOCK_CONTEXT, databaseInfoUpdated);
+
+        order.verifyNoMoreInteractions();
+    }
+
+    @Test
+    public void testDeleteDatabase() throws BaseException {
+        insertDeleteDatabase(MOCK_CONTEXT, MOCK_DATABASE_ID);
+
+        final DatabaseSyncOperation operation = new DatabaseSyncOperation(MOCK_CONTEXT,
+                                                                          MOCK_DATABASE_ID,
+                                                                          databaseManager,
+                                                                          mockApi,
+                                                                          mockObserver,
+                                                                          mockCallback);
+        operation.run();
+
+        final InOrder order = inOrder(mockApi, mockObserver, mockCallback);
+        order.verify(mockApi).removeDatabase(MOCK_CONTEXT, MOCK_DATABASE_ID);
+        order.verify(mockObserver).notifyDatabaseSynced(eq(MOCK_CONTEXT), anyObject());
+        order.verifyNoMoreInteractions();
+    }
+
+    @Test
+    public void testInsertDatabase() throws Exception {
+        insertNewDatabase(MOCK_CONTEXT, MOCK_DATABASE_ID);
+        final DatabaseDto expected = enqueueCreateDatabase();
+
+        final DatabaseSyncOperation operation = new DatabaseSyncOperation(MOCK_CONTEXT,
+                                                                          MOCK_DATABASE_ID,
+                                                                          databaseManager,
+                                                                          mockApi,
+                                                                          mockObserver);
+        operation.run();
+
+        final InOrder order = inOrder(mockApi, mockObserver, mockCallback);
+        order.verify(mockApi).createDatabase(MOCK_CONTEXT, MOCK_DATABASE_ID);
+        order.verify(mockApi).postChanges(eq(MOCK_CONTEXT), eq(MOCK_DATABASE_ID), eq(0L), any());
+        order.verify(mockObserver).notifyDatabaseSynced(MOCK_CONTEXT, expected);
+        order.verifyNoMoreInteractions();
+    }
+
+    private void insertDeleteDatabase(@NonNull final YDSContext databaseContext,
+                                      @NonNull final String databaseId) {
+
+        final SQLiteDatabaseWrapper databaseWrapper =
+                databaseManager.openDatabaseWrapped(MOCK_CONTEXT);
+        databaseWrapper.beginTransaction();
+
+        final ContentValues values = new ContentValues();
+
+        final String currentDate = DateFormat.format(new Date());
+
+        values.put(DatabaseDescriptor.Databases.Rows.CREATED, currentDate);
+        values.put(DatabaseDescriptor.Databases.Rows.MODIFIED, currentDate);
+        values.put(DatabaseDescriptor.Databases.Rows.FULL_SNAPSHOT_SYNCED, true);
+        values.put(DatabaseDescriptor.Databases.Rows.RECORDS_COUNT, 0);
+        values.put(DatabaseDescriptor.Databases.Rows.REVISION, 0);
+        values.put(DatabaseDescriptor.Databases.Rows.SYNCED, DatabaseChangeType.DELETE.name());
+        values.put(DatabaseDescriptor.Databases.Rows.DATABASE_ID, databaseId);
+
+        databaseWrapper.insert(DatabaseDescriptor.Databases.TABLE_NAME, values);
+        databaseWrapper.setTransactionSuccessful();
+        databaseWrapper.endTransaction();
+
+        //create database file
+        databaseManager.openDatabaseWrapped(databaseContext, databaseId);
+    }
+
+    private void insertNewDatabase(@NonNull final YDSContext databaseContext,
+                                   @NonNull final String databaseId) {
+
+        final SQLiteDatabaseWrapper databaseWrapper =
+                databaseManager.openDatabaseWrapped(MOCK_CONTEXT);
+        databaseWrapper.beginTransaction();
+
+        final ContentValues values = new ContentValues();
+
+        final String currentDate = DateFormat.format(new Date());
+
+        values.put(DatabaseDescriptor.Databases.Rows.CREATED, currentDate);
+        values.put(DatabaseDescriptor.Databases.Rows.MODIFIED, currentDate);
+        values.put(DatabaseDescriptor.Databases.Rows.FULL_SNAPSHOT_SYNCED, true);
+        values.put(DatabaseDescriptor.Databases.Rows.RECORDS_COUNT, 0);
+        values.put(DatabaseDescriptor.Databases.Rows.REVISION, 0);
+        values.put(DatabaseDescriptor.Databases.Rows.SYNCED, DatabaseChangeType.INSERT.name());
+        values.put(DatabaseDescriptor.Databases.Rows.DATABASE_ID, databaseId);
+
+        databaseWrapper.insert(DatabaseDescriptor.Databases.TABLE_NAME, values);
+        databaseWrapper.setTransactionSuccessful();
+        databaseWrapper.endTransaction();
+
+        //create database file
+        databaseManager.openDatabaseWrapped(databaseContext, databaseId);
+    }
+
+    private void enqueueSnapshot() throws Exception {
+        final SnapshotResponse snapshot =
+                gson.fromJson(getTextFromFile("database_snapshot.json"), SnapshotResponse.class);
+        when(mockApi.getDatabaseSnapshot(MOCK_CONTEXT, MOCK_DATABASE_ID))
+                .thenReturn(snapshot);
+    }
+
+    private void enqueueSnapshotNoNetwork() throws Exception {
+        when(mockApi.getDatabaseSnapshot(MOCK_CONTEXT, MOCK_DATABASE_ID))
+                .thenThrow(new NetworkException(MOCK_DATABASE_ID));
+    }
+
+    private void enqueueCollectionSnapshot() throws Exception {
+        enqueueCollectionSnapshot(MOCK_COLLECTION_ID);
+    }
+
+    private void enqueueCollectionSnapshot(@NonNull final String collectionId) throws Exception {
+        final SnapshotResponse snapshot =
+                gson.fromJson(getTextFromFile("database_snapshot.json"), SnapshotResponse.class);
+        when(mockApi.getDatabaseSnapshot(MOCK_CONTEXT, MOCK_DATABASE_ID, collectionId))
+                .thenReturn(snapshot);
+    }
+
+    private void enqueueCollectionSnapshotNoNetwork() throws Exception {
+        when(mockApi.getDatabaseSnapshot(MOCK_CONTEXT, MOCK_DATABASE_ID, MOCK_COLLECTION_ID))
+                .thenThrow(new NetworkException(MOCK_DATABASE_ID));
+    }
+
+    private void enqueueAllCollectionsSnapshot() throws Exception {
+        final SnapshotResponse snapshot =
+                gson.fromJson(getTextFromFile("database_snapshot.json"), SnapshotResponse.class);
+        when(mockApi.getDatabaseSnapshot(eq(MOCK_CONTEXT), eq(MOCK_DATABASE_ID), anyString()))
+                .thenReturn(snapshot);
+    }
+
+    private DatabaseDto enqueueDatabaseInfo() throws Exception {
+        final DatabaseDto databaseDto =
+                gson.fromJson(getTextFromFile("get_database_info.json"), DatabaseDto.class);
+
+        when(mockApi.getDatabaseInfo(MOCK_CONTEXT, MOCK_DATABASE_ID)).thenReturn(databaseDto);
+
+        return databaseDto;
+    }
+
+    private DatabaseDto enqueueDatabaseInfoUpdated() throws Exception {
+        final DatabaseDto databaseDto =
+                gson.fromJson(getTextFromFile("get_database_info_updated.json"), DatabaseDto.class);
+
+        when(mockApi.getDatabaseInfo(MOCK_CONTEXT, MOCK_DATABASE_ID)).thenReturn(databaseDto);
+
+        return databaseDto;
+    }
+
+    private DatabaseDto enqueueDatabaseInfoNoNetwork() throws Exception {
+        final DatabaseDto databaseDto =
+                gson.fromJson(getTextFromFile("get_database_info.json"), DatabaseDto.class);
+
+        when(mockApi.getDatabaseInfo(MOCK_CONTEXT, MOCK_DATABASE_ID))
+                .thenThrow(new NetworkException(MOCK_DATABASE_ID));
+
+        return databaseDto;
+    }
+
+    private void enqueueDatabaseChanges(final long revision) throws Exception {
+        final DeltasResponse deltasResponse =
+                gson.fromJson(getTextFromFile("get_changes.json"), DeltasResponse.class);
+        when(mockApi.getDeltas(MOCK_CONTEXT, MOCK_DATABASE_ID, revision))
+                .thenReturn(deltasResponse);
+    }
+
+    private void enqueueDatabaseChangesNoNetwork(final long revision) throws Exception {
+        when(mockApi.getDeltas(MOCK_CONTEXT, MOCK_DATABASE_ID, revision))
+                .thenThrow(new NetworkException(MOCK_DATABASE_ID));
+    }
+
+    private void enqueueDatabaseGone(final long revision) throws Exception {
+        when(mockApi.getDeltas(MOCK_CONTEXT, MOCK_DATABASE_ID, revision))
+                .thenThrow(new GoneException(new ErrorResponse()));
+    }
+
+    private DatabaseDto enqueueCreateDatabase() throws Exception {
+        final DatabaseDto databaseDto =
+                gson.fromJson(getTextFromFile("get_database_info.json"), DatabaseDto.class);
+
+        when(mockApi.createDatabase(MOCK_CONTEXT, MOCK_DATABASE_ID)).thenReturn(databaseDto);
+
+        return databaseDto;
+    }
+}

@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+<title>util.Dragger</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<!-- YUI -->
+<script type="text/javascript" src="../../../test/yui3combo/combo.js"></script>
+<link rel="stylesheet" href="../../../test/yui3combo/combo.css"/>
+<script type="text/javascript" src="../../../test/run-test-case.js"></script>
+<!-- Code -->
+<script type="text/javascript">
+    initAPI({
+        lang: "ru-RU",
+        load: "package.map,DomEvent",
+        mode: "debug",
+        ns: "ym"
+    });
+</script>
+
+<body class="yui3-skin-sam">
+<div id="node" style="width: 200px; height: 200px; background-color: #a52a2a;"></div>
+</body>
+<script type="text/javascript">
+
+    function getTestCase (Y) {
+        return {
+            name: "util.Dragger",
+
+            testEvents: function () {
+                var dragger = new ym.util.Dragger(), result = '';
+                dragger.events.add(['start', 'move', 'stop'], function (event) {
+                    var delta = event.get('delta'), position = event.get('position');
+                    result += event.get('type') + ' ' + position[0] + '_' + position[1] + '_' + delta[0] + '_' + delta[1] + '_';
+                });
+
+                dragger.start(new ym.DomEvent({
+                    clientX: 20,
+                    clientY: 20,
+                    button: 2,
+                    get: function (key) {
+                        return this[key];
+                    }
+                }, "mousedown"));
+
+                var params = {clientX: 20, clientY: 20};
+                Y.Event.simulate(document.documentElement, 'mousemove', params);
+                params.clientX += 33, params.clientY += 33;
+                Y.Event.simulate(document.documentElement, 'mousemove', params);
+                params.clientX += 46, params.clientY += 46;
+                Y.Event.simulate(document.documentElement, 'mousemove', params);
+                Y.Event.simulate(document.documentElement, 'mouseup', params);
+				console.log(result);
+                Y.assert(result == 'start 53_53_33_33_move 53_53_33_33_move 99_99_46_46_stop 99_99_0_0_', 'Неверная информация в событиях.');
+            },
+
+            testByRightButton: function () {
+                var dragger = new ym.util.Dragger({
+                    byRightButton: true
+                }), result = '';
+
+                dragger.events.add('start', function (event) {
+                    result = 'start!';
+                });
+
+                var params = {clientX: 20, clientY: 20, button: 2};
+
+                dragger.start(new ym.DomEvent({
+                    clientX: 20,
+                    clientY: 20,
+                    button: 2,
+                    get: function (key) {
+                        return this[key];
+                    }
+                }, "mousedown"));
+                Y.Event.simulate(document.documentElement, 'mousemove', params);
+                params.clientX += 200, params.clientY += 200;
+                Y.Event.simulate(document.documentElement, 'mousemove', params);
+                Y.assert(result == 'start!', 'Не сработала опция byRightButton.');
+            },
+
+            testAutoStart: function () {
+                var node = document.getElementById('node'),
+                        dragger = new ym.util.Dragger({
+                            autoStartElement: node
+                        }),
+                        result = '';
+
+                dragger.events.add('start', function (event) {
+                    result = 'start!';
+                });
+
+                var params = {clientX: 20, clientY: 20};
+                Y.Event.simulate(node, 'mousedown', params);
+                Y.Event.simulate(document.documentElement, 'mousemove', params);
+                params.clientX += 200, params.clientY += 200;
+                Y.Event.simulate(document.documentElement, 'mousemove', params);
+                Y.assert(result == 'start!', 'Не сработала опция autoStartElement.');
+            }
+        }
+    }
+    ym.ready(runTestCase);
+</script>
+</html>

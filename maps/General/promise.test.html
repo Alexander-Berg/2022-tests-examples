@@ -1,0 +1,82 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <title>util.Promise</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <!-- YUI -->
+    <script type="text/javascript" src="../../../test/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../../test/yui3combo/combo.css" />
+    <script type="text/javascript" src="../../../test/run-test-case.js"></script>
+    <!-- Code -->
+    <script type="text/javascript">
+        initAPI({
+            lang: "ru-RU",
+            mode: "debug",
+            load: "util.Promise",
+            ns: "ym"
+        });
+    </script>
+</head>
+
+<body class="yui3-skin-sam"></body>
+
+<script type="text/javascript">
+    function getTestCase(Y) {
+        return {
+        name: "util.Promise",
+
+        testPromiseFulfill: function () {
+            var promise = new ym.util.Promise();
+
+            var promise2 = promise.then(function (a) { return a + 1; })
+                   .then(function (b) { return b + 2; })
+                   .then()
+                   .then(function (c) { Y.log(c); })
+                   .then(function () { promise.then(function (a) { Y.log('Вставленный then в функции-обработчике ' + a) })})
+                   .then(function (d) { Y.assert(d === 4, "Переменные не равны"); return 10; });
+
+            promise.resolve(1);
+
+            promise2.then(function (a) { Y.assert(a + 1 === 11, "Переменные не равны"); })
+                    .then(function (b) { Y.assert(b + 1 === 11, "Переменные не равны"); return 5; })
+                    .then(function (c) { Y.assert(c === 5, "Переменные не равны"); })
+        },
+
+        testPromiseFail: function () {
+            var promise = new ym.util.Promise();
+
+            promise.then(function (a) { return a + 4; }, function (e) { return e + ' 1 ' })
+                   .then(function (b) { return b + 8; }, function (e) {})
+                   .then(null, function (e) { return e + ' 3 '; })
+                   .then(null, function (e) { return e + ' 4 '; })
+                   .then(null, function (e) { Y.assert(e === 'Error 1  3  4 ', "Переменные не равны"); })
+                   .then(null, function (e) { Y.log(e) });
+
+            promise.reject('Error');
+        },
+
+        testPromise123: function () {
+            var promise = new ym.util.Promise(),
+                arr = [];
+
+            promise.then(function (a) {
+                arr.push(1);
+                promise.then(function () {
+                    arr.push(3);
+                });
+            });
+            promise.then(function () {
+                arr.push(2);
+            });
+
+            promise.resolve();
+
+            this.wait(function () {
+                Y.assert(arr.join(',') == '1,2,3', arr.join(','));
+            }, 100);
+        }
+    }}
+    ym.ready(runTestCase);
+</script>
+</html>

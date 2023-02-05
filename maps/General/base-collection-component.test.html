@@ -1,0 +1,152 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <title>component.collection.BaseCollection</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <!-- YUI -->
+    <script type="text/javascript" src="../../../../test/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../../../test/yui3combo/combo.css" />
+    <script type="text/javascript" src="../../../../test/run-test-case.js"></script>
+    <!-- Code -->
+    <script type="text/javascript">
+        initAPI({
+            lang: "ru-RU",
+            load: "component.collection.BaseCollection",
+            mode: "dev"
+        });
+    </script>
+</head>
+
+<body class="yui3-skin-sam">
+    <div id="testMap" style="height: 500px; width: 760px; overflow: hidden; position: relative;">
+    </div>
+</body>
+
+<script type="text/javascript">
+    getTestCase = function (Y) {
+        return {
+//            debug: true,
+            name: 'component.collection.BaseCollection',
+            
+            setUp: function () {
+                this.added = [];
+                this.removed = [];
+                this.collection = new ymaps.component.collection.BaseCollection({
+                    onAdd: {
+                        callback: function (child) {
+                            this.added.push({
+                                child: child
+                            });
+                        },
+                        context: this
+                    },
+                    onRemove: {
+                        callback: function (child) {
+                            this.removed.push({
+                                child: child
+                            });
+                        },
+                        context: this
+                    }
+                });
+            },
+
+            tearDown: function () {},
+
+            testAdd: function () {
+                var obj = {};
+                this.collection.add(obj);
+                Y.assert(
+                    this.added.length == 1 &&
+                    this.added[0].child == obj,
+                    "Неверный результат добавления первого объекта"
+                );
+
+                this.collection.add(1);
+                Y.assert(
+                    this.added.length == 2 &&
+                    this.added[1].child == 1,
+                    "Неверный результат добавления второго объекта"
+                );
+            },
+
+            testRemove: function () {
+                var obj = {};
+                this.collection.add(obj);
+                this.collection.remove(obj);
+                Y.assert(
+                    this.removed.length == 1 &&
+                    this.removed[0].child == obj,
+                    "Неверный результат удаления объекта"
+                );
+            },
+
+            testRemoveAll: function () {
+                this.collection.add({});
+                this.collection.add({});
+                this.collection.removeAll();
+                Y.assert(
+                    this.removed.length == 2 && this.collection.getLength() == 0,
+                    "Неверный результат удаления всех объектов"
+                );
+            },
+
+            testGetIterator: function () {
+                this.collection.add({});
+                this.collection.add({});
+
+                var iterator = this.collection.getIterator();
+                Y.assert(
+                    iterator.getNext() && iterator.getNext() && iterator.getNext() == iterator.STOP_ITERATION,
+                    "Неверный результат для итератора"
+                );
+            },
+
+            testLength: function () {
+                Y.assert(
+                    !this.collection.getLength(),
+                    "Неверный результат длины для пустой коллекции"
+                );
+
+                this.collection.add({});
+                this.collection.add({});
+                Y.assert(
+                    this.collection.getLength() == 2,
+                    "Неверный результат длины после добавления элементов"
+                );
+
+                this.collection.removeAll();
+                Y.assert(
+                    this.collection.getLength() == 0,
+                    "Неверный результат длины после удаления элементов"
+                );
+            },
+
+            testEach: function () {
+                var arr = [],
+                    obj = {};
+                this.collection.add(arr);
+                this.collection.add(obj);
+                this.checkContextStr = "test";
+
+                var data = [];
+                this.collection.each(function (obj) {
+                    data.push({
+                        obj: obj,
+                        context: this
+                    });
+                }, this);
+                Y.assert(
+                    data[0].obj == arr && data[0].context.checkContextStr == "test" &&
+                    data[1].obj == obj && data[1].context.checkContextStr == "test",
+                    "Неверный результат для each"
+                );
+            }
+        }
+    };
+
+    ymaps.ready(runTestCase);
+</script>
+</html>
+

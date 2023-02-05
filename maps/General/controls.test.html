@@ -1,0 +1,101 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <title>Control Test</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <!-- YUI -->
+    <script type="text/javascript" src="../../../../tests/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../../../tests/yui3combo/combo.css"/>
+    <script type="text/javascript" src="../../../../tests/run-test-case.js"></script>
+    <!-- Code -->
+    <script type="text/javascript">
+        initAPI({
+            lang: "ru-RU",
+            mode: "debug",
+            load: "package.full,util.dom.style,util.math.areEqual",
+            ns: "ym",
+            latitude: 'longlat'
+        });
+    </script>
+    <style type="text/css">
+        #container {
+            width: 400px;
+            height: 300px;
+            background: #ccc;
+        }
+    </style>
+</head>
+
+<body class="yui3-skin-sam">
+<div id="container" height='100px' width='100px'></div>
+</body>
+
+<script type="text/javascript">
+
+    function getTestCase (Y) {
+        return {
+            name: "control-test",
+            debug: false,
+
+            testVisibility: function () {
+                var equals = ym.util.math.areEqual,
+                    style = ym.util.dom.style,
+                    btn = new ym.control.Button('asdasdsada'),
+                    rollup = new ym.control.RollupButton({
+                        items: [
+                            new ym.control.Button('rollup btn 1'),
+                            new ym.control.Button('rollup btn 2'),
+                            new ym.control.Button('rollup btn 3')
+                        ]
+                    });
+                myMap.controls.add(btn, {top: 40, left: 40});
+                var originBtnSize = style.getSize(btn.getLayout().getParentElement());
+                btn.options.set('visible', false);
+                var btnSize = style.getSize(btn.getLayout().getParentElement());
+                // Обычное скрытие элемента.
+                Y.assert(equals(btnSize, [0, 0], 0), "visible=false не сработал");
+                btn.options.set('visible', true);
+                btnSize = style.getSize(btn.getLayout().getParentElement());
+                // Обычное восстановление элемента.
+                Y.assert(equals(btnSize, originBtnSize, 0), "visible=true не сработал");
+
+                myMap.controls.add(rollup, {top: 70, left: 70});
+                btn = rollup.get(1);
+                originBtnSize = style.getSize(btn.getLayout().getParentElement());
+                // Скрытие элемента внутри rollup (Rollup тоже манипулируется видимостью дочерних элементов).
+                btn.options.set('visible', false);
+                btnSize = style.getSize(btn.getLayout().getParentElement());
+                rollup.state.set('expanded', true);
+                Y.assert(equals(btnSize, [0, 0], 0), "visible=false внутри rollup не сработал");
+                rollup.state.set('expanded', false);
+                rollup.state.set('expanded', true);
+                btn.options.set('visible', true);
+                Y.assert(equals(btnSize, originBtnSize, 0), "visible=true внутри rollup не сработал");
+                
+                var newBtn = new ym.control.Button('1111', {visible: false});
+                myMap.controls.add(newBtn, {top: 100, left: 100});
+                var newBtnSize = style.getSize(newBtn.getLayout().getParentElement());
+                Y.assert(equals(newBtnSize, [0,0], 0), "visible=false при установке в конструкторе не сработал");
+
+                newBtn = new ym.control.Button('2222');
+                newBtn.options.set('visible', false);
+                myMap.controls.add(newBtn, {top: 100, left: 100});
+                newBtnSize = style.getSize(newBtn.getLayout().getParentElement());
+                Y.assert(equals(newBtnSize, [0,0], 0), "visible=false при установке до добавления на карту не сработал");
+            }
+        }
+    }
+
+    var myMap;
+    ym.ready(function () {
+        myMap = new ym.Map('container', {
+            center: [56, 37],
+            zoom: 12
+        });
+
+        runTestCase();
+    });
+
+</script>
+</html>

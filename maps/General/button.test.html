@@ -1,0 +1,221 @@
+<!doctype html>
+<html>
+<head>
+    <title>controls</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <!-- YUI -->
+    <script type="text/javascript" src="../../../test/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../../test/yui3combo/combo.css"/>
+    <script type="text/javascript" src="../../../test/run-test-case.js"></script>
+    <!-- Code -->
+    <script type="text/javascript">
+        initAPI({
+            lang: "ru-RU",
+            load: "package.full,util.dom.element,util.dom.style,mapType.storage",
+            mode: "debug"
+        });
+    </script>
+</head>
+<style>
+ .my-button {
+    display: 'block';
+    background-color: #999999;
+    width: 100px;
+    height: 30px;
+    border: 1px solid green;
+    text-align: center;
+    vertical-align: center;
+    color: white;
+    font-size: 15px;
+ }
+</style>
+<body class="yui3-skin-sam"></body>
+<div id="map" style='width:600px;height:400px'>
+
+</div>
+
+<script type="text/javascript">
+
+function getTestCase (Y) {
+    
+    var map = new ymaps.Map('map', {
+                center: [55.777153093859496, 37.639130078124964],
+                zoom: 10
+            });
+
+    return {
+        name: "controls",
+        
+        testTopLeftButtonPosition: function () {
+            var button = new ymaps.control.Button('Тест');
+            map.controls.add(button, {left: 0, top: 0});
+            
+            var buttonElement = button.getLayout().getParentElement();
+            Y.assert(buttonElement.style.left == "0px" && buttonElement.style.top == "0px", "Не выставились нулевые позиции left, top для кнопки.");
+            map.controls.remove(button);
+        },
+        
+        testRightBottomButtonPosition: function () {
+            var button = new ymaps.control.Button('Тест');
+            map.controls.add(button, {right: 0, bottom: 0});
+            
+            var buttonElement = button.getLayout().getParentElement();
+            Y.assert(buttonElement.style.right == "0px" && buttonElement.style.bottom == "0px", "Не выставились нулевые позиции right, bottom для кнопки.");
+            map.controls.remove(button);
+        },
+        
+        testUndefinedPosition: function () {
+            var button = new ymaps.control.Button('Тест2');
+            map.controls.add(button, {right: 2});
+            
+            var buttonElement = button.getLayout().getParentElement();
+            Y.assert(buttonElement.style.right == "2px" && buttonElement.style.top == "5px", "Не выставились дефолтные позиции для кнопки.");
+            map.controls.remove(button);
+        },
+        
+        testButtonImages: function () {
+            var button = new ymaps.control.Button({
+                    data: {
+                        imageSelected: "http://yandex.st/lego/_/Kx6F6RQnQFitm0qRxX7vpvfP0K0.png",
+                        content: "Нижняя кнопа"
+                    }
+                }, {
+                    minWidth: 200
+                });
+            map.controls.add(button, {bottom: 5, left: 5});
+            button.select();
+            var imageElement = ymaps.util.dom.element.find(button.getLayout().getParentElement(), '.ymaps-b-ico');
+            Y.assert(imageElement, "Не добавилась картинка для нажатой кнопки.");
+            map.controls.remove(button);
+            map.controls.add(button, {bottom: 5, left: 5});
+            
+            map.controls.add(new ymaps.control.Button({
+                data: {
+                    image: "testImages/galochka_blue.gif",
+                    imageSelected: "http://yandex.st/lego/_/Kx6F6RQnQFitm0qRxX7vpvfP0K0.png",
+                    content: "Нижняя кнопа"
+                }
+            }), {bottom: 5, left: 300});
+            
+            var disableButton = new ymaps.control.Button({
+                data: {
+                    image: "testImages/galochka_blue.gif",
+                    imageDisabled: "http://yandex.st/lego/_/Kx6F6RQnQFitm0qRxX7vpvfP0K0.png",
+                    content: "Нижняя кнопа"
+                }
+            });
+            disableButton.events.add('click', function () {
+                if (disableButton.isEnabled()) {
+                    disableButton.disable();
+                } else {
+                    disableButton.enable();
+                }
+            });
+            map.controls.add(disableButton, {bottom: 30, left: 300});
+        },
+
+        testButton: function () {
+            map.controls.add('searchControl');
+            map.controls.add(new ymaps.control.Button('Кнопка0'));
+            
+            // кнопка с пользовательским лейаутом
+            var button = new ymaps.control.Button({
+                    data: {
+                        content: 'Жмак-жмак',
+                        title: 'Жми уже давай'
+                    }
+                }, {
+                    selectOnClick: false,
+                    layout: ymaps.templateLayoutFactory.createClass("<div class='my-button' title='$[data.title]'>$[data.content]</div>")
+                });
+            map.controls.add(button);
+            
+            // две кнопки с картинками - тестируем расположение иконки
+            var standartButton1 = new ymaps.control.Button({
+                    data: {
+                        image: "http://yandex.st/lego/_/Kx6F6RQnQFitm0qRxX7vpvfP0K0.png"
+                    }
+                });
+            map.controls.add(standartButton1, {right: 100, top: 5});
+            
+            var standartButton2 = new ymaps.control.Button({
+                    data: {
+                        image: "testImages/galochka_blue.gif"
+                    }
+                });
+            map.controls.add(standartButton2, {right: 5, top: 5});
+            
+            // тестируем события
+            // должны через лейаут проходить
+            // 1. click -> click
+            // 2. update -> update
+            // 3. change -> change
+            // 4. select -> select
+            // 5. deselect -> deselect
+            
+            var res = '',
+                layout = button.getLayout();
+            button.events.add('click', function () {
+                res += "click";
+            });
+            
+            layout.events.fire('click');
+            Y.assert(res == 'click', "Событие 'click' на лейауте не дошло до контрола.");
+            
+            res = '';
+            button.events.add(['update', 'change'], function () {
+                res += "*";
+            });
+            layout.events.fire('update');
+            layout.events.fire('change');
+            Y.assert(res == '**', "События 'update' и 'change' на лейауте не дошли до контрола.");
+            
+            res = '';
+            button.events.add('select', function() {res += 'select'});
+            layout.events.fire('select');
+            Y.assert(res == 'select', "Событие 'select' на лейауте не дошло до контрола.");
+            Y.assert(button.state.get('selected'), "Не выбралась кнопка по событию на лейауте.");
+            Y.assert(button.isSelected(), 'Неверно работает метод isSelected');
+            
+            res = '';
+            button.events.add('deselect', function() {res += 'deselect'});
+            layout.events.fire('deselect');
+            Y.assert(res == 'deselect', "Событие 'deselect' не дошло до контрола.");
+            Y.assert(!button.state.get('selected'), "Не выставился стейт кнопки по событию deselect на лейауте.");
+            Y.assert(!button.isSelected(), "Кнопка не отжалась по событию deselect на лейауте.");
+            
+            res = '';
+            button.events.add(['enable', 'disable'], function (e) {
+                res += e.get('type') + '_';
+            });
+            
+            button.disable();
+            button.enable();
+            Y.assert(res == 'disable_enable_', "Не пробросились события enable и disable.");
+            
+            map.controls.add(new ymaps.control.Button('Кнопка1'));
+            map.controls.add(new ymaps.control.Button('Кнопка2'));
+            map.controls.add(new ymaps.control.Button({
+                data: {
+                    content: 'Кнопка3',
+                    title: 'Подсказка к кнопке'
+                }
+            }));
+            
+            // создание кнопки с заданной заранее опцией position
+            var positionedButton = new ymaps.control.Button("Кнопка 4", {
+                    position: {top: 200, left: 200},
+                    selectOnClick: false
+                });
+            map.controls.add(positionedButton);
+        }
+    };
+}
+ymaps.ready(runTestCase);
+
+</script>
+
+<div id='map' style='width:100%;height:90%;overflow:hidden;'></div>
+
+</body>
+</html>

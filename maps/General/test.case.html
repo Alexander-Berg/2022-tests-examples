@@ -1,0 +1,263 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <title>regions</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+    <!-- Code -->
+
+    <script src="http://yandex.st/jquery/1.9.1/jquery.min.js"></script>
+    <!--<script type="text/javascript"-->
+    <!--src="../../build/index.xml?lang=ru-RU&coordorder=latlong&load=package.full,graphics.render.detect.all,graphics.generator.stroke.outline,geoQuery,regions&mode=debug"></script>-->
+
+    <script type="text/javascript"
+            src="http://api-maps.yandex.ru/2.1/?lang=ru-RU&load=package.full,util.jsonp,util.coordinates.decode&mode=debug"></script>
+
+    <script>
+        var dst = +(new Date);
+    </script>
+
+    <!--src="../../../build/index.xml?lang=ru-RU&coordorder=latlong&load=package.standard&mode=dev"></script>-->
+    <style type="text/css">
+        html, body {
+            width: 100%;
+            height: 100%;
+            background: #ccc;
+        }
+
+        #container {
+            width: 800px;
+            height: 800px;
+        }
+
+        canvas {
+            border: 1px solid red;
+        }
+    </style>
+</head>
+
+
+<body class="yui3-skin-sam">
+
+<script type="text/javascript">
+    var countries = {
+                '001': 1,
+                RU: 60189,//RU
+                UA: 60199, //UA
+                BY: 59065, //BEL
+                KZ: 214665, //KZ
+                TR: 174737
+            }, langs = ['ru', 'uk', 'en', 'be', 'kk','tr'],
+            hosts = {
+                'prod': 'http://api-maps.yandex.ru/services/regions/1.0/regions.xml',
+                'test': '',
+                'dev': "http://kashey.etna.maps.dev.yandex.ru/serv/jsapi-services/regions/1.0/regions.xml",
+                '1.0': "http://kashey.etna.maps.dev.yandex.ru/serv/eta/jsapi-services/regions/1.0/regions.xml"
+            },
+            dim = ['RU', '_'];
+
+
+    ymaps.ready(function () {
+        setTimeout(function () {
+            console.log('total', +(new Date()) - dst);
+
+            var sCountry = $("#country"),
+                    sLng = $("#lang"),
+                    sLevel = $("#level"),
+                    sHost = $("#host"),
+                    sDim = $("#dim");
+            for (var i in countries) {
+                $("<option value=" + i + ">" + i + "</option>").appendTo(sCountry);
+            }
+            for (var j in langs) {
+                var i = langs[j];
+                $("<option value=" + i + ">" + i + "</option>").appendTo(sLng);
+            }
+
+            for (var j in hosts) {
+                var i = hosts[j];
+                $("<option value=" + i + ">" + j + "</option>").appendTo(sHost);
+            }
+
+
+            geoMap = new ymaps.Map('container', {
+                center: [0, 0],
+                //  controls: [],
+                type: "yandex#map",
+                zoom: 3
+            });
+            geoMap.controls.add('routeEditor');
+            //return;
+            //geoMap.controls.add('scaleLine');
+            /*
+             geoMap.controls
+             .add('zoomControl')
+             .add('mapTools')
+             .add('miniMap')
+             .add('typeSelector');
+             */
+            var lastCollection = 0,
+                    lastActiveRegion = 0;
+
+
+            $("#remove").click(function () {
+                geoMap.geoObjects.remove(lastCollection);
+                lastCollection = 0;
+            });
+
+            var loadBlock = 0;
+            setTimeout(function () {
+                $("select").change(function () {
+                    if (loadBlock) {
+                        console.log('still blocked');
+                        // return;
+                    }
+                    loadBlock = 1;
+                    var lng = $("option:selected", sLng).val() || 'ru',
+                            contr = $("option:selected", sCountry).val(),
+                            host = $("option:selected", sHost).val(),
+                            level = $("option:selected", sLevel).val(),
+                            dim = $("option:selected", sDim).val();
+                    if (lastCollection) {
+                        geoMap.geoObjects.remove(lastCollection);
+                        lastCollection = null;
+                    }
+                    console.log('--load', contr);
+                    var ts = Date.now();
+                    var options = {
+                        lang: lng,
+                        quality: level,
+                        disputedBorders: dim
+                    };
+                    if (host) {
+                        options.host = host;
+                    }
+
+                    var colors = [
+                        'FFF9',
+                        'FF09',
+                        'F0F9',
+                        '0FF9',
+                        'FF09',
+                        '0FF9',
+                        'F0F9',
+                        '4449',
+                        '4F49',
+                    ];
+                    ymaps.regions.load(contr, options).then(function (result) {
+                        $("#timelabel").html(Date.now() - ts);
+                        loadBlock = 0;
+                        console.log('++load', contr, result);
+                        console.log('>>', result.geoObjects.properties.getAll());
+                        if (lastCollection) {
+                            geoMap.geoObjects.remove(lastCollection);
+                        }
+
+                        lastCollection = result.geoObjects;
+                        lastCollection.options.set({
+                            zIndex: 1,
+                            zIndexHover: 1,
+                            //draggable: true,
+
+                            //renderType:'SVG',
+                            _fillImageHref: 'https://scontent-a.xx.fbcdn.net/hphotos-xap1/v/t1.0-9/10486057_801149936610324_3759808776816846_n.jpg?oh=07f25d4cbbfdfbe41978061ce4f0d70d&oe=54D89F57',
+                            _strokeWidth: [12, 2, 1],
+                            _strokeColor: ['#F003', '#0F0', '#000'],
+                            _strokeStyle: [null, null, {
+                                style: 'dash',
+                                generator: function (paths) {
+                                    return paths.map(function (a) {
+                                        return ymaps.graphics.generator.stroke.outline.raw(a, 3);
+                                    })
+                                }
+                            }]
+                        });
+
+
+                        var log = $("#NameList"),
+                                list = [];
+                        var ccx = 0;
+                        ymaps.geoQuery(lastCollection).each(function (obj) {
+                            list.push(obj.properties.get('hintContent'));
+                            obj.options.set({fillColor:colors[(ccx++) % colors.length]});
+                        });
+                        log.html(list.join('<br/>'));
+
+                        lastCollection.events.add('click', function (event) {
+                            var target = event.get('target');
+                            if (lastActiveRegion) {
+                                lastActiveRegion.options.set('preset', '');
+                            }
+                            lastActiveRegion = target;
+                            lastActiveRegion.options.set('preset', {
+                                strokeWidth: 3,
+                                fillColor: 'F99',
+                                strokeColor: '9f9'
+                            });
+
+                            console.log('>>', lastActiveRegion.properties.getAll());
+                        });
+
+                        //geoMap.geoObjects.add(lastCollection);
+                        if (0) {
+                            ymaps.geoQuery(lastCollection).search('properties.osmId =  140296').setOptions({
+                                zIndex: 1,
+                                zIndexHover: 1,
+                                draggable: true
+                                // geodesic: true
+                            }).addToMap(geoMap);//.get(0).editor.startEditing();
+                        } else {
+                            geoMap.geoObjects.add(lastCollection);
+                        }
+                        console.log('end add');
+                    }, function () {
+                        //alert('no response');
+                    });
+                });
+            }, 1);
+
+            //$("select").change();
+        }, 1);
+    });
+
+</script>
+
+<select id=host>
+
+</select>
+
+<select id=country>
+
+</select>
+<select id=lang>
+
+</select>
+<select id=dim>
+    <option value='_'>*</option>
+    <option value='RU'>RU</option>
+    <option value='_'>UN</option>
+</select>
+<select id=level>
+    <option value=0>0</option>
+    <option value=1>1</option>
+    <option value=2>2</option>
+    <option value=3>3</option>
+</select>
+<label id="timelabel"></label>
+<input id=remove type=button value='remove'>
+
+<table>
+    <tr>
+        <td>
+            <div id="container"></div>
+        </td>
+        <td>
+            <div style="width:200px;height:800px;overflow: auto" id="NameList">
+        </td>
+    </tr>
+</table>
+
+</body>
+</html>

@@ -1,0 +1,110 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <title>map.addon.hint</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <!-- YUI -->
+    <script type="text/javascript" src="../../../../tests/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../../../tests/yui3combo/combo.css"/>
+    <script type="text/javascript" src="../../../../tests/run-test-case.js"></script>
+    <!-- Code -->
+    <script type="text/javascript">
+        initAPI({
+            lang: "ru-RU",
+            load: "package.full,map.Hint",
+            mode: "dev"
+        });
+    </script>
+    <script type="text/javascript" src="../../../../tests/util/event-eye.js"></script>
+</head>
+
+<body class="yui3-skin-sam"><div id="map" style="width: 400px; height: 400px;"></div></body>
+
+<script type="text/javascript">
+    function getTestCase (Y) {
+        return {
+            name: "map.addon.hint",
+            debug: false,
+
+            _should: {
+                ignore: {
+//                    testShowEvent: true,
+//                    testHideEvent: true,
+//                    testMAPSAPI3420: true
+                }
+            },
+
+            setUp: function () {
+                this.geoMap = new ymaps.Map('map', {
+                    center: [0, 0],
+                    zoom: 5,
+                    type: "yandex#map",
+                    behaviors: ['drag', 'scrollZoom']
+                });
+            },
+
+            tearDown: function () {
+                this.geoMap.destroy();
+            },
+
+            testShowEvent: function () {
+                eventEye.observe(this.geoMap, ["hintshow", "hinthide"]);
+                this.geoMap.hint.show([0, 0]);
+
+                this.wait(function () {
+                    Y.assert(
+                        eventEye.length() == 1 &&
+                        eventEye.check(0, {
+                            type: "hintshow",
+                            target: this.geoMap
+                        })
+                    );
+                }, 200);
+            },
+
+            testHideEvent: function () {
+                this.geoMap.options.set('hintShowTimeout', false);
+                this.geoMap.hint.show([0, 0]);
+                eventEye.observe(this.geoMap, ["hintshow", "hinthide"]);
+                this.geoMap.hint.hide(null, true);
+
+                Y.assert(
+                    eventEye.length() == 1 &&
+                    eventEye.check(0, {
+                        type: "hinthide",
+                        target: this.geoMap
+                    })
+                );
+            },
+
+            // MAPSAPI-3420
+            testMAPSAPI3420: function () {
+                this.geoMap.options.set('hintShowTimeout', false);
+                this.geoMap.hint.show([0, 0]);
+                this.geoMap.hint.hide(null, true);
+                eventEye.observe(this.geoMap, ["hintshow", "hinthide"]);
+                this.geoMap.hint.show([0, 0]);
+
+                Y.assert(
+                    eventEye.length() == 1 &&
+                    eventEye.check(0, {
+                        type: "hintshow",
+                        target: this.geoMap
+                    })
+                );
+            },
+
+            testMapDestroy: function () {
+                this.geoMap.hint.show([0, 0]);
+                this.geoMap.destroy();
+                Y.assert(
+                    !document.getElementsByClassName('.ymaps-label-overlay').length,
+                    'Элемент .ymaps-label-overlay не удалился'
+                );
+            }
+        }
+    }
+    ymaps.ready(runTestCase);
+</script>
+</html>

@@ -1,0 +1,50 @@
+apply plugin: 'kotlin-android'
+
+ext {
+    baseReportDir = project.hasProperty('sandbox.outputDir') ? project.property('sandbox.outputDir') : 'reports'
+}
+
+android {
+    defaultConfig {
+        testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
+    }
+
+    testOptions {
+        unitTests {
+            all {
+                jvmArgs '-noverify'
+
+                testLogging {
+                    events 'passed', 'skipped', 'failed', 'standardOut', 'standardError'
+                }
+            }
+            includeAndroidResources = true
+        }
+    }
+}
+
+dependencies {
+    testImplementation "junit:junit:${project.property('junit.version')}"
+    testImplementation "org.robolectric:robolectric:${project.property('robolectric.version')}"
+    testImplementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:${project.property('kotlin.version')}"
+    testImplementation ("com.nhaarman.mockitokotlin2:mockito-kotlin:${project.property('kotlin.mockito.version')}") {
+        exclude group: 'org.jetbrains.kotlin', module: 'kotlin-stdlib'
+        exclude group: 'org.jetbrains.kotlin', module: 'kotlin-reflect'
+    }
+    testImplementation "androidx.test:runner:$supportTestLibVersion"
+}
+
+task copyVangaTestResults {
+    doLast {
+        println('Copying results...')
+        copy {
+            from "${projectDir}/build/test-results/testReleaseUnitTest"
+            into "${baseReportDir}/xml"
+        }
+        copy {
+            from "${projectDir}/build/reports/tests/testReleaseUnitTest"
+            into "${baseReportDir}/html"
+        }
+        println('Results copied')
+    }
+}

@@ -1,0 +1,259 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <title>option.Manager</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <!-- YUI -->
+    <script type="text/javascript" src="../../../test/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../../test/yui3combo/combo.css" />
+    <script type="text/javascript" src="../../../test/run-test-case.js"></script>
+    <!-- Code -->
+    <script type="text/javascript">
+        initAPI({
+            lang: "ru-RU",
+            load: "option.Manager,option.presetStorage,option.Mapper",
+            mode: "dev"
+        });
+    </script>
+</head>
+
+<body class="yui3-skin-sam"></body>
+
+<script type="text/javascript">
+    getTestCase = function (Y) {
+        return {
+            name: 'option.Manager',
+            testNoPreset: function() {
+                var grandParentOptionManager = new ymaps.option.Manager({
+                        a: 1,
+                        b: 4,
+                        d: 3
+                    }),
+                    parentOptionManager = new ymaps.option.Manager({
+                        b: 1,
+                        d: 5
+                    }),
+                    optionManager = new ymaps.option.Manager({
+                        d: 2
+                    });
+
+                parentOptionManager.setParent(grandParentOptionManager);
+                optionManager.setParent(parentOptionManager);
+
+                Y.assert(
+                    optionManager.get("a") == 1,
+                    "a определен неверно"
+                );
+                Y.assert(
+                    optionManager.get("b") == 1,
+                    "b определен неверно"
+                );
+                Y.assert(
+                    !optionManager.get("c"),
+                    "c определен неверно"
+                );
+                Y.assert(
+                    optionManager.get("d") == 2,
+                    "d определен неверно"
+                );
+            },
+
+            testWithPreset: function() {
+                // Добавим пресеты.
+                ymaps.option.presetStorage.add("p2_grandparent", {
+                    cab: 4
+                });
+                ymaps.option.presetStorage.add("p2_parent", {
+                    preset: "p2_grandparent",
+                    ca: 1,
+                    ab: 'x'
+                });
+                ymaps.option.presetStorage.add("p2_child", {
+                    preset: "p2_parent",
+                    c: 1
+                });
+                ymaps.option.presetStorage.add("p1_parent", {
+                    aa: 1
+                });
+                ymaps.option.presetStorage.add("p1_child", {
+                    preset: "p1_parent",
+                    a: null,
+                    b: 1
+                });
+
+                var grandParentOptionManager = new ymaps.option.Manager({
+                        preset: "p2_child",
+                        aa: 2,
+                        ab: 1,
+                        c: null
+                    }),
+                    parentOptionManager = new ymaps.option.Manager({
+                        preset: "p1_child",
+                        b: 2
+                    }, grandParentOptionManager),
+                    optionManager = new ymaps.option.Manager({});
+
+                optionManager.setParent(parentOptionManager);
+
+                Y.assert(
+                    optionManager.get("b") == 2,
+                    "b определен неверно"
+                );
+                Y.assert(
+                    optionManager.get("aa") == 1,
+                    "aa определен неверно"
+                );
+                Y.assert(
+                    optionManager.get("ab") == 1,
+                    "ab определен неверно"
+                );
+                Y.assert(
+                    optionManager.get("c") == null,
+                    "c определен неверно"
+                );
+                Y.assert(
+                    optionManager.get("ca") == 1,
+                    "ca определен неверно"
+                );
+                Y.assert(
+                    optionManager.get("cab") == 4,
+                    "cab определен неверно"
+                );
+
+                Y.assert(parentOptionManager.get('aa') == 1 && optionManager.get('aa') == 1, 'aa определён неверно');
+                parentOptionManager.set('preset', 'p2_child');
+                Y.assert(parentOptionManager.get('aa') == 2 && optionManager.get('aa') == 2, 'неправильно отработала смена пресета');
+
+                Y.assert(parentOptionManager.get('ab') == 'x' && optionManager.get('ab') == 'x', 'неправильно отработала смена пресета');
+                parentOptionManager.unset('preset');
+                Y.assert(parentOptionManager.get('ab') == 1 && optionManager.get('ab') == 1, 'неправильно отработало удаление пресета');
+            },
+
+            testSetters: function () {
+                var grandParentOptionManager = new ymaps.option.Manager({
+                        a: 1,
+                        b: 4,
+                        d: 3
+                    }),
+                    parentOptionManager = new ymaps.option.Manager({
+                        b: 1,
+                        d: 5
+                    }),
+                    parentOptionManager2 = new ymaps.option.Manager({
+                        a: 0
+                    }),
+                    optionManager = new ymaps.option.Manager({
+                        d: 2,
+                        x: 'test'
+                    }),
+                    res = '',
+                    undefined;
+
+                parentOptionManager.setParent(grandParentOptionManager);
+                optionManager.setParent(parentOptionManager);
+
+                optionManager.events.add('change', function (e) {
+                    res += e.get('target').get('d') + '/';
+                });
+
+                optionManager.set('d', 10).setParent(parentOptionManager2);
+                parentOptionManager.set('d', 5);
+
+                Y.assert(res == '10/10/' && optionManager.get('d') == 10, 'Неправильно отработали сеттеры');
+
+                res = '';
+                optionManager.setParent(parentOptionManager);
+                parentOptionManager.set('d', undefined);
+                optionManager.set('d', undefined);
+                parentOptionManager.setParent(null);
+
+                Y.assert(res == '10/10/3/undefined/' && optionManager.get('d') === undefined, 'Неправильно отработала смена контекста');
+
+                res = '';
+                optionManager.freeze().set('a', 20);
+                parentOptionManager.setParent(grandParentOptionManager);
+                parentOptionManager.set('a', 10);
+                Y.assert(res == '', 'Неправильно отработал freeze');
+                optionManager.unfreeze();
+                Y.assert(res == '3/', 'Неправильно отработал unfreeze');
+
+                optionManager.unsetAll();
+                Y.assert(optionManager.get('a') == 10 && !optionManager.get('x'), 'Неправильно сработал unsetAll')
+            },
+
+            testMapper: function () {
+                var mapper = new ymaps.option.Mapper('plain'),
+                    parent = new ymaps.option.Manager({
+                        zoomControlPosition: 'a',
+                        projection: 'b'
+                    }, null, null, mapper),
+                    child1 = new ymaps.option.Manager({
+                    }, parent, 'zoomControl'),
+                    child2 = new ymaps.option.Manager({
+                        position: 'c'
+                    }, parent, 'typeSelector');
+
+                mapper.setRule({
+                    key: 'position',
+                    rule: 'prefixed'
+                });
+
+                Y.assert(
+                    child1.get('position') == 'a' &&
+                    child1.get('projection') == 'b' &&
+                    child2.get('position') == 'c',
+                    "Неправильно отработал маппер опций"
+                );
+            },
+
+            testUserDataSafeOnGetAll: function () {
+                var userData = {
+                    a: 1,
+                    b: 2
+                };
+                var optionManager = new ymaps.option.Manager(userData);
+                Y.assert(optionManager.getAll() !== userData);
+            },
+
+            testUserDataSafeOnSet: function () {
+                var userData = {
+                    a: 1,
+                    b: 2
+                };
+                var optionManager = new ymaps.option.Manager(userData);
+                optionManager.set("a", "a");
+                Y.assert(optionManager.get("a") == "a" && userData.a == 1);
+            },
+
+            testUserDataSafeOnUnset: function () {
+                var userData = {
+                    a: 1,
+                    b: 2
+                };
+                var optionManager = new ymaps.option.Manager(userData);
+                optionManager.unset("a");
+                Y.assert(!optionManager.get("a") && userData.a == 1);
+            },
+
+            testGetAllWithNoDataOnConstructor: function () {
+                var optionManager = new ymaps.option.Manager();
+                Y.assert(optionManager.getAll());
+            },
+
+            testSetWithNoDataOnConstructor: function () {
+                var optionManager = new ymaps.option.Manager();
+                optionManager.set("a", 1);
+                Y.assert(optionManager.getAll().a == 1);
+            },
+
+            testUnsetWithNoDataOnConstructor: function () {
+                var optionManager = new ymaps.option.Manager();
+                optionManager.unset("a");
+                Y.assert(!optionManager.getAll().a);
+            }
+        }
+    };
+    ymaps.ready(runTestCase);
+</script>
+</html>

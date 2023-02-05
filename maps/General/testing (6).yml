@@ -1,0 +1,125 @@
+annotations:
+    project: maps-front-stories-int
+meta:
+    id: maps-front-stories-int_testing
+    project_id: maps-front-stories-int
+    inherit_acl: true
+labels:
+    infra_service: 336
+    infra_environment: 532
+spec:
+    deploy_units:
+        app:
+            patchers_revision: 13
+            endpoint_sets:
+                - port: 80
+            images_for_boxes: {}
+            network_defaults:
+                network_id: _MAPSTESTQNETS_
+            tvm_config:
+                mode: enabled
+                blackbox_environment: Test
+                client_port: 2
+                clients:
+                    - source:
+                          alias: maps-front-stories-int
+                          app_id: 2024327
+                      secret_selector:
+                          alias: sec-01en60r9f6emaj14d1ywsdbbd4:ver-01g3ty17q1w5m9w3ydfrmysxyw
+                          id: TVM_SECRET
+                      destinations:
+                          - alias: bvm-int
+                            app_id: 2020032
+                          - alias: clean-web
+                            app_id: 2016563
+                          - alias: avatars
+                            app_id: 2002148
+            multi_cluster_replica_set:
+                replica_set:
+                    clusters:
+                        - cluster: sas
+                          spec:
+                              constraints:
+                                  antiaffinity_constraints:
+                                      - key: rack
+                                        max_pods: 1
+                              replica_count: 1
+                        - cluster: vla
+                          spec:
+                              constraints:
+                                  antiaffinity_constraints:
+                                      - key: rack
+                                        max_pods: 1
+                              replica_count: 1
+                    deployment_strategy:
+                        max_unavailable: 1
+                    pod_template_spec:
+                        spec:
+                            disk_volume_requests:
+                                - id: maps-front-stories-int_testing-disk-0
+                                  storage_class: hdd
+                                  quota_policy:
+                                      capacity: 16106127360
+                                      bandwidth_guarantee: 5242880
+                                      bandwidth_limit: 10485760
+                                  labels:
+                                      used_by_infra: true
+                            resource_requests:
+                                memory_guarantee: 1073741824
+                                memory_limit: 1073741824
+                                vcpu_guarantee: 250
+                                vcpu_limit: 250
+                            host_infra:
+                                monitoring:
+                                    unistats:
+                                        - workload_id: app_workload
+                                          port: 7032
+                                          path: /unistat
+                            secret_refs:
+                                sec-01en60r9f6emaj14d1ywsdbbd4:ver-01g3ty17q1w5m9w3ydfrmysxyw:
+                                    secret_id: sec-01en60r9f6emaj14d1ywsdbbd4
+                                    secret_version: ver-01g3ty17q1w5m9w3ydfrmysxyw
+                            pod_agent_payload:
+                                spec:
+                                    boxes:
+                                        - id: app_box
+                                          rootfs: {}
+                                    resources: {}
+                                    mutable_workloads:
+                                        - workload_ref: app_workload
+                                    workloads:
+                                        - id: app_workload
+                                          box_ref: app_box
+                                          env:
+                                              - name: ENVIRONMENT
+                                                value:
+                                                    literal_env:
+                                                        value: testing
+                                              - name: POSTGRES_PASSWORD
+                                                value:
+                                                    secret_env:
+                                                        alias: >-
+                                                            sec-01en60r9f6emaj14d1ywsdbbd4:ver-01g3ty17q1w5m9w3ydfrmysxyw
+                                                        id: DB_PASSWORD
+                                          liveness_check:
+                                              tcp_check:
+                                                  port: 80
+                                          readiness_check:
+                                              http_get:
+                                                  port: 80
+                                                  path: /ping
+                                                  any: true
+                                                  time_limit:
+                                                      max_execution_time_ms: 1000
+                                          start:
+                                              command_line: bash -c "/start.sh"
+                                          stop_policy:
+                                              container:
+                                                  command_line: bash -c "/detach.sh"
+                                                  time_limit:
+                                                      max_execution_time_ms: 20000
+                                                      max_restart_period_ms: 30000
+                                                      min_restart_period_ms: 30000
+                                              max_tries: 2
+                                          transmit_logs: true
+    revision_info: {}

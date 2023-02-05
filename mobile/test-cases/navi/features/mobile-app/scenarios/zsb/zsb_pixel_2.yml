@@ -1,0 +1,99 @@
+components: zsb_pixel_2
+testing:
+  - regress
+
+specs-integration:
+  aliases:
+    - &инфо_аудит
+      - info: |
+          - Dev. Set. -> Misc -> Debug config enable - On
+          - Использовать интенты:
+            [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download-2.b60e70b.png){title=QR-код}
+
+            `yandexnavi://reset_exp`
+            [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download.7ed8e87.png){title=QR-код}
+
+            `yandexnavi://set_ad_page_id?page_id=null`
+            [collapsed-image](https://jing.yandex-team.ru/files/vikelvar/testing_pixel_audit_2_zsb.png){title=QR-код}
+
+            `yandexnavi://set_ad_page_id?page_type=zero_speed&page_id=navi_zero_speed_banner_10/testing_pixel_audit_2_zsb`
+            [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download-1.ce82061.png){title=QR-код}
+
+            `yandexnavi://add_exp?navi_feature_zsb_statuses_logging=enabled&navi_feature_day_night_fast_switch=enabled&navi_ad_product_cooldown_zero_speed_banner=10&navi_ads_logging_zsb_closing_errors=enabled`
+          - Перезапустить приложение
+          - Девайс подключен к инструментам снятия логов или открыта Log-view панель
+    - &шаги_для_отображения_зсб
+      - do: Запустить проигрывание MAPKITSIM-4261
+      - do: Дождаться остановки движения перед светофором
+
+specs:
+  Логирование IDFA для ZSB-Pixel при разрешении доступа:
+    - info: |
+        - Версия iOS - 14.5 и выше
+        - Нави разрешён доступ к IDFA (Настройки iPhone -> Навигатор -> Разрешить отслеживание -> Включить тычку)
+    - *инфо_аудит
+    - *шаги_для_отображения_зсб
+    - assert: |
+        - Появляется баннер ZSB
+        - В логи приходит URL `https://ad.doubleclick.net`
+        - В URL содержится параметр `dc_lat=0`
+        - В URL содержится параметр `dc_rdid=N`, где вместо N отображается IDFA пользователя
+
+    - platforms:
+        - ios
+    - testing:
+        - acceptance_navi
+    - tags:
+        - metric
+
+  Отсуствие логирования IDFA в ZSB-Pixel при запрете доступа:
+    - info: |
+        - Версия iOS - 14.5 и выше
+        - Нави запрещён доступ к IDFA (Настройки iPhone -> Навигатор -> Разрешить отслеживание -> Выключить тычку)
+    - *инфо_аудит
+    - *шаги_для_отображения_зсб
+    - assert: |
+        - Появляется баннер ZSB
+        - В логи приходит URL `https://ad.doubleclick.net`
+        - В URL содержится параметр `dc_lat=1`
+        - В URL содержится параметр `dc_rdid=` с пустым значением
+
+    - platforms:
+        - ios
+    - testing:
+        - acceptance_navi
+    - tags:
+        - metric
+
+  Логирование GAID при отображении ZSB-Pixel:
+    - *инфо_аудит
+    - *шаги_для_отображения_зсб
+    - assert: |
+        - Появляется баннер ZSB
+        - В логи приходит URL `https://ad.doubleclick.net`
+        - В URL содержится параметр `dc_lat=0`
+        - В URL содержится параметр `dc_rdid=N`, где вместо N отображается GAID пользователя
+
+    - platforms:
+        - android
+    - testing:
+        - acceptance_navi
+    - tags:
+        - metric
+
+  Отсутствие логирования GAID в ZSB-Pixel на устройствах без Google-сервисов:
+    - *инфо_аудит
+    - *шаги_для_отображения_зсб
+    - assert: |
+        - Появляется баннер ZSB
+        - В логи приходит URL `https://ad.doubleclick.net`
+        - В URL содержится параметр `dc_lat=1`
+        - В URL содержится параметр `dc_rdid=` с пустым значением
+
+    - platforms:
+        - android
+    - testing:
+        - acceptance_navi
+    - tags:
+        - metric
+        - not_gp

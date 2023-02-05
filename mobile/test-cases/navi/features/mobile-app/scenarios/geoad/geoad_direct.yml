@@ -1,0 +1,160 @@
+components: geoad_direct
+testing:
+  - regress
+
+specs-integration:
+  aliases:
+    - &Инфогеоддирект
+      - info: |
+          - Dev. Set. -> Misc -> Debug config enable - On
+          - Использовать интенты по очереди:
+            [collapsed-image](https://jing.yandex-team.ru/files/midway/download-7.png){title=QR-код}
+
+            `yandexnavi://reset_exp`
+          - Перезапустить приложение
+            [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download.7ed8e87.png){title=QR-код}
+            
+            `yandexnavi://set_ad_page_id?page_id=null`
+            [collapsed-image](https://jing.yandex-team.ru/files/midway/download-2-2.png){title=QR-код iOS}
+
+            iOS: `yandexnavi://set_ad_page_id?page_type=overview_direct_source&page_id=R-IM-588231-3`
+            [collapsed-image](https://jing.yandex-team.ru/files/midway/download-5-1.png){title=QR-код Android}
+
+            Android: `yandexnavi://set_ad_page_id?page_type=overview_direct_source&page_id=R-IM-588230-3`
+            [collapsed-image](https://jing.yandex-team.ru/files/midway/download-6-1.png){title=QR-код Android и iOS}
+
+            `yandexnavi://add_exp?navi_overview_ads_priority_for_RU=overview_geo_ad,brand_route,via&navi_ad_product_cooldown_overview_banner=60&navi_ads_overview_ad_queue=direct&navi_feature_day_night_fast_switch=enabled` 
+          - Перезапустить приложение
+    - &Построение_маршрута_геоэд_директ_шаг
+      - do: |
+          - Построить маршрут мимо БЦ Красная Роза (Москва, ул.Льва Толстого 16)
+    - &Построение_маршрута_результат_геоэд_директ_результат
+      - assert: |
+          - Над карточкой обзора появляется баннер GeoAd  
+ 
+specs:
+  GeoAd Direct логирование взаимодействия с баннером:
+    - *Инфогеоддирект
+    - info: |
+        - Девайс подключен к инструментам снятия логов или открыта Log-view панель
+    - do: Построить маршрут мимо БЦ Красная Роза (Москва, ул.Льва Толстого 16)
+    - assert: |
+        - Над карточкой обзора появляется баннер GeoAd
+        - В логах приходит событие:
+         `route.direct-visibility` с параметром visible==true 
+         `direct.bb.pin.show` с параметром AdType=overview_banner
+    - do: Тап на баннер
+    - assert: |
+        - Открывается вебвью с рекламным контентом, соответствующим этому баннеру.
+        - В логах приходит событие:
+         `route.direct-ad-click`
+         `direct.bb.pin.tap` с параметром AdType=overview_banner
+    - do: Тап на кнопку Закрыть в вебью
+    - assert: |
+        - Вебью закрывается
+        - GeoAd скрывается
+        - В логах приходит событие `route.direct-visibility` с параметром visible==false
+
+    - platforms:
+      - ios
+      - android
+    - tags:
+        - metric
+
+
+  GeoAd Direct проверка UI баннера:
+    - *Инфогеоддирект
+    - *Построение_маршрута_геоэд_директ_шаг
+    - *Построение_маршрута_результат_геоэд_директ_результат
+    - do: Посмотреть на отображенния баннера
+    - assert: |
+        - Баннер отображается на всю ширину экрана "Обзор Маршрута"
+        - Картинка не обрезана
+        - UI не ломается
+    - do: |
+        - Сменить ориентацию
+    - assert: |
+        - Баннер отображается на всю ширину экрана "Обзор Маршрута"
+        - Картинка не обрезана
+        - UI не ломается
+
+    - platforms:
+      - ios
+      - android
+   
+   
+  GeoAd Direct логика закрытия при тапе на кнопку Закрыть:
+    - *Инфогеоддирект
+    - *Построение_маршрута_геоэд_директ_шаг
+    - *Построение_маршрута_результат_геоэд_директ_результат
+    - do: Тап на баннер GeoAd
+    - assert: |
+        - Открывается вебвью, соответствующим этому баннеру.
+    - do: |
+        - Тап на кнопку Закрыть
+    - assert: |
+        - Вебвью закрывается
+        - GeoAd скрывается
+        - Маршрут не сбрасывается
+
+    - platforms:
+      - ios
+      - android
+   
+
+  GeoAd Direct логика закрытия при свайпе вниз на iOS:
+    - *Инфогеоддирект
+    - *Построение_маршрута_геоэд_директ_шаг
+    - *Построение_маршрута_результат_геоэд_директ_результат
+    - do: Тап на баннер GeoAd
+    - assert: |
+        - Открывается карточка вебвью, соответствующим этому баннеру.
+    - do: |
+        Закрыть вебвью свайпом вниз
+    - assert: |
+        - Вебвью/карточка закрывается
+        - GeoAd скрывается
+        - Маршрут не сбрасывается
+    
+
+    - platforms:
+      - ios
+  
+
+  GeoAd Direct логика закрытия тапом на кнопку Назад:
+    - *Инфогеоддирект
+    - *Построение_маршрута_геоэд_директ_шаг
+    - *Построение_маршрута_результат_геоэд_директ_результат
+    - do: Тап на баннер GeoAd
+    - assert: |
+        - Открывается вебвью, соответствующим этому баннеру.
+    - do: |
+        - Закрыть вебвью тапом на кнопку Назад
+    - assert: |
+        - Вебвью закрывается
+        - GeoAd скрывается
+        - Маршрут не сбрасывается
+    
+
+    - platforms:
+      - android
+      - ios
+
+
+  GeoAd Direct логика закрытия тапом на системную кнопку Back на Android:
+    - *Инфогеоддирект
+    - *Построение_маршрута_геоэд_директ_шаг
+    - *Построение_маршрута_результат_геоэд_директ_результат
+    - do: Тап на баннер GeoAd
+    - assert: |
+        - Открывается вебвью, соответствующим этому баннеру.
+    - do: |
+        - Закрыть вебвью тапом на системную кнопку Back
+    - assert: |
+        - Вебвью закрывается
+        - GeoAd скрывается
+        - Маршрут не сбрасывается
+    
+
+    - platforms:
+      - android

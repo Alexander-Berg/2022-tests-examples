@@ -1,0 +1,250 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <title>data.Manager</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <!-- YUI -->
+    <script type="text/javascript" src="../../../test/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../../test/yui3combo/combo.css"/>
+    <script type="text/javascript" src="../../../test/run-test-case.js"></script>
+    <script type="text/javascript" src="../../../test/util/event-eye.js"></script>
+    <!-- Code -->
+    <script type="text/javascript">
+        initAPI({
+            lang: "ru-RU",
+            load: "data.Manager",
+            mode: "debug"
+        });
+    </script>
+</head>
+
+<body class="yui3-skin-sam"></body>
+
+<script type="text/javascript">
+    function getTestCase (Y) {
+        return {
+            name: "data.Manager",
+            // debug: true,
+
+            tearDown: function () {
+                eventEye.reset();
+            },
+
+            checkEvent: function (index, dataManager) {
+                return eventEye.check(index, {
+                    type: "change",
+                    target: dataManager
+                });
+            },
+
+            testConstructorAndGet: function () {
+                var dataManager = new ymaps.data.Manager({
+                    data: {
+                        name: "Alfa"
+                    },
+                    arr: ["g", ["o"]]
+                });
+
+                Y.assert(
+                    dataManager.get("data.name") == "Alfa" && dataManager.get("arr.1.0") == "o"
+                );
+            },
+
+            testEmptyConstructorAndWrongGet: function () {
+                var dataManager = new ymaps.data.Manager();
+                Y.assert(typeof dataManager.get("data.name") == "undefined");
+            },
+
+            testGetAll: function () {
+                var data = {
+                        data: {
+                            name: "Alfa"
+                        },
+                        arr: ["g", ["o"]]
+                    },
+                    dataManager = new ymaps.data.Manager(data);
+
+                Y.assert(dataManager.getAll() === data);
+            },
+
+            testWrongSet: function () {
+                var dataManager = new ymaps.data.Manager();
+                eventEye.observe(dataManager, "change");
+                try {
+                    dataManager.set("data.name", "Alfa");
+                    Y.fail('Нет ошибки');
+                } catch (e) {
+                    Y.assert(
+                        !eventEye.length() &&
+                        e.message == "data.Manager: некорректный путь к данным: data.name"
+                    );
+                }
+            },
+
+            testSet: function () {
+                var dataManager = new ymaps.data.Manager();
+                eventEye.observe(dataManager, "change");
+
+                dataManager
+                    .set("nick", "Omega")
+                    .set({
+                        data: {
+                            name: "Alfa"
+                        }
+                    });
+
+                Y.assert(
+                    eventEye.length() == 2 && this.checkEvent(0, dataManager) && this.checkEvent(1, dataManager) &&
+                    dataManager.get("nick") == "Omega" &&
+                    dataManager.get("data.name") == "Alfa"
+                );
+            },
+
+            testSetSafeness: function () {
+                var originalHash = {
+                        data: "test"
+                    },
+                    dataManager = new ymaps.data.Manager(originalHash);
+
+                dataManager.set({
+                    name: "Bob"
+                });
+
+                Y.assert(
+                    dataManager.getAll() !== originalHash &&
+                    typeof originalHash.name == "undefined"
+                );
+            },
+
+            testUnset: function () {
+                var dataManager = new ymaps.data.Manager();
+                dataManager.set({
+                    a: {
+                        a: "a",
+                        b: "b"
+                    },
+                    b: {
+                        a: "1",
+                        b: "2"
+                    },
+                    c: {
+                        a: "+",
+                        b: "-"
+                    }
+                });
+                
+                eventEye.observe(dataManager, "change");
+
+                dataManager
+                    .unset("a.a")
+                    .unset(["b.a", "b.b"])
+                    .unset("c");
+
+                Y.assert(
+                    eventEye.length() == 3 && this.checkEvent(0, dataManager) && this.checkEvent(1, dataManager) && this.checkEvent(2, dataManager) &&
+                    !dataManager.get("a.a") && dataManager.get("a.b") == "b" &&
+                    !dataManager.get("b.a") && !dataManager.get("b.b") &&
+                    !dataManager.get("c")
+                );
+            },
+
+            testUnsetSafeness: function () {
+                var originalHash = {
+                        data: "test"
+                    },
+                    dataManager = new ymaps.data.Manager(originalHash);
+
+                dataManager.unset("data");
+
+                Y.assert(
+                    dataManager.getAll() !== originalHash &&
+                    typeof dataManager.get("data") == "undefined" &&
+                    originalHash.data == "test"
+                );
+            },
+
+            testSetAll: function () {
+                var dataManager = new ymaps.data.Manager();
+                dataManager.set({
+                    a: {
+                        a: "a"
+                    },
+                    b: {
+                        a: "1"
+                    }
+                });
+
+                eventEye.observe(dataManager, "change");
+
+                dataManager.setAll({
+                    c: "2"
+                });
+
+                Y.assert(
+                    eventEye.length() == 1 && this.checkEvent(0, dataManager) &&
+                    !dataManager.get("a") && !dataManager.get("b") && dataManager.get("c")
+                );
+            },
+
+            testUnsetAll: function () {
+                var dataManager = new ymaps.data.Manager();
+                dataManager.set({
+                    a: {
+                        a: "a"
+                    },
+                    b: {
+                        a: "1"
+                    }
+                });
+
+                eventEye.observe(dataManager, "change");
+
+                dataManager.unsetAll();
+
+                Y.assert(
+                    eventEye.length() == 1 && this.checkEvent(0, dataManager) &&
+                    !dataManager.get("a") && !dataManager.get("b")
+                );
+            },
+
+            testFreeze: function () {
+                var dataManager = new ymaps.data.Manager();
+                dataManager.freeze()
+                    .set({
+                        a: {
+                            a: "a"
+                        },
+                        b: {
+                            a: "1"
+                        }
+                    })
+                    .unset("a")
+                    .unsetAll();
+
+                Y.assert(!eventEye.length() && dataManager.isFrozen());
+            },
+
+            testFakeUnfreeze: function () {
+                var dataManager = new ymaps.data.Manager();
+                dataManager.freeze().unfreeze();
+
+                Y.assert(!eventEye.length() && !dataManager.isFrozen());
+            },
+
+            testUnfreeze: function () {
+                var dataManager = new ymaps.data.Manager();
+                eventEye.observe(dataManager, "change");
+                dataManager.freeze()
+                    .set("a", 1)
+                    .unfreeze();
+
+                Y.assert(
+                    eventEye.length() && this.checkEvent(0, dataManager) && !dataManager.isFrozen()
+                );
+            }
+        };
+    }
+    ymaps.ready(runTestCase);
+</script>
+</html>

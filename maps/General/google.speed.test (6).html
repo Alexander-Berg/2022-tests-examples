@@ -1,0 +1,68 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <title>Google markers</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <!-- YUI -->
+    <script type="text/javascript" src="../../../test/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../../test/yui3combo/combo.css" />
+    <script type="text/javascript" src="../../../test/run-test-case.js"></script>
+    <!-- Code -->
+    <script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?sensor=false"></script>
+</head>
+
+<script type="text/javascript">
+    function getTestCase(Y) { return {
+        name: "Google markers",
+        debug: false,
+        messages:[],
+
+        log: function (message) {
+            this.messages.push(message);
+            Y.log(message, "warn");
+        },
+
+        test: function() {
+            var map = new google.maps.Map(document.getElementById('map'), {
+                zoom: 10,
+                center: new google.maps.LatLng(55.75, 37.61),
+                mapTypeId: google.maps.MapTypeId.ROADMAP
+            });
+
+            var _this = this,
+            listener = google.maps.event.addListener(map, 'bounds_changed', function() {
+                _this.resume(function () {
+                    var bounds = map.getBounds(),
+                        northEast = bounds.getNorthEast(),
+                        southWest = bounds.getSouthWest(),
+                        l = 1000,
+                        span = [northEast.lat() - southWest.lat(), northEast.lng() - southWest.lng()],
+                        startTime = new Date(),
+                        loadedMarkers = 0;
+
+                    for (var i = 0; i < l; i++) {
+                        marker = new google.maps.Marker({
+                            position: new google.maps.LatLng(southWest.lat() + span[0] * Math.random(), southWest.lng() + span[1] * Math.random()),
+                            map: map
+                        });
+                        google.maps.event.addListener(marker, 'icon_changed', function() {
+                            if (loadedMarkers < l) {
+                                loadedMarkers++;
+                            } else {
+                                _this.log("Google markers time: " + (new Date() - startTime)  + "ms");
+                            }
+                        });
+                    }
+                    google.maps.event.removeListener(listener);
+                });
+            });
+            this.wait();
+        }
+    }}
+</script>
+
+<body class="yui3-skin-sam" onload="runTestCase()">
+    <div id="map" style="height: 500px; width: 700px;"></div>
+</body>
+</html>

@@ -1,0 +1,124 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <title>map.Balloon</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <!-- YUI -->
+    <script type="text/javascript" src="../../../test/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../../test/yui3combo/combo.css"/>
+    <script type="text/javascript" src="../../../test/run-test-case.js"></script>
+    <!-- Code -->
+    <script type="text/javascript">
+        initAPI({
+            lang: "ru-RU",
+            load: "Map,map.Balloon,util.dom.element,templateLayoutFactory",
+            mode: "debug"
+        });
+    </script>
+    <script type="text/javascript" src="../../../test/util/event-eye.js"></script>
+</head>
+
+<body class="yui3-skin-sam"><div id="map" style="width: 400px; height: 400px;"></div></body>
+
+<script type="text/javascript">
+    function getTestCase (Y) {
+        return {
+            name: "map.Balloon",
+            debug: false,
+
+            setUp: function () {
+                geoMap = new ymaps.Map('map', {
+                    center: [0, 0],
+                    zoom: 5,
+                    type: "yandex#map",
+                    behaviors: ['drag', 'scrollZoom']
+                }, {
+                    balloonPanelMaxMapArea: 0
+                });
+                mapBalloon = new ymaps.map.Balloon(geoMap);
+            },
+
+            tearDown: function () {
+                mapBalloon.destroy();
+                geoMap.destroy();
+            },
+
+            testOpen: function() {
+                eventEye.observe(mapBalloon, ["open", "close"]);
+
+                var content = 'test';
+
+                mapBalloon.open([0, 0], content, { a: 'b' }).then(function () {
+                    this.resume(function () {
+                        var element = ymaps.util.dom.element.findByPrefixedClass(geoMap.container.getElement(), 'balloon-overlay');
+                        Y.assert(element, "DOM-элемент не добавился");
+                        Y.assert((element.textContent || element.innerText) == content, 'Неправильно обработался контент');
+                        Y.assert(mapBalloon.getOverlaySync().options.get('a') == 'b', 'Неправильно применились опции');
+                        Y.assert(
+                            eventEye.length() == 1 &&
+                            eventEye.check(0, {
+                                type: "open",
+                                target: geoMap
+                            }),
+                            "Неверные события"
+                        );
+                    });
+                }, this);
+                
+                this.wait();
+            },
+
+            testClose: function() {
+                eventEye.observe(mapBalloon, ["open", "close"]);
+
+                mapBalloon.open([0, 0], 'asd').then(function () {
+                    mapBalloon.close().then(function () {
+                        this.resume(function () {
+                            Y.assert(
+                                !ymaps.util.dom.element.findByPrefixedClass(geoMap.container.getElement(), 'balloon-overlay'),
+                                "Балун не закрылся"
+                            );
+                            Y.assert(
+                                eventEye.length() == 2 &&
+                                eventEye.check(1, {
+                                    type: "close",
+                                    target: geoMap
+                                }),
+                                "Неверные события: кол-во " + eventEye.length()
+                            );
+                        });
+                    }, this);
+                }, this);
+
+                this.wait();
+            },
+
+            testIsOpen: function() {
+                mapBalloon.open([0, 0], 'asd').then(function () {
+                    this.resume(function () {
+                        Y.assert(
+                            mapBalloon.isOpen(),
+                            "Неверное значение после открытия"
+                        );
+
+                        mapBalloon.close().then(function () {
+                            this.resume(function () {
+                                Y.assert(
+                                    !mapBalloon.isOpen(),
+                                    "Неверное значение после закрытия"
+                                );
+                            });
+                        }, this);
+
+                        this.wait();
+                    });
+                }, this);
+
+                this.wait();
+            }
+        }
+    }
+    ymaps.ready(runTestCase);
+</script>
+</html>

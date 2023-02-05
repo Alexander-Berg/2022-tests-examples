@@ -1,0 +1,266 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <title>view.Polygon</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <!-- YUI -->
+    <script type="text/javascript" src="../../../../test/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../../../test/yui3combo/combo.css"/>
+    <script type="text/javascript" src="../../../../test/run-test-case.js"></script>
+    <!-- Code -->
+    <script type="text/javascript">
+        initAPI({
+            lang: "ru-RU",
+            load: "Map,GeoObject,option.Manager,graphics.render.detect.all,pane.EventsPane",
+            mode: "debug",
+            coordorder: "longlat"
+        });
+    </script>
+    <style type="text/css">
+        #pane {
+            width: 800px;
+            height: 600px;
+            background: #ccc;
+        }
+    </style>
+</head>
+<body class="yui3-skin-sam">
+
+<script type="text/javascript">
+
+var cursor;
+
+function getTestCase (Y) {
+    window.globalPixelsFire = function (eventType, pixels) {
+        var pagePixels = geoMap.converter.globalToPage(pixels),
+                eventLayer = ymaps.pane.event.get(geoMap).getElement();
+        Y.Event.simulate(eventLayer, eventType, {
+            clientX: pagePixels[0],
+            clientY: pagePixels[1]
+        });
+    };
+    return {
+        name: "view.Polygon",
+        debug: true,
+
+        testAdd: function () {
+            var geometryLine = {
+                        type: 'LineString',
+                        coordinates: [
+                            [10, 20],
+                            [20, 20],
+                            [30, 20],
+                            [70, 20],
+                            [70, 30],
+                            [70, 10],
+                            [80, 10],
+                            [90, 10]
+                        ]
+                    },
+                    geometryLine2 = {
+                        type: 'LineString',
+                        coordinates: [
+                            [10, 30],
+                            [20, 30],
+                            [30, 30],
+                            [70, 30],
+                            [70, 40],
+                            [70, 20],
+                            [80, 10],
+                            [90, 20]
+                        ]
+                    },
+                    geometryPolygon = {
+                        type: 'Polygon',
+                        coordinates: [
+                            [
+                                [60, 60],
+                                [170, 60],
+                                [80, 40],
+                                [60, 60]
+                            ]
+                            //,[[-130, 40], [-130, 30], [-120, 30], [-120, 40]]
+                        ]
+                    },
+                    geometryHoledPolygon = {
+                        type: 'Polygon',
+                        coordinates: [
+                            [
+                                [-55, 40],
+                                [80, -40],
+                                [-60, -30],
+                                [-55, 40]
+                            ],
+                            [
+                                [-40, 20],
+                                [40, -40],
+                                [-20, -40],
+                                [-40, 20]
+                            ],
+                            [
+                                [-20, -30],
+                                [85, 20],
+                                [10, 30],
+                                [-20, -30]
+                            ]
+
+//                            [[-110, 80], [165, -80], [-125, -65], [-110, 80]],
+//                            [[-80, 40], [80, -80], [-45, -83], [-80, 40]],
+//                            [[-40, -60], [170, 40], [20, 60], [-40, -60]]
+                        ]
+                    };
+
+            geoObject = new ymaps.GeoObject({
+                geometry: geometryLine,
+                properties: {
+                    hintContent: 'Polyline'
+                }
+            }, {
+                draggable: true,
+                strokeColor: '#007700',
+                strokeWidth: 5,
+                strokeStyle: 'shortdot',
+                interactivityModel: 'default#opaque',
+                //strokeStyle: '1 1',
+                renderType: 'SVG'
+            });
+            geoMap.geoObjects.add(geoObject);
+
+            geoObject = new ymaps.GeoObject({
+                geometry: geometryLine2,
+                properties: {
+                    hintContent: 'Polyline2'
+                }
+            }, {
+                draggable: true,
+                strokeColor: '#007700',
+                strokeWidth: 5,
+                //strokeStyle: '1 1',
+                renderType: 'SVG'
+            });
+            // geoMap.geoObjects.add(geoObject);
+
+            geoObject2 = new ymaps.GeoObject({
+                geometry: geometryHoledPolygon,
+                properties: {
+                    hintContent: 'Polygon 1'
+                }
+            }, {
+                draggable: true,
+                strokeColor: '#ff0000',
+                fillColor: '#6699ffAA',
+                strokeWidth: 8,
+                strokeStyle: [2, 2]
+            });
+            geoMap.geoObjects.add(geoObject2);
+
+            geoObject3 = new ymaps.GeoObject({
+                geometry: geometryPolygon,
+                properties: {
+                    hintContent: 'Polygon 2',
+                    balloonContentBody: 'Balloon Body',
+                    balloonContentFooter: 'Balloon Footer'
+                }
+            }, {
+                draggable: true,
+                strokeColor: '#ffff00',
+                fillColor: '#9966ff44',
+                strokeWidth: 4,
+                //renderType: 'SVG',
+                opacity: '1'
+            });
+            // geoMap.geoObjects.add(geoObject3);
+
+            geoObject2.events.add('click', function () {
+                geoMap.geoObjects.remove(geoObject2);
+            });
+            // geoObject2.events.add('mouseleave', onMouseLeave, 'geoObject');
+
+
+            var _geoObject = new ymaps.GeoObject({
+                        geometry: {
+                            type: 'Point',
+                            coordinates: geoMap.getCenter()
+                        }
+                    }, {
+                        draggable: true,
+                        interactivityModel: 'default#opaque'
+                    }
+            );
+            geoMap.geoObjects.add(_geoObject);
+        }
+    }
+}
+
+function globalToGeo (geometry) {
+    var result = [];
+    if (geometry.type == 'Polygon') {
+        for (var i = 0, r, l = geometry.coordinates.length; i < l; i++) {
+            r = [];
+            for (var j = 0, m = geometry.coordinates[i].length; j < m; j++) {
+                r.push(geoMap.options.get('projection').fromGlobalPixels(geometry.coordinates[i][j], 0));
+            }
+            result.push(r);
+        }
+    }
+    return { type: geometry.type, coordinates: result };
+}
+
+function onMouseEnter () {
+    cursor = geoMap.cursors.push('pointer');
+}
+
+function onMouseLeave () {
+    cursor.remove();
+}
+
+function drawGraphicPolygon (coordinates, options) {
+    var polygon = new ymaps.graphics.overlay.Polygon(coordinates, new ymaps.option.Manager(options));
+    polygon.setMap(geoMap);
+    return polygon;
+}
+
+function drawHotspotRepresentation (hotspot) {
+    // TODO hotspot.getPixels()
+    // TODO graphicsGlobalOpacity сдвигает вправо, fillOpacity работает очень странно
+
+
+    drawGraphicPolygon(hotspot._points ? [hotspot._points] : hotspot.getParts().fill._geometry._coordinates, {
+        fillOpacity: '0.4',
+        strokeColor: '#00ff00',
+        fillColor: '#6699ff',
+        strokeWidth: 0,
+        strokeStyle: '2 2'
+    });
+
+    if (hotspot.getParts) {
+        for (var i = 0, l = hotspot.getParts().contours.length; i < l; i++) {
+            drawGraphicPolygon([hotspot.getParts().contours[i]._points], {
+                fillOpacity: '0.4',
+                strokeColor: false,
+                fillColor: '#ff0000',
+                strokeWidth: 0
+            });
+        }
+    }
+}
+
+ymaps.ready(function () {
+    geoMap = new ymaps.Map('pane', {
+        center: [0, 20],
+        type: "yandex#map",
+        controls: [],
+        zoom: 2
+    }, {
+        geoObjectRenderType: 'SVG'
+    });
+    runTestCase();
+});
+
+</script>
+
+<div id="pane"></div>
+
+</body>
+</html>

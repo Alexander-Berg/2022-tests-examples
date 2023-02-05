@@ -1,0 +1,110 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <title>Hotspot.ObjectSource</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <!-- YUI -->
+    <script type="text/javascript" src="../../../test/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../../test/yui3combo/combo.css" />
+    <script type="text/javascript" src="../../../test/run-test-case.js"></script>
+    <!-- Code -->
+    <script type="text/javascript">
+        initAPI({
+            lang: "ru-RU",
+            mode: "debug"
+        });
+    </script>
+</head>
+
+<body class="yui3-skin-sam"><div id="map" style="height: 256px; width: 256px; overflow: hidden; position: relative;"></div></body>
+
+<script type="text/javascript">
+    function getTestCase(Y) { return {
+        name: "hotspot.ObjectSource",
+
+        testError: function () {
+            var tileUrlTemplate = 'test/error.jsonp',
+                keyTemplate = 'test_callback',
+                objSource = new ymaps.hotspot.ObjectSource(tileUrlTemplate, keyTemplate);
+
+            var map = new ymaps.Map('map', { center: [37.621587,55.74954], zoom: 10}),
+                layer = {
+                    getMap: function() {
+                        return map;
+                    },
+
+                    options: new ymaps.option.Manager({
+                        projection: ymaps.projection.wgs84Mercator
+                    })
+                },
+                fCallback = function(data) {
+                    Y.fail('Тайлы отдают ошибку. Обработчик не должен вызываться.');
+                };
+            objSource.requestObjects(layer, [618, 321], 10, fCallback);
+            map.destroy();
+        },
+
+        testObject: function() {
+            var _this = this;
+            var tileUrlTemplate = 'test/tiles?l=jnj&%l&%c&tm=a1ee5a8530fa7c66be19f84c80219ce1',
+                keyTemplate = '%c&l=jnj&tm=a1ee5a8530fa7c66be19f84c80219ce1',
+                objSource = new ymaps.hotspot.ObjectSource(tileUrlTemplate, keyTemplate);
+
+            var map = new ymaps.Map('map', { center: [37.621587,55.74954], zoom: 10}),
+                layer = {
+                    getMap: function() {
+                        return map;
+                    },
+
+                    options: new ymaps.option.Manager({
+                        projection: ymaps.projection.wgs84Mercator
+                    })
+                },
+                fCallback = function(data) {
+                    Y.assert(data.length == 11, 'Неверно выполнилась подгрзузка данных.');
+                };
+            objSource.requestObjects(layer, [618, 321], 10, fCallback);
+            map.destroy();
+        },
+
+        testGetTileUrl: function() {
+            var template = function(tile, zoom) {
+                    return tile[0] + 'la' + tile[1] + 'la' + zoom;
+                },
+                source = new ymaps.hotspot.ObjectSource(template, 'key');
+            Y.assert(source.getTileUrl([1, 2], 3) == '1la2la3', "Не работает функция-шаблон.");
+
+            source.setTileUrlTemplate('domain1=%d|8__domain2=%d|4__domain3=%d|8__domain4=%d');
+            Y.assert(source.getTileUrl([1, 2], 3) == 'domain1=7__domain2=3__domain3=7__domain4=3', "Неверно посчитан номер для сложного шаблона");
+        },
+
+        testNewLoading: function() {
+            // сравнивать с http://n.euclid.rdr.deneb.maps.dev.yandex.net:17074/?l=wskl&x=79120&y=40900&z=17
+            // сохраненная копия лежит в папке test
+            //tileUrlTemplate = 'http://maps-wiki.dfilatov.alexa.maps.dev.yandex.ru/actions/test-hotspots.xml?%c',
+            var tileUrlTemplate = 'test/test-hotspots.jsonp?%c',
+                keyTemplate = 'jsonp__testCallback',
+                objSource = new ymaps.hotspot.ObjectSource(tileUrlTemplate, keyTemplate),
+                map = new ymaps.Map('map', { center: [37.621587,55.74954], zoom: 10}),
+                layer = {
+                    getMap: function() {
+                        return map;
+                    },
+
+                    options: new ymaps.option.Manager()
+                },
+
+                fCallback = function(data) {
+                    this.resume(function() {
+                        Y.assert(data.length == 6, 'Неверно выполнилась подгрузка данных в новом формате.');
+                    });
+                };
+            map.setGlobalPixelCenter([79120 * 256 + 128, 40900 * 256 + 128], 17);
+            objSource.requestObjects(layer, [79120, 40900], 17, ymaps.util.bind(fCallback, this));
+            this.wait(3000);
+        }
+    }}
+    ymaps.ready(runTestCase);
+</script>
+</html>

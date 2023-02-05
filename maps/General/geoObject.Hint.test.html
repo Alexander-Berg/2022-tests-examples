@@ -1,0 +1,243 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <title>geoObject.Hint</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <!-- YUI -->
+    <script type="text/javascript" src="../../../test/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../../test/yui3combo/combo.css"/>
+    <script type="text/javascript" src="../../../test/run-test-case.js"></script>
+    <!-- Code -->
+    <script type="text/javascript">
+        initAPI({
+            lang: "ru-RU",
+            load: "Map,GeoObject,geoObject.addon.hint,templateLayoutFactory,util.extend,util.array,util.dom.element",
+            mode: "debug"
+        });
+    </script>
+    <script type="text/javascript" src="../../../test/util/event-eye.js"></script>
+</head>
+
+<body class="yui3-skin-sam">
+<div id="map" style="width: 400px; height: 400px;"></div>
+</body>
+
+<script type="text/javascript">
+var geoMap;
+
+function getTestCase (Y) {
+    function findElement () {
+        return ymaps.util.dom.element.findByPrefixedClass(geoMap.container.getElement(), 'hint-overlay');
+    }
+
+    return {
+        name: "geoObject.Hint",
+        debug: false,
+
+        _should: {
+            ignore: {
+//                testOpen: true,
+//                testClose: true,
+//                testIsOpen: true,
+//                testMouseEvents: true,
+//                testOpenEmpty: true,
+//                testDontClosePreviousWhenCurrentIsEmpty: true,
+//                testRemoveFromMap: true
+            }
+        },
+
+        setUp: function () {
+            geoMap = new ymaps.Map("map", {
+                center: [55, 55],
+                zoom: 4,
+                type: "yandex#map"
+            });
+
+            placemark = new ymaps.GeoObject({
+                geometry: {
+                    type: "Point",
+                    coordinates: [55, 55]
+                }
+            });
+
+            polygon = new ymaps.GeoObject({
+                geometry: {
+                    type: "Polygon",
+                    coordinates: [
+                        [
+                            [55, 55],
+                            [40, 40],
+                            [55, 40]
+                        ]
+                    ]
+                }
+            });
+
+            geoMap.geoObjects.add(placemark);
+            geoMap.geoObjects.add(polygon);
+        },
+
+        tearDown: function () {
+            geoMap.destroy();
+        },
+
+        testOpen: function () {
+            eventEye.observe(polygon.hint, ["open", "close"]);
+
+            var content = 'test';
+
+            polygon.hint.open([0, 0], content, {
+                a: 'b',
+                contentLayout: ymaps.templateLayoutFactory.createClass("{{ userData }}")
+            }).then(function () {
+                        this.resume(function () {
+                            var element = findElement();
+                            Y.assert(element, "DOM-элемент не добавился");
+                            Y.assert((element.textContent || element.innerText) == content, 'Неправильно обработался контент');
+                            Y.assert(polygon.hint.getOverlaySync().options.get('a') == 'b', 'Неправильно применились опции');
+                            Y.assert(
+                                    eventEye.length() == 1 &&
+                                    eventEye.check(0, {
+                                        type: "open",
+                                        target: polygon
+                                    }),
+                                    "Неверные события"
+                            );
+                        });
+                    }, this);
+
+            this.wait();
+        },
+
+        testClose: function () {
+            eventEye.observe(polygon.hint, ["open", "close"]);
+
+            polygon.hint.open([0, 0]).then(function () {
+                polygon.hint.close().then(function () {
+                    this.resume(function () {
+                        Y.assert(!findElement(), "Хинт не закрылся");
+                        Y.assert(
+                                eventEye.length() == 2 &&
+                                eventEye.check(1, {
+                                    type: "close",
+                                    target: polygon
+                                }),
+                                "Неверные события: кол-во " + eventEye.length()
+                        );
+                    });
+                }, this);
+            }, this);
+
+            this.wait();
+        },
+
+        // Ждёт MAPSAPI-6979
+        _testCloseOnNoPoint: function () {
+            polyline.hint.open().then(function () {
+                this.resume(function () {
+                    polyline.geometry.setCoordinates([]);
+                    Y.assert(!polyline.hint.isOpen(), "isOpen == true");
+                    Y.assert(!findElement(), "Элемент не удалился");
+                });
+            }, this);
+
+            this.wait();
+        },
+
+        testIsOpen: function () {
+            placemark.hint.open([0, 0]).then(function () {
+                this.resume(function () {
+                    Y.assert(
+                            placemark.hint.isOpen(),
+                            "Неверное значение после открытия"
+                    );
+
+                    placemark.hint.close().then(function () {
+                        this.resume(function () {
+                            Y.assert(
+                                    !placemark.hint.isOpen(),
+                                    "Неверное значение после закрытия"
+                            );
+                        });
+                    }, this);
+
+                    this.wait();
+                });
+            }, this);
+
+            this.wait();
+        },
+
+        testMouseEvents: function () {
+            function onOpen () {
+                console.log('open');
+                this.resume(function () {
+                    Y.assert(placemark.hint.isOpen(), 'Хинт не открылся');
+
+                    placemark.events.fire('mouseleave');
+                    this.wait();
+                });
+            }
+
+            function onClose () {
+                this.resume(function () {
+                    console.log('close');
+                    Y.assert(!placemark.hint.isOpen(), 'Хинт не закрылся');
+                });
+            }
+
+            placemark.properties.set('hintContent', 'not-empty');
+            placemark.state.set('hover', true);
+            placemark.events
+                    .once('hintopen', onOpen, this)
+                    .once('hintclose', onClose, this)
+                    .fire('mouseenter');
+
+            this.wait();
+        },
+
+        testOpenEmpty: function () {
+            placemark.properties.unset('hintContent');
+            placemark.state.set('hover', true);
+            placemark.events.fire('mouseenter');
+            this.wait(function () {
+                Y.assert(!placemark.hint.isOpen(), 'Открылся пустой хинт');
+
+                placemark.options.set('openEmptyHint', true);
+                placemark.events.fire('mouseenter');
+                this.wait(function () {
+                    Y.assert(placemark.hint.isOpen(), 'Хинт не открылся после включения опции');
+                }, 350);
+            }, 350);
+        },
+
+        testDontClosePreviousWhenCurrentIsEmpty: function () {
+            placemark.hint.open().then(function () {
+                this.resume(function () {
+                    polygon.properties.set('hintContent');
+                    polygon.events.fire('mouseenter');
+                    this.wait(function () {
+                        Y.assert(!polygon.hint.isOpen(), 'Открылся хинт на полигоне');
+                        Y.assert(placemark.hint.isOpen(), 'Закрылся хинт на метке');
+                    }, 350);
+                });
+            }, this);
+
+            this.wait();
+        },
+
+        testRemoveFromMap: function () {
+            placemark.hint.open().then(function () {
+                this.resume(function () {
+                    geoMap.geoObjects.remove(placemark);
+                    Y.assert(!findElement());
+                });
+            }, this);
+
+            this.wait();
+        }
+    }
+}
+ymaps.ready(runTestCase);
+</script>
+</html>

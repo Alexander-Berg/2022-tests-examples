@@ -1,5 +1,0 @@
-SET(QEMU_ROOTFS_DIR infra/environments/rtc-xenial/release/vm-image)
-PY3TEST()
-INCLUDE(../test-py3.inc)
-END()
-OWNER(g:rtc-sysdev)

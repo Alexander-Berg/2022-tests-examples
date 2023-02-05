@@ -1,0 +1,118 @@
+<!doctype html>
+<html>
+<head>
+    <title>small zoom</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <!-- YUI -->
+    <script type="text/javascript" src="../../../test/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../../test/yui3combo/combo.css"/>
+    <script type="text/javascript" src="../../../test/run-test-case.js"></script>
+    <script type="text/javascript" src="http://yandex.st/jquery/1.6.4/jquery.min.js"></script>
+    <!-- Code -->
+    <script type="text/javascript">
+        initAPI({
+            lang: "ru-RU",
+            load: "package.full,util.dom.element",
+            mode: "debug"
+        });
+    </script>
+</head>
+
+<body class="yui3-skin-sam"></body>
+<div id="map" style='width:600px;height:400px'>
+
+</div>
+<style>
+    html, html body {
+        width: 100%;
+        height: 100%;
+    }
+    
+    #zoom-in, #zoom-out {
+        border: 5px solid green;
+        background-color: white;
+        font-size: 20px;
+        font-weight: bold;
+        width: 30px;
+        heigth: 30px;
+        text-align: center;
+        vertical-align: middle;
+    }
+</style>
+<script type="text/javascript">
+
+function getTestCase (Y) {
+    
+    map = new ymaps.Map('map', {
+                center: [55.777153093859496, 37.639130078124964],
+                zoom: 10
+            });
+
+    return {
+        name: "controls",
+
+        testSmallZoom: function () {
+            var smallZoom = new ymaps.control.SmallZoomControl();
+            map.controls.add(smallZoom);
+            
+            var MyZoomLayout = ymaps.templateLayoutFactory.createClass("<div>" +
+                    "<div id='zoom-in'>+</div>" +
+                    "<div id='zoom-out'>-</div>" +
+                "</div>", {
+                    build: function () {
+                        MyZoomLayout.superclass.build.call(this);
+                        this.zoomInCallback = ymaps.util.bind(this.zoomIn, this);
+                        this.zoomOutCallback = ymaps.util.bind(this.zoomOut, this);
+                        $('#zoom-in').bind('click', this.zoomInCallback);
+                        $('#zoom-out').bind('click', this.zoomOutCallback);
+                    },
+                    
+                    clear: function () {
+                        $('#zoom-in').unbind('click', this.zoomInCallback);
+                        $('#zoom-out').unbind('click', this.zoomOutCallback);
+                        MyZoomLayout.superclass.clear.call(this);
+                    },
+                    
+                    zoomIn: function () {
+                        var map = this.getData().control.getMap();
+                        this.events.fire('zoomchange', {
+                            oldZoom: map.getZoom(),
+                            newZoom: map.getZoom() + 1
+                        });
+                    },
+                    
+                    zoomOut: function () {
+                        var map = this.getData().control.getMap();
+                        this.events.fire('zoomchange', {
+                            oldZoom: map.getZoom(),
+                            newZoom: map.getZoom() - 1
+                        });
+                    }
+                }),
+                customZoom = new ymaps.control.SmallZoomControl({layout: MyZoomLayout});
+            map.controls.add(customZoom, {right: 5, top: 5});
+        },
+        
+        testMapAction: function () {
+            map.setZoom(10);
+            map.controls.add('zoomControl');
+            map.options.set('zoomControlZoomDuration', 0);
+            Y.Event.simulate(
+                ymaps.util.dom.element.find(
+                    document.getElementById('map'),
+                    '.ymaps-b-zoom__button_type_plus'
+                ), 'click');
+            function checkZoom () {
+                Y.assert(map.getZoom() == 11, 'ZoomControl не отработал увеличение');
+            }
+            window.setTimeout(checkZoom, 1000);
+            map.controls.remove('zoomControl');
+        }
+    };
+}
+ymaps.ready(runTestCase);
+
+</script>
+
+</body>
+</html>

@@ -1,0 +1,76 @@
+
+android {
+    buildTypes {
+        asan {
+            initWith(debug)
+        }
+    }
+
+    sourceSets {
+        asan.jniLibs.srcDirs += 'build/generated/asan/jniLibs'
+        asan.resources.srcDirs += 'build/generated/asan/resources'
+    }
+}
+
+static def writeWrapScript(wrapFile, abi) {
+    if(abi == "armeabi" || abi == "armeabi-v7a")
+        abi = "arm"
+    if(abi == "arm64-v8a")
+        abi = "aarch64"
+    if (abi == "x86")
+        abi = "i686"
+
+    wrapFile.withWriter { writer ->
+        def wrapScript = """#!/system/bin/sh
+HERE="\$(cd "\$(dirname "\$0")" && pwd)"
+export ASAN_OPTIONS=log_to_syslog=false,allow_user_segv_handler=1
+export LD_PRELOAD=\$HERE/libc++_shared.so:\$HERE/libclang_rt.asan-${abi}-android.so
+\$@
+"""
+        writer.write(wrapScript)
+    }
+}
+
+task copyAsanLibs {
+    doLast {
+        for (String abi : supportedAbis) {
+            def srcDir = "$pkgRoot/lib/tools/android-toolchain/$abi/lib64/clang/6.0.2/lib"
+            def destDir = new File("app/build/generated/asan/jniLibs/$abi")
+            destDir.mkdirs()
+
+            def renamedAbi = abi
+            if (abi == "armeabi-v7a" || abi == "armeabi")
+                renamedAbi = "arm"
+            if (abi == "arm64-v8a")
+                renamedAbi = "aarch64"
+            if (abi == "x86")
+                renamedAbi = "i686"
+
+            FileTree tree = fileTree(dir: srcDir).include("**/*asan*$renamedAbi*.so")
+            tree.each { File file ->
+                copy {
+                    from file
+                    into destDir.absolutePath
+                }
+            }
+        }
+    }
+}
+
+task setupAsan(dependsOn: copyAsanLibs) {
+    doLast {
+        for (String abi : supportedAbis) {
+            def dir = new File("app/build/generated/asan/resources/lib/$abi")
+            dir.mkdirs()
+            def wrapFile = new File(dir, "wrap.sh")
+            wrapFile.setExecutable(true, false)
+            writeWrapScript(wrapFile, abi)
+        }
+    }
+}
+
+tasks.whenTaskAdded { t ->
+    if (t.name.contains('package') && t.name.contains('Asan')) {
+        t.dependsOn setupAsan
+    }
+}

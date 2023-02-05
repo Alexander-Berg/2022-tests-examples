@@ -1,3 +1,0 @@
-OWNER(sshipkov)
-
-RECURSE(metrics)

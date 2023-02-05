@@ -1,0 +1,184 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <title>geo object dragging</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <!-- YUI -->
+    <script type="text/javascript" src="../../../test/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../../test/yui3combo/combo.css" />
+    <script type="text/javascript" src="../../../test/run-test-case.js"></script>
+    <script type="text/javascript" src="../../../test/util/event-eye.js"></script>
+    <!-- Code -->
+    <script type="text/javascript">
+        initAPI({
+            lang: "ru-RU",
+            mode: "debug"
+        });
+    </script>
+</head>
+
+<body class="yui3-skin-sam">
+    <div id="map" style="height: 500px; width: 900px;"></div>
+</body>
+
+<script type="text/javascript">
+    function getTestCase(Y) { return {
+        name: "geo object dragging",
+        debug: false,
+
+        setUp: function () {
+            this.myMap = new ymaps.Map('map', {
+                center: [40, 40],
+                zoom: 5
+            }, {
+                dragInertia: false
+            });
+
+            this.placemark = new ymaps.Placemark([43, 40]);
+            this.myMap.geoObjects.add(this.placemark);
+
+            this.circle = new ymaps.Circle([
+                [50, 40], 300000
+            ]);
+            this.myMap.geoObjects.add(this.circle);
+
+            this.geoObjects = [this.placemark, this.circle];
+        },
+
+        tearDown: function () {
+            this.myMap.destroy();
+        },
+
+        testMapDragThroughCircle: function () {
+            var oldCenter = this.myMap.getCenter(),
+                oldCoordinates = this.circle.geometry.getCoordinates();
+
+            this.simulateCircleDragging(this.circle);
+
+            var $this = this;
+            this.wait(function () {
+                var newCenter = this.myMap.getCenter(),
+                newCoordinates = $this.circle.geometry.getCoordinates();
+
+                Y.assert(
+                    oldCenter[0] != newCenter[0] && oldCenter[1] != newCenter[1] &&
+                    oldCoordinates[0] == newCoordinates[0] && oldCoordinates[1] == newCoordinates[1]
+                );
+            }, 400);
+        },
+
+        testCircleDrag: function () {
+            this.circle.options.set("draggable", true);
+
+            var oldCenter = this.myMap.getCenter(),
+                oldCoordinates = this.circle.geometry.getCoordinates();
+
+            this.simulateCircleDragging(this.circle);
+
+            var $this = this;
+            this.wait(function () {
+                var newCenter = this.myMap.getCenter(),
+                newCoordinates = $this.circle.geometry.getCoordinates();
+
+                Y.assert(
+                    oldCenter[0] == newCenter[0] && oldCenter[1] == newCenter[1] &&
+                    oldCoordinates[0] != newCoordinates[0] && oldCoordinates[1] != newCoordinates[1]
+                );
+            }, 400);
+        },
+
+        testMapDragThroughPlacemark: function () {
+            var oldCenter = this.myMap.getCenter(),
+                oldCoordinates = this.placemark.geometry.getCoordinates();
+
+            this.simulatePlacemarkDragging(this.placemark);
+
+            var $this = this;
+            this.wait(function () {
+                var newCenter = this.myMap.getCenter(),
+                newCoordinates = $this.placemark.geometry.getCoordinates();
+
+                Y.assert(
+                    oldCenter[0] != newCenter[0] && oldCenter[1] != newCenter[1] &&
+                    oldCoordinates[0] == newCoordinates[0] && oldCoordinates[1] == newCoordinates[1]
+                );
+            }, 400);
+        },
+
+        testPlacemarkDrag: function () {
+            this.placemark.options.set("draggable", true);
+
+            var oldCenter = this.myMap.getCenter(),
+                oldCoordinates = this.placemark.geometry.getCoordinates();
+
+            this.simulatePlacemarkDragging(this.placemark);
+
+            var $this = this;
+            this.wait(function () {
+                var newCenter = this.myMap.getCenter(),
+                newCoordinates = $this.placemark.geometry.getCoordinates();
+
+                Y.assert(
+                    oldCenter[0] == newCenter[0] && oldCenter[1] == newCenter[1] &&
+                    oldCoordinates[0] != newCoordinates[0] && oldCoordinates[1] != newCoordinates[1]
+                );
+            }, 400);
+        },
+
+        simulateCircleDragging: function (circle) {
+            // Форсируем создание оверлея.
+            circle.getOverlay();
+            var pane = this.myMap.panes.get("events"),
+                domElement = pane.getElement(),
+                clientPixels = pane.toClientPixels(circle.geometry.getPixelGeometry().getCoordinates());
+            Y.Event.simulate(domElement, "mousedown", {
+                clientX: clientPixels[0],
+                clientY: clientPixels[1]
+            });
+            Y.Event.simulate(domElement, "mousemove", {
+                clientX: clientPixels[0] + 1,
+                clientY: clientPixels[1] + 1
+            });
+            
+            clientPixels = [clientPixels[0] + 100, clientPixels[1] + 100];
+            Y.Event.simulate(domElement, "mousemove", {
+                clientX: clientPixels[0],
+                clientY: clientPixels[1]
+            });
+            Y.Event.simulate(domElement, "mouseup", {
+                clientX: clientPixels[0],
+                clientY: clientPixels[1]
+            });
+        },
+
+        simulatePlacemarkDragging: function (placemark) {
+            var overlay = placemark.getOverlay(),
+                domElement = overlay.getIconLayout().getParentElement(),
+                pane = this.myMap.panes.get("overlays"),
+                clientPixels = pane.toClientPixels(placemark.geometry.getPixelGeometry().getCoordinates());
+
+            Y.Event.simulate(domElement, "mousedown", {
+                clientX: clientPixels[0],
+                clientY: clientPixels[1]
+            });
+            
+            Y.Event.simulate(domElement, "mousemove", {
+                clientX: clientPixels[0] + 1,
+                clientY: clientPixels[1] + 1
+            });
+            
+            clientPixels = [clientPixels[0] + 100, clientPixels[1] + 100];
+            Y.Event.simulate(domElement, "mousemove", {
+                clientX: clientPixels[0],
+                clientY: clientPixels[1]
+            });
+            Y.Event.simulate(domElement, "mouseup", {
+                clientX: clientPixels[0],
+                clientY: clientPixels[1]
+            });
+        }
+    }}
+    ymaps.ready(runTestCase);
+</script>
+</html>

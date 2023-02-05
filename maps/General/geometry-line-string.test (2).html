@@ -1,0 +1,114 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <title>geometry.LineString</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <!-- YUI -->
+    <script type="text/javascript" src="../../../../tests/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../../../tests/yui3combo/combo.css" />
+    <script type="text/javascript" src="../../../../tests/run-test-case.js"></script>
+    <!-- Code -->
+    <script type="text/javascript">
+        initAPI({
+            lang: "ru-RU",
+            load: "package.full,geometry.LineString,projection.wgs84Mercator",
+            mode: "dev"
+        });
+    </script>
+    <script type="text/javascript" src="../../../../tests/util/event-eye.js"></script>
+</head>
+
+<body class="yui3-skin-sam">
+    <div id="container" style="width: 600px; height: 400px;"></div>
+</body>
+
+<script type="text/javascript">
+    function getTestCase(Y) { return {
+        name: "geometry.LineString",
+        debug: false,
+
+        setUp: function () {
+            this.line = new ymaps.geometry.LineString([[1, 2], [3, 4], [5, 6]]);
+            this.zoom = 3;
+            geoMap = new ymaps.Map('container', {
+                center: [39, 54],
+                type: "yandex#map",
+                zoom: this.zoom,
+                behaviors: []
+            });
+
+            eventEye.observe(this.line, ["change", "optionschange"]);
+        },
+
+        tearDown: function () {
+            geoMap.destroy();
+        },
+
+        testEmptyConstructor: function() {
+            this.line = new ymaps.geometry.LineString();
+
+            this.line.setMap(geoMap);
+            this.line.options.setParent(geoMap.options);
+
+            Y.assert(
+                this.line.getPixelGeometry().getCoordinates().length === 0,
+                "Неверный результат для пустого конструктора"
+            );
+        },
+
+        testRenderPixelGeometry: function () {
+            this.line.setMap(geoMap);
+            this.line.options.setParent(geoMap.options);
+
+            this.line.setCoordinates([[0, 0], [85.084, -180]]);
+
+
+            var pixels = this.line.getPixelGeometry().getCoordinates();
+            Y.assert(
+                Math.round(pixels[0][0]) == 128 * Math.pow(2, this.zoom) &&
+                Math.round(pixels[0][1]) == 128 * Math.pow(2, this.zoom) &&
+                Math.round(pixels[1][0]) == 0 &&
+                Math.round(pixels[1][1]) == 0 &&
+                eventEye.length() == 2 && eventEye.check(0, {
+                    type: "optionschange",
+                    target: this.line
+                }),
+                "Неверный результат getPixelGeometry"
+            );
+        },
+
+        testFromEncodedCoordinates: function () {
+            var geometry = ymaps.geometry.LineString.fromEncodedCoordinates("6qE9AjZzUgN1-v__v_X__x_1__-dBgAA");
+            Y.ArrayAssert.itemsAreEquivalent(
+                geometry.getCoordinates(),
+                [[37.593578, 55.735094], [37.592159, 55.732468999999995], [37.589374, 55.734162]],
+                function (a, b) { return a[0] == b[0] && a[1] == b[1]; },
+                'Неверная декодировка'
+            );
+        },
+
+        testToEncodedCoordinates: function () {
+            var geometry = new ymaps.geometry.LineString([[37.593578, 55.735094], [37.592159, 55.732468999999995], [37.589374, 55.734162]]),
+                encoded = ymaps.geometry.LineString.toEncodedCoordinates(geometry);
+            Y.Assert.areEqual(
+                encoded, "6qE9AjZzUgN1-v__v_X__x_1__-dBgAA",
+                "Неверная кодировка"
+            );
+        },
+
+        testGetClosest: function () {
+            this.line.setMap(geoMap);
+            this.line.options.setParent(geoMap.options);
+
+            Y.assert(this.line.getClosest([0, 0]).closestPointIndex == 0);
+        },
+
+        testICustomizable: function () {
+            this.line.options.set('a', 1);
+            Y.assert(eventEye.length() == 1 && eventEye.check(0, { type: "optionschange" }));
+        }
+    }}
+    ymaps.ready(runTestCase);
+</script>
+</html>

@@ -1,0 +1,165 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <title>geometryEditor.component.SubEntityManager</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <!-- YUI -->
+    <script type="text/javascript" src="../../../../tests/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../../../tests/yui3combo/combo.css" />
+    <script type="text/javascript" src="../../../../tests/run-test-case.js"></script>
+    <!-- Code -->
+    <script type="text/javascript">
+        initAPI({
+            lang: "ru-RU",
+            load: "geometryEditor.component.SubEntityManager",
+            mode: "dev"
+        });
+    </script>
+</head>
+
+<body class="yui3-skin-sam">
+</body>
+
+<script type="text/javascript">
+    getTestCase = function (Y) {
+        return {
+            // debug: true,
+            name: 'geometryEditor.component.SubEntityManager',
+            
+            setUp: function () {
+                this.changeCnt = 0;
+                this.keys = [
+                    // Используем объектные обертки над примитивными типами, а не обычные объекты для удобства отладки.
+                    new String(0), new String(1), new String(2)
+                ];
+                this.manager = new ymaps.geometryEditor.component.SubEntityManager("data", this.keys, {
+                    create: {
+                        callback: function (key, index) {
+                            return {
+                                data: key,
+                                index: index,
+                                destroy: function () {}
+                            };
+                        },
+                        context: this
+                    },
+                    change: {
+                        callback: function (key, index) {
+                            this.changeCnt++;
+                        },
+                        context: this
+                    }
+                });
+            },
+
+            tearDown: function () {
+                this.manager.destroy();
+            },
+
+            checkData: function (subs, keys) {
+                for (var i = 0, l = subs.length; i < l; i++) {
+                    if (subs[i].data !== keys[i]) {
+                        return false;
+                    }
+                }
+                return true;
+            },
+
+            testConstructor: function () {
+                var subs = this.manager.getSubEntities();
+                Y.assert(subs.length == 3 && this.checkData(subs, this.keys) && !this.changeCnt);
+            },
+
+            testFakeUpdate: function () {
+                var subsOld = this.manager.getSubEntities();
+                this.manager.update(this.keys);
+                var subs = this.manager.getSubEntities();
+                Y.assert(subs.length == 3 && this.checkData(subs, this.keys) && subs == subsOld && !this.changeCnt);
+            },
+
+            testUnshift: function () {
+                var subsOld = this.manager.getSubEntities().slice();
+                this.keys.unshift({});
+                this.manager.update(this.keys);
+                var subs = this.manager.getSubEntities();
+                Y.assert(
+                    subs.length == 4 && this.checkData(subs, this.keys) && this.changeCnt == 1 &&
+                    subs[1] == subsOld[0] &&
+                    subs[2] == subsOld[1] &&
+                    subs[3] == subsOld[2]
+                );
+            },
+
+            testPush: function () {
+                var subsOld = this.manager.getSubEntities().slice();
+                this.keys.push({});
+                this.manager.update(this.keys);
+                var subs = this.manager.getSubEntities();
+                Y.assert(
+                    subs.length == 4 && this.checkData(subs, this.keys) && this.changeCnt == 1 &&
+                    subs[0] == subsOld[0] &&
+                    subs[1] == subsOld[1] &&
+                    subs[2] == subsOld[2]
+                );
+            },
+
+            testInsert: function () {
+                // Увеличиваем кол-во элементов для более достоверной проверки побочных эффектов оптимизаций.
+                this.keys = this.keys.concat([new String(3), new String(4), new String(5)]);
+                this.manager.update(this.keys);
+
+                var subsOld = this.manager.getSubEntities().slice();
+                this.keys.splice(1, 0, {});
+                this.manager.update(this.keys);
+                var subs = this.manager.getSubEntities();
+                Y.assert(
+                    subs.length == 7 && this.checkData(subs, this.keys) && this.changeCnt == 2 &&
+                    subs[0] == subsOld[0] &&
+                    subs[2] == subsOld[1] &&
+                    subs[3] == subsOld[2] &&
+                    subs[4] == subsOld[3] &&
+                    subs[5] == subsOld[4] &&
+                    subs[6] == subsOld[5]
+                );
+            },
+
+            testSwap: function () {
+                // Увеличиваем кол-во элементов для более достоверной проверки побочных эффектов оптимизаций.
+                this.keys = this.keys.concat([new String(3), new String(4), new String(5)]);
+                this.manager.update(this.keys);
+
+                var subsOld = this.manager.getSubEntities().slice();
+                // Меняем местами 1ый и 2ой элементы.
+                this.keys.splice(1, 0, this.keys.splice(2, 1)[0]);
+                this.manager.update(this.keys);
+                var subs = this.manager.getSubEntities();
+                Y.assert(
+                    subs.length == 6 && this.checkData(subs, this.keys) && this.changeCnt == 2 &&
+                    subs[0] == subsOld[0] &&
+                    subs[1] == subsOld[2] &&
+                    subs[2] == subsOld[1] &&
+                    subs[3] == subsOld[3] &&
+                    subs[4] == subsOld[4] &&
+                    subs[5] == subsOld[5]
+                );
+            },
+
+            testRemove: function () {
+                var subsOld = this.manager.getSubEntities().slice();
+                this.keys.splice(1, 1);
+                this.manager.update(this.keys);
+                var subs = this.manager.getSubEntities();
+                Y.assert(
+                    subs.length == 2 && this.checkData(subs, this.keys) && this.changeCnt == 1 &&
+                    subs[0] == subsOld[0] &&
+                    subs[1] == subsOld[2]
+                );
+            }
+        }
+    };
+
+    ymaps.ready(runTestCase);
+</script>
+</html>
+

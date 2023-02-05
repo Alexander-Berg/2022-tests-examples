@@ -1,0 +1,86 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <title>simulate map events</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <script type="text/javascript" src="../../../../tests/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../../../tests/yui3combo/combo.css" />
+    <script type="text/javascript" src="../../../../tests/run-test-case.js"></script>
+    <!-- Code -->
+    <script type="text/javascript" src="http://localhost:8080/2.0/?lang=ru-RU&work&mode=debug&load=package.full">
+    </script>
+    <style type="text/css">
+        .map { float: left; width: 250px; height: 200px; background: #ccc; margin: 10px 0 0 10px;}
+    </style>
+</head>
+
+<body class="yui3-skin-sam">
+<div id="map" class="map"></div>
+
+</body>
+
+<script type="text/javascript">
+    function getTestCase(Y) {
+        return {
+            name: "map.simulateDomEvents",
+            debug: false,
+
+            setUp: function () {
+                this.geoMap = new ymaps.Map('map', {
+                    center: [54, 39],
+                    type: "yandex#map",
+                    zoom: 7
+                });
+            },
+
+            tearDown: function () {
+                this.geoMap.destroy();
+            },
+
+            testDblClick: function () {
+                // Симулируем двойной клик над картой
+                this.geoMap.events.fire('dblclick', {
+                    position: [300, 400]
+                });
+                this.geoMap.events.add('boundschange', function () {
+                    this.resume(function() {
+                        Y.assert(this.geoMap.getZoom() == 8, "Карта не зазумилась при эмуляции двойного клика.");
+                    });
+                }, this);
+                this.wait(30000);
+            },
+            
+            testClick: function () {
+                var map = this.geoMap;
+                // Откроем балун в точке клика по карте
+                map.events.add('click', function (e) {
+                    map.balloon.open(e.get('coordPosition'), 'Щелк!');
+                });
+                map.events.fire('click', {
+                    position: [300, 400]
+                });
+                Y.assert(map.balloon.isOpen(), "Не открылся балун по клику.");
+            },
+            
+            testMouseenter: function () {
+                var res = '',
+                    map = this.geoMap;
+                map.events.add('mouseenter', function (e) {
+                    res += '*';
+                });
+                map.events.fire('mouseenter', {
+                    position: [300, 400]
+                });
+                Y.assert(res == '*', "Не поймался искусственный mouseenter на карте.");
+            }
+        }
+    }
+    
+    ymaps.ready(function () {
+        runTestCase();
+    });
+</script>
+</html>
+
+

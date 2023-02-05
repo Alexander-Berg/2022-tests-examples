@@ -1,0 +1,90 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <title>overlay.interactiveGraphics.loadingDispatcher</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <!-- YUI -->
+    <script type="text/javascript" src="../../../../../test/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../../../../test/yui3combo/combo.css"/>
+    <script type="text/javascript" src="../../../../../test/run-test-case.js"></script>
+    <!-- Code -->
+    <script type="text/javascript">
+        initAPI({
+            load: "overlay.interactiveGraphics.LoadingDispatcher",
+            mode: "debug"
+        });
+    </script>
+
+    <script type="text/javascript">
+        function getTestCase (Y) {
+            return {
+                name: "overlay.interactiveGraphics.loadingDispatcher",
+                // debug: true,
+
+                setUp: function () {
+                    this.loader = new ymaps.overlay.interactiveGraphics.LoadingDispatcher();
+                },
+
+                testSimpleLoad: function () {
+                    this.loader.load(["util.extend"], function () {
+                        this.resume(function () {
+                            Y.assert(typeof this.loader.ns.util.extend == "function");
+                        }, this);
+                    }, this);
+                    this.wait();
+                },
+
+                testConcurrentLoad: function () {
+                    var sameThread = false;
+                    this.loader.load(["package.map"], function () {
+                        this.resume(function () {
+                            Y.assert(this.loader.ns.Map, "1");
+                            sameThread = true;
+                            setTimeout(function () {
+                                sameThread = false;
+                            }, 0);
+                            this.wait();
+                        }, this);
+                    }, this);
+
+                    this.loader.load(["package.map"], function () {
+                        this.resume(function () {
+                            Y.assert(this.loader.ns.Map && sameThread, "2");
+                        }, this);
+                    }, this);
+
+                    this.wait();
+                },
+
+                testIntersectingLoad: function () {
+                    var sameThread = false;
+                    this.loader.load(["package.map"], function () {
+                        this.resume(function () {
+                            Y.assert(this.loader.ns.Map, "1");
+                            sameThread = true;
+                            setTimeout(function () {
+                                sameThread = false;
+                            }, 0);
+                            this.wait();
+                        }, this);
+                    }, this);
+
+                    this.loader.load(["package.map", "package.geoObjects"], function () {
+                        this.resume(function () {
+                            Y.assert(this.loader.ns.Map && this.loader.ns.GeoObject && !sameThread, "2");
+                        }, this);
+                    }, this);
+
+                    this.wait();
+                }
+            }
+        }
+
+        ymaps.ready(function () {
+            runTestCase();
+        });
+    </script>
+</head>
+<body class="yui3-skin-sam"></body>
+</html>

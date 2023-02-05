@@ -1,0 +1,635 @@
+components: ad_pin
+testing:
+  - regress
+
+specs:
+  Логирование пина по маршруту:
+    - info: |
+        - Кейс проходится на дебаг сборке
+        Использовать интенты:
+        - [collapsed-image](https://jing.yandex-team.ru/files/fedonina71/testing_pin_site_by.png){title=QR-код}
+
+          `yandexnavi://set_ad_page_id?page_type=route&page_id=navi_billboard_7/testing_pin_site_by`
+        - [collapsed-image](https://jing.yandex-team.ru/files/fedonina71/navi_feature_day_night_fast_switch.png){title=QR-код}
+
+          `yandexnavi://add_exp?navi_feature_day_night_fast_switch=enabled`
+        - Перезапустить приложение
+        - Девайс подключен к инструментам снятия логов или открыта Log-view панель
+    - do: |
+        - Запустить проигрывание MAPKITSIM-4261
+        - Увидеть брендированный пин
+    - assert: |
+        В логах приходят события:
+        - `geoadv.bb.pin.show`
+        - `mapkit.search.logger.billboard.show` (“product”:“pin_on_route”)
+        - `geoadv.bb.pin.show_counted` (с теми же параметрами, что и geoadv.bb.pin.show)
+    - do: Поскроллить карту с пином так, чтобы пин не выходил за пределы экрана
+    - assert: Повторных событий `geoadv.bb.pin.show` и `geoadv.bb.pin.show_counted` не приходит
+    - do: |
+        - Скрыть пин за пределами экрана
+        - Вернуть фрагмент карты с пином на экран
+    - assert: |
+        В логах приходят события:
+        - `geoadv.bb.pin.show`
+        - `geoadv.bb.pin.show_counted`
+        - `mapkit.search.logger.billboard.show`
+
+    - platforms:
+      - ios
+      - android
+    - testing:
+      - acceptance_navi
+    - tags:
+      - assessors
+      - metric
+
+
+  Вход в карточку в ведении в горизонтальной ориентации:
+    - info: |
+        - Кейс проходится на дебаг сборке
+        Использовать интенты:
+        - [collapsed-image](https://jing.yandex-team.ru/files/fedonina71/testing_pin_site_by.png){title=QR-код}
+
+          `yandexnavi://set_ad_page_id?page_type=route&page_id=navi_billboard_7/testing_pin_site_by`
+        - [collapsed-image](https://jing.yandex-team.ru/files/fedonina71/navi_feature_day_night_fast_switch.png){title=QR-код}
+
+          `yandexnavi://add_exp?navi_feature_day_night_fast_switch=enabled`
+        - Перезапустить приложение
+        - Девайс в горизонтальной ориентации
+    - do: |
+        - Запустить проигрывание MAPKITSIM-4261
+        - Тап по пину
+    - assert: |
+        - Открыта рекламная карточка
+        - Элементы карточки не наезжают друг на друга
+
+    - platforms:
+        - ios
+        - android
+    - testing:
+        - acceptance_navi
+    - tags:
+        - assessors
+
+
+  Восстановление показа рекламных пинов по маршруту после выхода из оффлайна:
+    - info: |
+        - Кейс проходится на дебаг сборке
+        Использовать интенты:
+        - [collapsed-image](https://jing.yandex-team.ru/files/fedonina71/testing_pin_site_by.png){title=QR-код}
+
+          `yandexnavi://set_ad_page_id?page_type=route&page_id=navi_billboard_7/testing_pin_site_by`
+        - [collapsed-image](https://jing.yandex-team.ru/files/fedonina71/navi_feature_day_night_fast_switch.png){title=QR-код}
+
+          `yandexnavi://add_exp?navi_feature_day_night_fast_switch=enabled`
+        - Перезапустить приложение
+        - Скачать кеши текущего региона
+        - Отключить сеть
+        - Девайс подключить к инструментам снятия логов или открыта Log-view панель
+    - do: |
+        - Запустить проигрывание MAPKITSIM-4261
+    - assert: Пин не отображается
+    - do: |
+        - Включить сеть, не сбрасывая маршрут
+    - assert: |
+        - После включения интернета через ~1 минуту отображается пин
+        - Приходит событие `geoadv.bb.pin.show`
+
+    - platforms:
+      - ios
+      - android
+    - testing:
+      - acceptance_navi
+    - tags:
+      - assessors
+      - metric
+
+
+  Логирование кнопки "Заехать" в карточке брендированного пина:
+    - info: |
+        - Кейс проходится на дебаг сборке
+        Использовать интенты:
+        - [collapsed-image](https://jing.yandex-team.ru/files/fedonina71/testing_pin_call_by.png){title=QR-код}
+
+          `yandexnavi://set_ad_page_id?page_type=route&page_id=navi_billboard_7/testing_pin_call_by`
+        - [collapsed-image](https://jing.yandex-team.ru/files/fedonina71/navi_feature_day_night_fast_switch.png){title=QR-код}
+
+          `yandexnavi://add_exp?navi_feature_day_night_fast_switch=enabled`
+        - Перезапустить приложение
+        - Девайс подключен к инструментам снятия логов или открыта Log-view панель
+    - do: |
+        - Запустить проигрывание MAPKITSIM-4261
+    - assert: Брендированный пин отображается
+    - do: |
+        - Тап по пину
+        - Тап Заехать
+    - assert: |
+        - В логах приходят события: `mapkit.search.logger.billboard.navigation.via`, и `geoadv.bb.action.makeRoute` с параметрами
+        - "advertiserId":"(advertiserId)"
+        - "campaignId":"(campaignId)"
+        - "product":"pin_on_route"/"billboard"
+
+    - platforms:
+      - ios
+      - android
+    - testing:
+      - acceptance_navi
+    - integration_run:
+      - mapkit
+    - tags:
+      - assessors
+      - mapkit_ready
+      - metric
+
+
+  Логирование кнопки "На сайт" в карточке брендированного пина:
+    - info: |
+        - Кейс проходится на дебаг сборке
+        Использовать интенты:
+        - [collapsed-image](https://jing.yandex-team.ru/files/fedonina71/testing_pin_site_by.png){title=QR-код}
+
+          `yandexnavi://set_ad_page_id?page_type=route&page_id=navi_billboard_7/testing_pin_site_by`
+        - [collapsed-image](https://jing.yandex-team.ru/files/fedonina71/navi_feature_day_night_fast_switch.png){title=QR-код}
+
+          `yandexnavi://add_exp?navi_feature_day_night_fast_switch=enabled`
+        - Перезапустить приложение
+        - Девайс подключен к инструментам снятия логов или открыта Log-view панель
+    - do: Запустить проигрывание MAPKITSIM-4261
+    - assert: Брендированный пин отображается
+    - do: Тап по пину
+    - assert: Открывается карточка рекламного пина
+    - do: Тап "На сайт"
+    - assert: |
+        - Открывается браузер с сайтом организации/акции
+        - Приходят события:
+        - `geoadv.bb.action.openSite` (параметры непустые, содержание проверять не требуется)
+        - `mapkit.search.logger.billboard.action.open_site`
+
+    - platforms:
+      - ios
+      - android
+    - testing:
+      - acceptance_navi
+    - integration_run:
+      - mapkit
+    - tags:
+      - assessors
+      - mapkit_ready
+      - metric
+
+
+  Логирование кнопки Позвонить в карточке брендированного пина:
+    - info: |
+        - Кейс проходится на дебаг сборке
+        Использовать интенты:
+        - [collapsed-image](https://jing.yandex-team.ru/files/fedonina71/testing_pin_call_by.png){title=QR-код}
+
+          `yandexnavi://set_ad_page_id?page_type=route&page_id=navi_billboard_7/testing_pin_call_by`
+        - [collapsed-image](https://jing.yandex-team.ru/files/fedonina71/navi_feature_day_night_fast_switch.png){title=QR-код}
+
+          `yandexnavi://add_exp?navi_feature_day_night_fast_switch=enabled`
+        - Перезапустить приложение
+        - Девайс подключен к инструментам снятия логов или открыта Log-view панель
+    - do: Запустить проигрывание MAPKITSIM-4261
+    - assert: Брендированный пин отображается
+    - do: |
+        - Тап по Пину
+        - Тап по кнопке Позвонить
+    - assert: |
+        - На Android: открывается номеронабиратель с уже введенным в поле номером телефона
+        - На iOS: появляется окошко с номером и двумя кнопками Отменить и Вызов
+        - Приходят события `mapkit.search.logger.billboard.action.call`, и `geoadv.bb.action.call` с параметрами:
+        - “advertiserId”:“(advertiserId)”
+        - “campaignId”:“(campaignId)”
+        - “product”:“pin_on_route”
+
+    - platforms:
+      - ios
+      - android
+    - testing:
+      - acceptance_navi
+    - integration_run:
+      - mapkit
+    - tags:
+      - assessors
+      - mapkit_ready
+      - metric
+
+
+  Логирование тапа по брендированому пину:
+    - info: |
+        - Кейс проходить на дебаг сборке
+        Использовать интенты:
+        - [collapsed-image](https://jing.yandex-team.ru/files/fedonina71/testing_pin_site_by.png){title=QR-код}
+
+          `yandexnavi://set_ad_page_id?page_type=route&page_id=navi_billboard_7/testing_pin_site_by`
+        - [collapsed-image](https://jing.yandex-team.ru/files/fedonina71/navi_feature_day_night_fast_switch.png){title=QR-код}
+
+          `yandexnavi://add_exp?navi_feature_day_night_fast_switch=enabled`
+        - Перезапустить приложение
+        - Девайс подключен к инструментам снятия логов или открыта Log-view панель
+    - do: |
+        - Запустить проигрывание MAPKITSIM-4261
+        - Увидеть брендированный пин
+        - Тап по пину
+    - assert: |
+        - В логах приходят события
+        - `geoadv.bb.pin.tap` с параметрами
+        "campaignId":"(campaignId)"
+        "advertiserId":"(advertiserId)"
+        "product":"pin_on_route"
+        - `mapkit.search.logger.billboard.click` (“product”:“pin_on_route”)
+
+    - platforms:
+      - ios
+      - android
+    - testing:
+      - acceptance_navi
+    - tags:
+      - assessors
+      - metric
+
+
+  Логирование пина по маршруту в фоне:
+    - info: |
+        - ДКейс проходится на дебаг сборке
+        - Использовать интенты:
+        - [collapsed-image](https://jing.yandex-team.ru/files/fedonina71/testing_pin_site_by.png){title=QR-код}
+
+          `yandexnavi://set_ad_page_id?page_type=route&page_id=navi_billboard_7/testing_pin_site_by`
+        - [collapsed-image](https://jing.yandex-team.ru/files/fedonina71/navi_feature_day_night_fast_switch.png){title=QR-код}
+
+          `yandexnavi://add_exp?navi_feature_day_night_fast_switch=enabled`
+        - Перезапустить приложение
+        - Девайс подключен к инструментам снятия логов или открыта Log-view панель
+    - do: |
+        - Запустить проигрывание MAPKITSIM-4261
+        - Свернуть приложение в фон
+    - assert: |
+        - В логи не приходят события:
+          `geoadv.bb.pin.show`
+          `geoadv.bb.pin.show_counted`
+          `mapkit.search.logger.billboard.show`
+
+    - platforms:
+      - ios
+      - android
+    - testing:
+      - acceptance_navi
+    - tags:
+      - assessors
+      - metric
+
+
+  Отключение пина по маршруту :
+    - info: |
+        - Кейс проходится на дебаг сборке
+        - Использовать интенты:
+        - [collapsed-image](https://jing.yandex-team.ru/files/fedonina71/testing_pin_site_by.png){title=QR-код}
+
+          `yandexnavi://set_ad_page_id?page_type=route&page_id=navi_billboard_7/testing_pin_site_by`
+        - [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download-7.png){title=QR-код}
+
+          `yandexnavi://add_exp?navi_feature_day_night_fast_switch=enabled&navi_feature_disable_ad_pins_on_route=enabled`
+        - Перезапустить приложение
+        - Девайс подключен к инструментам снятия логов или открыта Log-view панель
+    - do: Запустить проигрывание MAPKITSIM-4261
+    - assert: |
+        - Пины по маршруту не показываются
+        - В логах не приходят события:
+        `geoadv.bb.pin.show`
+        `geoadv.bb.pin.show_counted`
+        `mapkit.search.logger.billboard.show`
+
+    - platforms:
+      - ios
+      - android
+    - testing:
+      - acceptance_navi
+    - tags:
+      - assessors
+      - metric
+
+
+  Проверка отстутсвия события "2 секунд" пина по маршруту:
+    - info: |
+        - Кейс проходится на дебаг сборке
+        - Использовать интенты:
+        - [collapsed-image](https://jing.yandex-team.ru/files/fedonina71/testing_pin_site_by.png){title=QR-код}
+
+          `yandexnavi://set_ad_page_id?page_type=route&page_id=navi_billboard_7/testing_pin_site_by`
+        - [collapsed-image](https://jing.yandex-team.ru/files/fedonina71/navi_feature_day_night_fast_switch.png){title=QR-код}
+
+          `yandexnavi://add_exp?navi_feature_day_night_fast_switch=enabled`
+        - Перезапустить приложение
+        - Девайс подключен к инструментам снятия логов или открыта Log-view панель
+        Перед прохождением кейса ознакомиться с шагами кейса, так как время реакции между шагами менее 2 секунд, 2 секунды и событие уже приходит, а требуется проверить его отсутствие
+    - do: |
+        - Запустить проигрывание MAPKITSIM-4261
+        - Увидеть брендированный пин
+        - Менее, чем за 2 секунды после появления пина перейти из режима ведения в режим обзора маршрута, тап на кнопку обзора маршрута в таббаре
+        - Или поддерживать видимость таббара свайпая по карте
+    - assert: |
+        В логах приходят события:
+        - `geoadv.bb.pin.show` - проверить параметры
+        - `mapkit.search.logger.billboard.show` с параметром “product”:“pin_on_route”
+        - после лога `geoadv.bb.pin.show` не приходит в логах событие `geoadv.bb.pin.show_counted` с теми же параметрами, что и `geoadv.bb.pin.show`
+
+    - platforms:
+      - ios
+      - android
+    - testing:
+      - acceptance_navi
+    - tags:
+      - assessors
+      - metric
+
+
+  Проверка логирования дублирования показа пина по маршруту:
+    - info: |
+        - Кейс проходится на дебаг сборке
+        - Использовать интенты:
+        - [collapsed-image](https://jing.yandex-team.ru/files/fedonina71/testing_pin_site_by.png){title=QR-код}
+
+          `yandexnavi://set_ad_page_id?page_type=route&page_id=navi_billboard_7/testing_pin_site_by`
+        - [collapsed-image](https://jing.yandex-team.ru/files/fedonina71/navi_feature_day_night_fast_switch.png){title=QR-код}
+
+          `yandexnavi://add_exp?navi_feature_day_night_fast_switch=enabled`
+        - Перезапустить приложение
+    - do: |
+        - Запустить проигрывание MAPKITSIM-4261
+        - Увидеть брендированный пин
+    - assert: |
+        В логи приходят события:
+        - `geoadv.bb.pin.show` с параметром numberOfShowings: 1
+        - `geoadv.bb.pin.show_counted` с теми же параметрами, что и geoadv.bb.pin.show, в том числе и numberOfShowings: 1
+    - do: |
+        - Отскролить карту, чтобы пин скрылся за границей экрана.
+        - Вернуться на маршрут через кнопку Где я
+    - assert: |
+        В логи приходят события:
+        - `geoadv.bb.pin.show` с параметром numberOfShowings: 2
+        - `geoadv.bb.pin.show_counted` с теми же параметрами, что и geoadv.bb.pin.show, в том числе и numberOfShowings: 2
+
+    - platforms:
+      - ios
+      - android
+    - testing:
+      - acceptance_navi
+    - tags:
+      - assessors
+      - metric
+
+
+  Показ пина в freedrive:
+    - info: |
+        - Кейс проходится на дебаг сборке
+        - Использовать интенты:
+        - [collapsed-image](https://jing.yandex-team.ru/files/fedonina71/testing_pin_site_by.png){title=QR-код}
+
+          `yandexnavi://set_ad_page_id?page_type=route&page_id=navi_billboard_7/testing_pin_site_by`
+        - [collapsed-image](https://jing.yandex-team.ru/files/fedonina71/1.png){title=QR-код}
+
+          `yandexnavi://add_exp?navi_feature_day_night_fast_switch=enabled&navi_feature_route_ad_in_freedrive_enabled=enabled`
+        - Перезапустить приложение
+    - do: |
+        - Запустить проигрывание MAPKITSIM-4261
+        - Сбросить маршрут
+        - Продолжить ведение
+        - Дождаться перехода в freedrive
+    - assert: Отображается брендированный пин по маршруту
+    - do: Тап по пину
+    - assert: Открывается рекламная карточка
+
+    - platforms:
+        - ios
+        - android
+    - testing:
+        - acceptance_navi
+    - tags:
+        - assessors
+
+
+  Появление пина при перестроении маршрута:
+    - info: |
+        - Кейс проходится на дебаг сборке
+        - Использовать интенты:
+        - [collapsed-image](https://jing.yandex-team.ru/files/fedonina71/testing_pin_site_by.png){title=QR-код}
+
+          `yandexnavi://set_ad_page_id?page_type=route&page_id=navi_billboard_7/testing_pin_site_by`
+        - [collapsed-image](https://jing.yandex-team.ru/files/fedonina71/1.png){title=QR-код}
+
+          `yandexnavi://add_exp?navi_feature_day_night_fast_switch=enabled&navi_feature_route_ad_in_freedrive_enabled = enabled`
+        - Перезапустить приложение
+    - do: |
+        - Запустить проигрывание MAPKITSIM-4261
+        - Не сбрасывая симуляцию ведения по маршруту построить маршрут в другую точку и подтвердить его (тап на "поехали").
+        - Дождаться расхождения построенного маршрута и симуляции.
+    - assert: |
+        - После расхождения маршрута симуляции и построенного маршрута
+        - Маршрут перестраивается
+        - Отображается брендированный пин
+
+    - platforms:
+        - ios
+        - android
+    - tags:
+        - assessors
+
+
+  Появление пина после продолжительного движения в freedrive:
+    - info: |
+        - Кейс проходится на дебаг сборке
+        - Включить `Dev.Settings -> Misc -> Unlimit intents enabled -> On`
+        - Использовать интенты:
+        - [collapsed-image](https://jing.yandex-team.ru/files/fedonina71/testing_pin_site_by.png){title=QR-код}
+
+          `yandexnavi://set_ad_page_id?page_type=route&page_id=navi_billboard_7/testing_pin_site_by`
+        - [collapsed-image](https://jing.yandex-team.ru/files/fedonina71/1.png){title=QR-код}
+
+          `yandexnavi://add_exp?navi_feature_day_night_fast_switch=enabled&navi_feature_route_ad_in_freedrive_enabled=enabled`
+        - [collapsed-image](https://jing.yandex-team.ru/files/fedonina71/маршрут.png){title=QR-код}
+
+          `yandexnavi://build_route_on_map?lat_from=55.724949&lon_from=37.563729&lat_to=55.733042&lon_to=37.576157`
+        - Перезапустить приложение
+        Маршрут должен начинаться на расстоянии 5км (по прямой) от места предположительного появления бронированного пина
+    - do: |
+        - Запустить ведение по маршруту
+        - Сбросить маршрут
+    - assert: Продолжается ведение
+    - do: Дождаться перехода в freedrive
+    - assert: Отображается брендированный пин по маршруту
+    - do: Тап по пину
+    - assert: Открывается карточка организации
+
+    - platforms:
+        - ios
+        - android
+    - tags:
+        - assessors
+
+
+  Повторный показ пина:
+    - info: |
+        - Кейс проходится на дебаг сборке
+        - Использовать интенты:
+        - [collapsed-image](https://jing.yandex-team.ru/files/fedonina71/testing_pin_site_by.png){title=QR-код}
+
+          `yandexnavi://set_ad_page_id?page_type=route&page_id=navi_billboard_7/testing_pin_site_by`
+        - [collapsed-image](https://jing.yandex-team.ru/files/fedonina71/navi_feature_day_night_fast_switch.png){title=QR-код}
+
+          `yandexnavi://add_exp?navi_feature_day_night_fast_switch=enabled`
+        - Перезапустить приложение
+    - do: Запустить проигрывание MAPKITSIM-4261
+    - assert: Отображается брендированный пин по маршруту
+    - do: |
+        - Сбросить маршрут
+        - Запустить проигрывание MAPKITSIM-4261
+    - assert: Отображается брендированный пин по маршруту
+
+    - platforms:
+        - ios
+        - android
+    - tags:
+        - assessors
+
+
+  Пин по маршруту при включенном эксперименте новой рекламы (показ):
+    - info: |
+        - Кейс проходится на дебаг сборке
+        Использовать интенты:
+        - [collapsed-image](https://jing.yandex-team.ru/files/fedonina71/testing_pin_site_by.png){title=QR-код}
+
+          `yandexnavi://set_ad_page_id?page_type=route&page_id=navi_billboard_7/testing_pin_site_by`
+        - [collapsed-image](https://jing.yandex-team.ru/files/fedonina71/navi_feature_day_night_fast_switch.png){title=QR-код}
+
+          `yandexnavi://add_exp?navi_feature_day_night_fast_switch=enabled`
+        - Перезапустить приложение
+        - Девайс подключен к инструментам снятия логов или открыта Log-view панель
+    - do: |
+        Использовать интент
+        [collapsed-image](https://jing.yandex-team.ru/files/kuznetsova22/new_advertising.png){title=QR-код}
+
+        `yandexnavi://add_exp?navi_feature_use_navikit_billboard_logger=enabled&navi_feature_use_navikit_via_banner_manager=enabled&navi_feature_use_navikit_zero_speed_banner_manager=enabled`
+    - do: Перезапустить приложение
+    - do: |
+        - Запустить проигрывание MAPKITSIM-4261
+    - assert: Отображается пин по маршруту
+
+    - platforms:
+      - ios
+      - android
+    - testing:
+      - acceptance_navi
+    - tags:
+      - assessors
+      - metric
+
+
+  Пин по маршруту при включенном эксперименте новой рекламы (логирование):
+    - info: |
+        - Кейс проходится на дебаг сборке
+        Использовать интенты:
+        - [collapsed-image](https://jing.yandex-team.ru/files/fedonina71/testing_pin_site_by.png){title=QR-код}
+
+          `yandexnavi://set_ad_page_id?page_type=route&page_id=navi_billboard_7/testing_pin_site_by`
+        - [collapsed-image](https://jing.yandex-team.ru/files/fedonina71/navi_feature_day_night_fast_switch.png){title=QR-код}
+
+          `yandexnavi://add_exp?navi_feature_day_night_fast_switch=enabled`
+        - Перезапустить приложение
+    - do: |
+        Использовать интент
+        [collapsed-image](https://jing.yandex-team.ru/files/kuznetsova22/new_advertising.png){title=QR-код}
+
+        `yandexnavi://add_exp?navi_feature_use_navikit_billboard_logger=enabled&navi_feature_use_navikit_via_banner_manager=enabled&navi_feature_use_navikit_zero_speed_banner_manager=enabled`
+    - do: Перезапустить приложение
+    - do: |
+        - Запустить проигрывание MAPKITSIM-4261
+    - assert: |
+        - Отображается пин по маршруту
+        - В логах приходят события:
+        - `geoadv.bb.pin.show`
+        - `mapkit.search.logger.billboard.show` (“product”:“pin_on_route”)
+        - `geoadv.bb.pin.show_counted` (с теми же параметрами, что и geoadv.bb.pin.show)
+
+    - platforms:
+      - ios
+      - android
+    - testing:
+      - acceptance_navi
+    - tags:
+      - assessors
+      - metric
+
+
+  Показ брендированных пинов на новом рекламном слое:
+    - do: |
+        - Включить настройку: Dev. Set. -> Misc -> Debug config enable - On
+    - do: |
+        Использовать интенты:
+        [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download-2.b60e70b.png){title=QR-код}
+
+          `yandexnavi://reset_exp`
+        [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download.7ed8e87.png){title=QR-код}
+
+          `yandexnavi://set_ad_page_id?page_id=null`
+        [collapsed-image](https://jing.yandex-team.ru/files/fedonina71/testing_pin_site_by.png){title=Скриншот}
+
+          `yandexnavi://set_ad_page_id?page_type=route&page_id=navi_billboard_7/testing_pin_site_by`
+
+        [collapsed-image](https://jing.yandex-team.ru/files/shindzhev/download%20(13).3788654.png){title=QR-код}
+
+          `yandexnavi://add_exp?navi_feature_kmm_advert_layer=enabled`
+    - do: Перезапустить приложение
+    - do: |
+        - Запустить проигрывание MAPKITSIM-4261
+    - assert: Отображается рекламный пин по маршруту
+
+    - platforms:
+      - ios
+      - android
+    - testing:
+      - acceptance_navi
+    - tags:
+      - assessors
+      - metric
+
+
+  Логирование показа брендированных пинов на новом рекламном слое:
+    - info: |
+        - Девайс подключен к инструментам снятия логов или открыта Log-view панель
+    - do: |
+        - Включить настройку: Dev. Set. -> Misc -> Debug config enable - On
+    - do: |
+        Использовать интенты:
+        [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download-2.b60e70b.png){title=QR-код}
+
+          `yandexnavi://reset_exp`
+        [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download.7ed8e87.png){title=QR-код}
+
+          `yandexnavi://set_ad_page_id?page_id=null`
+        [collapsed-image](https://jing.yandex-team.ru/files/fedonina71/testing_pin_site_by.png){title=Скриншот}
+
+          `yandexnavi://set_ad_page_id?page_type=route&page_id=navi_billboard_7/testing_pin_site_by`
+
+        [collapsed-image](https://jing.yandex-team.ru/files/shindzhev/download%20(13).3788654.png){title=QR-код}
+
+        `yandexnavi://add_exp?navi_feature_kmm_advert_layer=enabled`
+    - do: Перезапустить приложение
+    - do: |
+        - Запустить проигрывание MAPKITSIM-4261
+    - assert: |
+        - Отображается рекламный пин по маршруту
+        - В логах приходят события:
+        - `geoadv.bb.pin.show`
+        - `mapkit.search.logger.billboard.show` (“product”:“pin_on_route”)
+        - `geoadv.bb.pin.show_counted` (с теми же параметрами, что и geoadv.bb.pin.show)
+
+    - platforms:
+      - ios
+      - android
+    - testing:
+      - acceptance_navi
+    - tags:
+      - assessors
+      - metric

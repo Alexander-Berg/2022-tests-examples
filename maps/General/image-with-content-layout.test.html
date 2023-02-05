@@ -1,0 +1,91 @@
+<!doctype html>
+<html>
+<head>
+    <title>layout.ImageWithContent</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <!-- YUI -->
+    <script type="text/javascript" src="../../../test/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../../test/yui3combo/combo.css"/>
+    <script type="text/javascript" src="../../../test/run-test-case.js"></script>
+    <!-- Code -->
+    <script type="text/javascript">
+        initAPI({
+            lang: "ru-RU",
+            mode: "debug",
+            load: "option.Manager,templateLayoutFactory,layout.ImageWithContent,util.dom.style"
+        });
+    </script>
+</head>
+<body class="yui3-skin-sam"></body>
+<script type="text/javascript">
+    var imgSrcs = [
+        'http://ajaxy.ru/yandex/petr.png',
+        'http://img1-fotki.yandex.net/get/6101/66910958.1c/0_STATIC586e9_c408dfd9_teaser'
+    ];
+
+    function getTestCase (Y) {
+
+        return {
+            name: "layout.ImageWithContent",
+
+            setUp: function () {
+                layout = new ymaps.layout.ImageWithContent({
+                    options: new ymaps.option.Manager({
+                        contentLayout: ymaps.templateLayoutFactory.createClass('content'),
+                        imageSize: [100, 79],
+                        imageHref: imgSrcs[0] + '?' + Math.random()
+                    })
+                });
+                container = document.getElementById('container');
+            },
+
+            tearDown: function () {
+                layout.destroy();
+            },
+
+            testSetParentElement: function () {
+                layout.setParentElement(container);
+                Y.assert(container.innerHTML.match('ymaps'), 'Лейаут не был добавлен в родительский элемент.');
+            },
+
+            testInstantHrefChange: function () {
+                layout.setParentElement(container);
+                layout.getData().options.set({
+                    imageHref: imgSrcs[1],
+                    imageSize: [106, 71]
+                });
+                this.wait(function() {
+                    Y.assert(layout.getElement().firstChild.style.backgroundImage.match('mg1-fotki.yandex.net'), 'Картинка не сменилась.');
+                }, 100)
+            },
+
+            testMAPSAPI6038: function () {
+                layout.setParentElement(container);
+                layout.getData().options.set('imageHref', imgSrcs[1]);
+            },
+
+            testAutoImageSize: function () {
+                layout.setParentElement(container);
+                layout.getData().options.unset('imageSize');
+                layout.getData().options.set('imageHref', imgSrcs[1]);
+                this.wait(function() {
+                    Y.Assert.areEqual(
+                        '106,71',
+                        ymaps.util.dom.style.getSize(layout.getElement().firstChild),
+                        'Не получилось рассчитать автоматический размер.'
+                    );
+                }, 100)
+            }
+        };
+    }
+
+    ymaps.ready(function () {
+        // Выполним предзагрузку второй картинки.
+        var img = new Image();
+        img.onload = runTestCase;
+        img.src = imgSrcs[1];
+    });
+
+</script>
+
+<div id='container' style='width:500px;height:500px;overflow:hidden;'></div>

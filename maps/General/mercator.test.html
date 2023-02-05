@@ -1,0 +1,71 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <title>projection.Mercator</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <!-- YUI -->
+    <script type="text/javascript" src="../../../test/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../../test/yui3combo/combo.css" />
+    <script type="text/javascript" src="../../../test/run-test-case.js"></script>
+    <!-- Code -->
+    <script type="text/javascript">
+        initAPI({
+            lang: "ru-RU",
+            load: "projection.Mercator,util.math.areEqual",
+            mode: "debug",
+            ns: "ym"
+        });
+    </script>
+</head>
+
+<body class="yui3-skin-sam"></body>
+
+<script type="text/javascript">
+    function getTestCase(Y) {
+        var equals = ym.util.math.areEqual;
+        return {
+            name: 'projection.Mercator',
+
+            testGeo: function () {
+                // Проверяем, что Москва на месте
+                var mercator = new ym.projection.Mercator(),
+                    geoMoscow = [ 37.609218, 55.753559 ],
+                    mercatorMoscow = [ 4186638.996893,7474162.916348 ];
+
+                // В нашей проекции на 23 масштабе 1 пиксель = 2 см = 2e-7 градусов
+                // Соответственно, необходима точность 1e-2 для меркаторовских координат и 1e-7 для гео.
+                Y.assert(equals(mercator.geoToMercator([geoMoscow[0] + 360, geoMoscow[1]]), mercatorMoscow, 1e-2), 'Меркаторовы координаты Москвы вычислены неверно');
+                Y.assert(equals(geoMoscow, mercator.mercatorToGeo(mercatorMoscow), 1e-7), 'Геокоординаты Москвы вычислены неверно');
+            },
+
+            testSphere: function () {
+                var mercator = new ym.projection.Mercator({ radius: 1, e: 0 }),
+                    geoPoint = [ 0, 30 ],
+                    // Меркаторова координата, соответствующая 30 градусам широты:
+                    // ln(tg(pi/12 + pi/4)) = ln(tg(pi/3)) = 0.5 * ln 3
+                    mercatorPoint = [ 0, .5 * Math.log(3) ];
+
+                Y.assert(equals(mercator.geoToMercator(geoPoint), mercatorPoint, 1e-9), 'Меркаторовы координаты на сфере вычислены неверно');
+                Y.assert(equals(geoPoint, mercator.mercatorToGeo(mercatorPoint), 1e-7), 'Геокоординаты на сфере вычислены неверно');
+            },
+
+            testOrder: function () {
+                var geoMoscow = [ 37.609218, 55.753559 ],
+                    geoMoscowLatLong = [ 55.753559, 37.609218 ],
+                    mercator = new ym.projection.Mercator(),
+                    mercatorLatLong = new ym.projection.Mercator({ coordinatesOrder: 'latlong' });
+
+                Y.assert(equals(mercator.geoToMercator(geoMoscow), mercatorLatLong.geoToMercator(geoMoscowLatLong), 1e-9), 'Неправильно отработана опция порядка координат');
+
+                var mercatorPoint = [1345, 5201],
+                    longLatPoint = mercator.mercatorToGeo(mercatorPoint),
+                    latLongPoint = mercatorLatLong.mercatorToGeo(mercatorPoint);
+
+                Y.assert(equals(longLatPoint, [latLongPoint[1], latLongPoint[0]], 1e-7), "Неправильно отработана опция порядка координат");
+            }
+        }
+    }
+    ym.ready(runTestCase);
+</script>
+</html>

@@ -1,0 +1,158 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <title>yandex.dataProvider</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <!-- YUI -->
+    <script type="text/javascript" src="../../../test/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../../test/yui3combo/combo.css" />
+    <script type="text/javascript" src="../../../test/run-test-case.js"></script>
+    <!-- Code -->
+    <script type="text/javascript">
+        initAPI({
+            lang: "ru-RU",
+            load: "util.jsonp,yandex.dataProvider"
+        });
+    </script>
+</head>
+
+<body class="yui3-skin-sam"></body>
+
+<script type="text/javascript">
+    function getTestCase(Y) { return {
+        name: "yandex.dataProvider",
+
+        testDataProviderFact: function() {
+            var coords = [55.788249, 37.672399],
+                dataProvider = ymaps.yandex.dataProvider,
+                counter = 0,
+                testCase = this,
+                completed = [false, false, false, false],
+                complete = function (n) {
+                    console.log(n);
+                    completed[n] = true;
+                    for (var i = 0, l = completed.length; i < l; i++) {
+                        if (!completed[i]) {
+                            return;
+                        }
+                    }
+                    testCase.resume();
+                };
+
+            dataProvider.getLayersInfo(['map'], coords, 15).done(function(data) {
+                Y.assert(data['map'].zoomRange[1] == 18, "Неверный ответ сервера('map').");
+                counter++;
+                complete(0);
+            });
+
+            dataProvider.getLayersInfo(['sat' ,'skl'], coords, 10).done(function(data) {
+                Y.assert((data['sat'].zoomRange[0] == 0) && (data['sat'].zoomRange[1] == 19), "Неверный ответ сервера('sat' ,'skl').");
+                counter++;
+                complete(1);
+            });
+
+            dataProvider.getLayersInfo(['sat'], coords, 10).done(function(data) {
+                Y.assert((data['sat'].zoomRange[0] == 0) && (data['sat'].zoomRange[1] == 19), "Неверный ответ сервера('sat').");
+                Y.assert(!data['skl'], "Вернулись данные, которые не запрашивались.");
+                counter++;
+                complete(2);
+            });
+
+            function secondRequest() {
+                dataProvider.getLayersInfo(['sat' ,'skl'], coords, 10).done(function(data) {
+                    Y.assert((data['sat'].zoomRange[0] == 0) && (data['sat'].zoomRange[1] == 19), "Неверный ответ сервера на повторный запрос.");
+                    counter++;
+                    Y.assert(counter == 4, "Неверное число раз были вызваны колбеки.");
+                    complete(3);
+                });
+            }
+
+            window.setTimeout(secondRequest, 200);
+            this.wait();
+        },
+
+        testDataProviderIntegrity: function () {
+            var requests = [],
+                testCase = this,
+                pending = 0,
+                onInsert = function (e) {
+                    var node = e.target;
+                    if (node.tagName.toLowerCase() == 'script') {
+                        var query = node.src.split('?')[1],
+                            parts = query.match(/l=([^\&]+)(\&|^)/);
+
+                        if (!parts) {
+                            Y.fail('Неведомый запрос');
+                        }
+
+                        requests.push(parts[1].split(',').sort().join(','));
+                    }
+                },
+                onAnswer = function (layers) {
+                    return function (res) {
+                        for (var i = 0, l = layers.length; i < l; i++) {
+                            if (!res[layers[i]]) {
+                                Y.fail('Не получен ответ для слоя ' + layers[i]);
+                            }
+                        }
+                        if (!--pending) {
+                            onReady();
+                        }
+                    }
+                },
+                onReady = function () {
+                    if (document.addEventListener) {
+                        document.getElementsByTagName('head')[0].removeEventListener('DOMNodeInserted', onInsert, false);
+
+                        // Если третий запрос склеился с первыми двумя
+                        if (requests.length == 2) {
+                            Y.assert(requests[0] == 'map,sat,skl,trf' && requests[1] == 'trf,trfa', 'Неправильно склеились запросы');
+                        } else if (requests.length == 3) {
+                        // Если третий запрос не склеился с первыми двумя
+                            Y.assert(requests[0] == 'map,sat,skl,trf' && requests[1] == 'sat,skl' && requests[2] == 'trf,trfa', 'Неправильно склеились запросы');
+                        } else {
+                            Y.fail('Неправильное количество запросов');
+                        }
+                    }
+
+                    testCase.resume();
+                };
+
+            // В IE в этом месте нужно смотреть глазами в сниффер
+            if (document.addEventListener) {
+                document.getElementsByTagName('head')[0].addEventListener('DOMNodeInserted', onInsert, false);
+            }
+
+            // Шлём 4 запроса одновременно
+            pending = 4;
+            var dataProvider = ymaps.yandex.dataProvider;
+            // Эти два должны склеиться в один
+            dataProvider.getLayersInfo(['map', 'sat', 'skl'], [33, 55], 10).then(onAnswer(['map', 'sat', 'skl']));
+            dataProvider.getLayersInfo(['trf'], [33, 55], 10).then(onAnswer(['trf']));
+
+            window.setTimeout(function () {
+                // Этот запрос может подклеиться к первым двум, если ответ не был взят из кэша
+                dataProvider.getLayersInfo(['skl', 'sat'], [33, 55], 10).then(onAnswer(['skl', 'sat']));
+                // Этот запрос не должен склеиться с первыми тремя
+                dataProvider.getLayersInfo(['trf', 'trfa'], [33, 55], 10).then(onAnswer(['trf', 'trfa']));
+            }, 1);
+
+            this.wait(1000);
+        },
+
+        testDataProviderWithSpn: function () {
+            var testCase = this;
+            function onSpnAnswer (res) {
+                testCase.resume(function() {
+                    Y.assert(!!res.map, "Не отработал запрос с spn.");
+                });
+            }
+            ymaps.yandex.dataProvider.getLayersInfo(['map'], [37.6327772, 55.7588656], 10, [1.73034668, 0.73797892]).then(onSpnAnswer);
+            this.wait(1000);
+        }
+    }}
+    ymaps.ready(runTestCase);
+</script>
+<div id="map"></div>
+</html>

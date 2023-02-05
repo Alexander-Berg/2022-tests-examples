@@ -1,0 +1,95 @@
+service: mobilemapstesting
+title: Mobile Maps test cases
+
+
+arcanum:
+  auto_merge:
+    enabled: true
+    requirements:
+      - system: arcanum
+        type: comment_issues_closed
+
+      - system: arcanum
+        type: st_issue_linked
+
+      # Интеграции со стартреком:
+      # https://nda.ya.ru/t/hJ6eeL6J4fJpET
+      # https://nda.ya.ru/t/dZdZ7H4W4fJpUP
+      - system: pr-actions
+        type: startrek
+
+      # Сборки с валидацией тест-кейсов на Teamcity Sandbox Runner
+      # https://st.yandex-team.ru/MAPSMOBILETEST-3348
+      - system: teamcity-common
+        type: MobileNew_Monorepo_Geo_TestCasesSandbox_Navi_Pr
+        required: true
+        alias: (navi) palmsync:validate
+        restartable: true
+        need_disable_reason: true
+        data:
+          branch_prefix: geo/qa/navi/test-cases
+          autorun: true
+          strategy: merge-pin#20
+          included_paths:
+            - /mobile/geo/qa/test-cases/navi
+            - /mobile/geo/qa/test-cases/common
+
+      - system: teamcity-common
+        type: MobileNew_Monorepo_Geo_TestCasesSandbox_Maps_Pr
+        required: true
+        alias: (mapsmobile) palmsync:validate
+        restartable: true
+        need_disable_reason: true
+        data:
+          branch_prefix: geo/qa/mapsmobile/test-cases
+          autorun: true
+          strategy: merge-pin#20
+          included_paths:
+            - /mobile/geo/qa/test-cases/mapsmobile
+            - /mobile/geo/qa/test-cases/common
+
+      - system: teamcity-common
+        type: MobileNew_Monorepo_Geo_TestCasesSandbox_Kartograph_Pr
+        required: true
+        alias: (kartograph) palmsync:validate
+        restartable: true
+        need_disable_reason: true
+        data:
+          branch_prefix: geo/qa/kartograph/test-cases
+          autorun: true
+          strategy: merge-pin#20
+          included_paths:
+            - /mobile/geo/qa/test-cases/kartograph
+            - /mobile/geo/qa/test-cases/common
+
+  review:
+    required: true
+    auto_assign: false
+    min_approvers_count: 1
+    groups:
+      - name: banshee-reviewers
+        roles: "banshee_reviewer"
+      - name: banshee-shippers
+        roles: "banshee_reviewer,admin"
+      - name: maps-reviewers
+        roles: "spectre_reviewer,banshee_reviewer"
+      - name: maps-shippers
+        roles: "spectre_reviewer,banshee_reviewer,admin"
+
+    rules:
+      - subpaths: mapsmobile/**, common/**
+        reviewers:
+          - name: maps-reviewers
+            ship: 0
+            assign: 1
+          - name: maps-shippers
+            ship: 1
+            assign: 0
+      - subpaths: navi/**
+        reviewers:
+          - name: banshee-reviewers
+            ship: 0
+            assign: 1
+          - name: banshee-shippers
+            ship: 1
+            assign: 0

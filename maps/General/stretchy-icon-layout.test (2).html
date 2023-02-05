@@ -1,0 +1,100 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <title>stretchyIcon layout</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <!-- YUI -->
+    <script type="text/javascript" src="../../../../../../test/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../../../../../test/yui3combo/combo.css" />
+    <script type="text/javascript" src="../../../../../../test/run-test-case.js"></script>
+    <!-- Code -->
+    <script type="text/javascript">
+        initAPI({
+            lang: "ru-RU",
+            load: ["package.full", "util.nodeSize"],
+            mode: "debug"
+        });
+    </script>
+    <style type="text/css">
+        #container { width: 400px; height: 300px; background: #ccc; }
+    </style>
+</head>
+
+<body class="yui3-skin-sam">
+<div id="container" height='200px' width='200px' style="display: none"></div>
+
+<script type="text/javascript">
+    var geoMap;
+    function getTestCase(Y) {
+        return {
+            name: "stretchyIcon",
+            debug: false,
+
+            setUp: function () {
+                geoMap = new ymaps.Map('container', {
+                    center: [55.7643, 37.9380],
+                    type: "yandex#map",
+                    zoom: 10
+                });
+            },
+
+            tearDown: function () {
+                geoMap.destroy();
+            },
+
+            testStretchyIconFromHiddenContainer: function () {
+                var geoObj = new ymaps.Placemark([55.7643, 37.9380], {
+                    // картинка 50х50
+                    iconContent: '<img id="testSize" src="http://center.yandex-team.ru/user/avatar/volozh/50/square/">'
+                }, {
+                    preset: "twirl#redStretchyIcon"
+                });
+                geoMap.geoObjects.add(geoObj);
+
+
+                // чтобы нода успела сгенерироваться
+                var testCase = this,
+                    nodeAddr = "#testSize",
+                    iconNodeBefore, beforeDisplay;
+
+                setTimeout(function () {
+                    iconNodeBefore = document.querySelector(nodeAddr);
+                    beforeDisplay = ymaps.util.nodeSize.computeByContent(iconNodeBefore);
+
+                    document.querySelector('#container').style.display = "block";
+                    geoMap.container.fitToViewport();
+                }, 0);
+
+                // чтобы нода успела пересобраться
+                setTimeout(function () {
+                    var iconNodeAfter = document.querySelector(nodeAddr),
+                        afterDisplay = ymaps.util.nodeSize.computeByContent(iconNodeAfter);
+
+                    testCase.resume(function(){
+                        Y.assert(
+                            // при скрытом размеры должны быть 0, 0
+                            beforeDisplay.width == beforeDisplay.height &&
+                                    afterDisplay.width == afterDisplay.height &&
+                                    afterDisplay.width > beforeDisplay.height,
+                            "Лейаут не пересобрался"
+                        );
+                    });
+                }, 400);
+
+                testCase.wait(function () {
+                    Y.Assert.fail("Не рассчитались данные");
+                }, 600);
+            }
+        }
+    }
+    document.addEventListener('DOMContentLoaded', function () {
+        ymaps.ready(function () {
+            runTestCase();
+        });
+    }, false);
+
+
+</script>
+</body>
+</html>

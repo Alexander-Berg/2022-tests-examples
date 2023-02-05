@@ -1,0 +1,160 @@
+annotations:
+  project: maps-front-podrick-int
+meta:
+  id: maps-front-podrick-int_testing
+  project_id: maps-front-podrick-int
+  inherit_acl: true
+  account_id: 'abc:service:2365'
+spec:
+  account_id: 'abc:service:2365'
+  deploy_units:
+    app:
+      endpoint_sets:
+        - port: 80
+      images_for_boxes: {}
+      network_defaults:
+        network_id: _MAPSTESTQNETS_
+      tvm_config: {}
+      multi_cluster_replica_set:
+        replica_set:
+          clusters:
+            - cluster: man
+              spec:
+                constraints:
+                  antiaffinity_constraints:
+                    - key: rack
+                      max_pods: 1
+                replica_count: 1
+            - cluster: sas
+              spec:
+                constraints:
+                  antiaffinity_constraints:
+                    - key: rack
+                      max_pods: 1
+                replica_count: 1
+            - cluster: vla
+              spec:
+                constraints:
+                  antiaffinity_constraints:
+                    - key: rack
+                      max_pods: 1
+                replica_count: 1
+          deployment_strategy:
+            max_unavailable: 1
+          pod_template_spec:
+            spec:
+              disk_volume_requests:
+                - id: maps-front-podrick-int_testing-disk-0
+                  storage_class: hdd
+                  quota_policy:
+                    bandwidth_guarantee: 15728640
+                    bandwidth_limit: 31457280
+                    capacity: 16106127360
+                  labels:
+                    used_by_infra: true
+              resource_requests:
+                memory_guarantee: 1073741824
+                memory_limit: 1073741824
+                vcpu_guarantee: 250
+                vcpu_limit: 250
+              host_infra:
+                monitoring:
+                  unistats:
+                    - workload_id: app_workload
+                      port: 7032
+                      path: /unistat
+              secret_refs:
+                'maps-front-podrick-int.testing':
+                  secret_id: sec-01cjz1zmeqzc10c3kjr0vjrdw5
+                  secret_version: ver-01fhwaf7c63z7ks546kvxyx011
+              pod_agent_payload:
+                spec:
+                  boxes:
+                    - id: app_box
+                      resolv_conf: nat64
+                      rootfs: {}
+                      static_resources:
+                        - resource_ref: usr.share.yandex.maps.hosts
+                          mount_point: /usr/share/yandex/maps/hosts
+                        - resource_ref: usr.share.yandex.maps.inthosts
+                          mount_point: /usr/share/yandex/maps/inthosts
+                  mutable_workloads:
+                    - workload_ref: app_workload
+                  resources:
+                    static_resources:
+                      - id: usr.share.yandex.maps.hosts
+                        url: 'rbtorrent:cfc52be27424f205910d24e1e0483faa684b8d64'
+                        verification:
+                          checksum: 'EMPTY:'
+                          check_period_ms: 180000
+                      - id: usr.share.yandex.maps.inthosts
+                        url: 'rbtorrent:93c65db7da945c04c3a965003ec2314f0d86d368'
+                        verification:
+                          checksum: 'EMPTY:'
+                          check_period_ms: 180000
+                  workloads:
+                    - id: app_workload
+                      box_ref: app_box
+                      env:
+                        - name: GITHUB_OAUTH_TOKEN
+                          value:
+                            secret_env:
+                              alias: maps-front-podrick-int.testing
+                              id: GITHUB_OAUTH_TOKEN
+                        - name: QLOUD_OAUTH_TOKEN
+                          value:
+                            secret_env:
+                              alias: maps-front-podrick-int.testing
+                              id: QLOUD_OAUTH_TOKEN
+                        - name: STARTREK_OAUTH_TOKEN
+                          value:
+                            secret_env:
+                              alias: maps-front-podrick-int.testing
+                              id: STARTREK_OAUTH_TOKEN
+                        - name: STAT_OAUTH_TOKEN
+                          value:
+                            secret_env:
+                              alias: maps-front-podrick-int.testing
+                              id: STAT_OAUTH_TOKEN
+                        - name: TANKER_OAUTH_TOKEN
+                          value:
+                            secret_env:
+                              alias: maps-front-podrick-int.testing
+                              id: TANKER_OAUTH_TOKEN
+                        - name: STATIC_AWS_SECRET_ACCESS_KEY
+                          value:
+                            secret_env:
+                              alias: maps-front-podrick-int.testing
+                              id: STATIC_AWS_SECRET_ACCESS_KEY
+                        - name: STATIC_AWS_ACCESS_KEY_ID
+                          value:
+                            secret_env:
+                              alias: maps-front-podrick-int.testing
+                              id: STATIC_AWS_ACCESS_KEY_ID
+                        - name: STATIC_CLIENT_KEY
+                          value:
+                            secret_env:
+                              alias: maps-front-podrick-int.testing
+                              id: STATIC_CLIENT_KEY
+                      liveness_check:
+                        tcp_check:
+                          port: 80
+                      readiness_check:
+                        http_get:
+                          port: 80
+                          path: /ping
+                          any: true
+                          time_limit:
+                            max_execution_time_ms: 1000
+                      start:
+                        command_line: bash -c "/start.sh"
+                      stop_policy:
+                        container:
+                          command_line: bash -c "/detach.sh"
+                          time_limit:
+                            max_execution_time_ms: 20000
+                            max_restart_period_ms: 30000
+                            min_restart_period_ms: 30000
+                        max_tries: 2
+                      transmit_logs: true
+  revision_info: {}

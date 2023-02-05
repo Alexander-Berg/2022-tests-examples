@@ -1,0 +1,36 @@
+config:
+  name:
+    Testopithecus_test
+  runner_version:
+    2021.09.27-8673273
+  build_counter:
+    Testopithecus_Test_Build_Counter            # номер билда будет доступен в окружении как BUILD_NUMBER (аналогично teamcity); про заведение новых счётчиков см. шаг 1
+  # так же будет доступен branch как BUILD_BRANCH
+stages:                                       # все stage-и выполняются параллельно, если не заданы явные или неявные зависимости(если сортировать по длине выполнения, от большего к меньшему, то общее время выполнения сократится)
+  app3:
+    work_dir:                                 # рабочая директория, все команды stage-а запускаются относительно неё. default - текущая директория
+      mobile/mail/common/xmail/
+    cmd:                                      # команды для запуска, выполняются последовательно, через %env.v_name% матчатся переменные окружения
+      - yarn install
+      - cd packages/xpackages/testopithecus && yarn run test:integration
+    fail_fast:                                # останавливает с ошибкой все шаги сразу после падения текущего шага, default = false
+      true
+    lxc:
+      1311855126                              # lxc-образ для запуска команд, подробнее см. ниже
+    env:
+      VALUE1: some_value                      # будет доступен в env как VALUE1; в gradle можно передавать через -P, либо забирать через System.getenv("VALUE1")
+#      <variable>: <value>
+    secrets:                                  # https://wiki.yandex-team.ru/sandbox/vault/ документация по секретам; для использования в из-под общего аккаунта выдавайте доступ к MOBDEVTOOLS
+#      aslevushkin:token1: TOKEN1              # будет доступен в окружении как TOKEN1, нельзя передавать через -P из-за безопасности
+#      aslevushkin:token2: TOKEN_XXX           # как TOKEN_XXX
+      some-value:sec-01dz3vwr2q16d4jqandkkfqp5k[token]: BUNKER_TOKEN     # для использования секретов из общей секретницы. sec-abc1[key]-номер и ключ секрета, some-value будет проигнорировано. что бы начать пользоваться, следуйте инструкции https://wiki.yandex-team.ru/sandbox/yav/#permissions
+    kill_timeout:                             # optional, default 10800
+      3600
+#    artifacts:                                # публикуются на teamcity; одинаковые пути запрещены; правая часть маппинга обязательна, тк это map
+#      +app-test/build/outputs/*: app/outputs
+#      +app-test/build/reports/*: app/reports
+#      +passport/build/outputs/*: passport/outputs
+#      +passport/build/reports/*: passport/reports
+#      +passport/build/docs/*: docs
+    multislot:                                # подробнее про мультислоты см. ниже
+      SMALL

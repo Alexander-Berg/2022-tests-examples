@@ -1,0 +1,895 @@
+components: audio_zsb
+testing:
+  - regress
+
+import-steps:
+  - ../../features/mobile-app/steps/zsb.yml
+
+specs-integration:
+  aliases:
+    - &Инфо_длинный_ролик
+      - info: |
+          - Dev. Set. -> Misc -> Debug config enable - On
+          - Использовать интенты:
+            [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download-2.b60e70b.png){title=QR-код}
+
+            `yandexnavi://reset_exp`
+            [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download.7ed8e87.png){title=QR-код}
+
+            `yandexnavi://set_ad_page_id?page_id=null`
+            [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download-3.4808fbb.png){title=QR-код}
+
+            `yandexnavi://add_exp?navi_feature_audio_zsb=enabled&navi_ad_product_cooldown_zero_speed_banner=10&navi_feature_day_night_fast_switch=enabled&navi_feature_zsb_statuses_logging=enabled`
+            [collapsed-image](https://jing.yandex-team.ru/files/vikelvar/testing_zsb_audio_vasya.png){title=QR-код}
+
+            `yandexnavi://set_ad_page_id?page_type=zero_speed&page_id=navi_zero_speed_banner_10/testing_zsb_audio_vasya`
+          - Перезапустить приложение
+
+specs:
+  Audio-ZSB Проверка UI:
+    - info: |
+        - Dev. Set. -> Misc -> Debug config enable - On
+        - Использовать интенты:
+          [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download-2.b60e70b.png){title=QR-код}
+
+          `yandexnavi://reset_exp`
+          [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download.7ed8e87.png){title=QR-код}
+
+          `yandexnavi://set_ad_page_id?page_id=null`
+          [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download-3.4808fbb.png){title=QR-код}
+
+          `yandexnavi://add_exp?navi_feature_audio_zsb=enabled&navi_ad_product_cooldown_zero_speed_banner=10&navi_feature_day_night_fast_switch=enabled&navi_feature_zsb_statuses_logging=enabled`
+          [collapsed-image](https://jing.yandex-team.ru/files/vikelvar/testing_zsb_audio_vasya.png){title=QR-код}
+
+          `yandexnavi://set_ad_page_id?page_type=zero_speed&page_id=navi_zero_speed_banner_10/testing_zsb_audio_vasya`
+        - Перезапустить приложение
+    - do: |
+        - Запустить проигрывание MAPKITSIM-4261
+        - Дождаться остановки движения перед светофором
+    - assert: |
+        - Приложение перешло в режим ведения
+        - На остановке появляется баннер ZSB
+        - Баннер содержит:
+          Лого
+          Кнопку Play
+          Дорожку прогресса
+          Пометку "Аудиосообщение"
+          Дисклеймер
+    - do: Несколько раз сменить ориентацию девайса
+    - assert: |
+        - UI баннера не искажается, элементы остаются на своих местах, не перекрывают друг друга
+        - При смене ориентации баннер не скрывается
+    - do: Тап на баннер
+    - assert: |
+        - Баннер раскрылся в максимальное состояние
+        - Баннер содержит:
+          Лого
+          Кнопку Play
+          Дорожку прогресса
+          Пометку "Аудиосообщение"
+          Дисклеймер
+          Рекламное сообщение
+          Один или несколько контролов из Открыть сайт/Позвонить/Найти на карте
+          Кнопку "Закрыть" в самом низу карточки
+    - do: Несколько раз сменить ориентацию девайса
+    - assert: |
+        - UI карточки не искажается, элементы остаются на своих местах, не перекрывают друг друга
+        - При смене ориентации карточка не закрывается, не сворачивается, и ее не перекрывают другие элементы
+
+    - platforms:
+      - ios
+      - android
+    - testing:
+      - acceptance_navi
+
+
+  Audio-ZSB Логирование кнопки Play/Stop:
+    - *Инфо_длинный_ролик
+    - info: Девайс подключен к инструментам снятия логов или открыта Log-view панель
+    - do: |
+        - Запустить проигрывание MAPKITSIM-4261
+        - Дождаться остановки движения перед светофором
+    - assert: |
+        - Приложение перешло в режим ведения
+        - На остановке появляется баннер ZSB
+    - do: Тап на кнопку Play
+    - assert: |
+        - В логи приходит событие `geoadv.bb.pin.audio.play` с параметрами:
+          `audioCurrentTime` - Время в секундах, с которого начинаем проигрывание
+          `audioDeviceVolume` - от 0.0 до 1.0 - процент громкости на пользовательском устройстве
+          `audioAppVolume` - от 0.0 до 1.0 - процент громкости приложения
+          `reason` - Причина начала воспроизведения:
+            `user_action` - пользователь нажал сам на кнопку
+            `resumed_by_system` - когда после аннотации, например, воспроизведение само восстанавливается
+    - do: Тап на кнопку Stop
+    - assert: |
+        - В логи приходит событие `geoadv.bb.pin.audio.stop` с параметрами:
+          `audioCurrentTime` - Время в секундах, с которого начинаем проигрывание
+          `audioDeviceVolume` - от 0.0 до 1.0 - процент громкости на пользовательском устройстве
+          `audioAppVolume` - от 0.0 до 1.0 - процент громкости приложения
+          `reason` - Причина начала воспроизведения:
+            `user_action` - пользователь нажал сам на кнопку
+            `resumed_by_system` - когда после аннотации, например, воспроизведение само восстанавливается
+
+    - platforms:
+      - ios
+      - android
+    - testing:
+      - acceptance_navi
+    - tags:
+        - metric
+
+
+  Audio-ZSB Взаимодействие c Алисой:
+    - info: |
+        - Dev. Set. -> Misc -> Debug config enable - On
+        - Использовать интенты:
+          [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download-2.b60e70b.png){title=QR-код}
+
+          `yandexnavi://reset_exp`
+          [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download.7ed8e87.png){title=QR-код}
+
+          `yandexnavi://set_ad_page_id?page_id=null`
+          [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download-3.4808fbb.png){title=QR-код}
+
+          `yandexnavi://add_exp?navi_feature_audio_zsb=enabled&navi_ad_product_cooldown_zero_speed_banner=10&navi_feature_day_night_fast_switch=enabled&navi_feature_zsb_statuses_logging=enabled`
+          [collapsed-image](https://jing.yandex-team.ru/files/vikelvar/testing_zsb_audio_vasya.png){title=QR-код}
+
+          `yandexnavi://set_ad_page_id?page_type=zero_speed&page_id=navi_zero_speed_banner_10/testing_zsb_audio_vasya`
+        - Перезапустить приложение
+    - do: |
+        - Запустить проигрывание MAPKITSIM-4261
+        - Дождаться остановки движения перед светофором
+    - assert: |
+        - Приложение перешло в режим ведения
+        - На остановке появляется баннер ZSB
+    - do: |
+        - Тап на кнопку Play
+    - assert: |
+        - Воспроизводится рекламный ролик
+    - do: Вызвать Алису голосом
+    - assert:  |
+        - Алиса вызывается и слушает
+        - Рекламный ролик ставится на паузу
+    - do: Закрыть Алису
+    - assert: |
+        - Алиса закрывается
+        - Рекламный ролик продолжает стоят на паузе
+    - do: Тап на Play в баннере ZSB
+    - assert: Рекламный ролик продолжает играть с места на котором остановился
+
+    - platforms:
+      - ios
+      - android
+    - testing:
+      - acceptance_navi
+
+
+  Audio-ZSB Взаимодействие с музыкой из стороннего приложения:
+    - *Инфо_длинный_ролик
+    - info: Меню - Звуки и оповещения - Приглушать все другие звуки
+    - do: |
+        - Включить музыку в стороннем приложении
+        - Запустить проигрывание MAPKITSIM-4261
+        - Дождаться остановки движения перед светофором
+    - assert: |
+        - На остановке появляется баннер ZSB
+    - do: Тап на Play в баннере
+    - assert: |
+        - Музыка звучит тише
+        - Звучит рекламный ролик
+    - do: Дождаться завершения проигрывания рекламного ролика
+    - assert: Музыка возвращается к исходной громкости
+
+    - platforms:
+      - ios
+      - android
+    - testing:
+      - acceptance_navi
+
+
+  Audio-ZSB Взаимодействие со встроенной в приложение музыкой:
+    - info: |
+        - Dev. Set. -> Misc -> Debug config enable - On
+        - Использовать интенты:
+          [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download-2.b60e70b.png){title=QR-код}
+
+          `yandexnavi://reset_exp`
+          [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download.7ed8e87.png){title=QR-код}
+
+          `yandexnavi://set_ad_page_id?page_id=null`
+          [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download-5.bc9471b.png){title=QR-код}
+
+          `yandexnavi://add_exp?navi_feature_audio_zsb=enabled&navi_ad_product_cooldown_zero_speed_banner=10&navi_feature_day_night_fast_switch=enabled&navi_feature_zsb_statuses_logging=enabled&navi_feature_zero_speed_banner_is_more_important_than_miniplayer=enabled`
+          [collapsed-image](https://jing.yandex-team.ru/files/vikelvar/testing_zsb_audio_vasya.png){title=QR-код}
+
+          `yandexnavi://set_ad_page_id?page_type=zero_speed&page_id=navi_zero_speed_banner_10/testing_zsb_audio_vasya`
+        - Перезапустить приложение
+        - Меню - Звуки и оповещения - Приглушать все другие звуки
+    - do: |
+        - Включить музыку в Навигаторе
+        - Запустить проигрывание MAPKITSIM-4261
+        - Дождаться остановки движения перед светофором
+    - assert: |
+        - На остановке появляется баннер ZSB
+        - При появлении баннера ZSB мини плеер скрывается
+    - do: Тап на Play в баннере
+    - assert: |
+        - Музыка звучит тише
+        - Звучит рекламный ролик
+    - do: Дождаться завершения проигрывания рекламного ролика
+    - assert: Музыка возвращается к исходной громкости
+
+    - platforms:
+      - ios
+      - android
+    - testing:
+      - acceptance_navi
+
+
+  Audio-ZSB Звучание аннотации на середине ролика:
+    - info: |
+        - Dev. Set. -> Misc -> Debug config enable - On
+        - Использовать интенты:
+          [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download-2.b60e70b.png){title=QR-код}
+
+          `yandexnavi://reset_exp`
+          [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download.7ed8e87.png){title=QR-код}
+
+          `yandexnavi://set_ad_page_id?page_id=null`
+          [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download-3.4808fbb.png){title=QR-код}
+
+          `yandexnavi://add_exp?navi_feature_audio_zsb=enabled&navi_ad_product_cooldown_zero_speed_banner=10&navi_feature_day_night_fast_switch=enabled&navi_feature_zsb_statuses_logging=enabled`
+          [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download-6.png){title=QR-код}
+
+          `yandexnavi://set_ad_page_id?page_type=zero_speed&page_id=navi_zero_speed_banner_8/testing_zsb_audio_green`
+        - Перезапустить приложение
+    - do: |
+        - Запустить проигрывание MAPKITSIM-4261
+        - Дождаться остановки движения перед светофором
+    - assert: |
+        - Приложение перешло в режим ведения
+        - На остановке появляется баннер ZSB
+    - do: |
+        - Тап на кнопку Play
+        - Дождаться аннотации по маршруту
+    - assert: |
+        - Перед аннотацией ролик ставится на паузу
+        - Звучит аннотация
+        - После аннотации ролик воспроизводится с того места, на котором остановился
+
+    - platforms:
+      - ios
+      - android
+    - testing:
+      - acceptance_navi
+
+
+  Audio-ZSB Запуск ролика во время аннотации:
+    - info: |
+        - Dev. Set. -> Misc -> Debug config enable - On
+        - Использовать интенты:
+          [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download-2.b60e70b.png){title=QR-код}
+
+          `yandexnavi://reset_exp`
+          [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download.7ed8e87.png){title=QR-код}
+
+          `yandexnavi://set_ad_page_id?page_id=null`
+          [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download-3.4808fbb.png){title=QR-код}
+
+          `yandexnavi://add_exp?navi_feature_audio_zsb=enabled&navi_ad_product_cooldown_zero_speed_banner=10&navi_feature_day_night_fast_switch=enabled&navi_feature_zsb_statuses_logging=enabled`
+          [collapsed-image](https://jing.yandex-team.ru/files/vikelvar/testing_zsb_audio_vasya.png){title=QR-код}
+
+          `yandexnavi://set_ad_page_id?page_type=zero_speed&page_id=navi_zero_speed_banner_10/testing_zsb_audio_vasya`
+        - Перезапустить приложение
+    - do: |
+        - Запустить проигрывание MAPKITSIM-4261
+        - Дождаться остановки движения перед светофором
+    - assert: |
+        - Приложение перешло в режим ведения
+        - На остановке появляется баннер ZSB
+    - do: Тап на кнопку Play одновременно с аннотацией
+    - assert: |
+        - Ролик не начинает играть
+        - Звучит аннотация
+        - После аннотации ролик начинает звучать
+
+    - platforms:
+      - ios
+      - android
+    - testing:
+      - acceptance_navi
+
+
+  Audio-ZSB Звучание аннотации при остановленном ролике:
+    - info: |
+        - Dev. Set. -> Misc -> Debug config enable - On
+        - Использовать интенты:
+          [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download-2.b60e70b.png){title=QR-код}
+
+          `yandexnavi://reset_exp`
+          [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download.7ed8e87.png){title=QR-код}
+
+          `yandexnavi://set_ad_page_id?page_id=null`
+          [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download-3.4808fbb.png){title=QR-код}
+
+          `yandexnavi://add_exp?navi_feature_audio_zsb=enabled&navi_ad_product_cooldown_zero_speed_banner=10&navi_feature_day_night_fast_switch=enabled&navi_feature_zsb_statuses_logging=enabled`
+          [collapsed-image](https://jing.yandex-team.ru/files/vikelvar/testing_zsb_audio_vasya.png){title=QR-код}
+
+          `yandexnavi://set_ad_page_id?page_type=zero_speed&page_id=navi_zero_speed_banner_10/testing_zsb_audio_vasya`
+        - Перезапустить приложение
+    - do: |
+        - Запустить проигрывание MAPKITSIM-4261
+        - Дождаться остановки движения перед светофором
+    - assert: |
+        - Приложение перешло в режим ведения
+        - На остановке появляется баннер ZSB
+    - do: |
+        - Тап на кнопку Play
+        - Тап на кнопку Stop
+        - Дождаться аннотации
+    - assert: |
+        - Ролик играет, затем ставится на паузу
+        - После завершения аннотации продолжает стоят на паузе
+
+    - platforms:
+      - ios
+      - android
+    - testing:
+      - acceptance_navi
+
+
+  Audio-ZSB Начало движения во фридрайве с проигрывающимся роликом:
+    - info: |
+        - Dev. Set. -> Misc -> Debug config enable - On
+        - Использовать интенты:
+          [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download-2.b60e70b.png){title=QR-код}
+
+          `yandexnavi://reset_exp`
+          [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download.7ed8e87.png){title=QR-код}
+
+          `yandexnavi://set_ad_page_id?page_id=null`
+          [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download-3.4808fbb.png){title=QR-код}
+
+          `yandexnavi://add_exp?navi_feature_audio_zsb=enabled&navi_ad_product_cooldown_zero_speed_banner=10&navi_feature_day_night_fast_switch=enabled&navi_feature_zsb_statuses_logging=enabled`
+          [collapsed-image](https://jing.yandex-team.ru/files/vikelvar/testing_zsb_audio_vasya.png){title=QR-код}
+
+          `yandexnavi://set_ad_page_id?page_type=zero_speed&page_id=navi_zero_speed_banner_10/testing_zsb_audio_vasya`
+        - Перезапустить приложение
+    - do: |
+        - Запустить проигрывание MAPKITSIM-4261
+        - Сбросить маршрут
+        - Дождаться остановки движения перед светофором
+    - assert: |
+        - Приложение перешло в режим freedrive ведения
+        - На остановке появляется баннер ZSB
+    - do: Тап на кнопку Play
+    - assert: |
+        - Карточка раскрывается
+        - Звучит аудио-реклама
+    - do: Дождаться начала движения с отображаемым и включенным баннером ZSB
+    - assert: |
+        - Карточка сворачивается в минимальное состояние
+        - Ролик продолжает играть
+    - do: Дождаться окончания ролика
+    - assert: По окончании ролика карточка закрывается
+
+    - platforms:
+      - ios
+      - android
+    - testing:
+      - acceptance_navi
+
+
+  Audio-ZSB Начало движения во фридрайве с роликом на паузе:
+    - info: |
+        - Dev. Set. -> Misc -> Debug config enable - On
+        - Использовать интенты:
+          [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download-2.b60e70b.png){title=QR-код}
+
+          `yandexnavi://reset_exp`
+          [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download.7ed8e87.png){title=QR-код}
+
+          `yandexnavi://set_ad_page_id?page_id=null`
+          [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download-3.4808fbb.png){title=QR-код}
+
+          `yandexnavi://add_exp?navi_feature_audio_zsb=enabled&navi_ad_product_cooldown_zero_speed_banner=10&navi_feature_day_night_fast_switch=enabled&navi_feature_zsb_statuses_logging=enabled`
+          [collapsed-image](https://jing.yandex-team.ru/files/vikelvar/testing_zsb_audio_vasya.png){title=QR-код}
+
+          `yandexnavi://set_ad_page_id?page_type=zero_speed&page_id=navi_zero_speed_banner_10/testing_zsb_audio_vasya`
+        - Перезапустить приложение
+    - do: |
+        - Запустить проигрывание MAPKITSIM-4261
+        - Сбросить маршрут
+        - Дождаться остановки движения перед светофором
+    - assert: |
+        - Приложение перешло в режим freedrive ведения
+        - На остановке появляется баннер ZSB
+    - do: |
+        - Тап на кнопку Play
+        - Тап на кнопку Stop
+    - assert: |
+        - Карточка раскрывается
+        - Ролик воспроизводится, а затем ставится на паузу
+    - do: Продолжить движение с отображаемый баннером ZSB в состояние паузы
+    - assert: Баннер ZSB в раскрытом состоянии и не закрывается
+
+    - platforms:
+      - ios
+      - android
+    - testing:
+      - acceptance_navi
+
+
+  Audio-ZSB Начало движения по маршруту с проигрывающимся роликом:
+    - info: |
+        - Dev. Set. -> Misc -> Debug config enable - On
+        - Использовать интенты:
+          [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download-2.b60e70b.png){title=QR-код}
+
+          `yandexnavi://reset_exp`
+          [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download.7ed8e87.png){title=QR-код}
+
+          `yandexnavi://set_ad_page_id?page_id=null`
+          [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download-3.4808fbb.png){title=QR-код}
+
+          `yandexnavi://add_exp?navi_feature_audio_zsb=enabled&navi_ad_product_cooldown_zero_speed_banner=10&navi_feature_day_night_fast_switch=enabled&navi_feature_zsb_statuses_logging=enabled`
+          [collapsed-image](https://jing.yandex-team.ru/files/shindzhev/download%20(12).e4b578e.png){title=QR-код}
+        
+          `yandexnavi://set_ad_page_id?page_type=zero_speed&page_id=navi_zero_speed_banner_8/testing_zsb_audio_green`
+        - Перезапустить приложение
+    - do: |
+        - Запустить проигрывание MAPKITSIM-4261
+        - Дождаться остановки движения перед светофором
+    - assert: |
+        - Приложение перешло в режим ведения
+        - На остановке появляется баннер ZSB
+    - do: |
+        - Тап на кнопку Play
+        - Продолжить движение с отображаемым и включенным баннером ZSB
+    - assert: |
+        - Карточка сворачивается в минимальное состояние
+        - Ролик продолжает играть
+        - По окончанию ролика карточка закрывается
+
+    - platforms:
+      - ios
+      - android
+    - testing:
+      - acceptance_navi
+
+
+  Audio-ZSB Начало движения по маршруту с роликом на паузе:
+    - info: |
+        - Dev. Set. -> Misc -> Debug config enable - On
+        - Использовать интенты:
+          [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download-2.b60e70b.png){title=QR-код}
+
+          `yandexnavi://reset_exp`
+          [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download.7ed8e87.png){title=QR-код}
+
+          `yandexnavi://set_ad_page_id?page_id=null`
+          [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download-3.4808fbb.png){title=QR-код}
+
+          `yandexnavi://add_exp?navi_feature_audio_zsb=enabled&navi_ad_product_cooldown_zero_speed_banner=10&navi_feature_day_night_fast_switch=enabled&navi_feature_zsb_statuses_logging=enabled`
+          [collapsed-image](https://jing.yandex-team.ru/files/vikelvar/testing_zsb_audio_vasya.png){title=QR-код}
+
+          `yandexnavi://set_ad_page_id?page_type=zero_speed&page_id=navi_zero_speed_banner_10/testing_zsb_audio_vasya`
+        - Перезапустить приложение
+    - do: |
+        - Запустить проигрывание MAPKITSIM-4261
+        - Дождаться остановки движения перед светофором
+    - assert: |
+        - Приложение перешло в режим ведения
+        - На остановке появляется баннер ZSB
+    - do: |
+        - Тап на кнопку Play
+        - Тап на кнопку Stop
+    - assert: |
+        - Карточка раскрывается
+        - Ролик воспроизводится
+        - Затем ставится на паузу
+    - do: Продолжить движение с отображаемым баннером ZSB в состояние паузы
+    - assert: Баннер ZSB в раскрытом состоянии не закрывается
+
+    - platforms:
+      - ios
+      - android
+    - testing:
+      - acceptance_navi
+
+
+  Audio-ZSB Проигрывание в фоновом режиме:
+    - info: |
+        - Dev. Set. -> Misc -> Debug config enable - On
+        - Использовать интенты:
+          [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download-2.b60e70b.png){title=QR-код}
+
+          `yandexnavi://reset_exp`
+          [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download.7ed8e87.png){title=QR-код}
+
+          `yandexnavi://set_ad_page_id?page_id=null`
+          [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download-3.4808fbb.png){title=QR-код}
+
+          `yandexnavi://add_exp?navi_feature_audio_zsb=enabled&navi_ad_product_cooldown_zero_speed_banner=10&navi_feature_day_night_fast_switch=enabled&navi_feature_zsb_statuses_logging=enabled`
+          [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download-6.png){title=QR-код}
+
+          `yandexnavi://set_ad_page_id?page_type=zero_speed&page_id=navi_zero_speed_banner_8/testing_zsb_audio_green`
+        - Перезапустить приложение
+    - do: |
+        - Запустить проигрывание MAPKITSIM-4261
+        - Дождаться остановки движения перед светофором
+    - assert: |
+        - Приложение перешло в режим ведения
+        - На остановке появляется баннер ZSB
+    - do: |
+        - Тап на кнопку Play
+        - Свернуть приложение
+    - assert: Ролик продолжает играть
+    - do: Дождаться аннотации по маршруту
+    - assert: |
+        - При звучании аннотации ролик ставится на паузу
+        - После аннотации продолжает играть с того место где остановился
+
+    - platforms:
+      - ios
+      - android
+    - testing:
+      - acceptance_navi
+
+
+  Audio-ZSB Проигрывание аудиоролика при звонке:
+    - info: |
+        - Dev. Set. -> Misc -> Debug config enable - On
+        - Использовать интенты:
+          [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download-2.b60e70b.png){title=QR-код}
+
+          `yandexnavi://reset_exp`
+          [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download.7ed8e87.png){title=QR-код}
+
+          `yandexnavi://set_ad_page_id?page_id=null`
+          [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download-3.4808fbb.png){title=QR-код}
+
+          `yandexnavi://add_exp?navi_feature_audio_zsb=enabled&navi_ad_product_cooldown_zero_speed_banner=10&navi_feature_day_night_fast_switch=enabled&navi_feature_zsb_statuses_logging=enabled`
+          [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download-6.png){title=QR-код}
+
+          `yandexnavi://set_ad_page_id?page_type=zero_speed&page_id=navi_zero_speed_banner_8/testing_zsb_audio_green`
+        - Перезапустить приложение
+    - do: |
+        - Запустить проигрывание MAPKITSIM-4261
+        - Дождаться остановки движения перед светофором
+    - assert: |
+        - Приложение перешло в режим ведения
+        - На остановке появляется баннер ZSB
+    - do: Тап на кнопку Play
+    - assert: |
+        - Карточка раскрывается
+        - Звучит аудио-реклама
+    - do: |
+        - Совершить звонок на девайс с тестируемой сборкой
+        - Принять вызов на девайсе на котором появился баннер ZSB
+    - assert: |
+        - Ролик сразу ставится на паузу, как только начал отображаться входящий звонок
+        - Вызов принимается
+
+    - platforms:
+      - ios
+      - android
+    - testing:
+      - acceptance_navi
+
+
+  Audio-ZSB Проигрывание ролика - баннер в минимальном состоянии:
+    - info: |
+        - Dev. Set. -> Misc -> Debug config enable - On
+        - Использовать интенты:
+          [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download-2.b60e70b.png){title=QR-код}
+
+          `yandexnavi://reset_exp`
+          [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download.7ed8e87.png){title=QR-код}
+
+          `yandexnavi://set_ad_page_id?page_id=null`
+          [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download-3.4808fbb.png){title=QR-код}
+
+          `yandexnavi://add_exp?navi_feature_audio_zsb=enabled&navi_ad_product_cooldown_zero_speed_banner=10&navi_feature_day_night_fast_switch=enabled&navi_feature_zsb_statuses_logging=enabled`
+          [collapsed-image](https://jing.yandex-team.ru/files/vikelvar/testing_zsb_audio_vasya.png){title=QR-код}
+
+          `yandexnavi://set_ad_page_id?page_type=zero_speed&page_id=navi_zero_speed_banner_10/testing_zsb_audio_vasya`
+        - Перезапустить приложение
+    - do: |
+        - Запустить проигрывание MAPKITSIM-4261
+        - Дождаться остановки движения перед светофором
+    - assert: |
+        - Приложение перешло в режим ведения
+        - На остановке появляется баннер ZSB
+    - do: Тап на кнопку Play в баннере ZSB
+    - assert: Карточка разворачивается в максимальное состояние при тапе на кнопку Play в баннере ZSB
+    - do: Свернуть баннер в минимальное состояние
+    - assert: После сворачивания находится в минимальном состоянии
+    - do: Дождаться окончания проигрывания рекламного ролика
+    - assert: После окончания ролика в минимальном состоянии баннер скрывается
+
+    - platforms:
+      - ios
+      - android
+    - testing:
+      - acceptance_navi
+
+
+  Audio-ZSB Взаимодействие с bluetooth-гарнитурой - настройка по-умолчанию:
+    - info: |
+        - Dev. Set. -> Misc -> Debug config enable - On
+        - Использовать интенты:
+          [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download-2.b60e70b.png){title=QR-код}
+
+          `yandexnavi://reset_exp`
+          [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download.7ed8e87.png){title=QR-код}
+
+          `yandexnavi://set_ad_page_id?page_id=null`
+          [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download-6.bc9471b.png){title=QR-код}
+
+          `yandexnavi://add_exp?navi_feature_audio_zsb=enabled&navi_ad_product_cooldown_zero_speed_banner=10&navi_feature_day_night_fast_switch=enabled&navi_feature_zsb_statuses_logging=enabled&navi_feature_zero_speed_banner_is_more_important_than_miniplayer=enabled`
+          [collapsed-image](https://jing.yandex-team.ru/files/vikelvar/testing_zsb_audio_vasya.png){title=QR-код}
+
+          `yandexnavi://set_ad_page_id?page_type=zero_speed&page_id=navi_zero_speed_banner_10/testing_zsb_audio_vasya`
+        - Перезапустить приложение
+        - К девайсу подключена bluetooth-гарнитура
+        - Запустить музыку в Навигаторе
+    - do: |
+        - Запустить проигрывание MAPKITSIM-4261
+        - Дождаться остановки движения перед светофором
+    - assert: |
+        - Приложение перешло в режим ведения
+        - На остановке появляется баннер ZSB
+    - do: Тап на кнопку Play в баннере
+    - assert: |
+        - Звучит аудио-реклама
+        - Звук передается по bluetooth в подключенное устройство
+        - Музыка приглушается
+        - После проигрывания рекламного ролика, музыка возвращается в исходной громкости
+
+    - platforms:
+      - ios
+      - android
+    - testing:
+      - acceptance_navi
+
+
+  Audio-ZSB Отображение и закрытие баннера при запущенным проигрывании в минимальном состоянии:
+    - info: |
+        - Dev. Set. -> Misc -> Debug config enable - On
+        - Использовать интенты:
+          [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download-2.b60e70b.png){title=QR-код}
+
+          `yandexnavi://reset_exp`
+          [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download.7ed8e87.png){title=QR-код}
+
+          `yandexnavi://set_ad_page_id?page_id=null`
+          [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download-3.4808fbb.png){title=QR-код}
+
+          `yandexnavi://add_exp?navi_feature_audio_zsb=enabled&navi_ad_product_cooldown_zero_speed_banner=10&navi_feature_day_night_fast_switch=enabled&navi_feature_zsb_statuses_logging=enabled`
+          [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download-6.png){title=QR-код}
+
+          `yandexnavi://set_ad_page_id?page_type=zero_speed&page_id=navi_zero_speed_banner_8/testing_zsb_audio_green`
+        - Перезапустить приложение
+    - do: |
+        - Запустить проигрывание MAPKITSIM-4261
+        - Дождаться остановки движения перед светофором
+    - assert: |
+        - Приложение перешло в режим ведения
+        - На остановке появляется баннер ZSB
+    - do: Тап на кнопку Play
+    - assert: Карточка разворачивается в максимальное состояние при тапе на кнопку Play
+    - do: Свернуть баннер в минимальное состояние
+    - assert: |
+        - После сворачивания находится в минимальном состоянии
+        - Звучит аудио-реклама
+    - do: Дождаться продолжения движения
+    - assert: После начала движения баннер остается в минимальном состоянии
+
+    - platforms:
+      - ios
+      - android
+    - testing:
+      - acceptance_navi
+
+
+  Audio-ZSB Проигрывание ролика:
+    - info: |
+        - Dev. Set. -> Misc -> Debug config enable - On
+        - Использовать интенты:
+          [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download-2.b60e70b.png){title=QR-код}
+
+          `yandexnavi://reset_exp`
+          [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download.7ed8e87.png){title=QR-код}
+
+          `yandexnavi://set_ad_page_id?page_id=null`
+          [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download-3.4808fbb.png){title=QR-код}
+
+          `yandexnavi://add_exp?navi_feature_audio_zsb=enabled&navi_ad_product_cooldown_zero_speed_banner=10&navi_feature_day_night_fast_switch=enabled&navi_feature_zsb_statuses_logging=enabled`
+          [collapsed-image](https://jing.yandex-team.ru/files/vikelvar/testing_zsb_audio_vasya.png){title=QR-код}
+
+          `yandexnavi://set_ad_page_id?page_type=zero_speed&page_id=navi_zero_speed_banner_10/testing_zsb_audio_vasya`
+        - Перезапустить приложение
+    - do: |
+        - Запустить проигрывание MAPKITSIM-4261
+        - Дождаться остановки движения перед светофором
+    - assert: |
+        - Приложение перешло в режим ведения
+        - На остановке появляется баннер ZSB
+    - do: Тап на кнопку Play в баннере ZSB
+    - assert: |
+        - Карточка разворачивается в максимальное состояние при тапе на кнопку Play
+        - Прогресс дорожки увеличивается
+        - Звучит аудио-реклама
+    - do: Тап на кнопку Stop в баннере ZSB
+    - assert: |
+        - Карточка остаается в максимальном состоянии
+        - Прогресс дорожки перестает увеличиваться
+        - Аудио-реклама не звучит
+    - do: Тап на кнопку Play в баннере ZSB
+    - assert: |
+        - Карточка остаается в максимальном состоянии
+        - Прогресс дорожки увеличивается
+        - Звучит аудио-реклама
+    - do: Дождаться окончания проигрывания рекламного ролика
+    - assert: После окончания ролика состояние баннера не меняется
+
+    - platforms:
+      - ios
+      - android
+    - testing:
+      - acceptance_navi
+
+
+  Audio-ZSB Логирование закрытия карточки в момент воспроизведения:
+    - info: |
+        - Dev. Set. -> Misc -> Debug config enable - On
+        - Использовать интенты:
+          [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download-2.b60e70b.png){title=QR-код}
+
+          `yandexnavi://reset_exp`
+          [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download.7ed8e87.png){title=QR-код}
+
+          `yandexnavi://set_ad_page_id?page_id=null`
+          [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download-3.4808fbb.png){title=QR-код}
+
+          `yandexnavi://add_exp?navi_feature_audio_zsb=enabled&navi_ad_product_cooldown_zero_speed_banner=10&navi_feature_day_night_fast_switch=enabled&navi_feature_zsb_statuses_logging=enabled`
+          [collapsed-image](https://jing.yandex-team.ru/files/vikelvar/testing_zsb_audio_vasya.png){title=QR-код}
+
+          `yandexnavi://set_ad_page_id?page_type=zero_speed&page_id=navi_zero_speed_banner_10/testing_zsb_audio_vasya`
+        - Перезапустить приложение
+        - Девайс подключен к инструментам снятия логов или открыта Log-view панель
+    - do: |
+        - Запустить проигрывание MAPKITSIM-4261
+        - Дождаться остановки движения перед светофором
+    - assert: |
+        - Приложение перешло в режим ведения
+        - На остановке появляется баннер ZSB
+    - do: Тап на кнопку Play
+    - assert: |
+        - Карточка раскрывается
+        - Прогресс дорожки увеличивается
+        - Звучит аудио-реклама
+    - do: Закрыть баннер ZSB любым способом
+    - assert: |
+        - В логи приходят события:
+          `geoadv.bb.hide`
+          `geoadv.bb.pin.audio.stop` с параметрами:
+            `audioCurrentTime` - Время в секундах, с которое успело проиграться
+            `audioDeviceVolume` - от 0.0 до 1.0 - процент громкости на пользовательском устройстве
+            `audioAppVolume` - от 0.0 до 1.0 - процент громкости приложения
+            `reason` - Причина конца воспроизведения:
+              `user_action_close` - пользователь нажал сам на кнопку
+              `resumed_by_system` - когда после аннотации, например, воспроизведение само восстанавливается
+
+    - platforms:
+      - ios
+      - android
+    - testing:
+      - acceptance_navi
+    - tags:
+        - metric
+
+
+  Audio-ZSB Отсутствие кеширования ZSB - фридрайв:
+    - info: |
+        - Dev. Set. -> Misc -> Debug config enable - On
+        - Использовать интенты:
+          [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download-2.b60e70b.png){title=QR-код}
+
+          `yandexnavi://reset_exp`
+          [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download.7ed8e87.png){title=QR-код}
+
+          `yandexnavi://set_ad_page_id?page_id=null`
+          [collapsed-image](https://jing.yandex-team.ru/files/vikelvar/testing_zsb_audio_vasya.png){title=QR-код}
+
+          `yandexnavi://set_ad_page_id?page_type=zero_speed&page_id=navi_zero_speed_banner_10/testing_zsb_audio_vasya`
+          [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download-4.f52459a.png){title=QR-код}
+
+          `yandexnavi://add_exp?navi_feature_audio_zsb=enabled&navi_ads_logging_zsb_closing_errors=enabled&navi_ad_product_cooldown_zero_speed_banner=10&navi_zero_ads_do_not_cache_mapkit_ad=enabled`
+        - Перезапустить приложение
+    - do: |
+        - Запустить проигрывание MAPKITSIM-4261
+        - Сбросить маршрут
+    - assert: Приложение перешло в режим фридрайв-ведения
+    - do: Дождаться остановки движения перед светофором
+    - assert: |
+        - На остановке появляется баннер ZSB
+        - Возможна задержка показа баннера ZSB, без кеша - это ожидаемо 
+
+    - platforms:
+      - ios
+      - android
+    - testing:
+      - acceptance_navi
+
+
+  Audio-ZSB Отсутствие кеширования ZSB:
+    - info: |
+        - Dev. Set. -> Misc -> Debug config enable - On
+        - Использовать интенты:
+          [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download-2.b60e70b.png){title=QR-код}
+
+          `yandexnavi://reset_exp`
+          [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download.7ed8e87.png){title=QR-код}
+
+          `yandexnavi://set_ad_page_id?page_id=null`
+          [collapsed-image](https://jing.yandex-team.ru/files/vikelvar/testing_zsb_audio_vasya.png){title=QR-код}
+
+          `yandexnavi://set_ad_page_id?page_type=zero_speed&page_id=navi_zero_speed_banner_10/testing_zsb_audio_vasya`
+          [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download-4.f52459a.png){title=QR-код}
+
+          `yandexnavi://add_exp?navi_feature_audio_zsb=enabled&navi_ads_logging_zsb_closing_errors=enabled&navi_ad_product_cooldown_zero_speed_banner=10&navi_zero_ads_do_not_cache_mapkit_ad=enabled`
+        - Перезапустить приложение
+        - Девайс подключен к инструментам снятия логов или открыта Log-view панель
+    - do: |
+        - Запустить проигрывание MAPKITSIM-4261
+        - Дождаться остановки движения перед светофором
+    - assert: |
+        - Приложение перешло в режим ведения
+        - Перед каждым показом баннера приходит запрос вида https://proxy.mob.maps.yandex.net:443/mapkit2/search/2.x/banner/zerospeed?advert_page_id=null&deviceid=..., где advert_page_id соответствует кампании ZSB.
+        - На остановке появляется баннер ZSB (Не после каждого запроса баннер будет показан, но перед каждым показом должен быть запрос!)
+
+    - platforms:
+        - ios
+        - android
+    - testing:
+        - acceptance_navi
+    - tags:
+        - metric
+
+
+  Audio-ZSB Проверка лога причины отсутствия рекламы:
+    - info: |
+        - Dev. Set. -> Misc -> Debug config enable - On
+        - Использовать интенты:
+          [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download-2.b60e70b.png){title=QR-код}
+
+          `yandexnavi://reset_exp`
+          [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download.7ed8e87.png){title=QR-код}
+
+          `yandexnavi://set_ad_page_id?page_id=null`
+          [collapsed-image](https://jing.yandex-team.ru/files/vikelvar/testing_zsb_audio_vasya.png){title=QR-код}
+
+          `yandexnavi://set_ad_page_id?page_type=zero_speed&page_id=navi_zero_speed_banner_10/testing_zsb_audio_vasya`
+          [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download-2.c5df780.png){title=QR-код}
+
+          `yandexnavi://add_exp?navi_feature_audio_zsb=disabled&navi_zero_ads_debug=enabled&navi_ads_logging_zsb_closing_errors=enabled&navi_ad_product_cooldown_zero_speed_banner=10`
+        - Перезапустить приложение
+        - Девайс подключен к инструментам снятия логов или открыта Log-view панель
+    - do: |
+        - Запустить проигрывание MAPKITSIM-4261
+        - Дождаться остановки движения перед светофором
+    - assert: |
+        - Приложение перешло в режим ведения
+        - На остановке не появляется баннер ZSB
+        - В логи приходит событие `geoadv.bb.zsbDebug.ad_item_unavailable`
+
+    - platforms:
+        - ios
+        - android
+    - testing:
+        - acceptance_navi
+    - tags:
+        - metric

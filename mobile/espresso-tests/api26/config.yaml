@@ -1,0 +1,37 @@
+# WiKi: https://wiki.yandex-team.ru/mobvteam/sandbox-runner
+# WiKi: https://wiki.yandex-team.ru/yaphone/automation
+# Teamcity: https://teamcity.yandex-team.ru/viewType.html?buildTypeId=Monorepo_Launcher_RegressionTestsOnSandboxApi26&tab=buildTypeStatusDiv
+config:
+  name:
+    Launcher:Regression Tests on API_26
+  runner_version:
+    2022.04.08-9329261
+stages:
+  regression_tests_api26:
+    work_dir:
+      mobile/launcher/android/launcher-app
+    cmd:
+      - ./tools/ci/run_espresso_tests.sh --test-class="%env.TEST_CLASS%" --target=26 --tablet="%env.IS_TABLET%" --branch="%env.BRANCH%" --command="%env.COMMAND%" --login="%env.TEST_LOGIN%" --password="%env.TEST_PASSWORD%"
+      - ./tools/ci/get_logs.sh --command="%env.COMMAND%" --target=26
+      - ./gradlew testPalmSendQaMarketLoggedDebugReport -Ptoken=%env.TESTPALM_TOKEN% -Plauncher.forceBuildVariant=false
+    fail_fast:
+      false
+    lxc:
+      2466247729
+    android-sdk:
+      platforms(26,28,29,30,31)+tools(30.0.3)
+    secrets:
+      LAUNCHER:launcher-yandex-account-login: TEST_LOGIN
+      LAUNCHER:launcher-yandex-account-password: TEST_PASSWORD
+      LAUNCHER:launcher-testpalm-token: TESTPALM_TOKEN
+    kill_timeout:
+      18000
+    artifacts:
+      +app/build/reports/androidTests/connected/*: html
+      +build/outputs/orchestrator/*: orchestrator
+      +build/outputs/app_memory_logs/*: app_memory_logs
+      +tools/notify_slack.py: notify_slack.py
+    junit:
+      - app/build/outputs/androidTest-results/connected
+    multislot:
+      LARGE

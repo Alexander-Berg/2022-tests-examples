@@ -1,0 +1,112 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <title>DomEvent</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <!-- YUI -->
+    <script type="text/javascript" src="../../../test/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../../test/yui3combo/combo.css" />
+    <script type="text/javascript" src="../../../test/run-test-case.js"></script>
+    <!-- Code -->
+    <script type="text/javascript">
+        initAPI({
+            lang: "ru-RU",
+            load: "domEvent.manager,DomEvent,system.browser",
+            mode: "debug"
+        });
+    </script>
+</head>
+
+<body class="yui3-skin-sam">
+    <div id="outer"><div id="inner"></div></div>
+</body>
+
+<script type="text/javascript">
+    var inner = document.getElementById('inner'),
+        outer = document.getElementById('outer');
+
+    function getTestCase(Y) { return {
+        name: 'DomEvent',
+        // debug: true,
+
+        setUp: function () {
+            this.domEvents = ymaps.domEvent.manager;
+            this.res = "";
+            this.innerGroup = this.domEvents.group(inner);
+            this.outerGroup = this.domEvents.group(outer);
+        },
+
+        tearDown: function () {
+            this.innerGroup.removeAll();
+            this.outerGroup.removeAll();
+        },
+
+        testDomEventObject: function () {
+            this.innerGroup
+                .add('mousedown', function (e) {
+                    e.get('propagatedData').test = true;
+                }, this)
+                .add('mouseup', function (e) {
+                    this.res += e.get('propagatedData').test ? '1/' : '0/';
+                }, this);
+            this.outerGroup
+                .add('mousedown', function (e) {
+                    this.res += e.get('propagatedData').test ? '1/' : '0/';
+                }, this);
+
+            Y.Event.simulate(inner, 'mousedown', { clientX: 10, clientY: 10 });
+            Y.Event.simulate(inner, 'mouseup', { clientX: 10, clientY: 10 });
+
+            Y.assert(this.res == '1/0/', this.res);
+        },
+
+        testDomEventStopImmediatePropagation: function () {
+            // Проверяем систему сохранения состояния события по оригинальному событию и типу.
+
+            var originalEvent = {},
+                mouseDownEvent1 = new ymaps.DomEvent(originalEvent, "mousedown"),
+                mouseDownEvent2 = new ymaps.DomEvent(originalEvent, "mousedown"),
+                mouseUpEvent = new ymaps.DomEvent(originalEvent, "mouseup");
+
+            mouseDownEvent1.stopImmediatePropagation();
+
+            Y.assert(mouseDownEvent2.isImmediatePropagationStopped());
+            Y.assert(!mouseUpEvent.isImmediatePropagationStopped());
+        },
+
+        // Проверяет, что события не сливаются.
+        testEventRefluxing: function () {
+            this.innerGroup
+                .add('mousedown', function (e) {
+                    e.get('propagatedData').test = true;
+                }, this)
+                .add('mousemove', function (e) {
+                    this.res += e.get('propagatedData').test ? '1/' : '0/';
+                }, this);
+            this.outerGroup
+                .add('mousedown', function (e) {
+                    this.res += e.get('propagatedData').test ? '1/' : '0/';
+                }, this);
+
+            Y.Event.simulate(inner, 'mousedown', { clientX: 10, clientY: 10 });
+            Y.Event.simulate(inner, 'mousemove', { clientX: 10, clientY: 10 });
+            Y.Event.simulate(inner, 'mousemove', { clientX: 11, clientY: 10 });
+            Y.Event.simulate(inner, 'mousemove', { clientX: 11, clientY: 11 });
+
+            var _this = this;
+            window.setTimeout(function () {
+                _this.resume(function () {
+                    Y.Event.simulate(inner, 'mousemove', { clientX: 11, clientY: 11 });
+                    Y.assert(this.res == '1/0/0/0/0/', this.res);
+                })
+            }, 0);
+
+            this.wait(function() {
+                Y.Assert.fail('Не отработал обработчик mousemove');
+            }, 10000);
+        }
+    }}
+    ymaps.ready(runTestCase);
+</script>
+</html>

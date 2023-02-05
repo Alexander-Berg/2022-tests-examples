@@ -1,0 +1,212 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <title>Collection</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <!-- YUI -->
+    <script type="text/javascript" src="../../../../tests/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../../../tests/yui3combo/combo.css"/>
+    <script type="text/javascript" src="../../../../tests/run-test-case.js"></script>
+    <!-- Code -->
+    <script type="text/javascript">
+        initAPI({
+            lang: "ru-RU",
+            load: "collection.Item,Collection,Event,option.Manager",
+            mode: "debug",
+            ns: "ym"
+        });
+    </script>
+</head>
+
+<body class="yui3-skin-sam"></body>
+
+<script type="text/javascript">
+    function getTestCase (Y) {
+        return {
+            name: "Collection",
+            testCollection: function() {
+                var map1 = {},
+                    map2 = {},
+                    grandParent1 = new ym.Collection(),
+                    grandParent2 = new ym.Collection(),
+                    parent = new ym.Collection(),
+                    child = new ym.collection.Item(),
+                    res = '',
+                    objAsString = function (parent) {
+                        return parent ? '[object]' : '[null]'
+                    };
+                
+                // создадим опции
+                grandParent1.options.set({ x: 'grand1', y: 'grand1', z: 'grand1' });
+                grandParent2.options.set({ x: 'grand2', y: 'grand2', z: 'grand2' });
+                parent.options.set({ x: 'parent', y: 'parent' });
+                child.options.set({ x: 'child' });
+                
+                grandParent1.getMap = function () { return map1; };
+                grandParent2.getMap = function () { return map2; };
+
+                parent.events.add('parentchange', function (e) {
+                    if (e.get('target') == parent) {
+                        res += '(p:parentchange:' + objAsString(e.get('oldParent')) + ':' + objAsString(e.get('newParent')) + ')';
+                    }
+                });
+                child.events.add('parentchange', function (e) {
+                    if (e.get('target') == child) {
+                        res += '(c:parentchange:' + objAsString(e.get('oldParent')) + ':' + objAsString(e.get('newParent')) + ')';
+                    }
+                });
+
+                parent.events.add('mapchange', function (e) {
+                    if (e.get('target') == parent) {
+                        res += '(p:mapchange:' + objAsString(e.get('oldMap')) + ':' + objAsString(e.get('newMap')) + ')';
+                    }
+                });
+                child.events.add('mapchange', function (e) {
+                    if (e.get('target') == child) {
+                        res += '(c:mapchange:' + objAsString(e.get('oldMap')) + ':' + objAsString(e.get('newMap')) + ')';
+                    }
+                });
+
+                parent.options.events.add('change', function (e) {
+                    if (e.get('target') == parent.options) {
+                        res += '(p:optionschange)';
+                    }
+                });
+                child.options.events.add('change', function (e) {
+                    if (e.get('target') == child.options) {
+                        res += '(c:optionschange)';
+                    }
+                });
+                
+                grandParent1.add(parent);
+                // Правильно: сначада кидается parentchange - без него ничего не заработает
+                // потом сменились опции, потом карта (чтобы не перестаивать только что построенный объект)
+                Y.assert(res == '(p:parentchange:[null]:[object])(p:optionschange)(p:mapchange:[null]:[object])', 'Неправильный порядок событий при добавлении сына');
+
+                res = '';
+                grandParent1.remove(parent);
+                // Обратный порядок: сначала удалить с карты, потом parentchange по факту, потом сменить опции, 
+                Y.assert(res == '(p:mapchange:[object]:[null])(p:parentchange:[object]:[null])(p:optionschange)', 'Неправильный порядок событий при удалении сына');
+                
+                res = '';
+                parent.add(child);
+                Y.assert(res == '(c:parentchange:[null]:[object])(c:optionschange)', 'Неправильный порядок событий при добавлении внука');
+
+                res = '';
+                grandParent1.add(parent);
+                // Порядок событий следующий:
+                // (1) кинулся parentchange
+                // (2) сменились опции по цепочке
+                // (3) родитель добавился на карту
+                // (4) сын добавился на карту
+
+                Y.assert(res == '(p:parentchange:[null]:[object])(p:optionschange)(c:optionschange)(p:mapchange:[null]:[object])(c:mapchange:[null]:[object])');
+                Y.assert(
+                    child.getMap() == map1 &&
+                    child.getParent() == parent &&
+                    child.getParent().getParent() == grandParent1 &&
+                    child.options.get('x') == 'child' &&
+                    child.options.get('y') == 'parent' &&
+                    child.options.get('z') == 'grand1', 'Неправильно унаследовались свойства'
+                );
+
+                // Тут такой порядок:
+                // (а) сначала обнуляется карта
+                // (б) меняется родительский объект
+                // (в) удаляется контекст опций старого родителя
+                // (г) добавляется контект опций нового родителя
+                // (д) добавляется новая карта по цепочке
+                res = '';
+                grandParent2.add(parent);
+                Y.assert(res == '(p:mapchange:[object]:[null])(c:mapchange:[object]:[null])' +    
+                    '(p:parentchange:[object]:[object])' +
+                    '(p:optionschange)(c:optionschange)' +
+                    '(p:optionschange)(c:optionschange)' +
+                    '(p:mapchange:[null]:[object])(c:mapchange:[null]:[object])', 'Неправильно отработала смена дедушки');
+
+                Y.assert(
+                    child.getMap() == map2 &&
+                    child.getParent() == parent &&
+                    child.getParent().getParent() == grandParent2 &&
+                    child.options.get('x') == 'child' &&
+                    child.options.get('y') == 'parent' &&
+                    child.options.get('z') == 'grand2', 'Неправильно унаследовались свойства'
+                );
+            },
+
+            testEvents: function () {
+                var parent = new ym.Collection(),
+                    child = new ym.collection.Item(),
+                    res = '';
+                
+                child.options.set({x: 1});
+                parent.events.add(['add', 'remove'], function (e) {
+                    if (e.get('target') == parent) {
+                        res += e.get('type') + '-' + e.get('child').options.get('x');
+                    }
+                });
+                
+                parent.add(child);
+                parent.remove(child);
+
+                Y.assert(res == 'add-1remove-1', 'События сработали неправильно: ' + res);
+            },
+
+            testMethods: function () {
+                var parent = new ym.Collection(),
+                    children = [
+                            new ym.collection.Item(),
+                            new ym.collection.Item(),
+                            new ym.collection.Item()
+                        ],
+                    res = '';
+                children[0].options.set({x: 1});
+                children[1].options.set({x: 2});
+                children[2].options.set({x: 3});
+                parent.add(children[0]);
+                parent.add(children[1]);
+                parent.add(children[2]);
+
+                // length
+                Y.assert(parent.getLength() == 3, 'length() отработал неправильно: ' + res);
+
+                // each
+                parent.each(function (child) {
+                    res += '-' + child.options.get('x')
+                });
+                Y.assert(res == '-1-2-3', 'each() отработал неправильно: ' + res);
+
+                // filter
+                res = parent.filter(function (child) { return child.options.get('x') >= 2; });
+                Y.assert(res.length == 2, 'filter() отработал неправильно: ' + res);
+
+                // get
+                res = '';
+                res += '-' + parent.get(2).options.get('x');
+                res += '-' + parent.get(1).options.get('x');
+                res += '-' + parent.get(0).options.get('x');
+                Y.assert(res == '-3-2-1', 'get() отработал неправильно: ' + res);
+
+                // getAll
+                res = parent.getAll();
+                Y.assert(res.length == 3, 'getAll() отработал неправильно: ' + res);
+
+                // indexOf
+                res = parent.indexOf(children[0]);
+                Y.assert(res === 0 && parent.indexOf(window) == -1, 'indexOf() отработал неправильно: ' + res);
+
+                // removeAll
+                parent.removeAll();
+                Y.assert(parent.getLength() == 0, 'removeAll() отработал неправильно: ' + parent.getLength());
+                parent.events.fire("apply", new ym.Event({
+                    type: "apply",
+                    target: parent,
+                    callback: function () { Y.fail("removeAll() отработал неправильно (@apply сработал)"); }
+                }, true, true));
+            }
+        }
+    }
+    ym.ready(runTestCase);
+</script>
+</html>

@@ -1,0 +1,547 @@
+components: voices
+testing:
+  - regress
+
+specs:
+  Проверка интентов переключения дикторов:
+    - description: |
+        В задаче https://st.yandex-team.ru/MOBNAVI-7105 была реализована возможность переключения дикторов с помощью интентов
+        **Для смены диктора используется следующий шаблон:**
+        `am broadcast -a ru.yandex.yandexnavi.action.BACKGROUND_ACTION -d "yandexnavi://set_sound_scheme?scheme=voice_name"` , где **voice_name** - это системное название голоса.
+        При добавлении атрибута &welcome=1 при установке будет проигрываться приветственная фраза голоса.
+        **Названия основных используемых голосов:**
+        - Оптимус Прайм - optimus
+        - Бондарчук - easter_egg_2
+        - Харламов - kharlamov
+        - Баста - basta
+        - Уткин - easter_egg
+        - Женский голос - female
+        - Мужской голос - male
+        - Системный голос - tts
+        - Йода - starwars_light
+        - Дарт Вейдер - starwars_dark
+    - do: |
+        Android - `am broadcast -a ru.yandex.yandexnavi.action.BACKGROUND_ACTION -d "yandexnavi://set_sound_scheme?scheme=starwars_dark`
+        iOS  - `yandexnavi://set_sound_scheme?scheme=starwars_dark`
+        - Выполнить интент выше в трех состояниях Навигатора: выгруженном, свернутом, запущенном.
+    - assert: |
+        - Устанавливается выбранный диктор.
+        - В разделе Меню -> Настройки -> Голос отображается выбранный голос
+    - do: |
+        Android - `am broadcast -a ru.yandex.yandexnavi.action.BACKGROUND_ACTION -d "yandexnavi://set_sound_scheme?scheme=starwars_dark&welcome=1`
+        iOS - `yandexnavi://set_sound_scheme?scheme=starwars_dark&welcome=1`
+        - Выполнить интент выше в трех состояниях Навигатора: выгруженном, свернутом, запущенном.
+    - assert: |
+        - Устанавливается выбранный диктор.
+        - В разделе Меню -> Настройки -> Голос отображается выбранный голос
+        - При установке диктора произносится приветственная фраза голоса (если есть)
+
+    - platforms:
+        - ios
+        - android
+    - tags:
+        - assessors
+    - integration_run:
+        - annotation
+
+
+  Магазин голосов (Основные проверки):
+    - description: |
+        Проверка основной функциональности магазина голосов. https://st.yandex-team.ru/MOBNAVI-6758
+        В момент написания кейса для загрузки доступны только русские голоса.
+        При проверках обязательно проверять на сборка[ с дебаг панелью и без дебаг панели.
+    - info: Открыть меню голосов
+    - do: Выбрать нескачанный голос
+    - assert: Начинается загрузка голоса
+    - do: Отменить загрузку
+    - assert: Загрузка отменена
+    - do: Выбрать нескачанный голос, подождать окончания загрузки
+    - assert: Голос скачан, является активным
+    - do: Тап на кнопке Play в строке нескачанного голоса
+    - assert: Играет промо-фраза голоса
+    - do: Тап на кнопку удаления скачанного голоса
+    - assert: Появляется поп-ап удаления
+    - do: Отказаться от удаления
+    - assert: Голос не удален, остается активным
+    - do: Тап на кнопку удаления активного скачанного голоса, подтвердить удаление
+    - assert: Голос удален, активным выбран голос Оксана
+    - do: Тап по нестандартному скачанному голосу
+    - assert: Произносится приветственная фраза, голос становится активным, аннотации озвучиваются
+
+    - platforms:
+        - motrex
+        - autochip
+        - vaz
+        - carsharing_t3
+        - ios
+        - android
+        - nissan
+    - tags:
+        - assessors
+
+
+  Залоченные голоса (Проверки в разных локалях):
+    - description: |
+        Проверка поведения скачанных голосов, на которые есть особые ограничения https://st.yandex-team.ru/MOBNAVI-7323
+        В момент написания кейса для загрузки доступны только русские голоса.
+    - do: С локалью ru_RU, голос диктора по умолчанию, скачать все голоса
+    - assert: Все голоса скачаны
+    - do: Сменить локаль на любую другую
+    - assert: Голоса отображаются "засеренными", активным выбран стандартный женский голос, аннотации озвучиваются им
+    - do: Тап на недоступный голос
+    - assert: Активным остается стандартный женский голос, появляется сообщение из https://tanker.yandex-team.ru/?project=navi&branch=master&keyset=menu&key=menu_sound_schemes_voice_not_available_message
+    - do: Удаление недоступного голоса
+    - assert: Голос удален, в списке доступных для загрузки его нет
+
+    - platforms:
+        - motrex
+        - autochip
+        - vaz
+        - carsharing_t3
+        - ios
+        - nissan
+        - android
+    - tags:
+        - assessors
+
+
+  Синхронизация голосов после обновления:
+    - description: |
+        Проверка синхронизации голосов. https://st.yandex-team.ru/MOBNAVI-7304
+        В момент написания кейса для загрузки доступны только русские голоса.
+    - do: Обновиться неавторизованным пользователем со сборки предыдущей запинованной до текущей сборки с активным нестандартным голосом
+    - assert: Выбранный ранее голос скачан, выбран активным, аннотации произносятся
+    - do: Обновиться авторизованным пользователем со сборки предыдущей запинованной  до текущей сборки с активным нестандартным голосом
+    - assert: Выбранный ранее голос скачан, выбран активным, аннотации произносятся
+    - do: На другом устройстве со сборкой с магазином голосов авторизоваться этим же аккаунтом, выбрать другой нестандартный голос
+    - assert: На исходном устройстве выбранный голос скачан, выбран активным, аннотации произносятся
+    - do: Разлогиниться
+    - assert: Все скачанные ранее голоса остаются скачанными, активный голос - Оксана
+    - do: Удалить все голоса, снова залогиниться аккаунтом из предыдущих шагов
+    - assert: Скачан выбранный на аккаунте ранее голос, он активен, аннотации озвучиваются.
+
+    - platforms:
+        - motrex
+        - autochip
+        - vaz
+        - nissan
+    - testing:
+        - acceptance_navi
+    - tags:
+        - not_suitable_for_farm
+        - assessors
+
+
+  Раздел в инструментах для Каталог голосов:
+    - description: |
+        Реализовано тут: https://st.yandex-team.ru/MOBNAVI-7597
+        Эксперимент https://st.yandex-team.ru/EXPERIMENTS-18907
+        https://yandex.ru/promo/navi/voices/index-desktop
+    - info: |
+        - Есть скачанные голоса
+        - Язык - русский
+        - Язык диктора - русский
+        - Интернет включен
+        - Ориентация - Книжная
+    - do: Перейти в Настройки > Каталог Голосов
+    - assert: Отображается вью с дикторами и описанием
+    - do: Сменить ориентацию на альбомную
+    - assert: Отображается вью с дикторами и описанием
+    - do: Тап на "Установить" для нескачанного голоса
+    - assert: |
+        - Переход в меню
+        - Голос загружен
+        - Озвучивается промо фраза диктора
+        - В Настройках скачанный голос выбран активным
+    - do: Тап на "Установить" для скачанного голоса
+    - assert: |
+        - Переход в меню
+        - Озвучивается промо фраза диктора
+        - В Настройках скачанный голос выбран активным
+    - do: Сменить язык на отличный от Русского в настройках девайса
+    - assert: В меню пункт Каталог голосов не отображается
+    - do: Сменить язык диктора на отличный от русского (язык приложения и системный - русский)
+    - assert: В меню пункт Каталог голосов не отображается
+    - do: Для Android сменить язык в настройках приложения
+    - assert: В меню пункт Каталог голосов не отображается
+
+    - platforms:
+        - t3am
+        - geely
+        - ios
+        - android
+    - tags:
+        - assessors
+
+
+  Синхронизация голосов между устройствами:
+    - description: |
+        Проверка синхронизации голосов. https://st.yandex-team.ru/MOBNAVI-7304
+        В момент написания кейса для загрузки доступны только русские голоса.
+        На смартфон можно установить навигатор из apple / google store
+        Как сделать второе устройство - описано в инструкции
+    - do: |
+        - На другом устройстве выбрать случайный голос, не стандартный
+        - Авторизоваться в тестируемом устройстве
+        - Проверить какой голос используется на тестируемом устройстве
+    - assert: Используется голос, который был выбран в шаге **1**
+
+    - platforms:
+        - carsharing_t3
+        - t3am
+    - testing:
+        - acceptance_navi
+    - tags:
+        - assessors
+
+
+  Аннотации Алисы:
+    - description: Цель -проверить основные аннотации Алисы, а также её возможность озвучивать названия улиц
+    - info: В качестве диктора выбрана Алиса. Приложение запускалось более одного раза.
+    - do: |
+        Построить маршрут с несколькими манёврами и подтвердить его.
+        Запустить ведение по маршруту.
+    - assert: |
+        Произносятся аннотации о манёврах.
+        Озвучиваются названия улиц, куда предлагается совершить манёвр.
+        Если на маршруте имеются аннотируемые дорожные события, произносятся аннотации о них.
+
+    - platforms:
+        - ios
+        - android
+    - integration_run:
+        - speechkit
+        - alice
+    - tags:
+        - not_suitable_for_farm
+        - assessors
+
+
+  Аннотации системного голоса:
+    - description: Цель - проверить основные аннотации системного голоса, а также его возможность озвучивать названия улиц
+    - info: В качестве диктора выбран системный голос. Приложение запускалось более одного раза.
+    - do: |
+        Построить маршрут с несколькими манёврами и подтвердить его.
+        Запустить ведение по маршруту.
+    - assert: |
+        Произносятся аннотации о манёврах.
+        Озвучиваются названия улиц, куда предлагается совершить манёвр.
+        Если на маршруте имеются аннотируемые дорожные события, произносятся аннотации о них.
+
+    - platforms:
+        - ios
+        - android
+    - integration_run:
+        - speechkit
+    - tags:
+        - not_suitable_for_farm
+        - assessors
+
+
+  Смена дикторов TTS:
+    - description: Цель - проверить корректность переключения дикторов, работающих через TTS
+    - info: В качестве диктора выбрана Алиса. Приложение запускалось более одного раза.
+    - do: |
+        Построить длинный маршрут с несколькими манёврами и подтвердить его.
+        Запустить ведение по маршруту.
+        Во время произнесения аннотации сменить диктора на любого другого, кроме системного голоса.
+    - assert: Аннотации продолжают озвучиваться выбранным голосом.
+    - do: Во время произнесения аннотации сменить диктора на Системный голос.
+    - assert: |
+        Аннотации продолжают озвучиваться системным голосом.
+        Озвучиваются названия улиц.
+    - do: Во время произнесения аннотации сменить диктора на любого другого, кроме Алисы
+    - assert: Аннотации продолжают озвучиваться выбранным голосом.
+    - do: Во время произнесения аннотации сменить диктора на Алису
+    - assert: |
+        Аннотации продолжают озвучиваться голосом Алисы.
+        Озвучиваются названия улиц.
+
+    - platforms:
+        - ios
+        - android
+    - integration_run:
+        - speechkit
+        - alice
+    - tags:
+        - not_suitable_for_farm
+        - assessors
+
+
+  Миграция неавторизованного пользователя:
+    - info: |
+        - В качестве диктора выбрана Оксана
+        - Пользователь не авторизован
+        - Использовать интент:
+          [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download1912.8ac0c0d.png){title=QR-код}
+        
+          `yandexnavi://add_exp?navi_feature_alice_default_scheme_migration=disabled`
+        - Перезапустить приложение два раза
+    - do: Меню - Настройки
+    - assert: Установлена Оксана в качестве диктора
+    - do: |
+        - Использовать интент:
+          [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download.c234a7b.png){title=QR-код}
+
+          `yandexnavi://add_exp?navi_feature_alice_default_scheme_migration=enabled`
+        - Перезапустить приложение два раза
+    - assert: Установлена Алиса в качестве диктора
+
+    - platforms:
+        - ios
+        - android
+    - integration_run:
+        - speechkit
+        - alice
+    - tags:
+        - not_suitable_for_farm
+        - assessors
+
+
+  Миграция авторизованного пользователя - чистый аккаунт:
+    - info: |
+        - В качестве диктора выбрана Оксана
+        - Использовать интент:
+          [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download1912.8ac0c0d.png){title=QR-код}
+        
+          `yandexnavi://add_exp?navi_feature_alice_default_scheme_migration=disabled`
+        - Перезапустить приложение
+    - do: |
+        - Авторизоваться чистым аккаунтом который ниразу не был в навигаторе
+        - Перезапустить приложение
+        - Использовать интент:
+          [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download.c234a7b.png){title=QR-код}
+
+          `yandexnavi://add_exp?navi_feature_alice_default_scheme_migration=enabled`
+        - Перезапустить приложение два раза
+    - assert: Установлена Алиса в качестве диктора
+
+    - platforms:
+        - ios
+        - android
+    - integration_run:
+        - speechkit
+        - alice
+    - tags:
+        - not_suitable_for_farm
+        - assessors
+
+
+  Миграция авторизованного пользователя - мигрированный аккаунт, скаченный голос:
+    - info: |
+        - Использовать интент:
+          [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download1912.8ac0c0d.png){title=QR-код}
+        
+          `yandexnavi://add_exp?navi_feature_alice_default_scheme_migration=disabled`
+        - Перезапустить приложение
+    - do: |
+        - Авторизоваться аккаунтом который уже мигрировал, например:
+          Логин: yndx-mobnavi-qa-plus-137
+          Пароль: test1234_0
+        - В качестве диктора выбрать любой скачиваемый голос
+        - Перезапустить приложение
+        - Использовать интент:
+          [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download.c234a7b.png){title=QR-код}
+
+          `yandexnavi://add_exp?navi_feature_alice_default_scheme_migration=enabled`
+        - Перезапустить приложение два раза
+    - assert: В качестве диктора установлен скаченный голос
+
+    - platforms:
+        - ios
+        - android
+    - integration_run:
+        - speechkit
+        - alice
+    - tags:
+        - not_suitable_for_farm
+        - assessors
+
+
+  Миграция авторизованного пользователя - мигрированный аккаунт, голос "Оксана":
+    - info: |
+        - Использовать интент:
+          [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download1912.8ac0c0d.png){title=QR-код}
+        
+          `yandexnavi://add_exp?navi_feature_alice_default_scheme_migration=disabled`
+        - Перезапустить приложение
+    - do: |
+        - Авторизоваться аккаунтом который уже мигрировал, например:
+          Логин: yndx-mobnavi-qa-plus-137
+          Пароль: test1234_0
+        - В качестве диктора выбрать голос "Оксана"
+        - Перезапустить приложение
+        - Использовать интент:
+          [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download.c234a7b.png){title=QR-код}
+
+          `yandexnavi://add_exp?navi_feature_alice_default_scheme_migration=enabled`
+        - Перезапустить приложение два раза
+    - assert: В качестве диктора установлен голос "Оксана"
+
+    - platforms:
+        - ios
+        - android
+    - integration_run:
+        - speechkit
+        - alice
+    - tags:
+        - not_suitable_for_farm
+        - assessors
+
+
+  Миграция неавторизованного пользователя - Отключение online tts:
+    - info: |
+        - Пользователь не авторизован
+        - Включить `Dev.Settings -> Misc -> Unlimit intents enabled -> On`
+        - Использовать интент:
+          [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download1912.8ac0c0d.png){title=QR-код}
+        
+          `yandexnavi://add_exp?navi_feature_alice_default_scheme_migration=disabled`
+        - Перезапустить приложение
+        - Установить голос "Оксана"
+    - do: |
+        - Использовать интент:
+          [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download-1.2159dd4.png){title=QR-код}
+        
+          `yandexnavi://add_exp?navi_feature_alice_default_scheme_migration=enabled&navi_feature_online_tts_for_migrated_users=enabled`
+        - Перезапустить приложение два раза
+        - Меню - Настройки
+    - assert: Установлена Алиса в качестве диктора
+    - do: |
+        - Построить маршрут `yandexnavi://build_route_on_map?lat_from=55.7303&lon_from=37.5721&lat_to=55.7328&lon_to=37.5684`
+
+        [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download-2.9907b13.png){title=QR-код}
+        - Запустить симуляцию ведения
+    - assert: Online tts работает, Алиса озвучивает названия улиц
+    - do: |
+        - Использовать интент:
+          [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download-3.0903296.png){title=QR-код}
+        
+          `yandexnavi://add_exp?navi_feature_online_tts_for_migrated_users=disabled`
+        - Перезапустить приложение
+        - Построить маршрут `yandexnavi://build_route_on_map?lat_from=55.7303&lon_from=37.5721&lat_to=55.7328&lon_to=37.5684`
+
+        [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download-2.9907b13.png){title=QR-код}
+        - Запустить симуляцию ведения
+    - assert: Online tts работает, Алиса озвучивает названия улиц
+
+    - platforms:
+        - ios
+        - android
+    - integration_run:
+        - speechkit
+        - alice
+    - tags:
+        - not_suitable_for_farm
+        - assessors
+
+
+  Миграция авторизованного пользователя - Отключение online tts, чистый аккаунт:
+    - info: |
+        - Включить `Dev.Settings -> Misc -> Unlimit intents enabled -> On`
+        - Использовать интент:
+          [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download1912.8ac0c0d.png){title=QR-код}
+        
+          `yandexnavi://add_exp?navi_feature_alice_default_scheme_migration=disabled`
+        - Перезапустить приложение
+        - Установить голос "Оксана"
+    - do: |
+        - Авторизоваться чистым аккаунтом который ниразу не был в навигаторе
+        - Перезапустить приложение
+        - Использовать интент:
+          [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download-1.2159dd4.png){title=QR-код}
+        
+          `yandexnavi://add_exp?navi_feature_alice_default_scheme_migration=enabled&navi_feature_online_tts_for_migrated_users=enabled`
+        - Перезапустить приложение два раза
+        - Меню - Настройки
+    - assert: Установлена Алиса в качестве диктора
+    - do: |
+        - Построить маршрут `yandexnavi://build_route_on_map?lat_from=55.7303&lon_from=37.5721&lat_to=55.7328&lon_to=37.5684`
+
+        [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download-2.9907b13.png){title=QR-код}
+        - Запустить симуляцию ведения
+    - assert: Online tts работает, Алиса озвучивает названия улиц
+    - do: |
+        - Использовать интент:
+          [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download-3.0903296.png){title=QR-код}
+        
+          `yandexnavi://add_exp?navi_feature_online_tts_for_migrated_users=disabled`
+        - Перезапустить приложение
+        - Построить маршрут `yandexnavi://build_route_on_map?lat_from=55.7303&lon_from=37.5721&lat_to=55.7328&lon_to=37.5684`
+
+        [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download-2.9907b13.png){title=QR-код}
+        - Запустить симуляцию ведения
+    - assert: Online tts не работает, Алиса не озвучивает названия улиц
+
+    - platforms:
+        - ios
+        - android
+    - integration_run:
+        - speechkit
+        - alice
+    - tags:
+        - not_suitable_for_farm
+        - assessors
+
+
+  Миграция неавторизованного пользователя - Обновление:
+    - info: |
+        - Установлена сборка 6.50
+          [iOS](https://beta.m.soft.yandex.ru/description?app=navi&platform_shortcut=iphoneos&branch=release-6.50-debug) [Android](https://beta.m.soft.yandex.ru/description?app=navi&platform_shortcut=android&branch=release-6.50-debug)
+        - В качестве диктора выбрана Оксана
+        - Пользователь не авторизован
+        - Перезапустить приложение
+    - do: Обновиться на тестируемую сборку
+    - assert: Установлена Алиса в качестве диктора
+
+    - platforms:
+        - ios
+        - android
+    - integration_run:
+        - speechkit
+        - alice
+    - tags:
+        - not_suitable_for_farm
+        - assessors
+
+
+  Миграция авторизованного пользователя - Обновление, чистый аккаунт, голос "Оксана":
+    - info: |
+        - Установлена сборка 6.50
+          [iOS](https://beta.m.soft.yandex.ru/description?app=navi&platform_shortcut=iphoneos&branch=release-6.50-debug) [Android](https://beta.m.soft.yandex.ru/description?app=navi&platform_shortcut=android&branch=release-6.50-debug)
+        - Пользователь авторизован чистым аккаунтом который ниразу не был в навигаторе
+        - В качестве диктора выбрана Оксана
+        - Перезапустить приложение
+    - do: Обновиться на тестируемую сборку
+    - assert: Установлена Алиса в качестве диктора
+
+    - platforms:
+        - ios
+        - android
+    - integration_run:
+        - speechkit
+        - alice
+    - tags:
+        - not_suitable_for_farm
+        - assessors
+
+
+  Миграция авторизованного пользователя - Обновление, чистый аккаунт, любой скаченный голос:
+    - info: |
+        - Установлена сборка 6.50
+          [iOS](https://beta.m.soft.yandex.ru/description?app=navi&platform_shortcut=iphoneos&branch=release-6.50-debug) [Android](https://beta.m.soft.yandex.ru/description?app=navi&platform_shortcut=android&branch=release-6.50-debug)
+        - Пользователь авторизован чистым аккаунтом который ниразу не был в навигаторе
+        - В качестве диктора выбран любой скаченный голос
+        - Перезапустить приложение
+    - do: Обновиться на тестируемую сборку
+    - assert: В качестве диктора выбран любой скаченный голос
+
+    - platforms:
+        - ios
+        - android
+    - integration_run:
+        - speechkit
+        - alice
+    - tags:
+        - not_suitable_for_farm
+        - assessors

@@ -1,0 +1,139 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <title>overlay.component.Interactivity</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <!-- YUI -->
+    <script type="text/javascript" src="../../../../tests/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../../../tests/yui3combo/combo.css" />
+    <script type="text/javascript" src="../../../../tests/run-test-case.js"></script>
+    <script type="text/javascript" src="../../../../tests/util/event-eye.js"></script>
+    <!-- Code -->
+    <script type="text/javascript">
+        initAPI({
+            lang: "ru-RU",
+            mode: "debug",
+            load: "package.full,overlay.component.Interactivity,Event"
+        });
+    </script>
+</head>
+
+<body class="yui3-skin-sam">
+    <div id="map" style="height: 500px; width: 900px;"></div>
+</body>
+
+<script type="text/javascript">
+    function getTestCase(Y) { return {
+        name: "overlay.component.Interactivity",
+        //debug: true,
+
+        setUp: function () {
+            var myMap = this.myMap = new ymaps.Map('map', {
+                center: [40, 40],
+                zoom: 5
+            });
+
+            this.overlayMock = {
+                options: new ymaps.option.Manager({
+                    interactivityModel: ymaps.interactivityModel.map
+                }, this.myMap.options, "test"),
+                events: new ymaps.event.Manager(),
+                getMap: function () {
+                    return myMap;
+                }
+            };
+        },
+
+        tearDown: function () {
+            this.myMap.destroy();
+        },
+
+        testGetModel: function () {
+            var component = new ymaps.overlay.component.Interactivity(this.overlayMock);
+            Y.assert(component.getModel() == ymaps.interactivityModel.map);
+        },
+
+        testAddEventsSource: function () {
+            var component = new ymaps.overlay.component.Interactivity(this.overlayMock),
+                eventSource1 = new ymaps.event.Manager(),
+                eventSource2 = new ymaps.event.Manager();
+
+            eventEye.observe(this.overlayMock, "click");
+
+            component.addEventsSource(eventSource1);
+            component.addEventsSource(eventSource2);
+
+            eventSource1.fire("click");
+            eventSource2.fire("click");
+            Y.assert(eventEye.length() == 2 && eventEye.prop(0, "type") == "click" && eventEye.prop(1, "type") == "click");
+        },
+
+        testRemoveEventsSource: function () {
+            var component = new ymaps.overlay.component.Interactivity(this.overlayMock),
+                eventSource1 = new ymaps.event.Manager(),
+                eventSource2 = new ymaps.event.Manager();
+
+            eventEye.observe(this.overlayMock, ["click", "dblclick"]);
+
+            component.addEventsSource(eventSource1);
+            component.addEventsSource(eventSource2);
+            component.removeEventsSource(eventSource1);
+
+            eventSource1.fire("click");
+            eventSource2.fire("dblclick");
+            Y.assert(eventEye.length() == 1 && eventEye.prop(0, "type") == "dblclick");
+        },
+
+        testModelChange: function () {
+            var component = new ymaps.overlay.component.Interactivity(this.overlayMock),
+                eventSource = new ymaps.event.Manager();
+
+            eventEye.observe(this.overlayMock, ["click", "change"]);
+
+            component.addEventsSource(eventSource);
+
+            this.overlayMock.options.set("interactivityModel", {
+                "change": {}
+            });
+
+            eventSource.fire("click");
+            eventSource.fire("change");
+            eventSource.fire("other");
+
+            Y.assert(eventEye.length() == 1 && eventEye.prop(0, "type") == "change");
+        },
+
+        testStopping: function () {
+            var component = new ymaps.overlay.component.Interactivity(this.overlayMock),
+                eventSource = new ymaps.event.Manager();
+
+            component.addEventsSource(eventSource);
+
+            this.overlayMock.events.add('click', function (e) {
+                Y.assert(!e.isPropagationStopped(), 'Воспроизводится флаг isPropagationStopped оригинального события на производном');
+                e.preventDefault();
+            });
+
+            var e = new ymaps.Event({ type: 'click' }, true);
+            eventSource.fire("click", e);
+
+            Y.assert(e.isDefaultPrevented() && e.isPropagationStopped() && !e.isImmediatePropagationStopped(), 'Не пробрасываются значения флагов с производного события в оригинальное');
+        },
+
+        testDestroy: function () {
+            var component = new ymaps.overlay.component.Interactivity(this.overlayMock),
+                eventSource = new ymaps.event.Manager();
+
+            eventEye.observe(this.overlayMock, "click");
+
+            component.addEventsSource(eventSource);
+
+            component.destroy();
+            eventSource.fire("click");
+            Y.assert(!eventEye.length());
+        }
+    }}
+    ymaps.ready(runTestCase);
+</script>
+</html>

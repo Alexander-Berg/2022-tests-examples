@@ -1,0 +1,111 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <title>map.addon.hint</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <!-- YUI -->
+    <script type="text/javascript" src="../../../../test/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../../../test/yui3combo/combo.css"/>
+    <script type="text/javascript" src="../../../../test/run-test-case.js"></script>
+    <!-- Code -->
+    <script type="text/javascript">
+        initAPI({
+            lang: "ru-RU",
+            load: "Map,map.addon.hint,system.browser,util.css",
+            mode: "debug"
+        });
+    </script>
+    <script type="text/javascript" src="../../../../test/util/event-eye.js"></script>
+</head>
+
+<body class="yui3-skin-sam"><div id="map" style="width: 400px; height: 400px;"></div></body>
+
+<script type="text/javascript">
+    function getTestCase (Y) {
+        var testFlow;
+
+        return {
+            name: "map.addon.hint",
+            debug: false,
+
+            setUp: function () {
+                geoMap = new ymaps.Map('map', {
+                    center: [0, 0],
+                    zoom: 5,
+                    type: "yandex#map",
+                    behaviors: ['drag', 'scrollZoom']
+                });
+
+                testFlow = this;
+            },
+
+            tearDown: function () {
+                geoMap.destroy();
+            },
+
+            testOpenEvent: function () {
+                geoMap.events.add('hintopen', function (e) {
+                    testFlow.resume(function () {
+                        Y.assert(
+                                e.get('type') == 'hintopen' &&
+                                e.get('currentTarget') == geoMap &&
+                                e.get('target') == geoMap
+                        );
+                    });
+                });
+                geoMap.hint.open([0, 0]);
+
+                testFlow.wait();
+            },
+
+            testCloseEvent: function () {
+                geoMap.hint.open().then(function () {
+                    geoMap.events.add('hintclose', function (e) {
+                        testFlow.resume(function () {
+                            Y.assert(
+                                    e.get('type') == 'hintclose' &&
+                                    e.get('currentTarget') == geoMap &&
+                                    e.get('target') == geoMap
+                            );
+                        });
+                    });
+                    geoMap.hint.close();
+
+                    testFlow.wait();
+                });
+
+                testFlow.wait();
+            },
+
+            // MAPSAPI-3420
+            testMAPSAPI3420: function () {
+                geoMap.hint.open([0, 0]);
+                geoMap.hint.close();
+                geoMap.events.add('hintopen', function (e) {
+                    this.resume(function () {
+                        Y.assert(
+                                e.get('type') == 'hintopen' &&
+                                e.get('currentTarget') == geoMap &&
+                                e.get('target') == geoMap
+                        );
+                    });
+                }, this);
+                geoMap.hint.open([0, 0]);
+
+                this.wait();
+            },
+
+            testMapDestroy: function () {
+                geoMap.hint.open([0, 0]);
+                geoMap.destroy();
+                Y.assert(
+                        !document.getElementsByClassName('.' + ymaps.util.css.addPrefix('hint-overlay')).length,
+                        'Элемент .hint-overlay не удалился'
+                );
+            }
+        }
+    }
+    ymaps.ready(runTestCase);
+</script>
+</html>

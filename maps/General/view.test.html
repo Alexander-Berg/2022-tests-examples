@@ -1,0 +1,162 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <title>geoObject.View</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <!-- YUI -->
+    <script type="text/javascript" src="../../../test/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../../test/yui3combo/combo.css"/>
+    <script type="text/javascript" src="../../../test/run-test-case.js"></script>
+    <script type="text/javascript" src="../../../test/util/event-eye.js"></script>
+    <!-- Code -->
+    <script type="text/javascript">
+        initAPI({
+            lang: "ru-RU",
+            load: "package.standard,geoObject.View",
+            mode: "debug"
+        });
+    </script>
+</head>
+
+<body class="yui3-skin-sam">
+    <div id="map" style="width: 500px; height: 500px;"></div>
+</body>
+
+<script type="text/javascript">
+    function getTestCase (Y) {
+        return {
+            name: "geoObject.View",
+            // debug: true,
+
+            _should: {
+                ignore: {
+                    testAsyncOverlayAdd: false,
+                    testSyncOverlayAdd: false,
+                    testUpdateBeforeOverlayAdd: false,
+                    testOverlayRemove: false,
+                    testRemoveBeforeOverlayAdd: false,
+                    testVisibility: false
+                }
+            },
+
+            setUp: function () {
+                this.map = new ymaps.Map('map', {
+                    center: [30, 59],
+                    zoom: 3,
+                    type: "yandex#map"
+                });
+                this.geoObject = new ymaps.Placemark([30, 59]);
+
+                this.geoObject.options.setParent(this.map.geoObjects.options);
+                this.geoObject.geometry.setMap(this.map);
+            },
+
+            tearDown: function () {
+                if (this.view) {
+                    this.destroyView();
+                }
+                this.map.destroy();
+            },
+
+            createView: function () {
+                eventEye.observe(this.geoObject, "overlaychange");
+                return this.view = new ymaps.geoObject.View(
+                    this.geoObject, this.geoObject.geometry, this.geoObject.properties, this.geoObject.options,
+                    this.geoObject.events, this.geoObject.state, this.map
+                );
+            },
+
+            destroyView: function () {
+                this.view.destroy();
+                this.view = null;
+            },
+
+            // Добавление и удаление оверлеев.
+
+            testAsyncOverlayAdd: function () {
+                var view = this.createView();
+                Y.assert(!eventEye.length());
+                eventEye.wait(this, "overlaychange", function () {
+                    Y.assert(
+                        eventEye.length() == 1 && eventEye.check(0, {
+                            type: "overlaychange",
+                            target: this.geoObject,
+                            oldOverlay: null,
+                            newOverlay: view.getOverlay()
+                        })
+                    );
+                });
+            },
+
+            testSyncOverlayAdd: function () {
+                var view = this.createView(),
+                    overlay = view.getOverlay();
+                Y.assert(
+                    eventEye.length() == 1 && eventEye.check(0, {
+                        type: "overlaychange",
+                        target: this.geoObject,
+                        oldOverlay: null,
+                        newOverlay: overlay
+                    })
+                );
+            },
+
+            testUpdateBeforeOverlayAdd: function () {
+                var view = this.createView();
+                this.geoObject.geometry.setCoordinates([50, 59]);
+                eventEye.wait(this, "overlaychange", function () {
+                    Y.assert(
+                        eventEye.length() == 1 && eventEye.check(0, {
+                            type: "overlaychange",
+                            target: this.geoObject,
+                            oldOverlay: null,
+                            newOverlay: view.getOverlay()
+                        })
+                    );
+                });
+            },
+
+            testOverlayRemove: function () {
+                var view = this.createView();
+                eventEye.wait(this, "overlaychange", function () {
+                    var overlay = view.getOverlay();
+                    this.destroyView();
+                    Y.assert(
+                        eventEye.length() == 2 && eventEye.check(0, {
+                            type: "overlaychange",
+                            target: this.geoObject,
+                            oldOverlay: null,
+                            newOverlay: overlay
+                        }) && eventEye.check(1, {
+                            type: "overlaychange",
+                            target: this.geoObject,
+                            oldOverlay: overlay,
+                            newOverlay: null
+                        })
+                    );
+                });
+            },
+
+            testRemoveBeforeOverlayAdd: function () {
+                var view = this.createView();
+                this.destroyView();
+                this.wait(function () {
+                    Y.assert(!eventEye.length());
+                }, 200);
+            },
+
+            // Видимость.
+
+            testVisibility: function () {
+                this.geoObject.options.set("visible", false);
+                var view = this.createView();
+                this.wait(function () {
+                    Y.assert(!view.getOverlay());
+                }, 200);
+            }
+        };
+    }
+    ymaps.ready(runTestCase);
+</script>
+</html>

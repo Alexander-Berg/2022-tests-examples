@@ -1,0 +1,230 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <title>overlay.html.Placemark</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <!-- YUI -->
+    <script type="text/javascript" src="../../../../test/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../../../test/yui3combo/combo.css"/>
+    <script type="text/javascript" src="../../../../test/run-test-case.js"></script>
+    <!-- Code -->
+    <script type="text/javascript">
+        initAPI({
+            lang: "ru-RU",
+            load: "Map,overlay.html.Placemark,layout.storage,geometry.pixel.Point,templateLayoutFactory,map.optionMapper,system.browser",
+            mode: "debug"
+        });
+    </script>
+    <script type="text/javascript" src="../../../../test/util/event-eye.js"></script>
+    <style type="text/css">
+        .shadow {
+            border: 1px solid black;
+            width: 50px;
+        }
+
+    </style>
+</head>
+
+<body class="yui3-skin-sam">
+<div id="testMap" style="height: 500px; width: 760px; overflow: hidden; position: relative;">
+</div>
+</body>
+
+<script type="text/javascript">
+    getTestCase = function (Y) {
+        ymaps.map.optionMapper.setRule({
+            name: 'overlay.html.Placemark',
+            rule: function (key, name) {
+                return addPrefix(key, 'geoObjectIcon');
+            }
+        });
+
+        ymaps.map.optionMapper.setRule({
+            name: 'overlay.html.Placemark',
+            key: ['shadowOffset'],
+            rule: 'plain'
+        });
+
+        return {
+            name: 'overlay.html.Placemark',
+            // debug: true,
+
+            _should: {
+                ignore: {
+//                    testAddToMap: true,
+//                    testOptionsChangeAfterRemoveFromMap: true,
+//                    testOffsets: true,
+//                    testPaneChange: true
+                }
+            },
+
+            setUp: function () {
+                // Карта.
+                geoMap = new ymaps.Map("testMap", {
+                    center: [55, 55],
+                    zoom: 4,
+                    type: "yandex#map"
+                });
+            },
+
+            tearDown: function () {
+                geoMap.destroy();
+            },
+
+            testAddToMap: function () {
+                placemark = this.createOverlay(null, null, geoMap.options, true);
+
+                placemark.getLayout().then(function (layout) {
+                    this.resume(function () {
+                        Y.assert(layout);
+                    });
+                }, function () {
+                    this.resume(function () {
+                        Y.fail('Был получен reject.');
+                    });
+                }, this);
+
+                this.wait();
+            },
+
+            testOptionsChangeAfterRemoveFromMap: function () {
+                placemark = this.createOverlay();
+                eventEye.observe(placemark.options, ["change"]);
+                placemark.options.setParent(geoMap.options);
+                placemark.setMap(geoMap);
+                placemark.setMap(null);
+                placemark.options.set("visibility", false);
+                placemark.options.setParent(null);
+                placemark.options.setParent(geoMap.options);
+                placemark.setMap(geoMap);
+                placemark.setMap(null);
+
+                placemark.getLayout().then(function () {
+                    this.resume(function () {
+                        Y.fail('Был получен макет после удаления с карты.');
+                    });
+                }, function () {
+                    this.resume(function () {
+                        Y.assert(
+                            !placemark.getLayoutSync(),
+                            "Отображение не скрыто после удаления с карты"
+                        );
+                    });
+                }, this);
+
+                this.wait();
+            },
+
+            testOffsets: function () {
+                placemark = this.createOverlay();
+                placemark.options.setParent(geoMap.options);
+                placemark.options.set('offset', [20, 20]);
+                placemark.options.set({
+                    shadow: true,
+                    shadowLayout: ymaps.templateLayoutFactory.createClass('<div class="shadow">shadow</div>')
+                });
+                placemark.setMap(geoMap);
+
+                Y.assert(
+                    placemark.getElement().style.top == '270px' &&
+                        placemark.getElement().style.left == '400px' &&
+                        placemark.getShadowElement().style.top == '270px' &&
+                        placemark.getShadowElement().style.left == '400px',
+                    "Неправильно применились оффсеты"
+                );
+
+                placemark.options.set('offset', [1, 1]);
+                placemark.options.set('shadowOffset', [40, 40]);
+
+                Y.assert(
+                    placemark.getElement().style.top == '251px' &&
+                        placemark.getElement().style.left == '381px' &&
+                        placemark.getShadowElement().style.top == '290px' &&
+                        placemark.getShadowElement().style.left == '420px',
+                    "Неправильно изменились оффсеты 1"
+                );
+            },
+
+            testPaneChange: function () {
+                placemark = this.createOverlay(1, [-5, 0], geoMap.options, true);
+                placemark2 = this.createOverlay(2, [5, 0], geoMap.options, true);
+
+                eventEye.observe([placemark, placemark2], ["click"]);
+                placemark2.options.set("pane", "areas");
+
+                var clickGeometry = new ymaps.geometry.pixel.Point(geoMap.container.getSize());
+                clickGeometry = clickGeometry.scale(0.5);
+                clickGeometry = clickGeometry.shift([9, -15]);
+                var clickCoordinates = clickGeometry.getCoordinates();
+
+                Y.Event.simulate(geoMap.panes.get("events").getElement(), 'click', {
+                    clientX: clickCoordinates[0],
+                    clientY: clickCoordinates[1]
+                });
+
+                Y.assert(eventEye.length() == 1 && eventEye.check(0, {
+                    target: placemark
+                }));
+            },
+
+            createOverlay: function (iconContent, coordShift, options, addToMap) {
+                var geometry = new ymaps.geometry.pixel.Point(geoMap.getGlobalPixelCenter()),
+                    data = {
+                        properties: {
+                            iconContent: iconContent // '<div id="test">123</div>'
+                        }
+                    };
+
+                if (coordShift) {
+                    geometry = geometry.shift(coordShift);
+                }
+
+                var placemark = new ymaps.overlay.html.Placemark(geometry, data, {
+                    pane: "places",
+                    eventsPane: "events",
+                    shadowsPane: "shadows"
+                });
+
+                if (options) {
+                    placemark.options.setParent(options);
+                }
+                if (addToMap) {
+                    placemark.setMap(geoMap);
+                }
+
+                return placemark;
+            },
+
+            testAsyncLayout: function () {
+                ymaps.layout.storage.define('customKey', function (provide) {
+                    setTimeout(function () {
+                        provide(ymaps.templateLayoutFactory.createClass('<div>123</div>'));
+                    }, 300);
+                });
+
+                placemark.options.set('layout', 'customKey');
+                placemark.setMap(geoMap);
+
+                placemark.getLayout().then(function (layout) {
+                    this.resume(function () {
+                        Y.assert(layout);
+                    });
+                }, function (error) {
+                    this.resume(function () {
+                        Y.fail(error.message);
+                    });
+                }, this);
+
+                this.wait();
+            }
+        };
+    };
+
+    ymaps.ready(runTestCase);
+
+    function addPrefix (key, prefix) {
+        return prefix + key.slice(0, 1).toUpperCase() + key.slice(1);
+    }
+</script>
+</html>
+

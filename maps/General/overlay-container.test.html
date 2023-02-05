@@ -1,0 +1,134 @@
+﻿<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <title>hotspot.overlayContainer</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <!-- YUI -->
+    <script type="text/javascript" src="../../../../tests/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../../../tests/yui3combo/combo.css" />
+    <script type="text/javascript" src="../../../../tests/run-test-case.js"></script>
+    <!-- Code -->
+    <script type="text/javascript">
+        initAPI({
+            lang: "ru-RU",
+            mode: "debug",
+            coordorder: "longlat",
+            load: "package.map,hotspot.overlayContainer,hotspot.Shape,hotspot.shape.geometry.Polygon,geometry.pixel.Polygon"
+        });
+    </script>
+</head>
+
+<body class="yui3-skin-sam"></body>
+
+<script type="text/javascript">
+    function getTestCase(Y) { return {
+        name: "hotspot.overlayContainer",
+        
+        setUp: function () {
+            this.map = new ymaps.Map('map', { center: [180, 55.76], zoom: 7 });
+            this.container = ymaps.hotspot.overlayContainer.get(this.map);
+        },
+        
+        tearDown: function () {
+            this.container = null;
+            this.map.destroy();
+        },
+        
+        createShape: function (coordinates) {
+            return new ymaps.hotspot.Shape({
+                    pixelGeometry: new ymaps.geometry.pixel.Polygon([coordinates], 'evenOdd', {convex: true})
+                });
+        },
+        
+        testTrivial: function () {
+            var shape = this.createShape([[0, 0], [0, 2], [2, 2], [2, 0]]);
+            shape.setContainer(this.container);
+            this.container.add([shape]);
+            
+            var res = this.container.getObjectInPosition([0.5, 0.5], 1);
+            Y.assert(res && res.object == shape, "Не нашлась активная фигура в контейнере.");
+        },
+        
+        testTwoShapes: function () {
+            var shapes = [];
+            shapes[0] = this.createShape([[0, 0], [0, 2], [2, 2], [2, 0]]);
+            shapes[1] = this.createShape([[1, 1], [1, 300], [300, 300], [300, 1]]);
+            for (var i = 0, l = shapes.length; i < l; i++) {
+                shapes[i].setContainer(this.container);
+            }
+            this.container.add(shapes);
+            var res = this.container.getObjectInPosition([270, 270], 1);
+            Y.assert(res && res.object == shapes[1], "Неверно опеределилась активная фигура.");
+        },
+        
+        testMiss: function () {
+            var shape = this.createShape([[0, 0], [0, 2], [2, 2], [2, 0]]);
+            shape.setContainer(this.container);
+            this.container.add([shape]);
+            
+            var res = this.container.getObjectInPosition([5, 5], 1);
+            Y.assert(res == null, "Некорректно отработал случай, когда позиция не попала в шейп.");
+        },
+        
+        testRemove: function () {
+            var shape = this.createShape([[0, 0], [0, 2], [2, 2], [2, 0]]);
+            shape.setContainer(this.container);
+            this.container.add([shape]);
+            
+            this.container.remove([shape]);
+            
+            var res = this.container.getObjectInPosition([0.5, 0.5], 1);
+            Y.assert(res == null, "Не удалилась фигура из контейнера.");
+        },
+        
+        testAddRemoveAdd: function () {
+            var shapes = [];
+            shapes[0] = this.createShape([[0, 0], [0, 2], [2, 2], [2, 0]]);
+            shapes[1] = this.createShape([[1, 1], [1, 300], [300, 300], [300, 1]]);
+            for (var i = 0, l = shapes.length; i < l; i++) {
+                shapes[i].setContainer(this.container);
+            }
+            this.container.add(shapes);
+            
+            this.container.remove([shapes[1]]);
+            this.container.add([shapes[1]]);
+            var res = this.container.getObjectInPosition([270, 270], 1);
+            Y.assert(
+                res && res.object == shapes[1],
+                "Неверно опеределилась активная фигура, добавленная в непустой контейнер."
+            );
+        },
+        
+        testForEach: function () {
+            var shapes = [];
+            shapes[0] = this.createShape([[0, 0], [0, 2], [2, 2], [2, 0]]);
+            shapes[1] = this.createShape([[1, 1], [1, 300], [300, 300], [300, 1]]);
+            for (var i = 0, l = shapes.length; i < l; i++) {
+                shapes[i].setContainer(this.container);
+            }
+            this.container.add(shapes);
+            
+            var res = '';
+            this.container.forEach(function(shape) {res += '1'});
+            Y.assert(res == '11', "Неверно отработал метод forEach.");
+        },
+        
+        testClear: function () {
+            var shapes = [];
+            shapes[0] = this.createShape([[0, 0], [0, 2], [2, 2], [2, 0]]);
+            shapes[1] = this.createShape([[1, 1], [1, 300], [300, 300], [300, 1]]);
+            for (var i = 0, l = shapes.length; i < l; i++) {
+                shapes[i].setContainer(this.container);
+            }
+            this.container.add(shapes);
+            
+            this.container.clear();
+            var res = this.container.getObjectInPosition([0.5, 0.5], 1);
+            Y.assert(res == null, "Контейнер не очистился.");
+        }
+    }}
+    ymaps.ready(runTestCase);
+</script>
+<div id="map"></div>
+</html>

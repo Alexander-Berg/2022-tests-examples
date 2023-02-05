@@ -1,0 +1,62 @@
+<%! tmpl::test_top_down_map(hotspotUrlTemplate, tileUrlTemplate, imageUrlTemplate) %>
+<html>
+<head>
+<meta http-equiv="Content-type" content="text/html;charset=UTF-8"/>
+<title>Карта</title>
+<style>
+html, body, #map {
+    width: 100%;
+    height: 100%;
+}
+body {
+    margin: 0;
+    padding: 0;
+}
+</style>
+</head>
+<body>
+<div id="map"></div>
+<!-- YMaps JS -->
+<script src="https://api-maps.yandex.ru/2.1/?lang=ru_RU&coordorder=longlat" type="text/javascript"></script>
+</script>
+<script type="text/javascript">
+ymaps.ready(init);
+
+function init(ymaps) {
+    var map = new ymaps.Map('map', {
+          center: [37.68341375, 55.70952976],
+          zoom: 18,
+          type: "yandex#hybrid"
+    }, {
+        searchControlProvider: 'yandex#search'
+    });
+
+    add_layer(map, "")
+};
+
+function add_layer(map, host) {
+    var hotspotUrlTemplate = host + '<%= hotspotUrlTemplate %>'.replace(/&amp;/g, '&'),
+        keyTemplate = 'testCallback_tile_%c',
+        tileUrlTemplate = host + '<%= tileUrlTemplate %>'.replace(/&amp;/g, '&'),
+        objSource = new ymaps.hotspot.ObjectSource(hotspotUrlTemplate, keyTemplate),
+        tileLayer = new ymaps.Layer(tileUrlTemplate, {tileTransparent: true, zIndex: 202}),
+        hotspotLayer = new ymaps.hotspot.Layer(objSource, {cursor: 'help'}),
+        imgLayer = null;
+    hotspotLayer.events.add('click', function (e) {
+        console.log('click');
+        var objectId = e.originalEvent.activeObject._id;
+        var imgUrlTemplate = host + '<%= imageUrlTemplate %>'.replace(/&amp;/g, '&') + objectId;
+        if (imgLayer == null) {
+            imgLayer = new ymaps.Layer(imgUrlTemplate, {tileTransparent: true});
+            map.layers.add(imgLayer);
+        } else {
+            imgLayer.setTileUrlTemplate(imgUrlTemplate);
+            imgLayer.update();
+        }
+    });
+    map.layers.add(hotspotLayer);
+    map.layers.add(tileLayer);
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,127 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <title>geoObject.addon.balloon</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <!-- YUI -->
+    <script type="text/javascript" src="../../../../test/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../../../test/yui3combo/combo.css" />
+    <script type="text/javascript" src="../../../../test/run-test-case.js"></script>
+    <!-- Code -->
+    <script type="text/javascript">
+        initAPI({
+            lang: "ru-RU",
+            load: "Map,GeoObject,GeoObjectCollection,geoObject.addon.balloon",
+            mode: "debug"
+        });
+    </script>
+    <script type="text/javascript" src="../../../../test/util/event-eye.js"></script>
+</head>
+
+<body class="yui3-skin-sam">
+    <div id="testMap" style="height: 500px; width: 760px; overflow: hidden; position: relative;">
+    </div>
+</body>
+
+<script type="text/javascript">
+    getTestCase = function (Y) {
+        return {
+            name: 'geoObject.addon.balloon',
+            // debug: true,
+
+            setUp: function () {
+                geoMap = new ymaps.Map("testMap", {
+                    center: [55, 55],
+                    zoom: 4,
+                    type: "yandex#map"
+                });
+
+                geoObject = new ymaps.GeoObject({
+                    geometry: {
+                        type: "Point",
+                        coordinates: [55, 55]
+                    }
+                });
+
+                geoMap.geoObjects.add(geoObject);
+            },
+
+            tearDown: function () {
+                geoMap.destroy();
+            },
+
+            testOpenEvent: function () {
+                eventEye.observe(geoObject, ["balloonopen", "balloonclose"]);
+
+                geoObject.balloon.open([0, 0]).then(function () {
+                    this.resume(function () {
+                        Y.assert(
+                                eventEye.length() == 1 &&
+                                        eventEye.check(0, {
+                                            type: "balloonopen",
+                                            target: geoObject,
+                                            currentTarget: geoObject
+                                        })
+                        );
+                    });
+                }, this);
+
+                this.wait();
+            },
+
+            testCloseEvent: function () {
+                geoObject.balloon.open([0, 0]).then(function () {
+                    eventEye.observe(geoObject, ["balloonopen", "balloonclose"]);
+                    geoObject.balloon.close().then(function () {
+                        this.resume(function () {
+                            Y.assert(
+                                    eventEye.length() == 1 &&
+                                            eventEye.check(0, {
+                                                type: "balloonclose",
+                                                target: geoObject,
+                                                currentTarget: geoObject
+                                            })
+                            );
+                        });
+                    }, this);
+                }, this);
+
+                this.wait();
+            },
+
+            testHasBalloonOption: function () {
+                geoObject.options.set('hasBalloon', false);
+                Y.assert(!geoObject.balloon);
+            },
+
+            testCollectionOpenEvent: function () {
+                var collection = new ymaps.GeoObjectCollection();
+
+                collection.add(geoObject);
+                geoMap.geoObjects.add(collection);
+
+                eventEye.observe(collection, ["balloonopen", "balloonclose"]);
+
+                geoObject.balloon.open([0, 0]).then(function () {
+                    this.resume(function () {
+                        Y.assert(
+                                eventEye.length() == 1 &&
+                                        eventEye.check(0, {
+                                            type: "balloonopen",
+                                            target: geoObject,
+                                            currentTarget: collection
+                                        })
+                        );
+                    });
+                }, this);
+
+                this.wait();
+            }
+        };
+    };
+
+    ymaps.ready(runTestCase);
+</script>
+</html>
+

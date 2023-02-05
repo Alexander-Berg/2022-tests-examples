@@ -1,0 +1,214 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <title>TemplateLayoutFactory</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <!-- YUI -->
+    <script type="text/javascript" src="../../../test/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../../test/yui3combo/combo.css" />
+    <script type="text/javascript" src="../../../test/run-test-case.js"></script>
+    <script type="text/javascript" src="../../../test/util/event-eye.js"></script>
+    <!-- Code -->
+    <script type="text/javascript">
+        initAPI({
+            lang: "ru-RU",
+            load: "package.standard,templateLayoutFactory,templateLayoutFactory,data.Manager,option.Manager",
+            mode: "dev"
+        });
+    </script>
+</head>
+
+<body class="yui3-skin-sam"><div id="test"></div></body>
+
+<script type="text/javascript">
+    function getTestCase(Y) {
+        var testNode = document.getElementById('test');
+        
+        return {
+            name: "TemplateLayoutFactory",
+            //debug: true,
+
+            createByTemplate: function (template, data) {
+                this.layout = new (ymaps.templateLayoutFactory.createClass(template))(data);
+                this.layout.setParentElement(testNode);
+            },
+
+            tearDown: function () {
+                if (this.layout) {
+                    this.layout.setParentElement(null);
+                    this.layout.destroy();
+                    this.layout = null;
+                }
+            },
+
+            testCreateClass: function () {
+                this.createByTemplate("test", {});
+                Y.assert(testNode.firstChild.innerHTML == "test");
+            },
+
+            testDataAccess: function () {
+                this.createByTemplate("$[name]: $[age] years, [if married]married[else]single[endif], $[work.company] $[work.dep]", {
+                    name: "Alex",
+                    age: 25,
+                    work: {
+                        company: "Yandex",
+                        dep: null
+                    },
+                    married: false
+                });
+
+                Y.assert(testNode.firstChild.innerHTML == "Alex: 25 years, single, Yandex ", testNode.innerHTML);
+            },
+
+            testGeoObjectDataAccess: function () {
+                var placemark = new ymaps.Placemark([0, 0], {
+                    data: "test"
+                }, {
+                    option: "test"
+                });
+
+                this.createByTemplate(
+                    "$[geometry.coordinates.1], $[properties.data], $[options.option], [if state.hover][else]false[endif], " +
+                    "$[geoObject.geometry.coordinates], $[geoObject.properties.data], $[geoObject.options.option], " +
+                    "[if geoObject.state.hover][else]false[endif]", {
+                        geometry: placemark.geometry,
+                        properties: placemark.properties,
+                        options: placemark.options,
+                        state: placemark.state,
+                        geoObject: placemark
+                    }
+                );
+
+                Y.assert(testNode.firstChild.innerHTML == "0, test, test, false, 0,0, test, test, false", testNode.innerHTML);
+            },
+
+            testGeoObjectDataConflict: function () {
+                var placemark = {
+                    geometry: {
+                        coordinates: [0, 0]
+                    },
+                    properties: {
+                        data: "test"
+                    },
+                    options: {
+                        option: "test"
+                    }
+                };
+
+                this.createByTemplate(
+                    "$[geometry.coordinates.1], $[properties.data], $[options.option], [if state.hover][else]false[endif], " +
+                    "$[geoObject.geometry.coordinates], $[geoObject.properties.data], $[geoObject.options.option], " +
+                    "[if geoObject.state.hover][else]false[endif]", {
+                        geometry: placemark.geometry,
+                        properties: placemark.properties,
+                        options: placemark.options,
+                        state: placemark.state,
+                        geoObject: placemark
+                    }
+                );
+
+                Y.assert(testNode.firstChild.innerHTML == "0, test, test, false, 0,0, test, test, false", testNode.innerHTML);
+            },
+
+            testSubLayouts: function () {
+                var Layout = ymaps.templateLayoutFactory.createClass(
+                        '[if data.condition]' +
+                            '$[data.name] - $[[options.sub1]]' +
+                        '[else]' +
+                            '$[data.description] - $[[options.sub2]] - $[[options.sub2]] - $[[options.sub2]]' +
+                        '[endif]'
+                    ),
+                    Layout1 = ymaps.templateLayoutFactory.createClass('$[data.trololo]'),
+                    Layout2 = ymaps.templateLayoutFactory.createClass('[if data.condition]$[data.name][endif]'),
+                    Layout3 = ymaps.templateLayoutFactory.createClass('$[data.description]'),
+                    options = new ymaps.option.Manager({
+                        sub1: Layout1,
+                        sub2: Layout2
+                    }),
+                    data = new ymaps.data.Manager({
+                        name: '<ymaps class="name">Vasya</ymaps>',
+                        description: '<ymaps class="description">Poupkin</ymaps>',
+                        trololo: '<ymaps class="trololo">trololo</ymaps>',
+                        condition: 0,
+                        options: options
+                    }),
+                    layout = new Layout({
+                        data: data,
+                        options: options
+                    }),
+                    res = '',
+                    test = function (a, b, c) {
+                        return testNode.getElementsByClassName('name').length == a &&
+                               testNode.getElementsByClassName('description').length == b &&
+                               testNode.getElementsByClassName('trololo').length == c;
+                    };
+    
+                layout.events.add('change', function () { res += '+' });
+    
+                layout.setParentElement(testNode);
+                Y.assert(test(0, 1, 0) && res == '', 'Неправильно сбилдился лайаут');
+    
+                data.set('condition', 1);
+                Y.assert(test(1, 0, 1) && res == '+', 'Неправильно отработало изменение условия');
+    
+                res = '';
+                options.set('sub2', Layout3);
+                Y.assert(test(1, 0, 1) && res == '', 'Неправильно отработало изменение опций');
+    
+                res = '';
+                data.set('condition', null);
+                Y.assert(test(0, 4, 0) && res == '+', 'Неправильно отработали множественные подшаблоны');
+    
+                layout.setParentElement(null);
+                res = '';
+                data.set('condition', 1);
+                layout.setParentElement(testNode);
+                Y.assert(test(1, 0, 1) && res == '+', 'Неправильно отработало изменение данных в неактивном макете');
+                layout.setParentElement(null);
+            },
+    
+            testContentLayout: function () {
+                var template = '<div style="border: 1px solid black;position:absolute;">hello $[[options.subLayout name="subLayout" observeSize]] world</div>',
+                    LayoutClass = ymaps.templateLayoutFactory.createClass(template),
+                    SubLayoutClass = ymaps.templateLayoutFactory.createClass('<b>sublayout $[data.content]</b>'),
+                    data = new ymaps.data.Manager({ content: "hotspots are sexy" }),
+                    options = new ymaps.option.Manager({ subLayout: SubLayoutClass }),
+                    layout = window.layout = new LayoutClass({
+                        data: data,
+                        options: options
+                    }),
+                    subLayout, subLayoutElement;
+
+                layout.setParentElement(testNode);
+
+                Y.assert(
+                    layout.getParentElement().innerHTML.indexOf(data.get('content')) != -1,
+                    'Данные сублейаута не подставились'
+                );
+
+                Y.assert(
+                    subLayout = layout.getSublayout('subLayout'),
+                    'Не найден сублейаут'
+                );
+
+                Y.assert(
+                    layout.getParentElement().style.width != 'auto',
+                    'Ширина лэйаута не указана'
+                );
+
+                eventEye.observe(layout, 'click');
+                Y.Event.simulate(subLayout.getParentElement(), 'click');
+                
+                Y.assert(eventEye.length() && eventEye.check(0, {
+                    type: 'click',
+                    target: subLayout
+                }), 'Событие @click сработало неверно.');
+            }
+        }
+    }
+    ymaps.ready(runTestCase);
+
+
+</script>
+</html>

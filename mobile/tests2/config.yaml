@@ -1,0 +1,33 @@
+config:
+  name:
+    Disk::Android::Autotests
+  runner_version:
+    2021.09.27-8673273
+stages:
+  run:
+    work_dir:
+      mobile/disk/android/autotests
+    cmd:
+      - python3 -m pip install requests && python3 -m pip install lxml && python3 scripts/SetupVersion2.py %env.TEAMCITY_USER% %env.TEAMCITY_PASSWORD% %env.TEAMCITY_BUILD_BRANCH% %env.APK_BUILD_NUMBER% %env.BUILD_STORE% phone %env.SYSTEM_TEST_SUITE_TYPE% %env.ANDROID_VERSION% %env.TESTRUN_NAME%
+      - ./mvnw clean install -DskipTests -f pom.xml || true
+      - ./mvnw clean test -Dtest=ru.yandex.autotests.mobile.disk.android.infrastructure.suites.FeatureSuite -Dfeatures="%env.FEATURES%" -Dcategories=%env.CATEGORIES% -Dbranch.name=%env.TEAMCITY_BUILD_BRANCH% -Dappium.hub.uri=%env.APPIUM_HUB_URI% -Dbrowser.version=%env.ANDROID_VERSION% -Dbrowser.name=%env.BROWSER_NAME% -Dbuild.type=%env.BUILD_TYPE% -Dthread.count=%env.SYSTEM_THREAD_COUNT% -Dwait.timeout=%env.SYSTEM_WAIT_TIMEOUT% -Dbuild.store=%env.BUILD_STORE% -Dteamcity.user=%env.TEAMCITY_USER% -Dteamcity.password=%env.TEAMCITY_PASSWORD% -Dapk.build.number=%env.APK_BUILD_NUMBER% -Daccount.lock.time=5400 -Dpassport.env=%env.PASSPORT_ENV% -Dtus.oauth=%env.TUS_OAUTH% -Dtus.url=%env.TUS_URL% -f disk-tests/pom.xml || ./mvnw exec:java -Dexec.mainClass="ru.yandex.autotests.mobile.disk.android.testpalm.TicketCreator" -Dexec.args="%env.TC_BUILD_ID% %env.SYSTEM_TEST_SUITE_TYPE% %env.ANDROID_VERSION% %env.APK_BUILD_NUMBER% %env.TEAMCITY_BUILD_BRANCH%" -Dstartrek.token=%env.STARTREK_TOKEN% -Dexec.classpathScope=test -f disk-tests/pom.xml || true
+      - ./mvnw allure:report -f disk-tests/pom.xml || true
+      - ./scripts/importRun.sh %env.TESTRUN_NAME% %env.TESTPALM_TOKEN% %env.TESTPALM_SUITE% || true
+      - ./scripts/reportSlack.sh %env.TEAMCITY_BUILDCONF_NAME% %env.TEAMCITY_BUILD_BRANCH% %env.APK_BUILD_NUMBER% %env.BUILD_STORE% %env.TC_BUILD_ID% %env.FEATURES% %env.CATEGORIES%
+    lxc:
+      1815248466
+    android-sdk:
+      sdk_28-30+tools_28.0.3
+    multislot:
+      LARGE
+    caches:
+      - ~/.m2
+    artifacts:
+      +disk-tests/target/site: allure-report.zip
+    secrets:
+      delphin:disk-android-autotests-teamcity-password: TEAMCITY_PASSWORD
+      delphin:disk-android-autotests-tus-oauth: TUS_OAUTH
+      delphin:disk-android-autotests-testpalm-token: TESTPALM_TOKEN
+      delphin:disk-android-autotests-startrek-token: STARTREK_TOKEN
+    kill_timeout:
+      10800

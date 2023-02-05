@@ -1,0 +1,196 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <title>domEvent.TouchMapper</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <!-- YUI -->
+    <script type="text/javascript" src="../../../test/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../../test/yui3combo/combo.css"/>
+    <script type="text/javascript" src="../../../test/run-test-case.js"></script>
+    <!-- Code -->
+    <script type="text/javascript">
+        initAPI({
+            lang: "ru-RU",
+            load: "map.metaOptions,Event,util.extend,domEvent.TouchMapper,util.dom.style,event.Manager,DomEvent,domEvent.Touch,domEvent.override.common,domEvent.touch.overrideStorage,domEvent.touch.override,domEvent.multiTouch.override",
+            mode: "debug",
+            ns: "ym"
+        });
+    </script>
+</head>
+
+<body class="yui3-skin-sam"></body>
+
+<script type="text/javascript">
+
+    function DummyDomElement () {
+        this.events = new ym.event.Manager();
+
+        this.addEventListener = function (type, callback) {
+            this.events.add(type, callback);
+        };
+
+        this.removeEventListener = function (type, callback) {
+            this.events.remove(type, callback);
+        };
+
+        this.fire = function (type, originalEvent) {
+            var event = new ym.Event();
+            event.type = type;
+            event = ym.util.extend(event, originalEvent);
+            this.events.fire(type, event);
+            return this;
+        };
+    }
+
+    function createEventObject (touches, changedTouches, timestamp) {
+        var result = {
+            timeStamp: timestamp,
+            touches: [],
+            changedTouches: []
+        };
+        
+        if(!changedTouches) {
+            changedTouches = touches;
+        }
+        
+        for(var i =0, l = touches.length; i < l; i++) {
+            result.touches.push({
+                identifier: touches[i][2],
+                pageX: touches[i][0],
+                pageY: touches[i][1],
+                clientX: touches[i][0],
+                clientY: touches[i][1]
+            });
+        }
+
+        for(var i = 0, l = changedTouches.length; i < l; i++) {
+            result.changedTouches.push({
+                identifier: changedTouches[i][2],
+                pageX: changedTouches[i][0],
+                pageY: changedTouches[i][1],
+                clientX: changedTouches[i][0],
+                clientY: changedTouches[i][1]
+            });
+        }
+        
+        return result;
+    }
+
+    function getTestCase (Y) {
+        return {
+            name: "domEvent.TouchMapper",
+
+            setUp: function () {
+                this.element = new DummyDomElement();
+                this.events = new ym.event.Manager({object: this.element});
+                this.mapper = new ym.domEvent.TouchMapper(this.events);
+                this.res = '';
+
+                this.events.add(['mouseenter', 'mouseleave', 'mousedown',
+                                 'mouseup', 'mousemove', 'click', 'dblclick', 'contextmenu', 
+                                 'multitouchstart', 'multitouchmove', 'multitouchend'], function (e) {
+                    this.res += e.get('type') + '-';
+                }, this);
+
+                this.mapper.start();
+            },
+
+            tearDown: function () {
+                this.mapper.stop();
+                this.mapper = null;
+                this.events = null;
+                this.element = null;
+            },
+
+            testMove: function () {
+                var timestamp = Date.now();
+                this.element
+                        .fire('touchstart', createEventObject([[100, 100, 1]], null, timestamp - 6))
+                        .fire('touchmove', createEventObject([[101, 101, 1]], null, timestamp - 5))
+                        .fire('touchmove', createEventObject([[105, 105, 1]], null, timestamp - 3))
+                        .fire('touchend', createEventObject([], [[100, 100, 1]], timestamp));
+                Y.assert(this.res == 'mouseenter-mousemove-mousedown-mousemove-mousemove-mouseup-mousemove-mouseleave-', 'Неправильно отработал маппинг движения');
+            },
+            
+            testClick: function () {
+                this.element
+                        .fire('touchstart', createEventObject([[100, 100, 1]], null, Date.now() - 3))
+                        .fire('touchend', createEventObject([], [[100, 100, 1]], Date.now()));
+                Y.assert(this.res == 'mouseenter-mousemove-mousedown-mouseup-click-mousemove-mouseleave-', 'Неправильно отработал маппинг нажатия');
+            },
+            
+            /*
+                Пришлось убрать этот тест, так как невозможно эмулировать тач-событие.
+            testMouseEventWithTouch: function () {
+                var touchstartEvent = createEventObject([[100, 100, 1]], null, Date.now() - 3),
+                    touchendEvent = createEventObject([], [[100, 100, 1]], Date.now());
+                this.element.fire('touchstart', touchstartEvent);
+                // В этом тесте приходится вызывать явно, так как невозможно эмулировать touch-события на документе.
+                this.mapper._onDocumentTouchStart(touchstartEvent);
+                this.element
+                        .fire('mousedown', {clientX: 100, clientY: 100, pageX: 100, pageY: 100})
+                        .fire('touchend', touchendEvent);
+                this.mapper._onDocumentTouchEnd(touchendEvent);
+                this.element.fire('mouseup', {clientX: 100, clientY: 100, pageX: 100, pageY: 100});
+                Y.assert(this.res == 'mouseenter-mousemove-mousedown-mouseup-click-mousemove-mouseleave-', 'Неправильно отработал маппинг нажатия с событием мышки');
+            },
+            */
+            
+            testContextMenu: function () {
+                this.element
+                        .fire('touchstart', createEventObject([[100, 100, 1]], null, Date.now() - this.mapper.options.contextMenuTimeout - 1))
+                        .fire('touchend', createEventObject([], [[100, 100, 1]],  Date.now()));
+                Y.assert(this.res == 'mouseenter-mousemove-mousedown-mouseup-contextmenu-mousemove-mouseleave-', 'Неправильно отработал маппинг tap&hold');
+            }, 
+            
+            testDblClick: function () {
+                var timestamp = Date.now();
+                this.element
+                        .fire('touchstart', createEventObject([[100, 100, 1]], null, timestamp - 5))
+                        .fire('touchend', createEventObject([], [[100, 100, 1]], timestamp - 4))  
+                        .fire('touchstart', createEventObject([[104, 104, 1]], null, timestamp - 3))
+                        .fire('touchend', createEventObject([], [[104, 104, 1]],  timestamp));
+                Y.assert(this.res == 'mouseenter-mousemove-mousedown-mouseup-click-mousemove-mouseleave-mouseenter-mousemove-mousedown-mouseup-click-dblclick-mousemove-mouseleave-', 'Неправильно отработал маппинг двойного нажатия');
+            },
+            
+            testMultiTouch: function () {
+                var timestamp = Date.now();
+                this.element
+                        .fire('touchstart', createEventObject([[100, 100, 1]], null, timestamp - 5))
+                        .fire('touchstart', createEventObject([[100, 100, 1], [200, 200, 2]], [[200, 200, 2]], timestamp - 5))
+                        .fire('touchend', createEventObject([[200, 200, 2]], [[100, 100, 2]], timestamp - 4))
+                        .fire('touchend', createEventObject([], [[200, 200, 2]], timestamp));
+                Y.assert(this.res == 'mouseenter-mousemove-mousedown-multitouchstart-multitouchend-mouseup-mousemove-mouseleave-', 'Неправильно отработал мультитач');
+            },
+
+            testMultiTouchMove: function () {
+                var timestamp = Date.now();
+                this.element
+                        .fire('touchstart', createEventObject([[100, 100, 1]], null, timestamp - 5))
+                        .fire('touchstart', createEventObject([[100, 100, 1], [200, 200, 2]], [[200, 200, 2]], timestamp - 5))
+                        .fire('touchmove', createEventObject([[100, 100, 1], [200, 200, 2]], [[200, 200, 2]], timestamp - 4))
+                        .fire('touchmove', createEventObject([[100, 100, 1], [200, 200, 2]], [[200, 200, 2]], timestamp - 3))
+                        .fire('touchmove', createEventObject([[100, 100, 1], [200, 200, 2]], [[200, 200, 2]], timestamp - 2))
+                        .fire('touchend', createEventObject([[200, 200, 2]], [[100, 100, 2]], timestamp - 2))
+                        .fire('touchend', createEventObject([], [[200, 200, 2]], timestamp - 1));
+                Y.assert(this.res == 'mouseenter-mousemove-mousedown-multitouchstart-multitouchmove-multitouchmove-multitouchmove-multitouchend-mouseup-mousemove-mouseleave-', 'Неправильно отработал мультитач');
+            },
+
+            testMultiTouchRestart: function () {
+                var timestamp = Date.now();
+                this.element
+                        .fire('touchstart', createEventObject([[100, 100, 1]], null, timestamp - 5))
+                        .fire('touchstart', createEventObject([[100, 100, 1], [200, 200, 2]], [[200, 200, 2]], timestamp - 5))
+                        .fire('touchstart', createEventObject([[100, 100, 1], [200, 200, 2], [150, 150, 3]], [[150, 150, 3]], timestamp - 5))
+                        .fire('touchend', createEventObject([[100, 100, 1], [150, 150, 3]], [[200, 200, 2]], timestamp - 3))
+                        .fire('touchend', createEventObject([[100, 100, 1]], [ [150, 150, 3]], timestamp - 4))
+                        .fire('touchend', createEventObject([], [[100, 100, 1]], timestamp));               
+                Y.assert(this.res == 'mouseenter-mousemove-mousedown-multitouchstart-multitouchend-multitouchstart-multitouchend-multitouchstart-multitouchend-mouseup-mousemove-mouseleave-', 'Неправильно отработал мультитач');
+            }
+            // Тест capture находится в тесте domEvent.manager.
+        }
+    }
+    ym.ready(runTestCase);
+</script>
+</html>

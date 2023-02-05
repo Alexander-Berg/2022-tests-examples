@@ -1,0 +1,96 @@
+import groovy.json.JsonSlurper
+
+import java.nio.file.Files
+
+abstract class UpdateTestResultDirs extends DefaultTask {
+
+    static class ProjectModule {
+        final String path
+
+        ProjectModule(String path) {
+            this.path = path
+        }
+    }
+
+    static ProjectModule[] queryProjectModules() {
+        def projectModulesFile = new File("project-modules.json")
+        def modules = new JsonSlurper().parse(projectModulesFile)
+        def paths = []
+        for (module in modules) {
+            paths.add(new ProjectModule(module.path))
+        }
+        return paths
+    }
+
+    static ProjectModule[] filterModulesWithTests(ProjectModule[] modules) {
+        def modulesWithTests = []
+        for (module in modules) {
+            def testSrcDir = new File("${module.path}/src/test")
+            if (isDirectoryContainsSources(testSrcDir)) {
+                modulesWithTests.add(module)
+            }
+        }
+        return modulesWithTests
+    }
+
+    static String[] formatTestResultDirs(ProjectModule[] modules) {
+        def testResultDirs = []
+        for (module in modules) {
+            testResultDirs.add("${module.path}/build/test-results")
+        }
+        return testResultDirs
+    }
+
+    static String[] formatYamlItems(String[] values, String indent) {
+        def yamlItems = []
+        for (value in values) {
+            yamlItems.add("${indent}- ${value}")
+        }
+        return yamlItems
+    }
+
+    static def isDirectoryContainsSources(File directory) {
+        return directory.exists() && Files.walk(directory.toPath())
+                .filter { path -> !Files.isDirectory(path) }
+                .map { path -> path.toString() }
+                .filter {pathString -> pathString.endsWith(".java") || pathString.endsWith(".kt") }
+                .findAny()
+                .isPresent()
+    }
+
+    static String readUnitTestsConfig(String configFilePath) {
+        def file = new File(configFilePath)
+        return file.getText('UTF-8')
+    }
+
+    static void writeUnitTestsConfig(String configFilePath, String config) {
+        def file = new File(configFilePath)
+        file.write(config)
+    }
+
+    static String updateTestResultsBlock(String config, String[] testResultDirs) {
+        def beginMarker = '# BEGIN [Generated list of result folders]'
+        def endMarker = '# END [Generated list of result folders]'
+        def startIndex = config.indexOf(beginMarker)
+        def endIndex = config.indexOf(endMarker)
+        def configHead = config.substring(0, startIndex + beginMarker.length())
+        def configTail = config.substring(endIndex)
+        def yamlItems = formatYamlItems(testResultDirs, "            ")
+        return "${configHead}\n${yamlItems.join('\n')}\n            ${configTail}"
+    }
+
+    @TaskAction
+    def update() {
+        def configFilePath = "sandbox_configs/Market_unit_tests_config.config.yaml"
+        def modules = queryProjectModules()
+        def modulesWithTests = filterModulesWithTests(modules)
+        def testResultDirs = formatTestResultDirs(modulesWithTests)
+        def unitTestsConfig = readUnitTestsConfig(configFilePath)
+        def newUnitTestsConfig = updateTestResultsBlock(unitTestsConfig, testResultDirs)
+        writeUnitTestsConfig(configFilePath, newUnitTestsConfig)
+
+        println "Unit tests config successfully updated"
+    }
+}
+
+tasks.register('updateTestResultDirs', UpdateTestResultDirs)

@@ -1,0 +1,176 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <title>Map Actions</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <!-- YUI -->
+    <script type="text/javascript" src="../../../test/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../../test/yui3combo/combo.css"/>
+    <script type="text/javascript" src="../../../test/run-test-case.js"></script>
+    <!-- Code -->
+    <script type="text/javascript">
+        initAPI({
+            lang: "ru-RU",
+            mode: "debug",
+            latitude: 'longlat'
+        });
+    </script>
+    <style type="text/css">
+        #container {
+            width: 400px;
+            height: 300px;
+            background: #ccc;
+        }
+    </style>
+</head>
+
+<body class="yui3-skin-sam">
+<div id="container" height='100px' width='100px'></div>
+</body>
+
+<script type="text/javascript">
+
+    function getTestCase (Y) {
+        return {
+            name: "map-action-correction",
+            debug: false,
+
+            testNewActionOnStateChange: function () {
+                var resultText = "", mapActionEvents = myMap.action.events;
+
+                mapActionEvents
+                        .add('statechange', onStateChange)
+                        .add('begin', function () {
+                            resultText += "begin ";
+                        })
+                        .add('end', function () {
+                            resultText += "end ";
+                        });
+
+                function onStateChange () {
+                    mapActionEvents.remove('statechange', onStateChange);
+                    // Создаем новые действия до полного заврщения предыдущего.
+                    // (statechange произойдет раньше, чем actionend)
+                    setZoom();
+                }
+
+                myMap.setZoom(9);
+
+                Y.assert(myMap.getZoom() == 11, "Был выставлен неправильный зум");
+                // Еще в 2.0.26 было begin begin end begin end begin end end
+                Y.assert(resultText == "begin end begin end begin end begin end ", "Нарушен порядок событий действий");
+            },
+
+            testNewActionOnEnd: function () {
+                var resultText = "", mapActionEvents = myMap.action.events,
+                        newEventsCreated = false;
+
+                mapActionEvents
+                        .add('begin', function () {
+                            resultText += "begin ";
+                        })
+                        .add('end', function () {
+                            resultText += "end ";
+                            if (!newEventsCreated) {
+                                newEventsCreated = true;
+                                setZoom();
+                            }
+                        });
+
+                myMap.setZoom(9);
+
+                Y.assert(myMap.getZoom() == 11, "Был выставлен неправильный зум");
+                Y.assert(resultText == "begin end begin end begin end begin end ", "Нарушен порядок событий действий");
+            },
+
+            testNewActionOnTick: function () {
+                var resultText = "", mapActionEvents = myMap.action.events;
+
+                mapActionEvents
+                        .add('tick', onTick)
+                        .add('begin', function () {
+                            resultText += "begin ";
+                        })
+                        .add('end', function () {
+                            resultText += "end ";
+                        });
+
+                function onTick () {
+                    mapActionEvents.remove('tick', onTick);
+                    // Создаем новые действия до полного заврщения предыдущего.
+                    // (statechange произойдет раньше, чем actionend)
+                    setZoom();
+                }
+
+                myMap.setZoom(9);
+
+                Y.assert(myMap.getZoom() == 11, "Был выставлен неправильный зум");
+                Y.assert(resultText == "begin end begin end begin end begin end ", "Нарушен порядок событий действий");
+            },
+
+            testNewActionOnTickComplete: function () {
+                var resultText = "", mapActionEvents = myMap.action.events;
+
+                mapActionEvents
+                        .add('tickcomplete', onTickComplete)
+                        .add('begin', function () {
+                            resultText += "begin ";
+                        })
+                        .add('end', function () {
+                            resultText += "end ";
+                        });
+
+                function onTickComplete () {
+                    mapActionEvents.remove('tickcomplete', onTickComplete);
+                    // Создаем новые действия до полного заврщения предыдущего.
+                    // (statechange произойдет раньше, чем actionend)
+                    setZoom();
+                }
+
+                myMap.setZoom(9);
+
+                Y.assert(myMap.getZoom() == 11, "Был выставлен неправильный зум");
+                Y.assert(resultText == "begin end begin end begin end begin end ", "Нарушен порядок событий действий");
+            },
+
+            testNewActionOnBegin: function () {
+                var resultText = "", mapActionEvents = myMap.action.events,
+                        newEventsCreated = false;
+
+                mapActionEvents
+                        .add('end', function () {
+                            resultText += "end ";
+                        })
+                        .add('begin', function () {
+                            resultText += "begin ";
+                            if (!newEventsCreated) {
+                                newEventsCreated = true;
+                                setZoom();
+                            }
+                        });
+
+                myMap.setZoom(9);
+
+                Y.assert(myMap.getZoom() == 11, "Был выставлен неправильный зум");
+                Y.assert(resultText == "begin end begin end begin end begin end ", "Нарушен порядок событий действий");
+            }
+        }
+    }
+
+    var myMap;
+    ymaps.ready(function () {
+        myMap = new ymaps.Map('container', {
+            center: [56, 37],
+            zoom: 12
+        }), setZoom = function () {
+            myMap.setZoom(4);
+            myMap.setZoom(1);
+            myMap.setZoom(11);
+        };
+
+        runTestCase();
+    });
+
+</script>
+</html>

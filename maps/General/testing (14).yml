@@ -1,0 +1,139 @@
+annotations:
+  project: 'maps-front-quotateka-admin'
+meta:
+  id: 'maps-front-quotateka-admin_testing'
+  project_id: 'maps-front-quotateka-admin'
+  inherit_acl: true
+spec:
+  deploy_units:
+    app:
+      endpoint_sets:
+        - port: 80
+      images_for_boxes: {}
+      network_defaults:
+        network_id: _MAPSTESTQNETS_
+      tvm_config:
+        mode: "enabled"
+        blackbox_environment: "ProdYaTeam"
+        client_port: 2
+        clients:
+          - destinations:
+              - alias: "blackbox"
+                app_id: 223
+              - alias: "maps-core-quotateka"
+                app_id: 2024233
+              - alias: "abc"
+                app_id: 2012190
+            secret_selector:
+              alias: "sec-01f21mrw2x51pdn1nd85q6xktc:ver-01f21mrw647y580epsvnhme7nb"
+              id: "client_secret"
+            source:
+              alias: "front-quotateka-admin"
+              app_id: 2027212
+      multi_cluster_replica_set:
+        replica_set:
+          clusters:
+            - cluster: man
+              spec:
+                constraints:
+                  antiaffinity_constraints:
+                    - key: rack
+                      max_pods: 1
+                replica_count: 1
+            - cluster: sas
+              spec:
+                constraints:
+                  antiaffinity_constraints:
+                    - key: rack
+                      max_pods: 1
+                replica_count: 1
+            - cluster: vla
+              spec:
+                constraints:
+                  antiaffinity_constraints:
+                    - key: rack
+                      max_pods: 1
+                replica_count: 1
+          deployment_strategy:
+            max_unavailable: 1
+          pod_template_spec:
+            spec:
+              disk_volume_requests:
+                - id: 'maps-front-quotateka-admin_testing_app_disk-0'
+                  storage_class: hdd
+                  quota_policy:
+                    # 15 Gb
+                    capacity: 16106127360
+                    bandwidth_guarantee: 5242880
+                    bandwidth_limit: 10485760
+                  labels:
+                    used_by_infra: true
+              resource_requests:
+                # 1 Gb
+                memory_guarantee: 1073741824
+                memory_limit: 1073741824
+                network_bandwidth_guarantee: 10485760
+                vcpu_guarantee: 250
+                vcpu_limit: 250
+              host_infra:
+                monitoring:
+                  unistats:
+                    - workload_id: app_workload
+                      port: 7032
+                      path: /unistat
+              secret_refs:
+                'sec-01f21mrw2x51pdn1nd85q6xktc:ver-01f21mrw647y580epsvnhme7nb':
+                  secret_id: 'sec-01f21mrw2x51pdn1nd85q6xktc'
+                  secret_version: 'ver-01f21mrw647y580epsvnhme7nb'
+              pod_agent_payload:
+                spec:
+                  boxes:
+                    - id: app_box
+                      rootfs: {}
+                      static_resources:
+                        - resource_ref: inthosts
+                          mount_point: /usr/share/yandex/maps/inthosts
+                        - resource_ref: hosts
+                          mount_point: /usr/share/yandex/maps/hosts
+                  resources:
+                    static_resources:
+                      - id: inthosts
+                        url: 'sbr:2263023569'
+                        verification:
+                          checksum: 'EMPTY:'
+                          check_period_ms: 180000
+                      - id: hosts
+                        url: 'sbr:1683829949'
+                        verification:
+                          checksum: 'EMPTY:'
+                          check_period_ms: 180000
+                  mutable_workloads:
+                    - workload_ref: app_workload
+                  workloads:
+                    - id: app_workload
+                      box_ref: app_box
+                      env:
+                        - name: APP_ENV
+                          value:
+                            literal_env:
+                              value: testing
+                      liveness_check:
+                        tcp_check:
+                          port: 80
+                      readiness_check:
+                        http_get:
+                          port: 80
+                          path: /ping
+                          any: true
+                          time_limit:
+                            max_execution_time_ms: 1000
+                      stop_policy:
+                        container:
+                          command_line: bash -c "/detach.sh"
+                          time_limit:
+                            max_execution_time_ms: 20000
+                            max_restart_period_ms: 30000
+                            min_restart_period_ms: 30000
+                        max_tries: 2
+                      transmit_logs: true
+  revision_info: {}

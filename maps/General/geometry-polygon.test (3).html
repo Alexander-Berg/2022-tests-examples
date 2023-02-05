@@ -1,0 +1,212 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <title>geometry.Polygon</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <!-- YUI -->
+    <script type="text/javascript" src="../../../../tests/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../../../tests/yui3combo/combo.css" />
+    <script type="text/javascript" src="../../../../tests/run-test-case.js"></script>
+    <!-- Code -->
+    <script type="text/javascript">
+        initAPI({
+            lang: "ru-RU",
+            load: "package.full,geometry.Polygon,projection.wgs84Mercator,util.json",
+            mode: "dev"
+        });
+    </script>
+    <script type="text/javascript" src="../../../../tests/util/event-eye.js"></script>
+</head>
+
+<body class="yui3-skin-sam">
+    <div id="container" style="width: 600px; height: 400px;"></div>
+</body>
+
+<script type="text/javascript">
+    function getTestCase(Y) { return {
+        name: "geometry.Polygon",
+//        debug: true,
+
+        setUp: function () {
+            this.poly = new ymaps.geometry.Polygon([
+                [[1, 2], [3, 4]],
+                [[5, 6], [7, 8], [8, 5]]
+            ]);
+            this.zoom = 0;
+            geoMap = new ymaps.Map('container', {
+                center: [39, 54],
+                type: "yandex#map",
+                zoom: this.zoom,
+                behaviors: []
+            });
+
+            eventEye.observe(this.poly, ["change", "optionschange"]);
+        },
+
+        tearDown: function () {
+            geoMap.destroy();
+        },
+
+        testEmptyConstructor:  function() {
+            this.poly = new ymaps.geometry.Polygon();
+
+            this.poly.setMap(geoMap);
+            this.poly.options.setParent(geoMap.options);
+
+            Y.Assert.areSame(null, this.poly.getBounds(), "Неверный результат для пустого конструктора");
+            Y.Assert.areSame(0, this.poly.getPixelGeometry().getCoordinates().length, "Неверный результат для пустого конструктора");
+
+        },
+
+        testEmptyPath:  function() {
+            this.poly = new ymaps.geometry.Polygon([
+                [[1, 2], [3, 4]],
+                []
+            ]);
+
+            this.poly.setMap(geoMap);
+            this.poly.options.setParent(geoMap.options);
+
+            Y.assert(
+                roundRecursive(this.poly.getBounds()) == "1,2,3,4" &&
+                this.poly.getPixelGeometry().getCoordinates()[1].length == 0,
+                "Неверный результат для пустого контура"
+            );
+        },
+
+        testRenderPixelGeometry: function () {
+            this.poly.options.set('coordRendering', 'straightPath');
+            this.poly.setMap(geoMap);
+            this.poly.options.setParent(geoMap.options);
+
+            this.poly.setCoordinates([[[0, 0], [85.084, -179.9], [85.084, 179.9]]]);
+
+            var pixels = roundRecursive(this.poly.getPixelGeometry(0).getCoordinates());
+
+            Y.assert(
+                pixels.length == 1 &&
+                        pixels[0].length == 4 &&
+                        pixels == "128,128,0,0,256,0,128,128" &&
+                        eventEye.length() == 3 && eventEye.check(0, {
+                    type: "optionschange",
+                    target: this.poly
+                }),
+                "Неверный результат getPixelGeometry"
+            );
+        },
+
+        testFromEncodedCoordinates:  function () {
+            var toJSON = ymaps.util.json.to,
+                    expected = [
+                        [
+                            [32.06169, 43.32006], [32.76482, 52.28859], [57.37419, 50.52997], [47.53044, 44.33806],
+                            [32.06169, 43.32006]
+                        ],
+                        [
+                            [76.66344, 46.26446], [80.88219, 56.15117], [88.265, 55.55794], [89.31969, 44.5309],
+                            [76.66344, 46.26446]
+                        ]
+                    ],
+                    geometry = ymaps.geometry.Polygon.fromEncodedCoordinates(
+                            "-jjpAfwClQKaugoAUtmIAFqCdwFkKuX_2stp_9qEof8y9xP_cHfw_w==;kMqRBIzwwQJ-X0AA9tuWABqncACy8vb_4hcQAKC9V_-G4T7_uHMaAA=="
+                    );
+            Y.Assert.areEqual(toJSON(expected), toJSON(geometry.getCoordinates()));
+        },
+
+        testToEncodedCoordinates:  function () {
+            var geometry = new ymaps.geometry.Polygon([
+                [
+                    [32.06169, 43.32006], [32.76482, 52.28859], [57.37419, 50.52997], [47.53044, 44.33806],
+                    [32.06169, 43.32006]
+                ],
+                [
+                    [76.66344, 46.26446], [80.88219, 56.15117], [88.265, 55.55794], [89.31969, 44.5309],
+                    [76.66344, 46.26446]
+                ]
+            ]),
+                    encoded = ymaps.geometry.Polygon.toEncodedCoordinates(geometry);
+            Y.Assert.areEqual(
+                    encoded,
+                    "-jjpAfwClQKaugoAUtmIAFqCdwFkKuX_2stp_9qEof8y9xP_cHfw_w==;kMqRBIzwwQJ-X0AA9tuWABqncACy8vb_4hcQAKC9V_-G4T7_uHMaAA==",
+                    "Неправильная кодировка"
+            );
+        },
+
+        testCustomPixelGeometry: function () {
+            this.poly.options.set('coordRendering', 'straightPath');
+            this.poly.setMap(geoMap);
+            this.poly.options.setParent(geoMap.options);
+
+            this.poly.setCoordinates([[[0, 0], [85.084, -179.9], [85.084, 0], [85.084, 179.9]]]);
+
+            var pixels = roundRecursive(this.poly.getPixelGeometry().getCoordinates());
+
+            Y.assert(
+                    pixels.length == 1 &&
+                    pixels[0].length == 4 &&
+                    pixels == "128,128,0,0,256,0,128,128" &&
+                    eventEye.length() == 3 && eventEye.check(0, {
+                        type: "optionschange",
+                        target: this.poly
+                    }),
+                    "Неверный результат getPixelGeometry"
+            );
+
+            var allPixels = roundRecursive(this.poly.getPixelGeometry({ simplification: false }).getCoordinates());
+
+            Y.assert(
+                allPixels == "128,128,0,0,128,0,256,0,128,128" &&
+                eventEye.length() == 3,
+                "Неверный результат getPixelGeometry с кастомными опциями" + allPixels
+            );
+
+            allPixels = roundRecursive(this.poly.getPixelGeometry().getCoordinates());
+            Y.assert(
+                 allPixels == "128,128,0,0,256,0,128,128",
+                "Неверный результат getPixelGeometry без опций после вызова с кастомными опциями"
+            );
+        },
+
+        testGetClosest: function () {
+            this.poly.setMap(geoMap);
+            this.poly.options.setParent(geoMap.options);
+
+            var result = this.poly.getClosest([0, 0]);
+            Y.assert(
+                result.closestPointIndex == 0 &&
+                result.pathIndex == 0
+            );
+        },
+
+        testContains: function () {
+            this.poly.setMap(geoMap);
+            this.poly.options.setParent(geoMap.options);
+
+            Y.assert(!this.poly.contains([5, 7]), '1');
+            Y.assert(this.poly.contains([7, 6]), '2');
+            Y.assert(this.poly.contains([1, 2]), '3');
+        },
+
+        testICustomizable: function () {
+            this.poly.options.set('a', 1);
+            Y.assert(eventEye.length() == 1 && eventEye.check(0, { type: "optionschange" }));
+        }
+    }}
+    ymaps.ready(runTestCase);
+
+    function roundRecursive (array) {
+        var result = [];
+
+        for (var i = 0; i < array.length; i++) {
+            if (isNaN(array[i])) {
+                result.push(roundRecursive(array[i]));
+            } else {
+                result.push(Math.round(array[i]));
+            }
+        }
+
+        return result;
+    }
+</script>
+</html>

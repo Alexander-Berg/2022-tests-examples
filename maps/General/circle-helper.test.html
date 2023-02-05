@@ -1,0 +1,156 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <title>Circle</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <!-- YUI -->
+    <script type="text/javascript" src="../../../../test/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../../../test/yui3combo/combo.css"/>
+    <script type="text/javascript" src="../../../../test/run-test-case.js"></script>
+    <!-- Code -->
+    <script type="text/javascript">
+        initAPI({
+            lang: "ru-RU",
+            load: "Map,Circle,geometry.Circle,geoObject.addon.balloon,util.math.areEqual,util.dom.element",
+            mode: "debug"
+        });
+    </script>
+    <script type="text/javascript" src="../../../../test/util/event-eye.js"></script>
+</head>
+
+<body class="yui3-skin-sam">
+<div id="testMap" style="height: 500px; width: 760px; overflow: hidden; position: relative;">
+</div>
+</body>
+
+<script type="text/javascript">
+    getTestCase = function (Y) {
+        var pointEquals = ymaps.util.math.areEqual,
+            numberEquals = function (a, b) {
+                return a == b;
+            };
+
+        return {
+            name: 'Circle',
+
+            setUp: function () {
+                // Карта.
+                this.geoMap = new ymaps.Map("testMap", {
+                    center: [37, 56],
+                    zoom: 4,
+                    type: "yandex#map"
+                });
+            },
+
+            tearDown: function () {
+                this.geoMap.destroy();
+            },
+
+            testPositionInConstructor: function () {
+                var circle = new ymaps.Circle([
+                    [37, 56],
+                    100000
+                ]);
+
+                Y.assert(
+                        pointEquals(circle.geometry.getCoordinates(), [37, 56]),
+                        numberEquals(circle.geometry.getRadius(), 100000)
+                );
+            },
+
+            testHashInConstructor: function () {
+                var circle = new ymaps.Circle({
+                    type: "Circle",
+                    coordinates: [37, 56],
+                    radius: 100000
+                });
+
+                Y.assert(
+                        pointEquals(circle.geometry.getCoordinates(), [37, 56]),
+                        numberEquals(circle.geometry.getRadius(), 100000)
+                );
+            },
+
+            testGeometryInConstructor: function () {
+                var geometry = new ymaps.geometry.Circle([37, 56], 100000);
+                var circle = new ymaps.Circle(geometry);
+
+                Y.assert(
+                        pointEquals(circle.geometry.getCoordinates(), [37, 56]),
+                        numberEquals(circle.geometry.getRadius(), 100000)
+                );
+            },
+
+            testAdd: function () {
+                var circle = new ymaps.Circle([
+                    [37, 56],
+                    100000
+                ]);
+                this.geoMap.geoObjects.add(circle);
+
+                circle.getOverlay().then(function (overlay) {
+                    this.resume(function () {
+                        Y.assert(overlay, "Круг не добавился");
+                    });
+                }, function (error) {
+                    this.resume(function () {
+                        Y.assert(false, "Круг не добавился");
+                    });
+                }, this);
+
+                this.wait();
+            },
+
+            testRemove: function () {
+                var circle = new ymaps.Circle([
+                    [37, 56],
+                    100000
+                ]);
+
+                this.geoMap.geoObjects.add(circle);
+                this.geoMap.geoObjects.remove(circle);
+                
+                circle.getOverlay().then(function () {
+                    this.resume(function () {
+                        Y.fail("Круг не удалился");
+                    });
+                }, function (error) {
+                    this.resume(function () {
+                        Y.assert(true);
+                    });
+                }, this);
+
+                this.wait();
+            },
+
+            testBalloon: function () {
+                var circle = new ymaps.Circle([
+                    [37, 56],
+                    100000
+                ], {
+                    balloonContent: "test test"
+                });
+                this.geoMap.geoObjects.add(circle);
+
+                circle.balloon.open().then(function () {
+                    this.resume(function () {
+                        var parentElement = this.geoMap.container.getElement(),
+                            balloonNode = ymaps.util.dom.element.findByPrefixedClass(parentElement, 'balloon'),
+                            balloonContent = ymaps.util.dom.element.findByPrefixedClass(parentElement, 'balloon__content');
+
+                        Y.assert(
+                            balloonNode && balloonContent.firstChild.firstChild.innerHTML == "test test",
+                            "Не открылся балун"
+                        );
+                    });
+                }, this);
+                this.wait();
+            }
+        };
+    };
+
+    ymaps.ready(runTestCase);
+</script>
+</html>
+

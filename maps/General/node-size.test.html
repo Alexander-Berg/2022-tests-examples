@@ -1,0 +1,119 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <title>NodeSize</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <!-- YUI -->
+    <script type="text/javascript" src="../../../test/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../../test/yui3combo/combo.css" />
+    <script type="text/javascript" src="../../../test/run-test-case.js"></script>
+    <!-- Code -->
+    <script type="text/javascript">
+        initAPI({
+            lang: "ru-RU",
+            load: "util.nodeSize,util.dom.style",
+            mode: "dev"
+        });
+    </script>
+    <!--<script type="text/javascript" src="http://netmac.orina.maps.dev.yandex.ru/jsapi/build/index.xml?lang=ru-RU&load=util.nodeSize,util.dom&mode: "dev""></script>-->
+    <style type="text/css">
+        #maskbg {
+            background: #ff0000;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: -1;
+        }
+        #mask {
+            background: #7fffd4;
+            position: absolute;
+            top: 1px;
+            left: 1px;
+            z-index: -1;
+        }
+        #container {
+            position: absolute;
+            top: 1px;
+            left: 1px;
+        }
+    </style>
+</head>
+
+<body class="yui3-skin-sam">
+    <div id="maskbg"></div>
+    <div id="mask"></div>
+    <div id="container"></div>
+</body>
+
+<script type="text/javascript">
+    function applyNodeSizeResult (container, result) {
+        ymaps.util.dom.style.css(container, {
+            width: result.width + "px",
+            height: result.height + "px",
+            overflowX: result.scrollX ? "scroll" : "hidden",
+            overflowY: result.scrollY ? "scroll" : "hidden"
+        });
+    }
+
+    function computeByContent (container, params) {
+        ymaps.util.dom.style.css(document.getElementById("maskbg"), {
+            width: (params.maxWidth || 0) + 2 + "px",
+            height: (params.maxHeight || 0) + 2 + "px"
+        });
+        ymaps.util.dom.style.css(document.getElementById("mask"), {
+            width: (params.maxWidth || 0) + "px",
+            height: (params.maxHeight || 0) + "px"
+        });
+
+        return ymaps.util.nodeSize.computeByContent(container, params)
+    }
+
+    function clearContainer (container) {
+        container.innerHTML = "";
+        ymaps.util.dom.style.css(container, {
+            width: "",
+            height: "",
+            // IE показывает скролбары, если не hidden
+            overflowX: "hidden",
+            overflowY: "hidden",
+            padding: "",
+            margin: "",
+            border: ""
+        });
+    }
+    
+    getTestCase = function (Y) {
+        return {
+            name: 'NodeSize',
+
+            setUp: function () {
+                this.container = document.getElementById("container");
+                clearContainer(this.container);
+            },
+
+            testTextNewLine: function () {
+                for (var i = 0, str = ""; i < 20; i++) {
+                    // Строка случайных символов, разделенных пробелом
+                    str += String.fromCharCode(Math.round(Math.random() * 100 + 300)) + " ";
+                    clearContainer(this.container);
+                    this.container.innerHTML = str;
+
+                    var autoOffsetHeight = this.container.offsetHeight;
+                    applyNodeSizeResult(
+                        this.container,
+                        computeByContent(this.container, {})
+                    );
+
+                    Y.assert(
+                        this.container.offsetHeight == autoOffsetHeight,
+                        "Зафиксирован перенос текста для строки: " + str
+                    );
+                }
+            }
+        };
+    };
+    ymaps.ready(runTestCase);
+</script>
+</html>
+

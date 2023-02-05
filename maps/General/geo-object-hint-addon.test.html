@@ -1,0 +1,116 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <title>geoObject.addon.hint</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <!-- YUI -->
+    <script type="text/javascript" src="../../../../tests/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../../../tests/yui3combo/combo.css" />
+    <script type="text/javascript" src="../../../../tests/run-test-case.js"></script>
+    <!-- Code -->
+    <script type="text/javascript">
+        initAPI({
+            lang: "ru-RU",
+            load: "package.full",
+            mode: "dev"
+        });
+    </script>
+    <script type="text/javascript" src="../../../../tests/util/event-eye.js"></script>
+</head>
+
+<body class="yui3-skin-sam">
+    <div id="testMap" style="height: 500px; width: 760px; overflow: hidden; position: relative;">
+    </div>
+</body>
+
+<script type="text/javascript">
+    getTestCase = function (Y) {
+        return {
+            name: 'geoObject.addon.hint',
+            // debug: true,
+
+            setUp: function () {
+                this.geoMap = new ymaps.Map("testMap", {
+                    center: [55, 55],
+                    zoom: 4,
+                    type: "yandex#map"
+                }, {
+                    geoObjectHintShowTimeout: false,
+                    geoObjectHintHideTimeout: false
+                });
+
+                this.geoObject = new ymaps.GeoObject({
+                    geometry: {
+                        type: "Point",
+                        coordinates: [55, 55]
+                    }
+                });
+
+                this.geoMap.geoObjects.add(this.geoObject);
+            },
+
+            tearDown: function () {
+                this.geoMap.destroy();
+            },
+
+            testShowEvent: function () {
+                eventEye.observe([this.geoObject, this.geoMap], ["hintshow", "hinthide"]);
+                this.geoObject.hint.show([0, 0]);
+                Y.assert(
+                    eventEye.length() == 2 &&
+                    eventEye.check(0, {
+                        type: "hintshow",
+                        target: this.geoMap
+                    }) &&
+                    eventEye.check(1, {
+                        type: "hintshow",
+                        target: this.geoObject
+                    })
+                );
+            },
+
+            testHideEvent: function () {
+                this.geoObject.hint.show([0, 0]);
+                eventEye.observe([this.geoObject, this.geoMap], ["hintshow", "hinthide"]);
+                this.geoObject.hint.hide(null, true);
+                Y.assert(
+                    eventEye.length() == 2 &&
+                    eventEye.check(0, {
+                        type: "hinthide",
+                        target: this.geoMap
+                    }) &&
+                    eventEye.check(1, {
+                        type: "hinthide",
+                        target: this.geoObject
+                    })
+                );
+            },
+
+            testShowEmpty: function () {
+                this.geoObject.events.fire('mouseenter', { globalPixelPosition: this.geoMap.getGlobalPixelCenter() });
+                this.geoObject.events.fire('mouseleave');
+                Y.assert(!this.geoObject.hint.isShown(), '1');
+
+                this.geoObject.options.set('showEmptyHint', true);
+                this.geoObject.events.fire('mouseenter', { globalPixelPosition: this.geoMap.getGlobalPixelCenter() });
+                Y.assert(this.geoObject.hint.isShown(), '2');
+            },
+
+            testDontHidePreviousWhenCurrentIsEmpty: function () {
+                this.geoMap.options.set('hintShowTimeout', false);
+                this.geoMap.hint.show(this.geoMap.getCenter(), 'map hint');
+                eventEye.observe(this.geoMap, ["hintshow", "hinthide"]);
+                this.geoObject.events.fire('mouseenter', { globalPixelPosition: this.geoMap.getGlobalPixelCenter() });
+
+                Y.Assert.areEqual(0, eventEye.length(), 'Хинт не должен был закрыться');
+                Y.assert(this.geoMap.hint.isShown(), 'Карточный хинт скрылся');
+                Y.assert(!this.geoObject.hint.isShown(), 'Хинт геообъекта показался');
+            }
+        };
+    };
+
+    ymaps.ready(runTestCase);
+</script>
+</html>
+

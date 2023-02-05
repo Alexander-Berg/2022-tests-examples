@@ -1,0 +1,182 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <title>Hint</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <!-- YUI -->
+    <script type="text/javascript" src="../../../../tests/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../../../tests/yui3combo/combo.css" />
+    <script type="text/javascript" src="../../../../tests/run-test-case.js"></script>
+    <script type="text/javascript" src="../../../../tests/util/event-eye.js"></script>
+    <!-- Code -->
+    <script type="text/javascript">
+        initAPI({
+            lang: "ru-RU",
+            load: "package.full,Hint,util.array,util.once,Event,templateLayoutFactory,data.Manager,overlay.html.Balloon,constants.zIndex,interactivityModel.opaque",
+            mode: "dev"
+        });
+    </script>
+    <style type="text/css">
+        #container { width: 400px; height: 300px; background: #ccc; }
+    </style>
+</head>
+
+<body class="yui3-skin-sam">
+
+<script type="text/javascript">
+    function byId (id) { return document.getElementById(id); }
+
+    function getTestCase(Y) {
+        var hint,
+            pos = geoMap.getCenter(),
+            contentLayout = ymaps.templateLayoutFactory.createClass('$[hintContent]<span id="tst">$[a]$[x]</span>'),
+            options = {
+                layout: ymaps.templateLayoutFactory.createClass('<ymaps class="ymaps-label">$[[options.contentLayout]]</ymaps>'),
+                contentLayout: contentLayout,
+                holdByMouse: false,
+                showTimeout: false,
+                hideTimeout: false
+            };
+
+        return {
+            name: "Hint",
+
+            _should: {
+                ignore: {
+//                    testGetData: true,
+//                    testChangeOverlay: true
+                }
+            },
+
+            setUp: function () {
+                hint = new ymaps.Hint(geoMap, { a: 'b' }, options);
+                hint.options.setParent(geoMap.options);
+            },
+
+            tearDown: function () {
+                hint.destroy();
+            },
+
+            testShow: function () {
+                eventEye.observe(hint, ['show', 'hide']);
+                hint.show(pos);
+
+                Y.assert(hint.getOverlay() && hint.getOverlay().getElement(), 'Оверлей не создался.');
+                Y.assert(document.getElementsByClassName('ymaps-label').length, 'Хинт не добавился в DOM.');
+                Y.assert(hint.isShown(), 'Хинт думает, что не показался.');
+
+                hint.hide();
+                try {
+                    hint.show();
+                    Y.fail('Нет ошибки при открытии хинта без позиции');
+                } catch (e) {
+                    Y.assert(e.name == 'Error', 'Неожиданное исключение: ' + e);
+                }
+                
+                Y.assert(
+                    eventEye.length() == 2 &&
+                    eventEye.check(0, { type: "show", target: hint }) &&
+                    eventEye.check(1, { type: "hide", target: hint }),
+                    'Неверный порядок событий: ' + eventEye.length()
+                );
+            },
+
+            testIsShown: function () {
+                hint.show(pos);
+                Y.assert(hint.isShown(), 'Хинт думает что не показался.');
+                hint.hide();
+                Y.assert(!hint.isShown(), 'Хинт думает что не скрылся.');
+            },
+
+            testGetPosition: function () {
+                hint.show(pos);
+                Y.assert(hint.getPosition()[0] == pos[0] && hint.getPosition()[1] == pos[1], 'Позиция возвращается неправильно.');
+                hint.hide();
+                Y.assert(!hint.getPosition(), 'Позиция после закрытия не null.');
+            },
+
+            testSetPosition: function () {
+                hint.setPosition(pos);
+                hint.show();
+                Y.assert(hint.getPosition()[0] == pos[0] && hint.getPosition()[1] == pos[1], 'Позиция не задалась');
+                hint.hide();
+                try {
+                    hint.setPosition(pos);
+                } catch (e) {
+                    Y.assert(e.name == 'Error', 'Неожиданное исключение: ' + e);
+                }
+            },
+
+            testGetData: function () {
+                hint.show(pos);
+                Y.Assert.areEqual('b', hint.getData().a, 'Заданные данные не возвращаются.');
+                hint.setData({a: 'c'});
+                Y.Assert.areEqual('c', byId('tst').innerHTML, 'Измененные данные не применяются.');
+                hint.hide();
+                Y.Assert.areEqual('c', hint.getData().a, 'Данные не возвращаются после закрытия хинта.');
+            },
+
+            testSetData: function () {
+                hint.setData({ a: 'z', x: 'y' });
+                hint.show(pos);
+                Y.Assert.areEqual('z', hint.getData().a, 'Данные не были применены.');
+                Y.Assert.areEqual('zy', byId('tst').innerHTML, 'Шаблон не обновился.');
+
+                hint.setData({ a: '1', x: '2' });
+                Y.Assert.areEqual('2', hint.getData().x, 'Данные не были изменены при открытом хинте.');
+                Y.Assert.areEqual('12', byId('tst').innerHTML, 'Шаблон не обновился при открытом хинте.');
+
+                hint.hide();
+                hint.setData({ m: 'n' });
+                Y.Assert.areEqual('n', hint.getData().m, 'Данные не были применены после закрытия хинте.');
+            },
+
+            testGetOverlay: function () {
+                Y.assert(!hint.getOverlay(), 'Оверлей должен отсутствовать до открытия');
+                hint.show(pos);
+                Y.assert(hint.getOverlay(), 'Оверлей не создался');
+                hint.hide();
+                Y.assert(!hint.getOverlay(), 'Оверлей не удалился');
+            },
+
+            testOverlayZIndex: function () {
+                hint.show(geoMap.getGlobalPixelCenter());
+
+                Y.Assert.areEqual(ymaps.constants.zIndex.label, hint.getOverlay().getElement().style.zIndex, 'default');
+
+                hint.options.set('zIndex', 0);
+                Y.Assert.areEqual(0, hint.getOverlay().getElement().style.zIndex, 'set');
+            },
+
+            testOverlayInteractivityModel: function () {
+                hint.show(geoMap.getGlobalPixelCenter());
+
+                var customModel = { a: 'b' };
+
+                Y.Assert.areEqual(ymaps.interactivityModel.opaque, hint.getOverlay().options.get('interactivityModel'), 'default');
+
+                hint.options.set('interactivityModel', customModel);
+                Y.Assert.areEqual(customModel, hint.getOverlay().options.get('interactivityModel'), 'set');
+            }
+        }
+    }
+    ymaps.ready(function () {
+        geoMap = new ymaps.Map('container', {
+            center: [39, 54],
+            type: "yandex#map",
+            zoom: 1,
+            behaviors: ['drag', 'scrollZoom', 'multiTouch']
+        });
+
+        mapCenter = geoMap.options.get('projection').toGlobalPixels(geoMap.getCenter(), geoMap.getZoom());
+
+        runTestCase();
+    });
+
+</script>
+
+    <div id="container"></div>
+
+</body>
+</html>

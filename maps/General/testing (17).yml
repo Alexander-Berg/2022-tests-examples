@@ -1,0 +1,145 @@
+annotations:
+  project: 'maps-front-photo-admin'
+meta:
+  id: 'maps-front-photo-admin_testing'
+  project_id: 'maps-front-photo-admin'
+  inherit_acl: true
+spec:
+  account_id: ''
+  deploy_units:
+    app:
+      endpoint_sets:
+        - port: 80
+      images_for_boxes: {}
+      network_defaults:
+        network_id: _MAPSTESTQNETS_
+      tvm_config:
+        mode: "enabled"
+        blackbox_environment: "ProdYaTeam"
+        client_port: 2
+        clients:
+          - destinations:
+              - alias: "blackbox"
+                app_id: 223
+            secret_selector:
+              alias: "sec-01emkws3bekswatkrse3nbyhyv:ver-01emkws3cwj7ey3eax802tm6cw"
+              id: "client_secret"
+            source:
+              alias: "front-photo-admin"
+              app_id: 2024181
+      multi_cluster_replica_set:
+        replica_set:
+          clusters:
+            - cluster: man
+              spec:
+                constraints:
+                  antiaffinity_constraints:
+                    - key: rack
+                      max_pods: 1
+                replica_count: 1
+            - cluster: sas
+              spec:
+                constraints:
+                  antiaffinity_constraints:
+                    - key: rack
+                      max_pods: 1
+                replica_count: 1
+            - cluster: vla
+              spec:
+                constraints:
+                  antiaffinity_constraints:
+                    - key: rack
+                      max_pods: 1
+                replica_count: 1
+          deployment_strategy:
+            max_unavailable: 1
+          pod_template_spec:
+            labels:
+              portoshell_motd_disabled: true
+            spec:
+              disk_volume_requests:
+                - id: 'maps-front-photo-admin_testing_app_disk-0'
+                  storage_class: hdd
+                  quota_policy:
+                    bandwidth_guarantee: 5242880
+                    bandwidth_limit: 10485760
+                    capacity: 16106127360
+                  labels:
+                    used_by_infra: true
+              resource_requests:
+                # 1 Gb
+                memory_guarantee: 1073741824
+                memory_limit: 1073741824
+                vcpu_guarantee: 250
+                vcpu_limit: 250
+              host_infra:
+                monitoring:
+                  unistats:
+                    - workload_id: app_workload
+                      port: 7032
+                      path: /unistat
+              secret_refs:
+                'sec-01emkws3bekswatkrse3nbyhyv:ver-01emkws3cwj7ey3eax802tm6cw':
+                  secret_id: 'sec-01emkws3bekswatkrse3nbyhyv'
+                  secret_version: 'ver-01emkws3cwj7ey3eax802tm6cw'
+              pod_agent_payload:
+                spec:
+                  boxes:
+                    - id: app_box
+                      rootfs: {}
+                      static_resources:
+                        - resource_ref: inthosts
+                          mount_point: /usr/share/yandex/maps/inthosts
+                        - resource_ref: hosts
+                          mount_point: /usr/share/yandex/maps/hosts
+                  resources:
+                    static_resources:
+                      - id: inthosts
+                        url: 'sbr:1883150859'
+                        verification:
+                          checksum: 'EMPTY:'
+                          check_period_ms: 180000
+                      - id: hosts
+                        url: 'sbr:1877224677'
+                        verification:
+                          checksum: 'EMPTY:'
+                          check_period_ms: 180000
+                  mutable_workloads:
+                    - workload_ref: app_workload
+                  workloads:
+                    - id: app_workload
+                      box_ref: app_box
+                      env:
+                        - name: APP_ENV
+                          value:
+                            literal_env:
+                              value: testing
+                        - name: MAPS_TVM_APP_ID
+                          value:
+                            literal_env:
+                              value: '2024181'
+                        - name: PUSH_CLIENT_TVM_SECRET
+                          value:
+                            secret_env:
+                              alias: 'sec-01emkws3bekswatkrse3nbyhyv:ver-01emkws3cwj7ey3eax802tm6cw'
+                              id: client_secret
+                      liveness_check:
+                        tcp_check:
+                          port: 80
+                      readiness_check:
+                        http_get:
+                          port: 80
+                          path: /ping
+                          any: true
+                          time_limit:
+                            max_execution_time_ms: 1000
+                      stop_policy:
+                        container:
+                          command_line: bash -c "/detach.sh"
+                          time_limit:
+                            max_execution_time_ms: 20000
+                            max_restart_period_ms: 30000
+                            min_restart_period_ms: 30000
+                        max_tries: 2
+                      transmit_logs: true
+  revision_info: {}

@@ -1,0 +1,239 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <title>Balloon</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <!-- YUI -->
+    <script type="text/javascript" src="../../../../tests/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../../../tests/yui3combo/combo.css" />
+    <script type="text/javascript" src="../../../../tests/run-test-case.js"></script>
+    <script type="text/javascript" src="../../../../tests/util/event-eye.js"></script>
+    <!-- Code -->
+    <script type="text/javascript">
+        initAPI({
+            load: "package.full,Balloon,util.array,util.once,Event,templateLayoutFactory,data.Manager,overlay.html.Placemark,constants.zIndex,interactivityModel.opaque",
+            mode: "dev"
+        });
+    </script>
+    <style type="text/css">
+        #container { width: 400px; height: 300px; background: #ccc; }
+    </style>
+</head>
+
+<body class="yui3-skin-sam">
+
+<script type="text/javascript">
+    function byId (id) { return document.getElementById(id); }
+
+    function getTestCase(Y) {
+        var balloon,
+            pos = geoMap.getCenter(),
+            contentLayout = ymaps.templateLayoutFactory.createClass('$[balloonContent]<span id="tst">$[a]$[x]</span>'),
+            options = { contentLayout: contentLayout };
+
+        return {
+            name: "Balloon",
+
+            setUp: function () {
+                window.balloon = balloon = new ymaps.Balloon(geoMap, { a: 'b' }, options);
+                balloon.options.setParent(geoMap.options);
+            },
+
+            tearDown: function () {
+                balloon.destroy();
+            },
+
+            testOpen: function () {
+                eventEye.observe(balloon, ['open', 'close']);
+                balloon.open(pos);
+
+                Y.assert(balloon.getOverlay() && balloon.getOverlay().getElement(), 'Оверлей не создался.');
+                Y.assert(document.getElementsByClassName('ymaps-b-balloon').length, 'Балун не добавился в DOM.');
+                Y.assert(balloon.isOpen(), 'Балун думает, что не открылся.');
+
+                balloon.close();
+                try {
+                    balloon.open();
+                    Y.fail('Нет ошибки при открытии балуна без позиции');
+                } catch (e) {
+                    Y.assert(e.name == 'Error', 'Неожиданное исключение: ' + e);
+                }
+
+                Y.assert(
+                    eventEye.length() == 2 &&
+                    eventEye.check(0, { type: "open", target: balloon }) &&
+                    eventEye.check(1, { type: "close", target: balloon }),
+                    'Неверный порядок событий: ' + eventEye.length()
+                );
+            },
+
+            testUserclose: function () {
+                eventEye.observe(balloon, ['open', 'beforeuserclose', 'beforedestroy', 'destroy', 'userclose']);
+                balloon.open(pos);
+
+                balloon.getOverlay().getBalloonLayout().events.fire('userclose', new ymaps.Event({ type: 'userclose' }));
+
+                Y.assert(!balloon.isOpen(), 'isOpen() возвращает true');
+                Y.assert(!balloon.getOverlay(), 'Ссылка на оверлей не убилась');
+                Y.assert(!document.getElementsByClassName('ymaps-b-balloon').length, 'Балун остался на карте');
+                Y.assert(
+                    (eventEye.length() == 5) &&
+                    eventEye.check(0, { type: "open", target: balloon }) &&
+                    eventEye.check(1, { type: "beforeuserclose", target: balloon }) &&
+                    eventEye.check(2, { type: "userclose", target: balloon }) &&
+                    eventEye.check(3, { type: "beforedestroy", target: balloon }) &&
+                    eventEye.check(4, { type: "destroy", target: balloon }),
+                    'Неверный порядок событий: ' + eventEye.length()
+                );
+            },
+
+            testIsOpen: function () {
+                balloon.open(pos);
+                Y.assert(balloon.isOpen(), 'Балун думает что не открылся.');
+                balloon.close();
+                Y.assert(!balloon.isOpen(), 'Балун думает что не закрылся.');
+            },
+
+            testGetPosition: function () {
+                balloon.open(pos);
+                Y.assert(balloon.getPosition()[0] == pos[0] && balloon.getPosition()[1] == pos[1], 'Позиция возвращается неправильно.');
+                balloon.close();
+                Y.assert(!balloon.getPosition(), 'Позиция после закрытия не null.');
+            },
+
+            testSetPosition: function () {
+                balloon.setPosition(pos);
+                balloon.open();
+                Y.assert(balloon.getPosition()[0] == pos[0] && balloon.getPosition()[1] == pos[1], 'Позиция не задалась');
+                balloon.close();
+                try {
+                    balloon.setPosition(pos);
+                } catch (e) {
+                    Y.assert(e.name == 'Error', 'Неожиданное исключение: ' + e);
+                }
+            },
+
+            testGetData: function () {
+                balloon.open(pos);
+                Y.Assert.areEqual('b', balloon.getData().a, 'Заданные данные не возвращаются.');
+                var oldData = balloon.getData();
+                oldData.a = 'c';
+                balloon.setData(oldData);
+                Y.Assert.areEqual('c', byId('tst').innerHTML, 'Измененные данные не применяются.');
+                balloon.close();
+                Y.Assert.areEqual('c', balloon.getData().a, 'Данные не возвращаются после закрытия балуна.');
+            },
+
+            testSetData: function () {
+                balloon.setData({ a: 'z', x: 'y' });
+                balloon.open(pos);
+                Y.Assert.areEqual('z', balloon.getData().a, 'Данные не были применены.');
+                Y.Assert.areEqual('zy', byId('tst').innerHTML, 'Шаблон не обновился.');
+
+                balloon.setData({ a: '1', x: '2' });
+                Y.Assert.areEqual('2', balloon.getData().x, 'Данные не были изменены при открытом балуне.');
+                Y.Assert.areEqual('12', byId('tst').innerHTML, 'Шаблон не обновился при открытом балуне.');
+
+                balloon.close();
+                balloon.setData({ m: 'n' });
+                Y.Assert.areEqual('n', balloon.getData().m, 'Данные не были применены после закрытия балуне.');
+            },
+
+            testGetOverlay: function () {
+                Y.assert(!balloon.getOverlay(), 'Оверлей должен отсутствовать до открытия');
+                balloon.open(pos);
+                Y.assert(balloon.getOverlay(), 'Оверлей не создался');
+                balloon.close();
+                Y.assert(!balloon.getOverlay(), 'Оверлей не удалился');
+            },
+
+            testAutoPan: function () {
+                var res = '',
+                    _t = this,
+                    unexpectedAutoPan;
+
+                geoMap.setBounds([[-30,-30], [30,30]]);
+
+                balloon.options.set('autoPanDuration', 200);
+                balloon.events
+                    .add('autopanbegin', function () { res += 'begin-'; })
+                    .add('autopanend', function () { res += 'end-'; });
+
+                ymaps.util.once(balloon.events, 'autopanend', function () {
+                    setTimeout(function () {
+                        ymaps.util.once(balloon.events, 'autopanend', function () {
+                            setTimeout(function () {
+                                ymaps.util.once(balloon.events, 'autopanend', function () {
+                                    setTimeout(function () {
+                                        // проверка одноразовой отмены autoPan
+                                        balloon.events.add('autopanbegin', unexpectedAutoPan = function  () {
+                                            Y.Assert.fail('Автопан должен был быть отменен.');
+                                        });
+                                        balloon.setPosition([-100, -100], true);
+                                        balloon.events.remove('autopanbegin', unexpectedAutoPan);
+
+                                        // проверка прямого вызова autoPan
+                                        ymaps.util.once(balloon.events, 'autopanend', function () {
+                                            _t.resume(function () {
+                                                Y.Assert.areEqual('begin-end-begin-end-begin-end-begin-end-', res);
+                                            });
+                                        });
+                                        geoMap.setCenter([0, 0]);
+                                        balloon.autoPan();
+                                    }, 0);
+                                });
+                                // проверка autoPan после перемещения через повторный open
+                                balloon.open([130, 45]);
+                            }, 0);
+                        });
+                        // проверка autoPan после перемещения
+                        balloon.setPosition([0, 0]);
+                    }, 0);
+                });
+                // проверка autoPan после открытия вне области видимости
+                balloon.open([130, 45]);
+
+                _t.wait();
+            },
+
+            testOverlayZIndex: function () {
+                balloon.open(geoMap.getGlobalPixelCenter());
+
+                Y.Assert.areEqual(ymaps.constants.zIndex.balloon, balloon.getOverlay().getElement().style.zIndex, 'default');
+
+                balloon.options.set('zIndex', 0);
+                Y.Assert.areEqual(0, balloon.getOverlay().getElement().style.zIndex, 'set');
+            },
+
+            testOverlayInteractivityModel: function () {
+                balloon.open(geoMap.getGlobalPixelCenter());
+
+                var customModel = { a: 'b' };
+
+                Y.Assert.areEqual(ymaps.interactivityModel.opaque, balloon.getOverlay().options.get('interactivityModel'), 'default');
+
+                balloon.options.set('interactivityModel', customModel);
+                Y.Assert.areEqual(customModel, balloon.getOverlay().options.get('interactivityModel'), 'set');
+            }
+        }
+    }
+    ymaps.ready(function () {
+        geoMap = new ymaps.Map('container', {
+            center: [39, 54],
+            type: "yandex#map",
+            zoom: 1,
+            behaviors: ['drag', 'scrollZoom']
+        });
+
+        mapCenter = geoMap.options.get('projection').toGlobalPixels(geoMap.getCenter(), geoMap.getZoom());
+
+        runTestCase();
+    });
+
+</script>
+
+    <div id="container"></div>
+
+</body>
+</html>

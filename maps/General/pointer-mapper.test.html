@@ -1,0 +1,176 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <title>domEvent.PointerMapper</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <!-- YUI -->
+    <script type="text/javascript" src="../../../test/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../../test/yui3combo/combo.css" />
+    <script type="text/javascript" src="../../../test/run-test-case.js"></script>
+    <!-- Code -->
+    <script type="text/javascript" src="http://localhost:8080/2.0/?lang=ru-RU&load=domEvent.pointer.override,domEvent.multiPointer.override,Event,constants.mapDomEvents,util.extend,domEvent.PointerMapper,event.Manager,DomEvent,domEvent.Pointer&mode=debug&ns=ymaps"></script>
+</head>
+
+<body class="yui3-skin-sam"></body>
+
+<script type="text/javascript">
+    
+    if (typeof MSGesture == 'undefined') {
+        window.MSGesture = function () {
+            this.addPointer = function (pointerId) {};
+        };
+    }
+    
+    function DummyDomElement () {
+        this.events = new ymaps.event.Manager();
+        
+        this.addEventListener = function (type, callback) {
+            this.events.add(type, callback);
+        };
+        
+        this.removeEventListener = function (type, callback) {
+            this.events.remove(type, callback);
+        };
+        
+        this.fire = function (type, originalEvent) {
+            var event = new ymaps.Event();
+            event.type = type;
+            event = ymaps.util.extend(event, originalEvent);
+            this.events.fire(type, event);
+            return this;
+        };
+    }
+    
+    function getTestCase(Y) {
+        return {
+        name: "domEvent.PointerMapper",
+        
+        setUp: function () {
+            this.element = new DummyDomElement();
+            this.events = new ymaps.event.Manager({object: this.element});
+            this.mapper = new ymaps.domEvent.PointerMapper(this.events);
+            this.mapper.start();
+            this.log = '';
+            this.mapperListener = this.mapper.events.group()
+                .add(ymaps.constants.mapDomEvents, function (e) {
+                    this.log += ' ' + e.get('type');
+                }, this);
+        },
+        
+        tearDown: function () {
+            this.log = '';
+            this.mapper.stop();
+            this.mapper = null;
+            this.events = null;
+            this.element = null;
+        },
+
+        testMouseEnter: function () {
+            this.element.fire('MSPointerOver', {button: -1, pointerId: 1});
+            Y.assert(this.log == ' mouseenter');
+        },
+        
+        testMouseDown: function () {
+            this.element.fire('MSPointerDown', {button: 0, pointerId: 1});
+            Y.assert(this.log == ' mouseenter mousemove mousedown');
+        },
+
+        testDblClick: function () {
+            var timestamp = Date.now();
+            this.element
+                .fire('MSPointerOver', {button: 0, pointerId: 1, clientX: 1, clientY: 1, timeStamp: timestamp - 5})
+                .fire('MSPointerDown', {button: 0, pointerId: 1, clientX: 1, clientY: 1, timeStamp: timestamp - 5})
+                .fire('MSPointerUp', {button: 0, pointerId: 1, clientX: 1, clientY: 1, timeStamp: timestamp - 5})
+                .fire('MSPointerDown', {button: 0, pointerId: 1, clientX: 1, clientY: 1, timeStamp: timestamp - 3})
+                .fire('MSPointerUp', {button: 0, pointerId: 1, clientX: 1, clientY: 1, timeStamp: timestamp - 3});
+            Y.assert(this.log == ' mouseenter mousemove mousedown mouseup click mousemove mousedown mouseup click dblclick');
+        },
+        
+        testTwoClicks: function () {
+            this.element
+                .fire('MSPointerOver', {button: 0, pointerId: 1, clientX: 1, clientY: 1})
+                .fire('MSPointerDown', {button: 0, pointerId: 1, clientX: 1, clientY: 1})
+                .fire('MSPointerUp', {button: 0, pointerId: 1, clientX: 1, clientY: 1});
+            
+            this.wait(function () {
+                this.element
+                    .fire('MSPointerDown', {button: 0, pointerId: 1, clientX: 1, clientY: 1})
+                    .fire('MSPointerUp', {button: 0, pointerId: 1, clientX: 1, clientY: 1});
+                    Y.assert(this.log == ' mouseenter mousemove mousedown mouseup click mousemove mousedown mouseup click');
+            }, 1000);
+        },
+        
+        testDownMoveUp: function () {
+            this.element
+                .fire('MSPointerOver', {button: 0, pointerId: 1, clientX: 1, clientY: 1})
+                .fire('MSPointerDown', {button: 0, pointerId: 1, clientX: 1, clientY: 1})
+                .fire('MSGestureChange', {button: -1, pointerId: 1, clientX: 4, clientY: 4, detail: 0})
+                .fire('MSPointerUp', {button: 0, pointerId: 1, clientX: 4, clientY: 4});
+            Y.assert(this.log == ' mouseenter mousemove mousedown mousemove mouseup');
+        },
+        
+        testMultiTouchStart: function () {
+            this.element
+                .fire('MSPointerOver', {button: 0, pointerId: 1, clientX: 1, clientY: 1})
+                .fire('MSPointerDown', {button: 0, pointerId: 1, clientX: 1, clientY: 1})
+                .fire('MSPointerDown', {button: 0, pointerId: 2, clientX: 1, clientY: 1});
+            Y.assert(this.log == ' mouseenter mousemove mousedown multitouchstart');
+        },
+        
+        testMultiTouchEnd: function () {
+            this.element
+                .fire('MSPointerOver', {button: 0, pointerId: 1, clientX: 1, clientY: 1})
+                .fire('MSPointerDown', {button: 0, pointerId: 1, clientX: 1, clientY: 1})
+                .fire('MSPointerDown', {button: 0, pointerId: 2, clientX: 1, clientY: 1})
+                .fire('MSPointerUp', {button: 0, pointerId: 1, clientX: 1, clientY: 1});
+            Y.assert(this.log == ' mouseenter mousemove mousedown multitouchstart multitouchend');    
+        },
+        
+        testMultiTouchMove: function () {
+            this.element
+                .fire('MSPointerOver', {button: 0, pointerId: 1, clientX: 1, clientY: 1})
+                .fire('MSPointerDown', {button: 0, pointerId: 1, clientX: 1, clientY: 1})
+                .fire('MSPointerDown', {button: 0, pointerId: 2, clientX: 1, clientY: 1})
+                .fire('MSGestureChange', {button: -1, pointerId: 2, clientX: 4, clientY: 4, detail: 0})
+                .fire('MSPointerUp', {button: 0, pointerId: 1, clientX: 4, clientY: 4});
+            Y.assert(this.log == ' mouseenter mousemove mousedown multitouchstart multitouchmove multitouchend');    
+        },
+        
+        testLoseCapture: function () {
+            this.element
+                .fire('MSPointerOver', {button: 0, pointerId: 1, clientX: 1, clientY: 1})
+                .fire('MSPointerDown', {button: 0, pointerId: 1})
+                .fire('MSLostPointerCapture', {button: -1, pointerId: 1});
+            Y.assert(this.log == ' mouseenter mousemove mousedown mousemove mouseleave');
+        },
+
+        testButtonMouseDown: function () {
+            this.element
+                    .fire('MSPointerOver', {button: 0, pointerId: 1, clientX: 1, clientY: 1})
+                    .fire('MSPointerDown', {button: 0, pointerId: 1, clientX: 1, clientY: 1})
+                    .fire('MSPointerDown', {button: 1, pointerId: 2, clientX: 2, clientY: 2})
+                    .fire('MSPointerDown', {button: 2, pointerId: 3, clientX: 3, clientY: 3})
+                    .fire('MSPointerDown', {button: -1, pointerId: 4, clientX: 4, clientY: 4});
+            // На практике не может возикнуть ситуации, что мультитач создал из-за нескольких мышек.
+            Y.assert(this.log == ' mouseenter mousemove mousedown multitouchstart multitouchend multitouchstart multitouchend multitouchstart');
+        },
+
+        testButtonMouseUp: function () {
+            this.element
+                    .fire('MSPointerOver', {button: 0, pointerId: 1, clientX: 1, clientY: 1})
+                    .fire('MSPointerDown', {button: 0, pointerId: 1, clientX: 1, clientY: 1})
+                    .fire('MSPointerDown', {button: 1, pointerId: 2, clientX: 2, clientY: 2})
+                    .fire('MSPointerDown', {button: 2, pointerId: 3, clientX: 3, clientY: 3})
+                    .fire('MSPointerDown', {button: -1, pointerId: 4, clientX: 4, clientY: 4})
+                    .fire('MSPointerUp', {button: 0, pointerId: 1, clientX: 1, clientY: 1})
+                    .fire('MSPointerUp', {button: 1, pointerId: 2, clientX: 2, clientY: 2})
+                    .fire('MSPointerUp', {button: 2, pointerId: 3, clientX: 3, clientY: 3})
+                    .fire('MSPointerUp', {button: -1, pointerId: 4, clientX: 4, clientY: 4});
+            Y.assert(this.log == ' mouseenter mousemove mousedown multitouchstart multitouchend multitouchstart multitouchend multitouchstart multitouchend multitouchstart multitouchend multitouchstart multitouchend mouseup');
+        }
+    }}
+    ymaps.ready(runTestCase);
+</script>
+<div id='test' style="display: block; color: yellow; height: 20px; width: 20px;">Тест</div>
+</html>

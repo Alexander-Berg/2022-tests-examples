@@ -1,0 +1,186 @@
+<!doctype html>
+<html>
+<head>
+    <title>traffic control</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <!-- YUI -->
+    <script type="text/javascript" src="../../../test/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../../test/yui3combo/combo.css"/>
+    <script type="text/javascript" src="../../../test/run-test-case.js"></script>
+    <script type="text/javascript" src="http://yandex.st/jquery/1.6.4/jquery.min.js"></script>
+    <!-- Code -->
+    <script type="text/javascript">
+        initAPI({
+            lang: "ru-RU",
+            load: "package.full,util.dom.element",
+            mode: "debug"
+        });
+    </script>
+</head>
+
+<body class="yui3-skin-sam" style="position: relative; padding: 0; margin: 0;"></body>
+<div id="map" style='width:600px; height:800px'>
+
+</div>
+<style>
+    html, html body {
+        width: 100%;
+        height: 100%;
+    }
+    
+    #traffic {
+        display: block;
+        border: 5px solid yellow;
+        background-color: white;
+        font-size: 20px;
+    }
+    #now, #usually {
+        border: 5px solid grey;
+    }
+</style>
+<script type="text/javascript">
+
+function getTestCase (Y) {
+    return {
+        name: "traffic",
+        
+        setUp: function () {
+            this.map = new ymaps.Map('map', {
+                center: [55.777153093859496, 37.639130078124964],
+                zoom: 10
+            });     
+        },
+        
+        tearDown: function () {
+            this.map.destroy();
+            this.map = null;
+        },
+        
+        testSetTime: function () {
+            var map = this.map,
+                trafficControl = new ymaps.control.TrafficControl({
+                    shown: true,
+                    providerKey: 'traffic#archive'
+                });
+            
+            trafficControl.getProvider('traffic#archive').state.set({
+                timeZone: 0,
+                dst: 'dst'
+            });
+            map.controls.add(trafficControl);
+        },
+        
+        testTrafficControl: function () {
+            var map = this.map,
+                trafficControl = new ymaps.control.TrafficControl();
+            map.controls.add(trafficControl);
+            map.controls.remove(trafficControl);
+            
+            map.controls.add(trafficControl);
+            trafficControl.show();
+            trafficControl.collapse();
+            map.controls.remove(trafficControl);
+            
+            map.controls.add(trafficControl);
+            trafficControl.state.set('shown', true);
+            var provider = trafficControl.getProvider('traffic#archive');
+            provider.setMap(map);
+            Y.assert(trafficControl.state.get('providerKey') == 'traffic#archive', "Не сменился провайдер в контроле.");
+            map.controls.remove(trafficControl);
+        },
+        
+        testTrafficControlEvents: function () {
+            var map = this.map;
+                trafficControl = new ymaps.control.TrafficControl(),
+                res = '',
+                listener = trafficControl.events.group()
+                    .add(['mapchange', 'show', 'hide', 'expand', 'collapse', 'providerchange'], function (e) {
+                        res += e.get('type') + '_';
+                    });
+                
+            map.controls.add(trafficControl); // mapchange
+            Y.assert(res == 'mapchange_', "Не кинулось событие mapchange при добавлении контрола на карту.");
+            res = '';
+            
+            trafficControl.state.set('shown', true); // show, providerchange
+            Y.assert(res == 'show_providerchange_', "Не кинулись события показа провайдера и смены провайдера.");
+            res = '';
+            
+            trafficControl.collapse(); //collapse
+            trafficControl.expand();
+            trafficControl.expand();
+            Y.assert(res == 'collapse_expand_', "Не кинулась пара expand-collapse.");
+            res = '';
+            
+            trafficControl.getProvider('traffic#archive').setMap(map); // providerchange x2
+            Y.assert(res == 'providerchange_providerchange_', "Неправильная реакция на внешнее изменени провайдера.");
+            listener.removeAll();
+            map.controls.remove(trafficControl);
+        },
+        
+        testLayoutEvents: function () {
+            var map = this.map,
+                MyTrafficControlLayout = ymaps.templateLayoutFactory.createClass("<div id='traffic'>" +
+                        "<div id='shown'>[if state.shown]hide[else]show[endif]</div>" +
+                        "[if state.shown]" +
+                            "<div id='now'>now</div>" +
+                            "<div id='usually'>usually</div>" +
+                        "[endif]" +
+                    "</div>", {
+                        
+                    build: function () {
+                        MyTrafficControlLayout.superclass.build.call(this);
+                        this.actualCallback = ymaps.util.bind(this.setActualProvider, this);
+                        this.archiveCallback = ymaps.util.bind(this.setArchiveProvider, this);
+                        this.shownCallback = ymaps.util.bind(this.checkShown, this);
+                        $('#shown').bind('click', this.shownCallback);
+                        $('#now').bind('click', this.actualCallback);
+                        $('#usually').bind('click', this.archiveCallback);
+                    },
+                    clear: function () {
+                        $('#shown').unbind('click', this.shownCallback);
+                        $('#now').unbind('click', this.actualCallback);
+                        $('#usually').unbind('click', this.archiveCallback);
+                        MyTrafficControlLayout.superclass.clear.call(this);
+                    },
+                    
+                    setActualProvider: function () {
+                        this.events.fire('providerkeychange', {newProviderKey: 'traffic#actual'});
+                    },
+                    
+                    setArchiveProvider: function () {
+                        this.events.fire('providerkeychange', {newProviderKey: 'traffic#archive'});
+                    },
+                    
+                    checkShown: function () {
+                        if (this.getData().state.get('shown')) {
+                            this.events.fire('hide');
+                        } else {
+                            this.events.fire('show');
+                        }
+                    }
+                }),
+                trafficControl = new ymaps.control.TrafficControl(undefined, {layout: MyTrafficControlLayout});
+            map.controls.add(trafficControl, {left: 5, bottom: 80});
+            map.controls.add('trafficControl', {left: 5, top: 5});
+            window.map = map;
+            map.controls.get('trafficControl').getProvider('traffic#actual').state.set('infoLayerShown', true);
+            map.controls.add(new ymaps.control.TrafficControl({shown: true, providerKey: 'traffic#actual'}), {left: 50, top: 100});
+            
+            var toolBar = new ymaps.control.ToolBar();
+            map.controls.add(toolBar, {right: 5, bottom: 45});
+            toolBar
+                .add(new ymaps.control.TrafficControl())
+                .add(new ymaps.control.Button('Teeeeest'))
+                .add(new ymaps.control.Button('Tessssst'));
+        }
+    };
+}
+ymaps.ready(runTestCase);
+
+</script>
+
+<div id='map' style='width:100%;height:90%;overflow:hidden;'></div>
+
+</body>
+</html>

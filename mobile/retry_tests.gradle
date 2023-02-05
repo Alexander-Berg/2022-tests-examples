@@ -1,0 +1,236 @@
+import groovy.json.*
+
+File loadFailedTestsFromAllDevices() {
+    def failedTestsOnDeviceFileName = 'FailedTests.txt'
+    def failedTestsOnDeviceDirName = 'failed'
+    def failedTestsOnDevicePath = "${failedTestsOnDeviceDirName}/${failedTestsOnDeviceFileName}"
+    def tmpFile = new File("${baseReportDir}/tmp.txt")
+
+    def failedTestsFile = new File(baseReportDir, failedTestsOnDeviceFileName)
+    devices.each { device ->
+        exec {
+            commandLine 'adb', '-s', device,
+                    'pull', "/sdcard/${failedTestsOnDevicePath}", tmpFile
+        }
+        failedTestsFile.append(tmpFile.text)
+    }
+
+    tmpFile.delete()
+    return failedTestsFile
+}
+
+def loadFailedTestsFromDevice(String deviceForRun, File targetFile) {
+    def failedTestsOnDeviceFileName = 'FailedTests.txt'
+    def failedTestsOnDeviceDirName = 'failed'
+    def failedTestsOnDevicePath = "${failedTestsOnDeviceDirName}/${failedTestsOnDeviceFileName}"
+
+    exec {
+        commandLine 'adb', '-s', deviceForRun,
+                'pull', "/sdcard/${failedTestsOnDevicePath}", targetFile.path
+    }
+}
+
+boolean retryFailedTests(int tryNumber, String allureResultsOnDevicePath, File failedTestsFile, File testCasesDir, String deviceForRun, BuildVariant buildVariant) {
+    def failedTestsOnDeviceDirName = 'failed'
+    StringBuilder tests = new StringBuilder()
+    failedTestsFile.eachLine { line ->
+        if (!line.trim().isEmpty()) {
+            if (tests.size() != 0) {
+                tests.append(",")
+            }
+            tests.append(line)
+        }
+    }
+    if (tests.size() > 0) {
+
+        exec {
+            commandLine 'adb', '-s', deviceForRun,
+                    'shell', 'rm', '-r', allureResultsOnDevicePath
+        }
+
+        exec {
+            commandLine 'adb', '-s', deviceForRun,
+                    'shell', 'rm', '-r', "/sdcard/${failedTestsOnDeviceDirName}"
+        }
+
+        def testPackageName = buildVariant == BuildVariant.BASE ? "ru.beru.android.test" : "ru.beru.android.qa.test"
+
+        exec {
+            commandLine 'adb', '-s', deviceForRun,
+                    'shell',
+                    'CLASSPATH=$(pm path androidx.test.services)',
+                    'app_process', '/', 'androidx.test.services.shellexecutor.ShellMain',
+                    'am', 'instrument', '-w',
+                    '-e', 'targetInstrumentation', "${testPackageName}/ru.yandex.market.test.runner.MarketTestInstrumentationRunner",
+                    '-e', 'debug', 'false',
+                    '-e', 'class', tests,
+                    '-e', 'clearPackageData', 'true',
+                    '--no-window-animation',
+                    'androidx.test.orchestrator/androidx.test.orchestrator.AndroidTestOrchestrator'
+        }
+
+        exec {
+            commandLine 'adb', '-s', deviceForRun,
+                    'pull', allureResultsOnDevicePath, "${testCasesDir}/results${tryNumber}/"
+        }
+        return true
+    } else {
+        return false
+    }
+}
+
+def checkNotEmptyTestsResults() {
+    if (!testCasesDir.exists()) {
+        throw new GradleException("Not found test cases dir")
+    }
+    if (testCasesDir.listFiles().size() == 0) {
+        throw new GradleException("Test cases dir is empty")
+    }
+    boolean allDirsAreEmpty = true
+    testCasesDir.eachDir { dir ->
+        if (dir.listFiles().size() != 0) {
+            allDirsAreEmpty = false
+        }
+    }
+    if (allDirsAreEmpty) {
+        throw new GradleException("Not found any test results")
+    }
+}
+
+
+task retryFailedTests {
+    doLast {
+        final int triesCount = 3
+        final String deviceForRun = devices.first()
+
+        try {
+            File faliedTestsFile = loadFailedTestsFromAllDevices()
+
+            for (int i = 0; i < triesCount; i++) {
+                boolean needToTryAgain = retryFailedTests(i, allureResultsOnDevicePath, faliedTestsFile, testCasesDir, deviceForRun, buildVariant)
+                if (!needToTryAgain) {
+                    break
+                }
+                loadFailedTestsFromDevice(deviceForRun, faliedTestsFile)
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace()
+            // прогону таски не вредит недоступность перепрогона тестов
+        }
+
+        def testResult = collectTestResults()
+        sendTestsResultsToDiagnostic(testResult)
+        checkFailedTests(testResult)
+
+        checkNotEmptyTestsResults()
+    }
+}
+
+class TestResult {
+
+    final String test_name
+    final boolean success
+
+    TestResult(String test_name, boolean success) {
+        this.test_name = test_name
+        this.success = success
+    }
+
+    boolean equals(final o) {
+        if (this.is(o)) return true
+        if (!(o instanceof TestResult)) return false
+
+        final TestResult that = (TestResult) o
+
+        if (test_name != that.test_name) return false
+
+        return true
+    }
+
+    int hashCode() {
+        return (test_name != null ? test_name.hashCode() : 0)
+    }
+
+    @Override
+    String toString() {
+        return "TestResult{" +
+                "test_name='" + test_name + '\'' +
+                ", success=" + success +
+                '}'
+    }
+}
+
+def collectTestResults() {
+    Set<TestResult> testResults = new HashSet<>()
+
+    testCasesDir.eachDir { dir ->
+        def nameFilter = { name ->
+            (name as String).endsWith(".json")
+        }
+        dir.eachFileMatch(nameFilter) { file ->
+            def json = new JsonSlurper().parseText(file.text)
+            def status = json.status
+            switch (status) {
+                case 'passed':
+                case 'failed':
+                case 'broken':
+                    // suitable status
+                    break
+                default:
+                    return
+            }
+            TestResult result
+            try {
+                def name = (json.fullName as String).replaceFirst('\\.test', '')
+                boolean success = status == 'passed'
+                result = new TestResult(name, success)
+
+                if (!testResults.add(result) && success) {
+                    testResults.remove(result)
+                    testResults.add(result)
+                }
+            } catch (Exception e) {
+                e.printStackTrace()
+            }
+        }
+    }
+    return testResults
+}
+
+def sendTestsResultsToDiagnostic(Set<TestResult> testResults) {
+    final String branch = rootProject.properties["vcs.branch.name"]
+    final String revision = rootProject.properties["vcs.revision"]
+    final String platform = "android"
+    System.out.println(rootProject.properties["build.api.level"])
+    final String apiVersion = (rootProject.properties["build.api.level"] as String).split(";")[0]
+    def jsonBuilder = new JsonBuilder()
+    jsonBuilder(branch: branch, revision: revision, platform: platform, api_version: apiVersion, results: testResults.collect { o ->
+        [test_name: o.test_name, success: o.success]
+    })
+    System.out.print(jsonBuilder.toPrettyString())
+
+    try {
+        def req = new URL('http://vla1-3058-522-vla-market-test--185-28468.gencfg-c.yandex.net:28468/test_results/set').openConnection()
+        req.setRequestMethod("POST")
+        req.setRequestProperty("Content-Type", "application/json; charset=UTF-8")
+        req.setDoOutput(true)
+        req.getOutputStream().write(jsonBuilder.toPrettyString().getBytes("UTF-8"))
+        System.out.println("Status code: ${req.getResponseCode()}") // HTTP request done on first read
+        def result = new JsonSlurper().parseText(req.getInputStream().getText())
+        System.out.println("Response: ${result}")
+        return result
+    } catch (Exception e) {
+        //если не отправилось в диагностик - не страшно
+        e.printStackTrace()
+    }
+}
+
+def checkFailedTests(Set<TestResult> testResults) {
+    boolean anyTestFailed = testResults.any { result ->
+        (!result.success)
+    }
+    if (anyTestFailed) {
+        throw new GradleException("Not all tests passed [" + testResults + "]")
+    }
+}

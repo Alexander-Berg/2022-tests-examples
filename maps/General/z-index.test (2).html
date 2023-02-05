@@ -1,0 +1,143 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <title>zIndex</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <!-- YUI -->
+    <script type="text/javascript" src="../../../../tests/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../../../tests/yui3combo/combo.css" />
+    <script type="text/javascript" src="../../../../tests/run-test-case.js"></script>
+    <!-- Code -->
+    <script type="text/javascript">
+        initAPI({
+            lang: "ru-RU",
+            load: "package.full,util.array,domEvent.manager",
+            mode: "debug",
+            coordorder: "longlat"
+        });
+    </script>
+    <script type="text/javascript" src="../../../../tests/util/event-eye.js"></script>
+</head>
+
+<body class="yui3-skin-sam">
+<div id="map" style="height: 500px; width: 900px;">
+</div>
+</body>
+
+<script type="text/javascript">
+
+    function getTestCase (Y) {
+        var keyPoints = [
+                [52, 73],
+                [63.6, 55.3],
+                [70, 57],
+                [63.6, 55.3]
+            ],
+            getPagePixelsPoints = function () {
+                return ymaps.util.array.map(keyPoints, function (coordPoint) {
+                    return geoMap.converter.globalToPage(
+                        geoMap.options.get('projection').toGlobalPixels(coordPoint, geoMap.getZoom())
+                    );
+                })
+            },
+            fireGlobalPixels = function (eventType, pagePixels) {
+                Y.Event.simulate(geoMap.panes.get('events').getElement(), eventType, {
+                    clientX: pagePixels[0],
+                    clientY: pagePixels[1]
+                });
+            };
+
+        window.Y = Y;
+        window.fireGlobalPixels = fireGlobalPixels;
+        window.getPagePixelsPoints = getPagePixelsPoints;
+
+        return {
+            name: 'zIndex',
+            debug: false,
+
+            setUp: function () {
+                geoMap = new ymaps.Map('map', {
+                    center: [50, 50],
+                    zoom: 3,
+                    type: "yandex#map",
+                    behaviors: ['drag', 'scrollZoom']
+                });
+
+                var polyline = new ymaps.Polyline([[110, 20], [190, 65], [280, 70], [52, 73], [580, 40], [570, 20], [391, 0]]),
+                    polygon1 = new ymaps.Polygon([
+                        [[60, 48], [62, 60], [80, 62], [80, 48], [60, 48]],
+                        [[69, 45], [68, 55], [86, 56], [87, 43], [69, 45]],
+                        [[72, 59], [72, 65], [86, 64], [87, 59], [72, 59]]
+                    ], {
+                        balloonContent: 'hello world'
+                    }, {
+                        fillColor: '6699cc77',
+                        draggable: true
+                    }),
+                    polygon2 = new ymaps.Polygon([[[60, 53], [71, 50], [52, 73], [60, 53]]]);
+
+                geoMap.geoObjects.add(polygon1);
+                polygon1.getOverlay();
+                geoMap.geoObjects.add(polygon2);
+                polygon2.getOverlay();
+                geoMap.geoObjects.add(polyline);
+                polyline.getOverlay();
+            },
+
+            tearDown: function () {
+                geoMap.destroy();
+            },
+
+            testClick: function () {
+                var res = '',
+                    i = 0;
+
+                geoMap.geoObjects.each(function (obj) {
+                    return (function (n) {
+                        obj.events.add('click', function (e) {
+                            console.log('geoObject' + n + '@click', e.get('position'));
+                            res += ('-' + n);
+                        });
+                    })(i++);
+                });
+
+                fireGlobalPixels('mouseover', geoMap.getGlobalPixelCenter());
+
+                ymaps.util.array.each(getPagePixelsPoints(), function (pagePixels) {
+                    fireGlobalPixels('click', pagePixels);
+                });
+
+                Y.Assert.areEqual('-2-1-0-0', res, '(add) Неправильный порядок кликов');
+            },
+
+            testHover: function () {
+                var res = '',
+                    i = 0,
+                    pagePixels = getPagePixelsPoints();
+
+                geoMap.geoObjects.each(function (obj) {
+                    return (function (n) {
+                        obj.events.add('click', function (e) {
+                            console.log('geoObject' + n + '@click', e.get('position'));
+                            res += ('-' + n);
+                        });
+                    })(i++);
+                });
+
+                fireGlobalPixels('mouseover', geoMap.getGlobalPixelCenter());
+                fireGlobalPixels('click', pagePixels[1]);
+                fireGlobalPixels('mouseout', geoMap.getGlobalPixelCenter());
+                fireGlobalPixels('mouseover', pagePixels[2]);
+                fireGlobalPixels('click', pagePixels[1]);
+
+                Y.Assert.areEqual('-1-0', res, '(add) Неправильный порядок кликов');
+            }
+        }
+    }
+
+    window.onload = runTestCase;
+    //ymaps.ready(runTestCase);
+
+</script>
+</html>

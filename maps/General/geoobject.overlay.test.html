@@ -1,0 +1,469 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <title>geoObject.overlay</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <!-- YUI -->
+    <script type="text/javascript" src="../../test/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../test/yui3combo/combo.css"/>
+    <script type="text/javascript" src="../../test/run-test-case.js"></script>
+    <!-- Code -->
+    <script type="text/javascript">
+        initAPI({
+            lang: "ru-RU",
+            load: "Map,GeoObject,Circle,Polyline,Placemark,util.bind,overlay.html.Placemark",
+            mode: "debug"
+        });
+    </script>
+</head>
+
+<body class="yui3-skin-sam">
+<div id="map" style="width: 500px; height: 500px;"></div>
+</body>
+
+<script type="text/javascript">
+function getTestCase (Y) {
+
+    bind = ymaps.util.bind;
+
+    return {
+        name: "geoObject.overlay",
+
+        _should: {
+            ignore: {
+                //                testGetOverlay: true,
+                //                testGetOverlaySync: true,
+                //                testGetOverlayBeforeAddToMap: true,
+                //                testAddRemove: true,
+                //                testVisible: true,
+                //                testOverlayChangeEvent: true,
+                //                testSetNoPoints: true,
+                //                testSetAfterNoPoints: true,
+                //                testGeodesic: true,
+                //                testSetKeys: true,
+                //                testChangeClassBeforeFulfill: true,
+                //                testChangeClassAfterFulfill: true,
+                //                testSyncOverlayInit: true,
+                //                testPixelGeometryChangeWithoutTypeChange: true
+            }
+        },
+
+        setUp: function () {
+            this.map = new ymaps.Map('map', {
+                center: [30, 59],
+                zoom: 3,
+                type: "yandex#map"
+            });
+        },
+
+        tearDown: function () {
+            this.map.destroy();
+        },
+
+        testGetOverlay: function () {
+            // Простое получение оверлея после добавления геобъекта на карту.
+            var geoObject = new ymaps.GeoObject({
+                geometry: {
+                    type: "Rectangle",
+                    coordinates: [
+                        [10, 20],
+                        [40, 50]
+                    ]
+                }
+            });
+
+            this.map.geoObjects.add(geoObject);
+
+            // Происходит ожидание создания оверлея.
+            this._createOverlayPromise(geoObject, function (overlay) {
+                this._resume(function () {
+                    Y.assert(overlay, "ошибка получения оверлея после добавления на карту");
+                });
+            }, function (error) {
+                this._resume(function () {
+                    Y.fail("ошибка получения оверлея после добавления на карту");
+                });
+            });
+
+            this.wait();
+        },
+
+        testGetOverlaySync: function () {
+            // Простое получение оверлея после добавления геобъекта на карту.
+            var geoObject = new ymaps.GeoObject({
+                geometry: {
+                    type: "Rectangle",
+                    coordinates: [
+                        [10, 20],
+                        [40, 50]
+                    ]
+                }
+            }, {
+                syncOverlayInit: true // полностью синхронное добавление оверлея.
+            });
+
+            this.map.geoObjects.add(geoObject);
+
+            Y.assert(geoObject.getOverlaySync());
+        },
+
+        testGetOverlayBeforeAddToMap: function () {
+            // Запрос оверлея перед добавлением на карту. Должен прийти reject.
+            var circle = new ymaps.Circle([this.map.getCenter(), 10000]);
+
+            this._createOverlayPromise(circle, function (overlay) {
+                this._resume(function () {
+                    Y.fail("Должен был прийти reject");
+                });
+            }, function (error) {
+                this._resume(function () {
+                    Y.assert(error.message == "GeoObject wasn't added to map", "Был получен reject, но с неверным описанием ошибки.");
+                });
+            });
+
+            this.map.geoObjects.add(circle);
+            this.wait();
+        },
+
+        testAddRemove: function () {
+            // Запрос оверлея перед удалением с карты. Прийдет reject с информацией о том, что геообъект был удален.
+            var polyline = new ymaps.Polyline([
+                [58.546032, 49.642207],
+                [60.940368, 69.066035],
+                [56.707643, 60.496699],
+                [55.103326, 61.419551],
+                [58.546032, 49.642207]
+            ]);
+            this.map.geoObjects.add(polyline);
+            this.map.geoObjects.remove(polyline);
+
+            // Здесь происходит запрос оверлея между добавлением и удалением геообъекта. 
+            this._createOverlayPromise(polyline, function (overlay) {
+                this._resume(function () {
+                    Y.fail("Был получен overlay после удаления геообъекта с карты.");
+                });
+            }, function (error) {
+                this._resume(function () {
+                    Y.assert(error);
+                });
+            });
+
+            this.wait();
+        },
+
+        testVisible: function () {
+            // Изменения опции visible. Установка опции в конструкторе и в real-time.
+            var geoObject = new ymaps.GeoObject({
+                geometry: {
+                    type: "Polygon",
+                    coordinates: [
+                        [
+                            [58.546032, 49.642207],
+                            [60.940368, 69.066035],
+                            [56.707643, 60.496699],
+                            [55.103326, 61.419551],
+                            [58.546032, 49.642207]
+                        ]
+                    ]
+                }
+            }, {
+                visible: false
+            });
+
+            this.map.geoObjects.add(geoObject);
+
+            this._createOverlayPromise(geoObject, function (overlay) {
+                this._resume(function () {
+                    Y.fail("visible=false должен был прийти reject");
+                });
+            }, function (error) {
+                this._resume(function () {
+                    Y.assert(error.message == "GeoObject is not visible", "неправильный текст ошибки");
+                    geoObject.options.set('visible', true);
+                    this._createOverlayPromise(geoObject, function (overlay) {
+                        this._resume(function () {
+                            Y.assert(overlay != null, "ошибка получения оверлея с опцией visible=true");
+                            geoObject.options.set('visible', false);
+                            this._createOverlayPromise(geoObject, function (overlay) {
+                                this._resume(function () {
+                                    Y.fail("visible=false должен был прийти reject");
+                                });
+                            }, function (error) {
+                                this._resume(function () {
+                                    Y.assert(error.message == "GeoObject is not visible", "неправильный текст ошибки");
+                                });
+                            });
+                            this.wait();
+                        });
+                    }, function (error) {
+                        this._resume(function () {
+                            Y.fail("ошибка получения оверлея с опцией visible=true");
+                        });
+                    });
+                    this.wait();
+                });
+            });
+            this.wait();
+        },
+
+        testOverlayChangeEvent: function () {
+            // Проверка события 'overlaychange'.
+            var geoObject = new ymaps.GeoObject({
+                        geometry: {
+                            type: "Rectangle",
+                            coordinates: [
+                                [10, 20],
+                                [40, 50]
+                            ]
+                        }
+                    }),
+                    geoObjectOverlay,
+                    eventsCount = 0;
+
+            geoObject.events.add('overlaychange', function (event) {
+                ++eventsCount;
+                geoObjectOverlay = event.get('overlay');
+            });
+
+            this.map.geoObjects.add(geoObject);
+
+            this._createOverlayPromise(geoObject, function (overlay) {
+                this._resume(function () {
+                    onFulfill(overlay);
+                    geoObject.options.set('visible', false);
+                    this._createOverlayPromise(geoObject, function (overlay) {
+                        this._resume(onFulfill);
+                    }, function () {
+                        this._resume(function () {
+                            onFulfill(null);
+                        });
+                    });
+                    this.wait();
+                });
+            }, onReject);
+
+            function onFulfill (overlay) {
+                Y.assert(geoObjectOverlay == overlay, "Значение полученное в resolve не равно значению события overlaychange (" + eventsCount + ")");
+            }
+
+            function onReject (error) {
+                this._resume(function () {
+                    Y.fail("Был получен reject eventsCount=" + eventsCount);
+                });
+            }
+
+            this.wait();
+        },
+
+        testSetNoPoints: function () {
+            var line = new ymaps.GeoObject({
+                geometry: {
+                    type: "LineString",
+                    coordinates: [
+                        [55.80, 37.50],
+                        [55.70, 37.40]
+                    ]
+                }
+            });
+            this.map.geoObjects.add(line);
+            line.geometry.setCoordinates([]);
+
+            this._createOverlayPromise(line, function (overlay) {
+                this._resume(function () {
+                    Y.fail("Был получен fifull");
+                });
+            }, function (error) {
+                this._resume(function () {
+                    Y.assert("GeoObject is not visible" == error.message, "Неверный код ошибки");
+                });
+            });
+
+            this.wait();
+        },
+
+        testSetAfterNoPoints: function () {
+            // Установка нормальных значений после установки пустых.
+            var polygon = new ymaps.GeoObject({
+                geometry: {
+                    type: "Point",
+                    coordinates: null
+                }
+            }, {});
+            this.map.geoObjects.add(polygon);
+
+            polygon.geometry.setCoordinates([55.82695, 37.271602]);
+
+            this._createOverlayPromise(polygon, function (overlay) {
+                this._resume(function () {
+                    Y.assert(overlay);
+                });
+            }, function (error) {
+                this._resume(function () {
+                    Y.fail('Был получен reject');
+                });
+            });
+
+            this.wait();
+        },
+
+        testGeodesic: function () {
+            // Изменение типа пиксельной геометрии (проверка работы события pixelgeometrychange внутри view).
+            var geoObject = new ymaps.Circle([
+                [-50, 175],
+                1000000
+            ]);
+            this.map.geoObjects.add(geoObject);
+            geoObject.options.set('geodesic', true);
+
+            this._createOverlayPromise(geoObject, function (overlay) {
+                this._resume(function () {
+                    Y.assert(overlay.getGeometry().getType() == "Polygon", "Получен оверлей с неправильной пиксельной геометрией.");
+                });
+            }, function (error) {
+                this._resume(function () {
+                    Y.fail("Был получен reject");
+                });
+            });
+
+            this.wait();
+        },
+
+        _testSetKeys: function () {
+            // Замена функции-генератора в real-time.
+            var placemark = new ymaps.Placemark(this.map.getCenter());
+            this.map.geoObjects.add(placemark);
+
+            // В данный момент запрос на создание оверлея уже был отправлен внутри геообъекта.
+            placemark.options.set('pointOverlay', 'default#placemark');
+            placemark.options.set('pointOverlay', 'html#placemark');
+
+            this._createOverlayPromise(placemark, function (overlay) {
+                this._resume(function () {
+                    Y.assert(overlay.constructor == ymaps.overlay.html.Placemark, "Был создан не тот оверлей, который ожидался. (во время работы до создания предыдущего оверлея)");
+                });
+            }, function (error) {
+                this._resume(function () {
+                    Y.fail("Был получен reject хотя не должен был.");
+                });
+            });
+
+            this.wait();
+        },
+
+        _testChangeClassBeforeFulfill: function () {
+            // Изменение функции-генератора до завершения создания оверлея.
+            var placemark = new ymaps.Placemark(this.map.getCenter(), {}, {
+                pointOverlay: 'default#placemark'
+            });
+            this.map.geoObjects.add(placemark);
+
+            // На данные момент resolve уже был отправлен.
+            placemark.options.set('pointOverlay', 'html#placemark');
+
+            this._createOverlayPromise(placemark, function (overlay) {
+                this._resume(function () {
+                    Y.assert(overlay.constructor == ymaps.overlay.html.Placemark, "Был создан не тот оверлей, который ожидался.");
+                });
+            }, function (error) {
+                this._resume(function () {
+                    Y.fail();
+                });
+            });
+
+            this.wait();
+        },
+
+        _testChangeClassAfterFulfill: function () {
+            // Изменение функции-генератора после создания оверлея.
+            var placemark = new ymaps.Placemark(this.map.getCenter(), {}, {
+                pointOverlayClass: 'default#placemark'
+            });
+            this.map.geoObjects.add(placemark);
+            this._createOverlayPromise(placemark, function (overlay) {
+                placemark.options.set('pointOverlay', 'html#placemark');
+                this._createOverlayPromise(placemark, function (overlay) {
+                    this._resume(function () {
+                        Y.assert(overlay.constructor == ymaps.overlay.html.Placemark);
+                    });
+                }, function (error) {
+                    this._resume(function () {
+                        Y.fail();
+                    });
+                }, this);
+            }, function (error) {
+                this._resume(function () {
+                    Y.fail();
+                });
+            }, this);
+
+            this.wait();
+        },
+
+        testSyncOverlayInit: function () {
+            var counter = 0;
+
+            function onOverlayChange () {
+                ++counter;
+            };
+            // Добавление происходит прямо в этом тике.
+            this.map.options.set('geoObjectSyncOverlayInit', true);
+
+            for (var i = 0; i < 10; i++) {
+                var placemark = new ymaps.Placemark(this.map.getCenter());
+                placemark.events.add('overlaychange', onOverlayChange);
+                this.map.geoObjects.add(placemark);
+            }
+            Y.assert(counter == 10);
+        },
+
+        testOverlayNotFound: function () {
+            var placemark = new ymaps.Placemark(this.map.getCenter(), {}, {
+                pointOverlay: "asdasdasd"
+            });
+            this.map.geoObjects.add(placemark);
+
+            this._createOverlayPromise(placemark, function () {
+                this._resume(function () {
+                    Y.fail('Был получен fulfill');
+                });
+            }, function (error) {
+                this._resume(function () {
+                    Y.assert(error.message == "Overlay wasn't found");
+                });
+            });
+            
+            this.wait();
+        },
+
+        testPixelGeometryChangeWithoutTypeChange: function () {
+            var placemark = new ymaps.Placemark(this.map.getCenter());
+            this.map.geoObjects.add(placemark);
+
+            this._createOverlayPromise(placemark, function (overlay) {
+                this._resume(function () {
+                    Y.assert(overlay);
+                });
+            }, function (error) {
+                this._resume(function () {
+                    Y.fail();
+                });
+            }, this);
+
+            placemark.geometry.setCoordinates([55, 33]);
+
+            this.wait();
+        },
+
+        _createOverlayPromise: function (geoObject, resolve, reject) {
+            return geoObject.getOverlay().then(resolve, reject, this);
+        },
+
+        _resume: function (func) {
+            this.resume(bind(func, this));
+        }
+    };
+}
+var bind;
+ymaps.ready(runTestCase);
+</script>
+</html>

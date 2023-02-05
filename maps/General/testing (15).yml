@@ -1,0 +1,180 @@
+annotations:
+  project: maps-front-promo-spec-admin
+meta:
+  id: maps-front-promo-spec-admin_testing
+  project_id: maps-front-promo-spec-admin
+  inherit_acl: true
+  account_id: 'abc:service:31026'
+spec:
+  account_id: 'abc:service:31026'
+  deploy_units:
+    app:
+      endpoint_sets:
+        - port: 80
+      images_for_boxes: {}
+      network_defaults:
+        network_id: _MAPSTESTQNETS_
+      tvm_config:
+        mode: enabled
+        blackbox_environment: Test
+        client_port: 2
+        clients:
+          - source:
+              alias: front-spec-admin
+              app_id: 2019888
+            secret_selector:
+              alias: 'sec-01es3pqhewxtz6v3rb8cm1c2fe:ver-01g2af2f1kk187ezkwfcyvp4kb'
+              id: APP_TVM_SECRET_FRONT_SPEC_ADMIN
+            destinations:
+              - alias: blackbox
+                app_id: 223
+              - alias: moira
+                app_id: 2012240
+      multi_cluster_replica_set:
+        replica_set:
+          clusters:
+            - cluster: man
+              spec:
+                constraints:
+                  antiaffinity_constraints:
+                    - key: rack
+                      max_pods: 1
+                replica_count: 1
+            - cluster: sas
+              spec:
+                constraints:
+                  antiaffinity_constraints:
+                    - key: rack
+                      max_pods: 1
+                replica_count: 1
+            - cluster: vla
+              spec:
+                constraints:
+                  antiaffinity_constraints:
+                    - key: rack
+                      max_pods: 1
+                replica_count: 1
+          deployment_strategy:
+            max_unavailable: 1
+          pod_template_spec:
+            spec:
+              disk_volume_requests:
+                - id: maps-front-promo-spec-admin_testing-disk-0
+                  storage_class: hdd
+                  quota_policy:
+                    capacity: 16106127360
+                    bandwidth_guarantee: 5242880
+                    bandwidth_limit: 10485760
+                  labels:
+                    used_by_infra: true
+              resource_requests:
+                memory_guarantee: 1073741824
+                memory_limit: 1073741824
+                vcpu_guarantee: 250
+                vcpu_limit: 250
+              host_infra:
+                monitoring:
+                  unistats:
+                    - workload_id: app_workload
+                      port: 7032
+                      path: /unistat
+              secret_refs:
+                'sec-01es3pqhewxtz6v3rb8cm1c2fe:ver-01g2af2f1kk187ezkwfcyvp4kb':
+                  secret_id: sec-01es3pqhewxtz6v3rb8cm1c2fe
+                  secret_version: ver-01g2af2f1kk187ezkwfcyvp4kb
+                'sec-01fwghpn4bp77c62k1q94823qn:ver-01fx03aga8ftvpykcpyx2emgw4':
+                  secret_id: sec-01fwghpn4bp77c62k1q94823qn
+                  secret_version: ver-01fx03aga8ftvpykcpyx2emgw4
+              pod_agent_payload:
+                spec:
+                  boxes:
+                    - id: app_box
+                      rootfs: {}
+                      static_resources:
+                        - resource_ref: usr.share.yandex.maps.inthosts
+                          mount_point: /usr/share/yandex/maps/inthosts
+                        - resource_ref: usr.share.yandex.maps.hosts
+                          mount_point: /usr/share/yandex/maps/hosts
+                        - resource_ref: usr.ssh
+                          mount_point: /usr/.ssh
+                  mutable_workloads:
+                    - workload_ref: app_workload
+                  resources:
+                    static_resources:
+                      - id: usr.share.yandex.maps.inthosts
+                        url: 'sbr:1374337569'
+                        verification:
+                          checksum: 'EMPTY:'
+                          check_period_ms: 180000
+                      - id: usr.share.yandex.maps.hosts
+                        url: 'sbr:1315788022'
+                        verification:
+                          checksum: 'EMPTY:'
+                          check_period_ms: 180000
+                      - id: usr.ssh
+                        verification:
+                          checksum: 'EMPTY:'
+                          check_period_ms: 180000
+                        files:
+                          files:
+                            - file_name: id_rsa
+                              secret_data:
+                                id: id_rsa
+                                alias: >-
+                                  sec-01fwghpn4bp77c62k1q94823qn:ver-01fx03aga8ftvpykcpyx2emgw4
+                  workloads:
+                    - id: app_workload
+                      box_ref: app_box
+                      env:
+                        - name: APP_ENV
+                          value:
+                            literal_env:
+                              value: testing
+                        - name: S3_SECRET_ACCESS_KEY
+                          value:
+                            secret_env:
+                              alias: >-
+                                sec-01es3pqhewxtz6v3rb8cm1c2fe:ver-01g2af2f1kk187ezkwfcyvp4kb
+                              id: S3_SECRET_ACCESS_KEY
+                        - name: S3_ACCESS_KEY_ID
+                          value:
+                            secret_env:
+                              alias: >-
+                                sec-01es3pqhewxtz6v3rb8cm1c2fe:ver-01g2af2f1kk187ezkwfcyvp4kb
+                              id: S3_ACCESS_KEY_ID
+                        - name: BITBUCKET_TOKEN
+                          value:
+                            secret_env:
+                              alias: >-
+                                sec-01es3pqhewxtz6v3rb8cm1c2fe:ver-01g2af2f1kk187ezkwfcyvp4kb
+                              id: BITBUCKET_TOKEN
+                        - name: "GIT_SSH_OPTIONS"
+                          value:
+                            literal_env:
+                              value: "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"
+                      init:
+                        - command_line: >-
+                            bin/bash /usr/local/app/getGitTest.sh
+                          time_limit:
+                            initial_delay_ms: 300000
+                            min_restart_period_ms: 900000
+                            max_restart_period_ms: 900000
+                      liveness_check:
+                        tcp_check:
+                          port: 80
+                      readiness_check:
+                        http_get:
+                          port: 80
+                          path: /ping
+                          any: true
+                          time_limit:
+                            max_execution_time_ms: 1000
+                      stop_policy:
+                        container:
+                          command_line: bash -c "/detach.sh"
+                          time_limit:
+                            max_execution_time_ms: 20000
+                            max_restart_period_ms: 30000
+                            min_restart_period_ms: 30000
+                        max_tries: 2
+  revision_info: {}

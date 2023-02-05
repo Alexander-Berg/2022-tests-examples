@@ -1,0 +1,155 @@
+<!doctype html>
+<html>
+<head>
+    <title>GeoQueryResult</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <!-- YUI -->
+    <script type="text/javascript" src="../../../test/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../../test/yui3combo/combo.css"/>
+    <script type="text/javascript" src="../../../test/run-test-case.js"></script>
+    <script type="text/javascript" src="test/add-remove.js"></script>
+    <script type="text/javascript" src="test/array-methods.js"></script>
+    <script type="text/javascript" src="test/center-and-bounds.js"></script>
+    <script type="text/javascript" src="test/search.js"></script>
+    <script type="text/javascript" src="test/events-properties-options.js"></script>
+    <script type="text/javascript" src="test/distance.js"></script>
+    <script type="text/javascript" src="test/search-inside.js"></script>
+    <script type="text/javascript" src="test/search-containing.js"></script>
+    <script type="text/javascript" src="test/search-intersect.js"></script>
+    <script type="text/javascript" src="test/sort.js"></script>
+    <script type="text/javascript" src="test/apply-bounds-to-map.js"></script>
+    <!-- Code -->
+    <script type="text/javascript">
+        initAPI({
+            lang: "ru-RU",
+            load: "package.full,util.array",
+            mode: "debug"
+        });
+    </script>
+</head>
+<body class="yui3-skin-sam"></body>
+<div id='map' style='width: 400px; height: 300px;'></div>
+<script type="text/javascript">
+
+function getTestCase (Y) {
+
+    return ymaps.util.extend({
+        name: "GeoQueryResult",
+
+        setUp: function () {
+            this.geoObjects = [
+                new ymaps.Placemark([34, 74]),
+                new ymaps.Placemark([45, 54])
+            ];
+            this.result = new ymaps.GeoQueryResult(this.geoObjects);
+            this.map = new ymaps.Map('map', {
+                center: [45, 54],
+                zoom: 9
+            });
+        },
+
+        tearDown: function () {
+            this.map.destroy();
+            this.result = null;
+            this.geoObjects = [];
+        },
+
+        testIntersect: function () {
+            var res1 = new ymaps.GeoQueryResult(this.geoObjects),
+                _this = this;
+            res1.then(function () {
+                var length = res1.getLength(),
+                    res2 = res1.intersect(_this.result);
+                res2.then(function () {
+                    _this.resume(function () {
+                        Y.assert(res2.getLength() == 2, "Неверно посчиталось пересечение множеств.");
+                    });
+                });
+            });
+            this.wait(1000);
+        },
+
+        testClusterize: function () {
+            var clusterer = this.result.clusterize({synchAdd: true});
+            this.map.geoObjects.add(clusterer);
+            var state = clusterer.getObjectState(this.geoObjects[1]);
+            Y.assert(state.isShown, "Не добавились объекты в кластеризатор.");
+        },
+
+        testAddToMap: function () {
+            this.result.addToMap(this.map);
+            var it = this.map.geoObjects.getIterator(),
+                obj,
+                nObj = 0;
+            while (obj = it.getNext()) {
+                nObj++;
+            }
+            Y.assert(nObj == 2, "Объекты не добавились на карту.");
+        },
+        
+        testAddRemoveToMapChain: function () {
+            this.result.addToMap(this.map).removeFromMap(this.map).addToMap(this.map);    
+        },
+
+        testRemoveFromMap: function () {
+            var res = new ymaps.GeoQueryResult(this.geoObjects[0]);
+            this.map.geoObjects.add(this.geoObjects[0]).add(this.geoObjects[1]);
+            res.removeFromMap(this.map);
+            var it = this.map.geoObjects.getIterator(),
+                obj,
+                nObj = 0;
+            while (obj = it.getNext()) {
+                nObj++;
+            }
+            Y.assert(nObj == 1, "Объекты не удалились с карты.");
+        },
+
+        testApplyBoundsToMap: function () {
+            this.result.applyBoundsToMap(this.map);
+            Y.assert(this.map.getZoom() < 9, 'Не изменился зум карты после applyBoundsToMap.');
+        },
+        
+        testChaining: function () {
+            var _this = this;
+            this.map.geoObjects.add(this.geoObjects[0]).add(this.geoObjects[1]);
+            var res = ymaps.geoQuery(ymaps.geocode([35, 64], { kind: 'metro' }))
+                .addToMap(this.map)
+                .sort('x')
+                .searchInside(this.map)
+                .reverse()
+                .slice(0, 1)
+                .add(ymaps.geocode([35, 53]))
+                .remove(this.geoObjects)
+                .searchContaining(this.geoObjects[0])
+                .search('lat > 0')
+                .searchIntersect(this.map)
+                .sortByDistance(this.geoObjects[0])
+                .map(function (object) {return object})
+                .intersect(ymaps.geoQuery([]))
+                .setOptions('visible', true)
+                .then(function () {
+                    _this.resume(function () {
+                        Y.assert(res.isReady());
+                    });
+                });
+            this.wait(1000);
+        }
+    },
+    //addRemoveTests(Y),
+    //arrayMethods(Y),
+    //centerAndBounds(Y),
+    search(Y)
+    //eventsPropertiesOptions(Y),
+    //distance(Y),
+    //searchInside(Y),
+    //searchContaining(Y),
+    //searchIntersect(Y),
+    //sort(Y),
+    //applyBoundsToMapTests(Y)
+    );
+}
+ymaps.ready(runTestCase);
+
+</script>
+</body>
+</html>

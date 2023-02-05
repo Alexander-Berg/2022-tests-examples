@@ -1,0 +1,149 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <title>util.geoBounds</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <!-- YUI -->
+    <script type="text/javascript" src="../../../test/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../../test/yui3combo/combo.css"/>
+    <script type="text/javascript" src="../../../test/run-test-case.js"></script>
+    <!-- Code -->
+    <script type="text/javascript">
+        initAPI({
+            lang: "ru-RU",
+            load: "package.map,util.geoBounds,util.math.areEqual,projection.wgs84Mercator",
+            ns: "ym",
+            mode: "debug"
+        });
+        initAPI({
+            lang: "en-US",
+            load: "package.map,util.geoBounds,util.math.areEqual,projection.wgs84Mercator",
+            coordorder: 'longlat',
+            ns: "ymLongLat",
+            mode: "debug"
+        });
+    </script>
+</head>
+
+<body class="yui3-skin-sam">
+    <div id="map" style="width: 600px; height: 500px"></div>
+</body>
+
+<script type="text/javascript">
+    function getTestCase (Y) {
+        return {
+            name: "util.geoBounds",
+
+            testCenterAndSpan: function () {
+                var geoBounds1 = ym.util.geoBounds,
+                    geoBounds2 = ymLongLat.util.geoBounds,
+                    equals = ym.util.math.areEqual,
+                    wgs84 = ym.projection.wgs84Mercator,
+                    wgs84LongLat = ymLongLat.projection.wgs84Mercator,
+                    res;
+
+                res = geoBounds1.toCenterAndSpan([[-10, 120], [10, 160]]);
+                Y.assert(equals(res.ll, [0, 140]) && equals(res.spn, [20, 40]), 'Неправильно определился центр lat-long bounds-а');
+                res = geoBounds2.toCenterAndSpan([[-10, 0], [10, 40]]);
+                Y.assert(equals(res.ll, [0, 20]) && equals(res.spn, [20, 40]), 'Неправильно определился центр long-lat bounds-а');
+
+                res = geoBounds1.toCenterAndSpan([[30, 170], [-10, -160]]);
+                Y.assert(equals(res.ll, [10, -175]) && equals(res.spn, [40, 30]), 'Неправильно определился центр lat-long bounds-а с переходом через Берингов пролив');
+                res = geoBounds2.toCenterAndSpan([[170, 30], [-160, -10]]);
+                Y.assert(equals(res.ll, [-175, 10]) && equals(res.spn, [30, 40]), 'Неправильно определился центр long-lat bounds-а с переходом через Берингов пролив');
+
+                var p1 = wgs84.toGlobalPixels([-40, 0], 1),
+                    p2 = wgs84.toGlobalPixels([0, 0], 1),
+                    refLat = wgs84.fromGlobalPixels([256, (p1[1] + p2[1]) / 2], 1)[0];
+
+                res = geoBounds1.toCenterAndSpan([[-40, -170], [0, -150]], wgs84);
+                Y.assert(equals(res.ll, [refLat, -160]) && equals(res.spn, [40, 20]), 'Неправильно определился визуальный центр lat-long bounds-а');
+                res = geoBounds2.toCenterAndSpan([[-170, -40], [-150, 0]], wgs84LongLat);
+                Y.assert(equals(res.ll, [-160, refLat]) && equals(res.spn, [20, 40]), 'Неправильно определился визуальный центр long-lat bounds-а');
+
+                res = geoBounds1.toCenterAndSpan([[-40, -110], [0, -150]], wgs84);
+                Y.assert(equals(res.ll, [refLat, 50]) && equals(res.spn, [40, 320]), 'Неправильно определился визуальный центр lat-long bounds-а с переходом через Берингов пролив');
+            },
+
+            testPointIn: function() {
+                var projection = ym.projection.wgs84Mercator,
+                    bounds = [
+                        [30, 30],
+                        [60, 60]
+                    ],
+                    cycledbounds = [
+                        [30, 30],
+                        [70, -30]
+                    ];
+
+                var res = ym.util.geoBounds.contains(bounds, [40,40], projection);
+                Y.assert(res, 'test1 Неправильно - точка внутри области');
+
+                var res = ym.util.geoBounds.contains(bounds,[70, 70], projection);
+                Y.assert(!res, 'test2 Неправильно - точка вне области');
+
+                var res = ym.util.geoBounds.contains(cycledbounds, [40, 40], projection);
+                Y.assert(res, 'test3 Неправильно - точка внутри области');
+
+                var res = ym.util.geoBounds.contains(cycledbounds,[40, -10], projection);
+                Y.assert(!res, 'test4 Неправильно - точка вне области');
+
+                var res = ym.util.geoBounds.contains(cycledbounds,[40, -40], projection);
+                Y.assert(!res, 'test5 Неправильно - точка внутри области');
+            },
+
+            testMapBounds: function () {
+
+                var center = [55.76, 37.64];
+
+                var map = new ym.Map(document.getElementById('map'), {
+                    center: center,
+                    zoom: 10
+                });
+
+                var result = ym.util.geoBounds.contains(
+                    map.getBounds(),
+                    center,
+                    map.options.get('projection')
+                );
+                Y.assert(result, "В карту не попал ее же центр.");
+                map.destroy();
+            },
+
+            testBoundsIn: function() {
+                var projection = ym.projection.wgs84Mercator,
+                    bounds = [
+                        [30, 30],
+                        [60, 60]
+                    ],
+                    cycledbounds = [
+                        [30, 30],
+                        [70, -30]
+                    ],
+                    innerbounds = [
+                        [40, 40],
+                        [50, 50]
+                    ],
+                    outerbounds = [
+                        [70, 70],
+                        [90, -30]
+                    ];
+
+
+                var res = ym.util.geoBounds.intersects(bounds, cycledbounds, projection);
+                Y.assert(res, 'test1 Неправильно - области пересекаются');
+
+                var res = ym.util.geoBounds.intersects(bounds, innerbounds, projection);
+                Y.assert(res, 'test2 Неправильно - области пересекаются');
+
+                var res = ym.util.geoBounds.intersects(bounds, outerbounds, projection);
+                Y.assert(!res, 'test3 Неправильно - области не пересекаются');
+            }
+        }
+    }
+    ym.ready(function () {
+        ymLongLat.ready(runTestCase);
+    });
+</script>
+</html>

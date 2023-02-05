@@ -1,0 +1,140 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <title>overlay.html.Rectangle</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <!-- YUI -->
+    <script type="text/javascript" src="../../../../test/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../../../test/yui3combo/combo.css" />
+    <script type="text/javascript" src="../../../../test/run-test-case.js"></script>
+    <!-- Code -->
+    <script type="text/javascript">
+        initAPI({
+            lang: "ru-RU",
+            load: "Map,overlay.html.Rectangle,util.dom.element,geometry.pixel.Rectangle,util.dom.style,layout.storage,templateLayoutFactory,system.browser",
+            mode: "debug"
+        });
+    </script>
+    <script type="text/javascript" src="../../../../test/util/event-eye.js"></script>
+</head>
+
+<body class="yui3-skin-sam">
+
+    <div id="testMap" style="height: 500px; width: 760px; overflow: hidden; position: relative;">
+    </div>
+</body>
+
+<script type="text/javascript">
+    var rectangle;
+
+    getTestCase = function (Y) {
+        return {
+            name: 'overlay.html.Rectangle',
+            debug: false,
+
+            setUp: function () {
+                this.geoMap = new ymaps.Map("testMap", {
+                    center: [55, 55],
+                    zoom: 1,
+                    type: "yandex#map"
+                });
+
+                var center = this.geoMap.getGlobalPixelCenter(),
+                    pixelGeometry = new ymaps.geometry.pixel.Rectangle([
+                        center,
+                        [center[0] + 50, center[1] + 50]
+                    ]);
+
+                rectangle = new ymaps.overlay.html.Rectangle(pixelGeometry, {}, {
+                    pane: 'areas',
+                    eventsPane: 'events'
+                });
+                rectangle.setMap(this.geoMap);
+            },
+
+            tearDown: function () {
+                this.geoMap.destroy();
+            },
+
+            testSetMap: function () {
+                Y.assert(
+                    ymaps.util.dom.element.findByPrefixedClass(this.geoMap.container.getElement(), 'rectangle-overlay'),
+                    'Элемент не был добавлен в DOM.'
+                );
+
+                rectangle.setMap(null);
+
+                Y.assert(
+                    !ymaps.util.dom.element.findByPrefixedClass(this.geoMap.container.getElement(), 'rectangle-overlay'),
+                    'Элемент не был удален из DOM.'
+                );
+            },
+
+            testClick: function () {
+                eventEye.observe(rectangle, ['click']);
+                Y.Event.simulate(rectangle.getElement(), 'click');
+
+                Y.assert(
+                    eventEye.length() == 1 && eventEye.check(0, { type: 'click', target: rectangle }),
+                    'Неверно прокинуто событие @click.'
+                );
+            },
+
+            testOptions: function () {
+                var style = {
+                        strokeWidth: 5,
+                        strokeStyle: 'dashed',
+                        strokeColor: 'rgb(255,0,0)',
+                        fillColor: 'rgb(255,255,0)',
+                        fillOpacity: '0.5'
+                    };
+
+                rectangle.options.set(style);
+
+                var topEl = rectangle.getElement().firstChild,
+                    bgEl = rectangle.getElement().firstChild.firstChild,
+                    resultStyle = {
+                        strokeWidth: topEl.style.borderWidth,
+                        strokeStyle: topEl.style.borderStyle,
+                        strokeColor: topEl.style.borderColor.replace(/\s/g, ''),
+                        fillColor: bgEl.style.backgroundColor.replace(/\s/g, ''),
+                        fillOpacity: bgEl.style.opacity
+                    };
+
+                Y.Assert.areEqual(style.strokeWidth + 'px', resultStyle.strokeWidth, 'strokeWidth');
+                Y.Assert.areEqual(style.strokeStyle, resultStyle.strokeStyle, 'strokeStyle');
+                Y.Assert.areEqual(style.strokeColor, resultStyle.strokeColor, 'strokeColor');
+                Y.Assert.areEqual(style.fillColor, resultStyle.fillColor, 'fillColor');
+                Y.Assert.areEqual(style.fillOpacity, resultStyle.fillOpacity, 'fillOpacity');
+            },
+
+            testAsyncLayout: function () {
+                ymaps.layout.storage.define('customKey', function (provide) {
+                    setTimeout(function () {
+                        provide(ymaps.templateLayoutFactory.createClass('<div>123</div>'));
+                    }, 300);
+                });
+
+                rectangle.options.set('layout', 'customKey');
+                rectangle.setMap(this.geoMap);
+
+                rectangle.getLayout().then(function (layout) {
+                    this.resume(function () {
+                        Y.assert(layout);
+                    });
+                }, function (error) {
+                    this.resume(function () {
+                        Y.fail(error.message);
+                    });
+                }, this);
+
+                this.wait();
+            }
+        };
+    };
+
+    ymaps.ready(runTestCase);
+</script>
+</html>
+

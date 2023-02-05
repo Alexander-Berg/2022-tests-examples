@@ -1,0 +1,120 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <title>geoObject.addon.balloon</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <!-- YUI -->
+    <script type="text/javascript" src="../../../../tests/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../../../tests/yui3combo/combo.css" />
+    <script type="text/javascript" src="../../../../tests/run-test-case.js"></script>
+    <!-- Code -->
+    <script type="text/javascript">
+        initAPI({
+            lang: "ru-RU",
+            load: "package.full",
+            mode: "dev"
+        });
+    </script>
+    <script type="text/javascript" src="../../../../tests/util/event-eye.js"></script>
+</head>
+
+<body class="yui3-skin-sam">
+    <div id="testMap" style="height: 500px; width: 760px; overflow: hidden; position: relative;">
+    </div>
+</body>
+
+<script type="text/javascript">
+    getTestCase = function (Y) {
+        return {
+            name: 'geoObject.addon.balloon',
+            // debug: true,
+
+            setUp: function () {
+                this.geoMap = new ymaps.Map("testMap", {
+                    center: [55, 55],
+                    zoom: 4,
+                    type: "yandex#map"
+                });
+
+                geoObject = this.geoObject = new ymaps.GeoObject({
+                    geometry: {
+                        type: "Point",
+                        coordinates: [55, 55]
+                    }
+                });
+
+                this.geoMap.geoObjects.add(this.geoObject);
+            },
+
+            tearDown: function () {
+                this.geoMap.destroy();
+            },
+
+            testOpenEvent: function () {
+                eventEye.observe([this.geoObject, this.geoMap], ["balloonopen", "balloonclose"]);
+                this.geoObject.balloon.open([0, 0]);
+
+                Y.assert(
+                    eventEye.length() == 2 &&
+                    eventEye.check(0, {
+                        type: "balloonopen",
+                        target: this.geoMap
+                    }) &&
+                    eventEye.check(1, {
+                        type: "balloonopen",
+                        target: this.geoObject
+                    })
+                );
+            },
+
+            testCloseEvent: function () {
+                this.geoObject.balloon.open([0, 0]);
+                eventEye.observe([this.geoObject, this.geoMap], ["balloonopen", "balloonclose"]);
+                this.geoObject.balloon.close();
+
+                Y.assert(
+                    eventEye.length() == 2 &&
+                    eventEye.check(0, {
+                        type: "balloonclose",
+                        target: this.geoMap
+                    }) &&
+                    eventEye.check(1, {
+                        type: "balloonclose",
+                        target: this.geoObject
+                    })
+                );
+            },
+
+            testFireClick: function () {
+                eventEye.observe(this.geoMap, ["balloonopen"]);
+                this.geoObject.properties.set('balloonContent', 'test');
+                this.geoObject.events.fire('click');
+                Y.Assert.areEqual(1, eventEye.length());
+            },
+
+            testOpenEmpty: function () {
+                this.geoObject.events.fire('click', { globalPixelPosition: this.geoMap.getGlobalPixelCenter() });
+                Y.assert(!this.geoObject.balloon.isOpen(), '1');
+
+                this.geoObject.options.set('openEmptyBalloon', true);
+                this.geoObject.events.fire('click', { globalPixelPosition: this.geoMap.getGlobalPixelCenter() });
+                Y.assert(this.geoObject.balloon.isOpen(), '2');
+            },
+
+            testDontClosePreviousWhenCurrentIsEmpty: function () {
+                this.geoMap.balloon.open(this.geoMap.getCenter(), 'map balloon');
+                eventEye.observe(this.geoMap, ["balloonclose", "balloonopen"]);
+                this.geoObject.events.fire('click');
+
+                Y.Assert.areEqual(0, eventEye.length(), 'Балун не должен был закрыться');
+                Y.assert(this.geoMap.balloon.isOpen(), 'Карточный балун закрылся');
+                Y.assert(!this.geoObject.balloon.isOpen(), 'Балун геообъекта открылся');
+            }
+        };
+    };
+
+    ymaps.ready(runTestCase);
+</script>
+</html>
+

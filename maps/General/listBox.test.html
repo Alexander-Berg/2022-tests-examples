@@ -1,0 +1,290 @@
+<!doctype html>
+<html>
+<head>
+    <title>controls</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <!-- YUI -->
+    <script type="text/javascript" src="../../../test/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../../test/yui3combo/combo.css"/>
+    <script type="text/javascript" src="../../../test/run-test-case.js"></script>
+    <script type="text/javascript" src="http://yandex.st/jquery/1.6.4/jquery.min.js"></script>
+    <!-- Code -->
+    <script type="text/javascript">
+        initAPI({
+            lang: "ru-RU",
+            load: "package.full,util.dom.element,util.dom.style,util.nodeSize",
+            mode: "dev"
+        });
+    </script>
+</head>
+<style>
+    html, html body {
+        width: 100%;
+        height: 100%;
+    }
+    .my-button {
+       display: 'block';
+       background-color: #999999;
+       width: 100px;
+       height: 30px;
+       border: 1px solid green;
+       text-align: center;
+       vertical-align: middle;
+       color: white;
+       font-size: 15px;
+    }
+    #my-listbox-header {
+        display: 'block';
+        background-color: #999999;
+        width: 200px;
+        height: 30px;
+        border: 1px solid green;
+        text-align: center;
+        vertical-align: middle;
+        color: white;
+        font-size: 15px;
+    }
+</style>
+<body class="yui3-skin-sam" style="width: 100%; heigth: 100%">
+    <div id='map' style="width: 70%; height: 60%;"></div>
+</body>
+
+<script type="text/javascript">
+
+function getTestCase (Y) {
+    
+    var map = new ymaps.Map('map', {
+                center: [55.777153093859496, 37.639130078124964],
+                zoom: 10
+            });
+
+    return {
+        name: "controls",
+//        debug: true,
+        
+        testFast: function () {
+            var listBox = new ymaps.control.ListBox();
+            map.controls.add(listBox);
+            listBox.expand();
+            listBox.collapse();
+            
+            var res = '';
+            listBox.events.add('optionschange', function () {
+                res += ' optionschange';
+            });
+            listBox.setWidth(1000);
+            Y.assert(listBox.options.get('minWidth') == 1000, "Неверно отработал метод setWidth");
+            Y.assert(res == ' optionschange', "Не кинулось событие optionschange.");
+            listBox.setMinWidth(500);
+            Y.assert(listBox.options.get('minWidth') == 500, "Неверно отработал метод setMinWidth");
+            map.controls.remove(listBox);
+            map.controls.add(listBox);
+            map.controls.remove(listBox);
+        },
+        
+        testListBox: function () {
+            map.options.set({
+                listBoxItemSelectOnClick: true,
+                listBoxMaximizeWidth: true
+            });
+            var button = new ymaps.control.ListBox({
+                    data: {
+                        title: 'Список дел на завтра'
+                    },
+                    items: [
+                        new ymaps.control.ListBoxItem({data: {content: 'Встать'}}),
+                        new ymaps.control.ListBoxItem({data: {content: 'Навести порядок на планете'}}),
+                        new ymaps.control.ListBoxSeparator(),
+                        new ymaps.control.Button({data: {content: 'Лесные ежики! Что кнопка делает в листбоксе??'}})
+                    ]
+                }),
+                res = '';
+            button.events.add('mapchange', function () {
+                res += '*';
+            });
+            map.controls.add(button);
+
+            Y.assert(res == '*', "Пришло несколько событий смены карты.");
+            var controlGroup = new ymaps.control.Group();
+            controlGroup.add(new ymaps.control.Button('кнопка в группе 1'));
+            controlGroup.add(new ymaps.control.Button('кнопка в группе 2'));
+            button.add(controlGroup);
+            
+            var myListBoxLayout = ymaps.templateLayoutFactory.createClass("<div id='my-listbox-header'>$[data.title]</div>" +
+                    "<div id='my-list-box' [if state.expanded][else]style='display: none;'[endif]>" +
+                    "</div>", {
+                    build: function() {
+                        myListBoxLayout.superclass.build.call(this);
+                        this.childContainerElement = $('#my-list-box').get(0);
+                        this.events.fire('childcontainerchange', {
+                            newChildContainerElement: this.childContainerElement,
+                            oldChildContainerElement: null
+                        });
+                    },
+                    clear: function () {
+                        this.events.fire('childcontainerchange', {
+                            oldChildContainerElement: this.childContainerElement,
+                            newChildContainerElement: null
+                        });
+                        this.childContainerElement = null;
+                        myListBoxLayout.superclass.clear.call(this);
+                    },
+                    
+                    getChildContainerElement: function () {
+                        return this.childContainerElement;
+                    }
+                });
+                customButton = new ymaps.control.ListBox({
+                    data: {
+                        title: 'Список дел на завтра'
+                    },
+                    items: [
+                        new ymaps.control.ListBoxItem({data: {content: 'Встать'}}),
+                        new ymaps.control.ListBoxItem({data: {content: 'Навести порядок на планете'}}),
+                        new ymaps.control.Button({data: {content: 'Жмак!'}})
+                    ]
+                }, {
+                    listBoxItemLayout: ymaps.templateLayoutFactory.createClass("$[data.content]<br>"),
+                    buttonLayout: ymaps.templateLayoutFactory.createClass("<div class='my-button' title='$[data.title]'>$[data.content]</div>"),
+                    layout: myListBoxLayout
+                });
+                customButton.expand();
+
+            map.controls.add(customButton, {right: 400, top: 10});
+            
+            // события контрола
+            // expand -> expand
+            // collapse -> collapse
+            // click -> expand/collapse (при установке соответствующей опции expandOnClick)
+            // update, change -> update
+            var layout = button.getLayout(),
+                controlListener = button.events.group()
+                    .add('expand', function() {
+                        res += 'expand_';
+                    })
+                    .add('collapse', function () {
+                        res += 'collapse_';
+                    })
+                    .add('click', function () {
+                        res += 'click_';
+                    }),
+                res = '';
+            layout.events.fire('expand').fire('collapse').fire('click').fire('click');
+            Y.assert(res == 'expand_collapse_click_expand_click_collapse_', "Неверно поймались события лейаута.");
+            
+            res = '';
+            button.options.set('expandOnClick', false);
+            layout.events.fire('click');
+            Y.assert(res == 'click_', "Неправильно отработало изменение опции expandOnClick.");
+            
+            res = '';
+            controlListener.add(['update', 'change'], function () {
+                res += '*';
+            });
+            layout.events.fire('change').fire('update');
+            Y.assert(res == '**', "Контрол не среагировал на события 'change' и 'update' лейаута.");
+            button.options.set('expandOnClick', true);
+            controlListener.removeAll();
+            
+            var listBox3 = new ymaps.control.ListBox({
+                    data: {
+                        title: 'listBox'
+                    },
+                    items: [
+                        new ymaps.control.ListBoxItem({data: {content: 'listbox item 1'}}),
+                        new ymaps.control.ListBoxSeparator(),
+                        new ymaps.control.ListBoxItem({data: {content: 'listbox item 2'}})
+                    ]
+                }, {maximizeWidth: false});
+            map.controls.add(listBox3, {left: 5, top: 5});
+            listBox3.add(new ymaps.control.ListBoxItem('Чекбокс', {checkbox: true, selectOnClick: true}));
+        },
+
+        testChaining: function () {
+            var listBox = new ymaps.control.ListBox(),
+                button = new ymaps.control.Button('Кнопа');
+            listBox
+                .add(button)
+                .remove(button)
+                .removeAll()
+                .add(button);
+            var counter = 0;
+            listBox.each(function (child) {
+                counter++;
+            });
+            Y.assert(counter == 1, "Неверно отработала цепочка добавлений и удалений.");
+        },
+
+        testRemoveToolbarWithExpandedListBox: function () {
+            listBox = new ymaps.control.ListBox({
+                    data: {
+                        title: 'Открытый'
+                    },
+                    items: [
+                        new ymaps.control.ListBoxItem({data: {content: '1'}}),
+                        new ymaps.control.ListBoxItem({data: {content: '2'}})
+                    ]
+                });
+            toolBar = new ymaps.control.ToolBar([listBox]);
+
+            map.controls.add(toolBar, {
+                left: 5,
+                top: 35
+            });
+            listBox.expand();
+            map.controls.remove(toolBar);
+
+            Y.assert(listBox.isExpanded(), 'Листбокс свернулся');
+        },
+
+        testDisplayListBoxFromHiddenContainer: function () {
+            var listBoxInHidden = new ymaps.control.ListBox({
+                data: {
+                    title: 'TestSizeListBox'
+                },
+                items: [
+                    new ymaps.control.ListBoxItem({data: {content: 'listbox item 1'}}),
+                    new ymaps.control.ListBoxSeparator(),
+                    new ymaps.control.ListBoxItem({data: {content: 'listbox item 2'}})
+                ]
+            }, {
+                position: {
+                    bottom: 5,
+                    left: 5
+                }
+            });
+
+            map.container.getElement().style.display = "none";
+            map.controls.add(listBoxInHidden);
+
+            var beforeDisplay = ymaps.util.nodeSize.computeByContent(listBoxInHidden.getContainer());
+
+            var testCase = this;
+            testCase.wait(function () {
+                // эмулируем инициализацию из скрытого контейнера
+
+                map.container.getElement().style.display = "block";
+                map.container.getElement().style.width = "90%";
+                map.container.fitToViewport();
+
+                // чтобы нода успела пересобраться
+                testCase.wait(function () {
+                    var afterDisplay =  ymaps.util.nodeSize.computeByContent(listBoxInHidden.getContainer());
+                    Y.assert(
+                        beforeDisplay.width == beforeDisplay.height &&
+                        beforeDisplay.width == 0 &&
+                        afterDisplay.width > 0,
+                        "Лейаут не пересобрался"
+                    );
+                }, 1000);
+            }, 0);
+        }
+    };
+}
+window.onload = function () {
+    ymaps.ready(runTestCase);
+}
+
+</script>
+</body>
+</html>

@@ -1,0 +1,212 @@
+components: zsb_yas_direct
+##testing:
+##  - regress
+
+specs-integration:
+  aliases:
+    - &Инфо_direct
+        - info: |
+            - Dev. Set. -> Misc -> Debug config enable - On
+            - Использовать интенты:
+              [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download-2.b60e70b.png){title=QR-код}
+        
+              `yandexnavi://reset_exp`
+              [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download.7ed8e87.png){title=QR-код}
+
+              `yandexnavi://set_ad_page_id?page_id=null`
+              [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download-11.7351430.png){title=QR-код iOS}
+        
+              iOS: `yandexnavi://set_ad_page_id?page_type=zero_speed_direct_source&page_id=R-IM-588231-1`
+              [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download-12.3c4341a.png){title=QR-код Android}
+
+              Android: `yandexnavi://set_ad_page_id?page_type=zero_speed_direct_source&page_id=R-IM-588230-6`
+              [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download-13.edab2ef.png){title=QR-код}
+
+              `yandexnavi://add_exp?navi_zero_ads_use_direct_ad=enabled&navi_feature_zsb_statuses_logging=enabled&navi_feature_day_night_fast_switch=enabled&navi_ad_product_cooldown_zero_speed_banner=10&navi_ads_logging_zsb_closing_errors=enabled`
+            - Перезапустить приложение
+    - &Инфо_yas
+        - info: |
+            - Dev. Set. -> Misc -> Debug config enable - On
+            - Использовать интенты:
+              [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download-2.b60e70b.png){title=QR-код}
+        
+              `yandexnavi://reset_exp`
+              [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download.7ed8e87.png){title=QR-код}
+
+              `yandexnavi://set_ad_page_id?page_id=null`
+              [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download-11.7351430.png){title=QR-код iOS}
+        
+              iOS: `yandexnavi://set_ad_page_id?page_type=zero_speed_direct_source&page_id=R-IM-588231-1`
+              [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download-12.3c4341a.png){title=QR-код Android}
+
+              Android: `yandexnavi://set_ad_page_id?page_type=zero_speed_direct_source&page_id=R-IM-588230-6`
+              [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download-15.235dd55.png){title=QR-код}
+
+              `yandexnavi://add_exp?navi_zero_ads_use_yas_ad=enabled&navi_feature_zsb_statuses_logging=enabled&navi_feature_day_night_fast_switch=enabled&navi_ad_product_cooldown_zero_speed_banner=10&navi_ads_logging_zsb_closing_errors=enabled`
+            - Перезапустить приложение
+
+specs:
+  Логирования показа и скрытия ZSB с рекламой Директа:
+    - *Инфо_direct
+    - info: Девайс подключен к инструментам снятия логов или открыта Log-view панель
+    - do: |
+        - Запустить проигрывание MAPKITSIM-4261
+        - Дождаться остановки движения перед светофором
+    - assert: |
+        - Приложение перешло в режим ведения
+        - На остановке появляется баннер ZSB
+        - В логах приходит событие `direct.bb.pin.show` с параметром `DirectType: Image`
+        - Cпустя 2 секунды после события `direct.bb.pin.show`, если объявление продолжает показываться, случается событие `direct.bb.pin.countedshow` с параметром `DirectType: Image`
+    - do: Тап на ZSB
+    - assert: |
+        - Раскрывается вебвью
+        - В логах приходит событие `direct.bb.pin.tap` с параметром `DirectType: Image`
+    - do: Закрыть вебвью ZSB любым способом
+    - assert: |
+        - Вебвью закрывается
+        - В логах приходит событие `direct.bb.hide` с параметром `Reason = discard_webview_closed`
+
+    - platforms:
+        - ios
+        - android
+    - tags:
+        - metric
+    ##- testing:
+    ##    - acceptance_navi
+
+
+  Логирование РСЯ в ZSB:
+    - *Инфо_yas
+    - info: Девайс подключен к инструментам снятия логов или открыта Log-view панель
+    - do: |
+        - Запустить проигрывание MAPKITSIM-4261
+        - Дождаться остановки движения перед светофором
+    - assert: |
+        - Приложение перешло в режим ведения
+        - На остановке появляется баннер ZSB
+        - В логах приходит событие: `direct-yan.bb.pin.show` с параметром `DirectType: Image`
+        - В логах приходит событие: `geoadv.bb.zsbRequest` с параметром `has_yas`
+    - do: Тап на рекламный баннер
+    - assert: |
+        - Открывается вебвью.
+        - В логах приходит событие: `direct-yan.bb.pin.tap` с параметром `DirectType: Image`
+    - do: Закрыть вебвью
+    - assert: |
+        - Вебвью закрывается.
+        - В логах приходит событие: `direct-yan.bb.hide` с параметром `Reason = discard_webview_closed`
+
+    - platforms:
+        - ios
+        - android
+    - tags:
+        - metric
+    ##- testing:
+    ##    - acceptance_navi
+
+
+  UI и Логика показа/скрытия ZSB с рекламой Директа при взаимодействии с Навигатором:
+    - *Инфо_direct
+    - do: |
+        - Запустить проигрывание MAPKITSIM-4261
+        - Дождаться остановки движения перед светофором
+    - assert: |
+        - Приложение перешло в режим ведения
+        - На остановке появляется баннер ZSB
+    - do: Раскрыть баннер свайпом вверх.
+    - assert: Баннер не высвайпывается.
+    - do: Тап по баннеру.
+    - assert: Открывается вебвью.
+    - do: Несколько раз сменить ориентацию
+    - assert: |
+        - Вебвью не склопывается
+        - UI не ломается
+    - do: Закрыть вебвью
+    - assert: |
+        - Вебвью закрывается
+        - Баннер ZSB скрывается
+
+    - platforms:
+        - ios
+        - android
+    ##- testing:
+    ##    - acceptance_navi
+
+
+  UI и логика показа/скрытия РСЯ в ZSB при взаимодействии с Навигатором:
+    - *Инфо_yas
+    - do: |
+        - Запустить проигрывание MAPKITSIM-4261
+        - Дождаться остановки движения перед светофором
+    - assert: |
+        - Приложение перешло в режим ведения
+        - На остановке появляется баннер ZSB
+    - do: Попробовать раскрыть баннер свайпом вверх
+    - assert: Баннер не раскрывается
+    - do: Тап по баннеру
+    - assert: Открывается вебвью
+    - do: Несколько раз сменить ориентацию
+    - assert: |
+        - Вебвью не закрывается
+        - UI не ломается
+    - do: Закрыть вебвью любым способом
+    - assert: |
+        - Вебвью закрывается
+        - Баннер ZSB скрывается
+
+    - platforms:
+        - ios
+        - android
+    ##- testing:
+    ##    - acceptance_navi
+
+
+  UI и Логика показа/скрытия ZSB с рекламой Директа без взаимодействия с Навигатором:
+    - *Инфо_direct
+    - do: |
+        - Запустить проигрывание MAPKITSIM-4261
+        - Дождаться остановки движения перед светофором
+    - assert: |
+        - Приложение перешло в режим ведения
+        - На остановке появляется баннер ZSB
+    - do: |
+        - Не взаимодействовать с картой, контроллами и самим баннером ZSB
+        - Сменить ориентацию.
+    - assert: |
+        - UI баннера не ломается
+        - При смене ориентации баннер не скрывается
+    - do: |
+        - Не взаимодействовать с картой, контроллами и самим баннером ZSB
+        - Продолжить движение с отображаемым баннером ZSB
+    - assert: Баннер ZSB автоматически скрывается, при начале движения
+
+    - platforms:
+        - ios
+        - android
+    ##- testing:
+    ##    - acceptance_navi
+
+
+  UI и логика показа/скрытия РСЯ в ZSB без взаимодействия с навигатором:
+    - *Инфо_yas
+    - do: |
+        - Запустить проигрывание MAPKITSIM-4261
+        - Дождаться остановки движения
+    - assert: |
+        - Приложение перешло в режим ведения
+        - Появляется баннер ZSB
+    - do: |
+        - Не взаимодействовать с картой, контроллами и самим баннером ZSB
+        - Сменить ориентацию
+    - assert: |
+        - UI баннера остается в том же состоянии что и был
+        - При смене ориентации баннер не схлопывается
+    - do: |
+        - Не взаимодействовать с картой, контроллами и самим баннером ZSB
+        - Продолжить движение с отображаемым баннером ZSB
+    - assert: Баннер ZSB автоматически скрывается при начале движения
+
+    - platforms:
+        - ios
+        - android
+    ##- testing:
+    ##    - acceptance_navi

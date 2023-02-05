@@ -1,0 +1,78 @@
+// run: ./gradlew -b kotlin-test-tools.gradle
+
+task convertJavaTestMethodNamesToKotlin {
+    doLast {
+        convertJavaTestMethodNamesToKotlinForDirectory(file("app/src/androidTest/"))
+        convertJavaTestMethodNamesToKotlinForDirectory(file("app/src/integrationTests/"))
+        convertJavaTestMethodNamesToKotlinForDirectory(file("app/src/test/"))
+        convertJavaTestMethodNamesToKotlinForDirectory(file("app/src/testDebug/"))
+        convertJavaTestMethodNamesToKotlinForDirectory(file("app/src/testRelease/"))
+        convertJavaTestMethodNamesToKotlinForDirectory(file("app/src/tests-common/"))
+        convertJavaTestMethodNamesToKotlinForDirectory(file("app/src/unitTests/"))
+    }
+}
+
+def convertJavaTestMethodNamesToKotlinForDirectory(file) {
+    if (file.isDirectory()) {
+        for (File f : file.listFiles()) {
+            convertJavaTestMethodNamesToKotlinForDirectory(f)
+        }
+    } else {
+        if (file.getName().endsWith(".kt")) {
+            convertJavaTestMethodNamesToKotlinForOneFile(file)
+        }
+    }
+}
+
+def convertJavaTestMethodNamesToKotlinForOneFile(file) {
+    def newcontent = ""
+    def previousIsJunitAnnotation = false
+    file.eachLine('UTF-8') { line ->
+        if (previousIsJunitAnnotation && !(line =~ /(\s*)@/)) { // if it's some other annotation like @Throws then skip
+            def matched = line =~ /fun [a-z-A-Z0-9_]+(\s*)\(/ // it's method
+            if (matched.getCount() > 0) {
+                matched = line =~ /[a-z-A-Z0-9_]+(\s*)\(/ // method name
+                def method_name = matched[0][0][0..-2]
+                def shouldTransform = false
+                def transformed = ""
+                (0..<method_name.length()).each {
+                    def current = method_name.charAt(it)
+                    if (shouldTransform) {
+                        if (!Character.isLetterOrDigit(current)) {
+                            transformed += ' '
+                        } else {
+                            if (Character.isUpperCase(current) && !Character.isWhitespace(transformed.charAt(transformed.length() - 1))) {
+                                transformed += ' '
+                            }
+                            transformed += Character.toLowerCase(current)
+                        }
+                    } else if (current == '_') { // we should transform only after methodName_
+                        shouldTransform = true
+                        transformed += ' '
+                    } else {
+                        transformed += current
+                    }
+                }
+
+                def leadingWhitespaces = (line =~ /([\s\t]*)/)[0][0]
+                if (shouldTransform) {
+                    newcontent += leadingWhitespaces + "fun `$transformed`() {\n"
+                } else {
+                    newcontent += leadingWhitespaces + "fun $method_name() {\n"
+                }
+            } else { // ignore
+                newcontent += line + "\n"
+            }
+        } else { // no need to transform
+            newcontent += line + "\n"
+        }
+
+        if (!(previousIsJunitAnnotation && (line =~ /(\s*)@/))) { // if it's some other annotation like @Throws then ok
+            previousIsJunitAnnotation = (line =~ /(\s*)@((BeforeClass)|(AfterClass)|(Before)|(After)|(Test))/).getCount() > 0
+        }
+    }
+
+    file.write(newcontent, 'UTF-8')
+}
+
+defaultTasks 'convertJavaTestMethodNamesToKotlin'

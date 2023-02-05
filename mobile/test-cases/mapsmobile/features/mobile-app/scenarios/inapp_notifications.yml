@@ -1,0 +1,153 @@
+components: inapp_notifications
+testing:
+  - regress
+
+aliases:
+  - &inapp_scooter
+    - preconditions: Устройство подключено к внутренней сети через Charles или PDAS
+    - do: |
+        Включить тестовые окружения (`Меню -> Настройки -> Debug-Panel -> Environment`):
+        * `Passport environment -> TESTING`
+        * `Mobmaps proxy host -> Testing`
+        * `PaymentSDK Environment -> TESTING`
+        * `Taxi environment -> TESTING`
+    - do: |
+        Включить тычки в `Меню -> Настройки -> Debug-Panel -> Features`:
+        * Allow invalid cards
+        * Accept scooters terms of use
+        * Use flag 'ignore telematics' (for fake scooters)
+    - do: |
+        Включить эксперименты, используя интент
+        [collapsed-image](https://jing.yandex-team.ru/files/vikelvar/inapps_enabled%26kicksharing_on.png){title=QR-код}
+
+        `yandexmaps://add_exp?inapps_enabled&kicksharing_on`
+    - do: Перезапустить МЯК
+    - do: Авторизоваться в аккаунт 'plus-mobgeotest' с паролем 'Gen2022'
+    - do: Включить слой самокатов
+    - do: Открыть карточку тестового самоката
+    - do: Забронировать самокат
+
+
+  - &inapp_taxi
+    - preconditions: Устройство подключено к внутренней сети через Charles или PDAS
+    - do: |
+       Включить тестовые окружения (`Меню -> Настройки -> Debug-Panel -> Environment`):
+       * `Passport environment -> TESTING`
+       * `Mobmaps proxy host -> Testing`
+       * `PaymentSDK Environment -> TESTING`
+    - do: |
+       Перевести webview такси в тестовое окружение:
+       * `Меню -> Настройки -> Debug-Panel -> Webview -> Taxi webview base url -> Testing`
+    - do: |
+       Включить эксперименты c помощью интента
+       [collapsed-image](https://jing.yandex-team.ru/files/vikelvar/taxi_native_order_in_taxi_tab%3DALWAYS_OPEN%26inapps_enabled.png){title=QR-код}
+
+       `yandexmaps://add_exp?taxi_native_order_in_taxi_tab=ALWAYS_OPEN&inapps_enabled`
+    - do: Перезапустить МЯК
+    - do: Авторизоваться в аккаунт `plus-mobgeotest` с паролем `Gen2022`
+    - do: Построить произвольный маршрут на такси
+    - do: Тап на кнопку параметров (справа от кнопки заказа)
+    - do: Написать в комментарии к заказу 'speed-300, wait-10'
+    - do: Тап на "Готово"
+    - do: Тап на кнопку заказа
+    - do: Принять условия соглашения (Поп-ап с пользовательским соглашением может не отобразиться, если такси вызывается не в первый раз)
+    - assert: |
+        Отображается вебвью такси
+        Отображается inapp-нотификация "Поиск машины"
+        Нотификация исчезает спустя 3 секунды
+    - do: Открыть главный экран МЯК
+    - assert: Над таббаром отображается плашка статуса заказа такси
+
+
+specs:
+  Отображение inapp-нотификаций при заказе такси:
+    - *inapp_taxi
+    - do: Дождаться, когда машина будет найдена
+    - assert: |
+        Отображается inapp-нотификация "Будет через N минут" c информацией о машине
+        Нотификация исчезает спустя 3 секунды
+    - do: Дождаться прибытия машины
+    - assert: Отображается inapp-нотификация "Машина ожидает" с информацией о машине
+    - do: Дождаться начала поездки
+    - assert: Отображается inapp-нотификация "N минут - В пути"
+
+    - platforms:
+        - android
+    - testing:
+        - acceptance_maps
+
+
+  Появление inapp-нотификации при перезапуске МЯК:
+    - *inapp_taxi
+    - do: Перезапустить МЯК
+    - assert: |
+        Отображается inapp-нотификация
+        Статус нотификации совпадает со статусом в плашке заказа
+
+    - platforms:
+        - android
+
+
+  Отображение inapp-нотификации "Бесплатное ожидание" при заказе самоката:
+    - *inapp_scooter
+    - assert: |
+        Отображается inapp-нотификация "Бесплатное ожидание" с информацией о самокате
+        Нотификация исчезает спустя 3 секунды
+
+    - platforms:
+        - android
+    - testing:
+        - acceptance_maps
+
+
+  Отображение inapp-нотификации "В пути" при старте поездки на самокате:
+    - *inapp_scooter
+    - do: Тап на "Начать поездку"
+    - assert: Отображается inapp-нотификация "В пути" с информацией о заряде и количестве киломтеров, на которое его хватит
+
+    - platforms:
+        - android
+
+
+  Отображение inapp-нотификации "Самокат ждёт" при переходе в режим ожидания на самокате:
+    - *inapp_scooter
+    - do: Тап на "Начать поездку"
+    - do: Тап на "Режим ожидания"
+    - assert: Отображается inapp-нотификация "Самокат ждёт"
+
+    - platforms:
+        - android
+
+
+  Последовательное отображение нескольких inapp-нотификаций при быстрой смене статусов:
+    - *inapp_scooter
+    - assert: Отображается inapp-нотификация "Бесплатное ожидание" с информацией о самокате
+    - do: Не дожидаясь исчезновения предыдущей нотификации (3 секнды), тап на кнопку "Начать поезку"
+    - assert: inapp-нотификация "Бесплатное ожидание" сменяется на "В пути"
+
+    - platforms:
+        - android
+
+
+  Смахивание inapp-нотификации:
+    - *inapp_scooter
+    - assert: Отображается inapp-нотификация "Бесплатное ожидание" с информацией о самокате
+    - do: Свайп вверх по нотификации
+    - assert: Нотификация закрывается
+
+    - platforms:
+        - android
+    - testing:
+        - acceptance_maps
+
+
+  Повторное отображение inapp-нотификации при отмене заказа самоката:
+    - *inapp_scooter
+    - assert: Отображается inapp-нотификация "Бесплатное ожидание" с информацией о самокате
+    - do: Тап на "Отменить поездку"
+    - do: Открыть карточку тестового самоката
+    - do: Забронировать самокат
+    - assert: Отображается inapp-нотификация "Бесплатное ожидание" с информацией о самокате
+
+    - platforms:
+        - android

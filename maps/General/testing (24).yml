@@ -1,0 +1,206 @@
+annotations:
+  project: maps-front-mobmaps-proxy-api
+meta:
+  id: maps-front-mobmaps-proxy-api_testing
+  project_id: maps-front-mobmaps-proxy-api
+  account_id: 'abc:service:2330'
+  inherit_acl: true
+spec:
+  account_id: 'abc:service:2330'
+  deploy_units:
+    app:
+      endpoint_sets:
+        - port: 80
+      images_for_boxes: {}
+      network_defaults:
+        network_id: _MAPSTESTQNETS_
+      tvm_config:
+        mode: enabled
+        blackbox_environment: Test
+        client_port: 2
+        clients:
+          - source:
+              alias: tvm-mobmaps-proxy-api-testing
+              app_id: 2013874
+            secret_selector:
+              alias: 'testing-secrets'
+              id: APP_TVM_SECRET_TVM_MOBMAPS_PROXY_API_TESTING
+            destinations:
+              - alias: discovery
+                app_id: 2019024
+              - alias: router
+                app_id: 2010298
+              - alias: mtinfo
+                app_id: 2013396
+              - alias: masstransit
+                app_id: 2012632
+              - alias: moira
+                app_id: 2012240
+              - alias: carsharing
+                app_id: 2000615
+              - alias: blackbox
+                app_id: 239
+              - alias: userAccountInt
+                app_id: 2002550
+              - alias: yaAuthproxy
+                app_id: 2018654
+              - alias: trafficInfo
+                app_id: 2018626
+              - alias: storiesInt
+                app_id: 2024327
+              - alias: bvmInt
+                app_id: 2020032
+              - alias: weather
+                app_id: 2010354
+              - alias: feedback
+                app_id: 2020773
+              - alias: spravApi
+                app_id: 2011748
+              - alias: parkingInt
+                app_id: 2029218
+              - alias: bookmarksInt
+                app_id: 2026542
+              - alias: bookingInt
+                app_id: 2028230
+              - alias: search
+                app_id: 2008261
+              - alias: routingAsyncSolver
+                app_id: 2028423
+              - alias: ugcSearch
+                app_id: 2000870
+      multi_cluster_replica_set:
+        replica_set:
+          clusters:
+            - cluster: man
+              spec:
+                constraints:
+                  antiaffinity_constraints:
+                    - key: rack
+                      max_pods: 1
+                replica_count: 1
+            - cluster: sas
+              spec:
+                constraints:
+                  antiaffinity_constraints:
+                    - key: rack
+                      max_pods: 1
+                replica_count: 1
+            - cluster: vla
+              spec:
+                constraints:
+                  antiaffinity_constraints:
+                    - key: rack
+                      max_pods: 1
+                replica_count: 1
+          deployment_strategy:
+            max_unavailable: 1
+          pod_template_spec:
+            spec:
+              disk_volume_requests:
+                - id: maps-front-mobmaps-proxy-api_testing-disk-0
+                  storage_class: hdd
+                  quota_policy:
+                    capacity: 16106127360
+                    bandwidth_guarantee: 5242880
+                    bandwidth_limit: 10485760
+                  labels:
+                    used_by_infra: true
+              resource_requests:
+                memory_guarantee: 1073741824
+                memory_limit: 1073741824
+                vcpu_guarantee: 250
+                vcpu_limit: 250
+              host_infra:
+                monitoring:
+                  unistats:
+                    - workload_id: app_workload
+                      port: 7032
+                      path: /unistat
+              secret_refs:
+                'testing-secrets':
+                  secret_id: sec-01eppr534fe2a8tyq5ntd80tqt
+                  secret_version: ver-01fycatvyws139jnbhbactvb2j
+              pod_agent_payload:
+                spec:
+                  boxes:
+                    - id: app_box
+                      rootfs: {}
+                      static_resources:
+                        - resource_ref: var.cache.geobase.geodata6.bin
+                          mount_point: /var/cache/geobase
+                        - resource_ref: usr.share.geobase.tzdata
+                          mount_point: /usr/share/geobase
+                        - resource_ref: usr.share.yandex.maps.inthosts
+                          mount_point: /usr/share/yandex/maps/inthosts
+                        - resource_ref: usr.share.yandex.maps.hosts
+                          mount_point: /usr/share/yandex/maps/hosts
+                  mutable_workloads:
+                    - workload_ref: app_workload
+                  resources:
+                    static_resources:
+                      - id: var.cache.geobase.geodata6.bin
+                        url: 'sbr:1663131973'
+                        verification:
+                          checksum: 'MD5:9c1c7996f79dcdaf41d8b437fc90860b'
+                          check_period_ms: 180000
+                      - id: usr.share.geobase.tzdata
+                        url: 'sbr:1903515919'
+                        verification:
+                          checksum: 'MD5:e671a347976eab63dbbf3b99d39b7c03'
+                          check_period_ms: 180000
+                      - id: usr.share.yandex.maps.inthosts
+                        url: 'sbr:3284470341'
+                        verification:
+                          checksum: 'EMPTY:'
+                          check_period_ms: 180000
+                      - id: usr.share.yandex.maps.hosts
+                        url: 'sbr:2726660897'
+                        verification:
+                          checksum: 'EMPTY:'
+                          check_period_ms: 180000
+                  workloads:
+                    - id: app_workload
+                      box_ref: app_box
+                      env:
+                        - name: TZ
+                          value:
+                            literal_env:
+                              value: Europe/Moscow
+                        - name: MAPS_TVM_APP_ID
+                          value:
+                            literal_env:
+                              value: '2013874'
+                        - name: PUSH_CLIENT_TVM_SECRET
+                          value:
+                            secret_env:
+                              alias: 'testing-secrets'
+                              id: APP_TVM_SECRET_TVM_MOBMAPS_PROXY_API_TESTING
+                        - name: ROUTING_ASYNC_SOLVER_APIKEY
+                          value:
+                            secret_env:
+                              alias: 'testing-secrets'
+                              id: ROUTING_ASYNC_SOLVER_APIKEY
+                      liveness_check:
+                        tcp_check:
+                          port: 80
+                      readiness_check:
+                        http_get:
+                          port: 80
+                          path: /ping
+                          any: true
+                          time_limit:
+                            max_execution_time_ms: 1000
+                      init:
+                        - command_line: >-
+                            tar -xvzf /usr/share/geobase/tzdata.tar.gz -C
+                            /usr/share/geobase/
+                      stop_policy:
+                        container:
+                          command_line: bash -c "/detach.sh"
+                          time_limit:
+                            max_execution_time_ms: 20000
+                            max_restart_period_ms: 30000
+                            min_restart_period_ms: 30000
+                        max_tries: 2
+                      transmit_logs: true
+  revision_info: {}

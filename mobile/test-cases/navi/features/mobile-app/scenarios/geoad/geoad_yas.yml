@@ -1,0 +1,90 @@
+components: geoad_yas
+testing:
+  - regress
+
+specs-integration:
+  aliases:
+    - &ИнфоGeoAd
+      - info: |
+          - Dev. Set. -> Misc -> Debug config enable - On
+          - Использовать интенты:
+            [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download-2.b60e70b.png){title=QR-код}
+        
+            `yandexnavi://reset_exp`
+            [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download.7ed8e87.png){title=QR-код}
+
+            `yandexnavi://set_ad_page_id?page_id=null`
+            [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download-2.ec50738.png){title=QR-код}
+        
+            `yandexnavi://set_ad_page_id?page_type=overview_yas_source&page_id=R-IM-588230-14`
+            [collapsed-image](https://jing.yandex-team.ru/files/dabrynskaya/Снимок%20экрана%202022-06-16%20в%2016.38.58.png){title=QR-код}
+
+            `yandexnavi://add_exp?navi_feature_day_night_fast_switch=enabled&navi_overview_ads_priority_for_RU=overview_geo_ad,brand_route,via&navi_ads_overview_ad_queue=yas,geo_ad_location,geo_ad_route,geo_ad_route_end,direct&navi_ad_product_cooldown_overview_banner=60`
+          - Перезапустить приложение
+
+specs:
+  GeoAd РСЯ - логирование:
+    - *ИнфоGeoAd
+    - info: Девайс подключен к инструментам снятия логов или открыта лог-панель
+    - do: Построить маршрут по России
+    - assert: |
+        Маршрут строится
+        Над карточкой обзора появляется GeoAD баннер
+        В логах приходят события:
+        - `route.direct-yan-visibility` с параметром `visible==true`
+        - `direct-yan.bb.pin.show` с параметром `AdType=overview_banner`
+    - do: Тап на GeoAD баннер
+    - assert: |
+        Открывается вебвью
+        В логах приходят события:
+        - `route.direct-yan-ad-click`
+        - `direct-yan.bb.pin.tap` с параметром `AdType=overview_banner`
+    - do: Закрыть вебвью любым способом
+    - assert: |
+        - Вебвью закрывается
+        - GeoAD баннер скрывается
+        - В логах приходит событие `route.direct-yan-visibility` с параметром `visible==false`
+
+    - platforms:
+      - ios
+      - android
+    - tags:
+        - metric
+
+
+  GeoAd РСЯ - проверка вебвью:
+    - *ИнфоGeoAd
+    - info: Устройство в вертикальной ориентации
+    - do: Построить маршрут по г. Москва
+    - assert: |
+        Маршрут строится
+        Над карточкой обзора появляется GeoAD баннер
+    - do: Тап по GeoAD баннеру
+    - assert: |
+        Баннер GeoAd скрывается
+        Открывается вебвью с кнопками назад (в виде стрелочки) и закрыть (в виде крестика)
+    - do: Закрыть вебвью
+    - assert: |
+        Вебвью закрывается
+        Баннер GeoAd не отображается
+    - do: |
+        Подождать одну минуту
+        Повернуть девайс в горизонтальную ориентацию
+        Построить маршрут по России
+    - assert: |
+        Маршрут строится
+        Над карточкой обзора появляется GeoAD баннер
+    - do: Тап по GeoAD баннеру
+    - assert: |
+        Баннер GeoAd скрывается
+        Открывается вебвью с кнопками назад (в виде стрелочки) и закрыть (в виде крестика)
+    - do: Произвести поворот устройства с горизонтальной ориентации в вертикальную
+    - assert: Вебвью не скрывается
+    - do: Произвести поворот устройства с вертикальной ориентации в горизонтальную
+    - assert: Вебвью не скрывается
+
+    - platforms:
+      - ios
+      - android
+    - testing:
+      - acceptance_navi

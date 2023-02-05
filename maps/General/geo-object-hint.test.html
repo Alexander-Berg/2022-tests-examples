@@ -1,0 +1,217 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <title>geoObject.hint</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <!-- YUI -->
+    <script type="text/javascript" src="../../../test/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../../test/yui3combo/combo.css" />
+    <script type="text/javascript" src="../../../test/run-test-case.js"></script>
+    <!-- Code -->
+    <script type="text/javascript">
+        initAPI({
+            lang: "ru-RU",
+            load: "package.full,Hint,util.array,util.dom.element,pane.outers",
+            mode: "dev"
+        });
+    </script>
+    <script type="text/javascript" src="../../../test/util/event-eye.js"></script>
+    <style type="text/css">
+        #container { width: 600px; height: 400px; background: #ccc; }
+    </style>
+</head>
+
+<body class="yui3-skin-sam">
+
+<script type="text/javascript">
+
+    function getTestCase (Y) {
+        return {
+            name: "geoObject.Hint",
+//            debug: true,
+
+            setUp: function () {
+                this.geoMap = new ymaps.Map("container", {
+                    center: [55, 55],
+                    zoom: 4,
+                    type: "yandex#map"
+                });
+
+                this.point = new ymaps.GeoObject({
+                    geometry: {
+                        type: "Point",
+                        coordinates: [55, 55]
+                    }
+                });
+
+                this.polyline = new ymaps.GeoObject({
+                    geometry: {
+                        type: "LineString",
+                        coordinates: [[55, 55], [60, 60]]
+                    }
+                });
+
+                this.polygon = new ymaps.GeoObject({
+                    geometry: {
+                        type: "Polygon",
+                        coordinates: [[[55, 55], [40, 40], [55, 40]]]
+                    }
+                });
+
+                this.geoObjects = [
+                    this.point, this.polyline, this.polygon
+                ];
+
+                geoMap = this.geoMap;
+                geoObjects = this.geoObjects;
+            },
+
+            tearDown: function () {
+                this.geoMap.destroy();
+            },
+
+            testNoMapShow: function () {
+                ymaps.util.array.each(this.geoObjects, function (geoObject) {
+                    try {
+                        geoObject.hint.show(this.geoMap.getGlobalPixelCenter());
+                        Y.fail('Нет ошибки');
+                    } catch (e) {
+                        Y.assert(
+                            e.message == "geoObject.Hint.show: геообъект не добавлен на карту",
+                            "Неверное сообщение об ошибке: " + e.message
+                        );
+                    }
+                }, this);
+            },
+
+            testShow: function () {
+                ymaps.util.array.each(this.geoObjects, function (geoObject) {
+                    this.geoMap.geoObjects.add(geoObject);
+                    eventEye.observe(geoObject.hint, ["show", "hide"]);
+
+                    var hint = geoObject.hint.show(this.geoMap.getGlobalPixelCenter());
+
+                    this.wait(function () {
+                        Y.assert(
+                            hint && hint.isShown() &&
+                                ymaps.util.dom.element.find(this.geoMap.panes.get('outers').getElement(), ".ymaps-label") &&
+                                eventEye.length() == 1 &&
+                                eventEye.check(0, {
+                                    type: "show",
+                                    target: geoObject.hint
+                                }),
+                            "Неверный результат на " + geoObject.geometry.getType()
+                        );
+                        this.geoMap.geoObjects.remove(geoObject);
+                    }, 200);
+                }, this);
+            },
+
+            testHide: function () {
+                ymaps.util.array.each(this.geoObjects, function (geoObject) {
+                    this.geoMap.geoObjects.add(geoObject);
+                    geoObject.hint.show(this.geoMap.getGlobalPixelCenter());
+
+                    eventEye.observe(geoObject.hint, ["show", "hide"]);
+
+                    this.wait(function () {
+                        geoObject.hint.hide(null, true);  // force
+
+                        Y.assert(
+                            !ymaps.util.dom.element.find(this.geoMap.panes.get('outers').getElement(), ".ymaps-label") &&
+                            eventEye.length() == 2 &&
+                            eventEye.check(1, {
+                                type: "hide",
+                                target: geoObject.hint
+                            }),
+                            "Неверный результат на " + geoObject.geometry.getType()
+                        );
+                    }, 200);
+                }, this);
+            },
+
+            testIsShown: function () {
+                this.geoMap.geoObjects.options.set({
+                    hintShowTimeout: false,
+                    hintHideTimeout: false
+                });
+                ymaps.util.array.each(this.geoObjects, function (geoObject) {
+                    this.geoMap.geoObjects.add(geoObject);
+                    geoObject.hint.show(this.geoMap.getGlobalPixelCenter());
+                    Y.assert(
+                        geoObject.hint.isShown(),
+                        "Неверный результат после show на " + geoObject.geometry.getType()
+                    );
+                    geoObject.hint.hide(null, true);
+                    Y.assert(
+                        !geoObject.hint.isShown(),
+                        "Неверный результат после hide на " + geoObject.geometry.getType()
+                    );
+                    geoObject.hint.show(this.geoMap.getGlobalPixelCenter()).hide(true);
+                    Y.assert(
+                        !geoObject.hint.isShown(),
+                        "Неверный результат после show.hide на " + geoObject.geometry.getType()
+                    );
+                    var capturedHint;
+                    geoObject.hint.capture(function (err, hint) {
+                        capturedHint = hint;
+                    });
+                    Y.assert(
+                        !geoObject.hint.isShown(),
+                        "Неверный результат после capture на " + geoObject.geometry.getType()
+                    );
+                    capturedHint.show(this.geoMap.getGlobalPixelCenter());
+                    Y.assert(
+                        geoObject.hint.isShown(),
+                        "Неверный результат после capture + show на " + geoObject.geometry.getType()
+                    );
+                }, this);
+            },
+
+            testMouseEvents: function () {
+                this.point.properties.set({
+                    iconContent: "<div id='my-icon'>icon</div>",
+                    hintContent: "<div id='my-hint'>hint</div>"
+                });
+
+                this.point.options.set({
+                    hintShowTimeout: false,
+                    hintHideTimeout: true
+                });
+
+                this.geoMap.geoObjects.add(this.point);
+                this.point.getOverlay();
+
+                eventEye.observe(this.point, ['hintshow', 'hinthide']);
+
+                var layoutNode = document.getElementById('my-icon');
+
+                Y.Event.simulate(layoutNode, 'mouseover', { target: layoutNode });
+                Y.assert(eventEye.length() == 1 && eventEye.check(0, {
+                    type: "hintshow",
+                    target: this.point
+                }), 'Неправильно создалось событие @hintshow.');
+                var hintNode = document.getElementById('my-hint');
+                Y.assert(hintNode, 'Не создался DOM-элемент хинта.');
+
+                Y.Event.simulate(layoutNode, 'mouseout', { target: layoutNode });
+                Y.assert(eventEye.length() == 2 && eventEye.check(1, {
+                    type: "hinthide",
+                    target: this.point
+                }), 'Неправильно создалось событие @hinthide.');
+                Y.assert(!hintNode.parentNode.parentNode, 'Не удалился DOM-элемент хинта.');
+            }
+        }
+    }
+</script>
+<div id="container"></div>
+
+<script type="text/javascript">
+
+// подготавливаем карту
+ymaps.ready(runTestCase);
+</script>
+
+</body>
+</html>

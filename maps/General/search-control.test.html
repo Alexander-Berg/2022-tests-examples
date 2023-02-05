@@ -1,0 +1,254 @@
+<!doctype html>
+<html>
+<head>
+    <title>search</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <!-- YUI -->
+    <script type="text/javascript" src="../../../test/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../../test/yui3combo/combo.css"/>
+    <script type="text/javascript" src="../../../test/run-test-case.js"></script>
+    <script type="text/javascript" src="http://yandex.st/jquery/1.6.4/jquery.min.js"></script>
+    <!-- Code -->
+    <script type="text/javascript">
+        initAPI({
+            lang: "ru-RU",
+            load: "package.full,util.dom.element,util.bind",
+            mode: "debug"
+        });
+    </script>
+</head>
+
+<body class="yui3-skin-sam"></body>
+<div id="map" style='width:600px;height:400px'>
+
+</div>
+<style>
+    html, html body {
+        width: 100%;
+        height: 100%;
+    }
+    
+    .rollup-header {
+        display: 'block';
+        background-color: #999999;
+        width: 200px;
+        height: 30px;
+        border: 1px solid green;
+        text-align: center;
+        vertical-align: center;
+        color: white;
+        font-size: 15px;
+    }
+    .rollup-body {
+        border: 5px solid yellow;
+    }
+</style>
+<script type="text/javascript">
+
+function getTestCase (Y) {
+    
+    var map = new ymaps.Map('map', {
+                center: [55.777153093859496, 37.639130078124964],
+                zoom: 10
+            });
+
+    return {
+        name: "controls",
+
+        _testSearch: function () {
+            var searchControl = new ymaps.control.SearchControl();
+            map.controls.add(searchControl);
+            var layout = searchControl.getLayout();
+            
+            // тестируем события
+            // pagechange
+            // search
+            // showresult -> resultshow
+            // close
+            // open
+            // expand
+            // collapse
+            
+            var testEvents = [
+                    ['pagechange', 'pagechange'],
+                    ['search', 'load'],
+                    ['close', 'close'],
+                    ['open', 'open'],
+                    ['expand', 'expand'],
+                    ['collapse', 'collapse']
+                ],
+                res = '';
+                res1 = 0;
+            
+            for (var i = 0, l = testEvents.length; i < l; i++) {
+                searchControl.events.add(testEvents[i][1], (function (x) {
+                    return function () {
+                        res += testEvents[x][0] + '_';
+                    }
+                })(i));
+            }
+            
+            searchControl.events.add('resultshow', function () {
+                res1++;
+            });
+                  
+            function checkResult () {
+                var mustBe = '';
+                
+                // 1. Ищем по запросу - попутно открывается контрол, выставляется нулевая страница и выбирает нулевой результат
+                mustBe += 'open_search_pagechange_';
+                // 2. Показываем конкретную страницу
+                mustBe += 'pagechange_';
+                // 3. Показываем конкретный результат со сменой страницы - попутно приходит событие смены страницы
+                mustBe += 'pagechange_';
+                //4. Пробуем свернуть-развернуть-закрыть-открыть
+                mustBe += 'collapse_expand_close_open_';
+                Y.assert(res == mustBe, 'Неверный порядок событий');
+                Y.assert(res1 == 2, "Результат показался неверное количество раз.");
+            }
+            
+            function fireCloseExpand () {
+                layout.events.fire('collapse').fire('expand').fire('close').fire('open');
+                window.setTimeout(checkResult, 0)
+            }
+            
+            function showResult () {
+                layout.events.fire('showresult', {
+                    index: 1,
+                    callback: function (promise) {
+                        promise.then(function() {window.setTimeout(fireCloseExpand, 0)});
+                    }
+                });
+            }
+            
+            function showPage () {
+                layout.events.fire('pagechange', {
+                    pageNumber: 2,
+                    callback: function (promise) {
+                        promise.then(function() {window.setTimeout(showResult, 0)});
+                    }
+                });
+            }
+            
+            function search (request) {
+                layout.events.fire('search', {
+                    request: 'Москва',
+                    callback: function (promise) {
+                        promise.then(function() {window.setTimeout(showPage, 0)});
+                    }
+                });
+            }
+            
+            search("Москва");
+        },
+        
+        testCustomLayout: function () {
+            /*var myLayout = ymaps.templateLayoutFactory.createClass("<div style='background-color: #eee6a3; border: 2px solid black;'>" +
+                    "<input class='searchInput' type='text'><input class='search' type='submit' value='Искать'><br>" +
+                    "<input class='resultInput' type='text'>" +
+                    "</div>", {
+                    build: function () {
+                        myLayout.superclass.build.call(this);
+                        var element = ymaps.util.dom.element.find(this.getParentElement(), '.search');
+                        this._listeners = ymaps.domEvent.manager.group(element);
+                        this._listeners.add('click', function () {
+                            var inputElement = ymaps.util.dom.element.find(this.getParentElement(), '.searchInput');
+                            this.events.fire('search', {
+                                request: inputElement.value,
+                                callback: ymaps.util.bind(
+                                    function (promise) {
+                                        promise.then(
+                                            ymaps.util.bind(
+                                                function (result) {
+                                                    var outElement = ymaps.util.dom.element.find(this.getParentElement(), '.resultInput');
+                                                    outElement.value = result[0].properties.get('name');
+                                                }, this
+                                            )
+                                        )
+                                    }, this
+                                )
+                            });
+                        }, this);
+                    },
+                    
+                    clear: function () {
+                        this._listeners.removeAll();
+                        myLayout.superclass.clear.call(this);
+                    }
+                });
+            
+            var customSearch = new ymaps.control.SearchControl({layout: myLayout});*/
+            
+            var mySearchControlLayout = ymaps.templateLayoutFactory.createClass("<div style='searchElement'>" +
+                    "<input id='search-input' type='text'><input id='search-button' type='submit' value='Искать'><br>" +
+                    "<input id='result-input' type='text'>" +
+                "</div>", {
+ 
+                // При построении макета нужно подписаться на клик кнопки.
+                build: function () {
+                    mySearchControlLayout.superclass.build.call(this);
+                    this.bindFunction = ymaps.util.bind(this.onClick, this);
+                    $('#search-button').bind('click', this.bindFunction);
+                    this.oldFirstResult = this.getData().state.get('results', [])[0];
+                    this.getData().state.events.add('change', this.onStateChange, this);
+                },
+                    
+                clear: function () {
+                    this.oldFirstResult = null;
+                    this.getData().state.events.remove('change', this.onStateChange, this);
+                    $('#search-button').unbind('click', this.bindFunction);
+                    mySearchControlLayout.superclass.clear.call(this);
+                },
+ 
+                onClick: function () {
+                    this.events.fire('search', {
+                        request: $('#search-input').get(0).value
+                    });
+                },
+                
+                onStateChange: function () {
+                    var results = this.getData().state.get('results');
+                    if (results && results[0] && (results[0] != this.oldFirstResult)) {
+                        $('#result-input').get(0).value = results[0].properties.get('name');
+                        this.oldFirstResult = results[0];
+                    }
+                }
+            });
+            
+            var customSearch = new ymaps.control.SearchControl({layout: mySearchControlLayout});
+            map.controls.add(customSearch, {right: 5, top: 5});
+            
+            map.controls.add('searchControl', {left: 5, bottom: 50});
+            
+            var positionedSearch = new ymaps.control.SearchControl({
+                    position: {left: 5, bottom: 100}
+                });
+            map.controls.add(positionedSearch);
+            map.controls.remove(positionedSearch);
+            map.controls.add(positionedSearch);
+        },
+
+        testSearchCoordOrder: function () {
+            var testCase = this,
+                sc = new ymaps.control.SearchControl({ searchCoordOrder: 'longlat' });
+
+            sc.search('174.184804,77.380152').then(function (arr) {
+                testCase.resume(function () {
+                    Y.assert(arr.length == 1, 'Возвращено неверное количество геообъектов');
+                });
+            });
+
+            map.controls.add(sc);
+
+            testCase.wait(function () {
+                Y.Assert.fail("Время ожидания истекло.");
+            }, 3000);
+        }
+    };
+}
+ymaps.ready(runTestCase);
+
+</script>
+
+</body>
+</html>

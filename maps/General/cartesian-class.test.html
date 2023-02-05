@@ -1,0 +1,108 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <title>coordSystem.Cartesian</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <!-- YUI -->
+    <script type="text/javascript" src="../../../../test/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../../../test/yui3combo/combo.css" />
+    <script type="text/javascript" src="../../../../test/run-test-case.js"></script>
+    <!-- Code -->
+    <script type="text/javascript">
+        initAPI({
+            lang: "ru-RU",
+            load: "coordSystem.Cartesian",
+            mode: "dev",
+            ns: "ym"
+        });
+    </script>
+</head>
+
+<body class="yui3-skin-sam"></body>
+
+<script type="text/javascript">
+    function getTestCase(Y) {
+        return {
+            name: 'coordSystem.Cartesian',
+            debug: 0,
+
+            setUp: function () {
+                this.scale = [200, 10];
+                this.coordSystem = new ym.coordSystem.Cartesian(this.scale);
+            },
+
+            // модные тригонометрические тесты
+            testDirectProblem: function () {
+                var point1 = [10, 20],
+                    direction = [0.3, 0.1],
+                    dirLen = Math.sqrt(Math.pow(direction[0], 2) + Math.pow(direction[1], 2)),
+                    normalizedDirection = [direction[0] / dirLen, direction[1] / dirLen],
+                    directionAngle = Math.atan2(direction[1], direction[0]),
+                    distance = 5,
+                    endPoint = [
+                        point1[0] + Math.cos(directionAngle) * distance / this.scale[0],
+                        point1[1] + Math.sin(directionAngle) * distance / this.scale[1]
+                    ],
+                    middlePoint = [
+                        point1[0] + Math.cos(directionAngle) * distance / 2 / this.scale[0],
+                        point1[1] + Math.sin(directionAngle) * distance / 2 / this.scale[1]
+                    ],
+                    res = this.coordSystem.solveDirectProblem(point1, direction, distance);
+
+                Y.Assert.areEqual(roundTo5(point1[0]), roundTo5(res.startPoint[0]), 'startPoint[0]');
+                Y.Assert.areEqual(roundTo5(point1[1]), roundTo5(res.startPoint[1]), 'startPoint[1]');
+                Y.Assert.areEqual(roundTo5(endPoint[0]), roundTo5(res.endPoint[0]), 'endPoint[0]');
+                Y.Assert.areEqual(roundTo5(endPoint[1]), roundTo5(res.endPoint[1]), 'endPoint[1]');
+                Y.Assert.areEqual(distance, res.distance, 'distance');
+                Y.Assert.areEqual(roundTo5(normalizedDirection[0]), roundTo5(res.startDirection[0]), 'startDirection[0]');
+                Y.Assert.areEqual(roundTo5(normalizedDirection[1]), roundTo5(res.startDirection[1]), 'startDirection[1]');
+                Y.Assert.areEqual(roundTo5(normalizedDirection[0]), roundTo5(res.endDirection[0]), 'endDirection[0]');
+                Y.Assert.areEqual(roundTo5(normalizedDirection[1]), roundTo5(res.endDirection[1]), 'endDirection[1]');
+                Y.Assert.areEqual(roundTo5(middlePoint[0]), roundTo5(res.pathFunction(0.5).point[0]), 'middlePoint[0]');
+                Y.Assert.areEqual(roundTo5(middlePoint[1]), roundTo5(res.pathFunction(0.5).point[1]), 'middlePoint[1]');
+            },
+
+            testInverseProblem: function () {
+                var point1 = [3, 2],
+                    endPoint = [5, 10],
+                    direction = [endPoint[0] - point1[0], endPoint[1] - point1[1]],
+                    dirLen = 8.2, // ~= 8.2
+                    normalizedDirection = [direction[0] / dirLen, direction[1] / dirLen],
+                    distance = 408, // ~= 407.9
+                    directionAngle = Math.atan2(direction[1], direction[0]),
+                    middlePoint = [
+                        point1[0] + Math.cos(directionAngle) * dirLen / 2,
+                        point1[1] + Math.sin(directionAngle) * dirLen / 2
+                    ],
+                    res = this.coordSystem.solveInverseProblem(point1, endPoint);
+
+                Y.Assert.areEqual(roundTo5(point1[0]), roundTo5(res.startPoint[0]), 'startPoint[0]');
+                Y.Assert.areEqual(roundTo5(point1[1]), roundTo5(res.startPoint[1]), 'startPoint[1]');
+                Y.Assert.areEqual(roundTo5(endPoint[0]), roundTo5(res.endPoint[0]), 'endPoint[0]');
+                Y.Assert.areEqual(roundTo5(endPoint[1]), roundTo5(res.endPoint[1]), 'endPoint[1]');
+                Y.Assert.areEqual(distance, Math.round(res.distance), 'distance');
+                Y.Assert.areEqual(roundTo2(normalizedDirection[0]), roundTo2(res.startDirection[0]), 'startDirection[0]');
+                Y.Assert.areEqual(roundTo2(normalizedDirection[1]), roundTo2(res.startDirection[1]), 'startDirection[1]');
+                Y.Assert.areEqual(roundTo2(normalizedDirection[0]), roundTo2(res.endDirection[0]), 'endDirection[0]');
+                Y.Assert.areEqual(roundTo2(normalizedDirection[1]), roundTo2(res.endDirection[1]), 'endDirection[1]');
+                Y.Assert.areEqual(Math.round(middlePoint[0]), roundTo5(res.pathFunction(0.5).point[0]), 'middlePoint[0]');
+                Y.Assert.areEqual(Math.round(middlePoint[1]), roundTo5(res.pathFunction(0.5).point[1]), 'middlePoint[1]');
+            },
+
+            testDistance: function () {
+                Y.Assert.areEqual(40050, Math.round(this.coordSystem.getDistance([100, 100], [-100, -100])));
+            }
+        }
+    }
+    ym.ready(runTestCase);
+
+    function roundTo5 (number) {
+        return Math.round(number * 10000) / 10000;
+    }
+
+    function roundTo2 (number) {
+        return Math.round(number * 10) / 10;
+    }
+</script>
+</html>

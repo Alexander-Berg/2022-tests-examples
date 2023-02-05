@@ -1,0 +1,143 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+    "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <title>ProviderObserver</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <!-- YUI -->
+    <script type="text/javascript" src="../../../test/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../../test/yui3combo/combo.css"/>
+    <script type="text/javascript" src="../../../test/run-test-case.js"></script>
+    <!-- Code -->
+    <script type="text/javascript">
+        initAPI({
+            lang: "ru-RU",
+            load: "package.full,component.ProviderObserver,event.manager.Base,util.Promise",
+            mode: "debug"
+        });
+    </script>
+    <style>
+        html, html body {
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+    </style>
+</head>
+
+<body class="yui3-skin-sam">
+<div id="map" style="width: 256px; height: 256px; position: absolute;"></div>
+</body>
+
+<script type="text/javascript">
+    function getTestCase (Y) {
+        return {
+            name: "ProviderObserver",
+
+            testProviderObserver: function () {
+                var providerFactory = {
+                        create: function (answer, delay) {
+                            return {
+                                events: new ymaps.event.manager.Base(),
+                                testGetter: function () {
+                                    var promise = new ymaps.util.Promise();
+                                    window.setTimeout(function () {
+                                        answer(promise);
+                                    }, delay || 0);
+
+                                    return promise;
+                                }
+                            };
+                        }
+                    },
+                    noProvider1 = providerFactory.create(function (promise) {
+                        promise.reject('noProvider')
+                    }, 100),
+                    noProvider2 = providerFactory.create(function (promise) {
+                        promise.reject('noProvider')
+                    }, 200),
+                    noData1 = providerFactory.create(function (promise) {
+                        promise.reject('noData')
+                    }, 100),
+                    noData2 = providerFactory.create(function (promise) {
+                        promise.reject('noData')
+                    }, 200),
+                    range1 = providerFactory.create(function (promise) {
+                        promise.resolve([1, 3]);
+                    }, 100),
+                    range2 = providerFactory.create(function (promise) {
+                        promise.resolve([2, 4]);
+                    }, 100),
+
+                    testCase = this,
+                    result, error,
+                    changes = 0,
+                    onChange = function () {
+                        changes++;
+                    },
+                    onResolve = function (res) {
+                        result = res;
+                    },
+                    onReject = function (err) {
+                        error = err;
+                    },
+                    observer = new ymaps.component.ProviderObserver({
+                        changeCallback: onChange,
+                        makeRequest: function (provider) { return provider.testGetter(); }
+                    }, 300);
+
+                test0();
+
+                function test0 () {
+                    observer.get([0, 0]).then(onResolve, onReject);
+
+                    testCase.wait(function () {
+                        Y.assert(changes == 0 && error == 'noProvider', 'Неправильно отработал get без провайдеров');
+                        test1();
+                    }, 300);
+                }
+
+                function test1 () {
+                    observer
+                        .addProvider(noProvider1)
+                        .addProvider(noProvider2);
+                    error = null;
+                    observer.get([0, 0]).then(onResolve, onReject);
+
+                    testCase.wait(function () {
+                        Y.assert(changes == 2 && result.rejected.length == 2 && result.rejected[0] == 'noProvider' && result.rejected[1] == 'noProvider', 'Неправильно отработал запрос без провайдеров');
+                        test2();
+                    }, 300);
+                }
+
+                function test2 () {
+                    observer.addProvider(noData1);
+
+                    observer.get([0, 0]).then(onResolve, onReject);
+
+                    testCase.wait(function () {
+                        Y.assert(changes == 3 && result.rejected.length == 3, 'Неправильно отработал запрос без данных');
+                        test3();
+                    }, 300);
+                }
+
+                function test3 () {
+                    observer.addProvider(range1).addProvider(range2).removeProvider(noProvider1);
+
+                    observer.get([0, 0]).then(onResolve, onReject);
+
+                    testCase.wait(function () {
+                        Y.assert(changes == 6 &&
+                            result.resolved.length == 2 &&
+                            result.resolved[0][0] == 1 && result.resolved[0][1] == 3 &&
+                            result.resolved[1][0] == 2 && result.resolved[1][1] == 4, 'Получен неправильный ответ');
+                    }, 300);
+                }
+            }
+        };
+    }
+
+    ymaps.ready(function () {
+        runTestCase();
+    });
+</script>
+</html>

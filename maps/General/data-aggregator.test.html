@@ -1,0 +1,117 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <title>data.Aggregator</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <!-- YUI -->
+    <script type="text/javascript" src="../../../test/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../../test/yui3combo/combo.css"/>
+    <script type="text/javascript" src="../../../test/run-test-case.js"></script>
+    <script type="text/javascript" src="../../../test/util/event-eye.js"></script>
+    <!-- Code -->
+    <script type="text/javascript">
+        initAPI({
+            lang: "ru-RU",
+            load: "data.Aggregator,data.Manager",
+            mode: "dev"
+        });
+    </script>
+</head>
+
+<body class="yui3-skin-sam"></body>
+
+<script type="text/javascript">
+    function getTestCase (Y) {
+        return {
+            name: "data.Aggregator",
+            // debug: true,
+
+            setUp: function () {
+                this.child = new ymaps.data.Manager({
+                    name: "A",
+                    number: 10
+                });
+                this.data = new ymaps.data.Aggregator({
+                    child: this.child,
+                    text: "Test"
+                });
+
+                eventEye.observe(this.data, ["change"]);
+            },
+
+            tearDown: function () {
+                this.data.destroy();
+            },
+
+            testGet: function() {
+                Y.assert(
+                    this.data.get("text") == "Test" &&
+                    this.data.get("some", "thing") == "thing" &&
+                    this.data.get("child") == this.child &&
+                    this.data.get("child.name") == "A" &&
+                    this.data.get("child.some", "time") == "time" &&
+                    eventEye.length() == 0,
+                    "Неверный результат"
+                );
+            },
+
+            testSet: function () {
+                var result = this.data.set({
+                    "child.name": "B",
+                    "child.number": "5",
+                    "text": "Ok"
+                });
+                Y.assert(
+                    result == this.data &&
+                    this.data.get("child.name") == "B" &&
+                    this.data.get("child.number") == 5 &&
+                    this.data.get("text") == "Ok" &&
+                    eventEye.length() == 1 && eventEye.check(0, {
+                        type: "change",
+                        target: this.data
+                    }),
+                    "Неверный результат 1"
+                );
+
+                eventEye.reset();
+                this.data.set({
+                    "child": new ymaps.data.Manager({
+                        date: 31
+                    }),
+                    "time": new ymaps.data.Manager({
+                        min: 1,
+                        max: 10
+                    })
+                });
+                Y.assert(
+                    !this.data.get("child.name") &&
+                    this.data.get("child.date") == 31 &&
+                    this.data.get("time.min") == 1 &&
+                    eventEye.length() == 1 && eventEye.check(0, {
+                        type: "change",
+                        target: this.data
+                    }),
+                    "Неверный результат 2"
+                );
+
+                eventEye.reset();
+                this.data.set({
+                    "time.min": 0
+                });
+                Y.assert(
+                    this.data.get("child.date") == 31 &&
+                    this.data.get("time.min") == 0 &&
+                    this.data.get("time.max") == 10 &&
+                    eventEye.length() == 1 && eventEye.check(0, {
+                        type: "change",
+                        target: this.data
+                    }),
+                    "Неверный результат 3"
+                );
+            }
+        };
+    }
+    ymaps.ready(runTestCase);
+</script>
+</html>

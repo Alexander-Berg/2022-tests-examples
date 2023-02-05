@@ -1,0 +1,156 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <title>geo object dragging</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <!-- YUI -->
+    <script type="text/javascript" src="../../../test/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../../test/yui3combo/combo.css"/>
+    <script type="text/javascript" src="../../../test/run-test-case.js"></script>
+    <script type="text/javascript" src="../../../test/util/event-eye.js"></script>
+    <!-- Code -->
+    <script type="text/javascript">
+        initAPI({
+            lang: "ru-RU",
+            mode: "debug"
+        });
+    </script>
+</head>
+
+<body class="yui3-skin-sam">
+<div id="map" style="height: 500px; width: 900px;"></div>
+</body>
+
+<script type="text/javascript">
+    function getTestCase (Y) {
+        return {
+            name: "GeoObject zIndex",
+            debug: false,
+
+            _should: {
+                ignore: {
+                }
+            },
+
+            setUp: function () {
+                this.myMap = new ymaps.Map('map', {
+                    center: [45, 40],
+                    zoom: 5
+                });
+            },
+
+            tearDown: function () {
+                this.myMap.destroy();
+            },
+
+            testDefaultInteractiveForPoint: function () {
+                var placemark = this.createPlacemark();
+
+                placemark.getOverlay().then(function (overlay) {
+                    this.resume(function () {
+                        Y.assert(overlay.options.get('zIndex') == 1);
+                        placemark.state.set('hover', true);
+                        Y.assert(overlay.options.get('zIndex') == 2);
+                    })
+                }, this);
+                this.wait();
+            },
+
+            testNonInteractiveForPoint: function () {
+                var placemark = this.createPlacemark();
+                placemark.options.set('interactiveZIndex', false);
+
+                placemark.getOverlay().then(function (overlay) {
+                    this.resume(function () {
+                        Y.assert(overlay.options.get('zIndex') == 1);
+                        placemark.state.set('hover', true);
+                        Y.assert(overlay.options.get('zIndex') == 1);
+                    })
+                }, this);
+                this.wait();
+            },
+
+            testDefaultInteractiveForCircle: function () {
+                var circle = this.createCircle();
+
+                circle.getOverlay().then(function (overlay) {
+                    this.resume(function () {
+                        Y.assert(overlay.options.get('zIndex') == 1);
+                        circle.state.set('hover', true);
+                        Y.assert(overlay.options.get('zIndex') == 1);
+                    })
+                }, this);
+                this.wait();
+            },
+
+            testInteractiveForCircle: function () {
+                var circle = this.createCircle();
+                circle.options.set('interactiveZIndex', true);
+
+                circle.getOverlay().then(function (overlay) {
+                    this.resume(function () {
+                        Y.assert(overlay.options.get('zIndex') == 1);
+                        circle.state.set('hover', true);
+                        Y.assert(overlay.options.get('zIndex') == 2);
+                    })
+                }, this);
+                this.wait();
+            },
+
+            testActualInteractiveZIndexChange: function () {
+                var placemark = this.createPlacemark();
+
+                placemark.getOverlay().then(function (overlay) {
+                    this.resume(function () {
+                        placemark.state.set('hover', true);
+                        Y.assert(overlay.options.get('zIndex') == 2);
+                        placemark.options.set('zIndexHover', 20);
+                        Y.assert(overlay.options.get('zIndex') == 20);
+                    })
+                }, this);
+                this.wait();
+            },
+
+            testActualNonInteractiveZIndexChange: function () {
+                var circle = this.createCircle();
+
+                circle.getOverlay().then(function (overlay) {
+                    this.resume(function () {
+                        circle.state.set('hover', true);
+                        Y.assert(overlay.options.get('zIndex') == 1);
+                        circle.options.set('zIndex', 10);
+                        Y.assert(overlay.options.get('zIndex') == 10);
+                    })
+                }, this);
+                this.wait();
+            },
+
+            createPlacemark: function () {
+                this.placemark = new ymaps.Placemark([43, 40], {}, {
+                    zIndex: 1,
+                    zIndexHover: 2,
+                    zIndexDrag: 3,
+                    zIndexActive: 4
+                });
+                this.myMap.geoObjects.add(this.placemark);
+                return this.placemark;
+            },
+
+            createCircle: function () {
+                this.circle = new ymaps.Circle([
+                    [50, 40], 300000
+                ], {}, {
+                    zIndex: 1,
+                    zIndexHover: 2,
+                    zIndexDrag: 3,
+                    zIndexActive: 4
+                });
+                this.myMap.geoObjects.add(this.circle);
+                return this.circle;
+            }
+        }
+    }
+    ymaps.ready(runTestCase);
+</script>
+</html>

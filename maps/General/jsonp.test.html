@@ -1,0 +1,212 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <title>util.jsonp</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <!-- YUI -->
+    <script type="text/javascript" src="../../../test/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../../test/yui3combo/combo.css" />
+    <script type="text/javascript" src="../../../test/run-test-case.js"></script>
+    <!-- Code -->
+    <script type="text/javascript">
+        initAPI({
+            lang: "ru-RU",
+            load: "util.jsonp",
+            mode: "dev",
+            ns: "ym"
+        });
+    </script>
+</head>
+
+<body class="yui3-skin-sam"></body>
+
+<script type="text/javascript">
+    function getTestCase(Y) { return {
+        name: "util.jsonp",
+        testResponse: function() {
+            var testCase = this;
+            ym.util.jsonp({
+                url: "jsonp_test-response.xml",
+                checkResponse: false
+            }).then(function (res) {
+                testCase.resume(function () {
+                    Y.assert(res.response.value == 42, "Неверные данные");
+                });
+            });
+
+            testCase.wait(function() {
+                Y.Assert.fail("Не загрузился ответ jsonp");
+            }, 1000);
+        },
+
+        testParamName: function() {
+            var testCase = this;
+            ym.util.jsonp({
+                url: "jsonp_test-response.xml",
+                paramName: "customCallback",
+                checkResponse: false
+            }).then(function (res) {
+                testCase.resume(function () {
+                    Y.assert(res.response.value == 42, "Неверные данные");
+                });
+            });
+
+            testCase.wait(function() {
+                Y.Assert.fail("Не загрузился ответ jsonp");
+            }, 1000);
+        },
+
+        testExistingPadding: function() {
+            var testCase = this;
+            window['existingPadding'] = function () {
+                setTimeout(function () {
+                    testCase.resume(function (res) {
+                        Y.assert(window['existingPadding'], "Неверные данные");
+                    });
+                }, 500);
+            };
+            ym.util.jsonp({
+                url: "jsonp_test-response.xml",
+                padding: "existingPadding",
+                checkResponse: false
+            });
+
+            testCase.wait(function() {
+                Y.Assert.fail("Не загрузился ответ jsonp");
+            }, 1000);
+        },
+
+        testReject: function() {
+            var testCase = this,
+                jsonp = ym.util.jsonp({
+                    url: "jsonp_test-response.xml"
+                });
+
+            jsonp.then(function () {
+                testCase.resume(function () {
+                    Y.Assert.fail("request didn't get aborted");
+                });
+            });
+            jsonp.reject();
+
+            testCase.wait(function() {}, 1000);
+        },
+
+        testCustomName: function () {
+            var testCase = this,
+                padding = 'jsonp_trololo',
+                promise;
+
+            window[padding] = function (res) {
+                promise.resolve(res);
+            };
+
+            promise = ym.util.jsonp({
+                url: "jsonp_test-static.js",
+                padding: padding
+            });
+            promise.then(function (res) {
+                testCase.resume(function () {
+                    Y.assert(res == "trololo", "Неверные данные");
+                });
+            });
+
+            testCase.wait(function() {
+                Y.Assert.fail("Не загрузился ответ jsonp");
+            }, 1000);
+        },
+        /*
+        testIdenticalNames: function () {
+            var testCase = this,
+                answers = [],
+                resume = function (res) {
+                    testCase.resume(function () {
+                        Y.assert(res == "trololo" && answers[0] == 'a' && answers[1] == 'b', "Неверные данные");
+                    });
+                };
+
+            ym.util.jsonp({
+                url: "jsonp_test-static.js",
+                padding: 'jsonp_trololo'
+            }).then(function (res) {
+                answers[0] = 'a';
+                if (answers[1]) {
+                    resume(res);
+                }
+            });
+            ym.util.jsonp({
+                url: "jsonp_test-static.js",
+                padding: 'jsonp_trololo'
+            }).then(function (res) {
+                answers[1] = 'b';
+                if (answers[0]) {
+                    resume(res);
+                }
+            });
+
+            testCase.wait(function() {
+                Y.Assert.fail("Не загрузился ответ jsonp");
+            }, 1000);
+        }, */
+
+
+        testBadResponse: function () {
+            var testCase = this;
+            ym.util.jsonp({
+                url: "someurl",
+                timeout: 1000
+            }).then(function (res) {
+
+            },
+            function (res) {
+                testCase.resume(function () {
+                    Y.assert(true, "Превышен интервал ожидания от сервера");
+                });
+            });
+
+            testCase.wait(function() {
+                Y.Assert.fail("Не загрузился ответ jsonp");
+            }, 5000);
+        },
+
+        testSyncReject: function () {
+            var testCase = this,
+                padding = 'myPaddingFunc',
+                a = [],
+                jsonp = ym.util.jsonp({
+                    url: "jsonp_test-response.xml",
+                    padding: padding
+                }),
+                promise;
+
+            window[padding] = function () {
+                promise.resolve();
+            };
+
+            jsonp.then(function (res) {
+            }, function (res) {
+                a[0] = 1;
+            });
+
+            jsonp.reject();
+
+            promise = ym.util.jsonp({
+                url: "jsonp_test-response.xml",
+                padding: padding
+            });
+            promise.then(function (res) {
+                a[1] = 2;
+                testCase.resume(function () {
+                    Y.assert(a.length == 2, "Превышен интервал ожидания от сервера");
+                });
+            });
+
+            testCase.wait(function() {
+                Y.Assert.fail("Не загрузился ответ jsonp");
+            }, 5000);
+        }
+    }}
+    ym.ready(runTestCase);
+</script>
+</html>

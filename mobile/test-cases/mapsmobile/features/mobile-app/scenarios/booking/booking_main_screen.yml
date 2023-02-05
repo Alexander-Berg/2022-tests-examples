@@ -1,0 +1,190 @@
+testing:
+  - regress
+components: booking
+
+# В этот ямл добавлять сценарии Бронирования, взаимодействие с которыми происходит на главном экране
+
+aliases:
+  # Отображение Плашки активного заказа
+  - &booking_active_order
+    - info: |
+        (Веб-карты можно использовать в браузере компьютера или мобильного устройства)
+        Пользователь авторизован в один и тот же аккаунт в МЯК и Веб-Картах
+        К аккаунту пользователя привязан номер телефона
+        У пользователя нет активных записей
+    - do: |
+        Открыть Кофейню Кирилла в Веб-картах:
+        [collapsed-image](https://jing.yandex-team.ru/files/vikelvar/qr-code-1.gif){title=Сканировать QR-код}
+
+        `https://yandex.ru/maps/-/CCUqzHb0cB`
+    - do: Записаться к любому мастеру через CTA-кнопку "Записаться онлайн"
+    - do: Перевести время на устройстве так, чтобы до записи было меньше 2 часов
+    - do: Запустить МЯК
+    - do: |
+        [iOS] Включить эксперименты `bookings_personal` и 'orders_tracking_new_api'
+        [collapsed-image](https://jing.yandex-team.ru/files/xnautilusx/Screenshot%202022-06-01%20at%2012.35.45.png){title=QR-код}
+
+        `yandexmaps://add_exp?bookings_personal&orders_tracking_new_api`
+    - do: |
+        [Android] Включить эксперимент 'orders_tracking_new_api'
+        [collapsed-image](https://jing.yandex-team.ru/files/kuznetsova22/orders_tracking.png){title=QR-код}
+
+        `yandexmaps://add_exp?orders_tracking_new_api`
+    - do: Перезапустить приложение
+
+
+  # Отображение группы Плашек активного заказа
+  - &booking_active_order_group
+    - info: |
+        (Веб-карты можно использовать в браузере компьютера или мобильного устройства)
+        Пользователь авторизован в один и тот же аккаунт в МЯК и Веб-Картах
+        К аккаунту пользователя привязан номер телефона
+        У пользователя нет активных записей
+    - do: |
+        Открыть Кофейню Кирилла в Веб-картах:
+        [collapsed-image](https://jing.yandex-team.ru/files/vikelvar/qr-code-1.gif){title=Сканировать QR-код}
+
+        `https://yandex.ru/maps/-/CCUqzHb0cB`
+    - do: Записаться на любую услугу через CTA-кнопку "Записаться онлайн"
+    - do: Записаться на ещё одну услугу так, чтобы между промежуток между ней и предыдущей был не больше полутора часов
+    - do: Выставить время на устройстве так, чтобы до обоих записей оставалось меньше 2 часов
+    - do: Запустить МЯК
+    - do: |
+        iOS: Включить эксперименты `bookings_personal` и 'orders_tracking_new_api'
+        [collapsed-image](https://jing.yandex-team.ru/files/xnautilusx/Screenshot%202022-06-01%20at%2012.35.45.png){title=QR-код}
+
+        `yandexmaps://add_exp?bookings_personal&orders_tracking_new_api`
+    - do: |
+        Android: Включить эксперимент 'orders_tracking_new_api'
+        [collapsed-image](https://jing.yandex-team.ru/files/kuznetsova22/orders_tracking.png){title=QR-код}
+
+        `yandexmaps://add_exp?orders_tracking_new_api`
+    - do: Перезапустить приложение
+
+specs:
+  Показ Плашки активной записи:
+    - *booking_active_order
+    - assert: |
+        Над таббаром отображается плашка активной записи
+        Информация в плашке совпадает с информацией при записи
+        В плашке присутствует логотип бронирований
+        В плашке присутствует крестик
+    - do: Тап по плашке
+    - assert: Открылась карточка кофейни Кирилла
+
+    - tags:
+        - assessors
+    - platforms:
+        - android
+    - testing:
+        - acceptance_maps
+
+
+  Показ Плашки с группой активных записей:
+    - *booking_active_order_group
+    - assert: Над табами отображается плашка с группой записей
+    - do: Тап по плашке
+    - assert: |
+        Открывается список плашек с записями
+        Информация в плашках совпадает с информацией при записи
+        В плашках присутствует кнопка закрытия
+
+    - tags:
+        - assessors
+    - platforms:
+        - android
+    - testing:
+        - acceptance_maps
+
+
+  Сворачивание Плашки с группой активных записей после закрытия карточки организации:
+    - *booking_active_order_group
+    - assert: Над таббаром отображается плашка с группой записей
+    - do: Тап на плашку
+    - assert: Открывается список плашек с записями
+    - do: Тап на плашку любой записи
+    - assert: Открывается карточка организации
+    - do: Закрыть карточку организации тапом на крестик
+    - assert: |
+        Окрыт главный экран приложения
+        Плашки записей свернулись
+
+    - tags:
+        - assessors
+    - platforms:
+        - android
+
+
+  Закрытие Плашки активной записи тапом на крестик:
+    - *booking_active_order
+    - assert: Над таббаром отображается плашка активной записи
+    - do: Тап на крестик
+    - assert: |
+        Плашка закрылась
+        Над таббаром появились саджесты
+    - do: Перезапустить МЯК с выгрузкой из памяти
+    - assert: |
+        Открывается гланый экран приложения
+        Плашка не отображается
+
+    - tags:
+        - assessors
+    - platforms:
+        - android
+    - testing:
+        - acceptance_maps
+
+
+  Закрытие Плашки активной записи при выходе из аккаунта:
+    - *booking_active_order
+    - assert: Отображается плашка активной записи
+    - do: Выйти из аккаунта
+    - assert: Плашка не отображается
+
+    - platforms:
+        - android
+
+
+  Показ Плашки активной записи только на главном экране:
+    - *booking_active_order
+    - assert: Отображается плашка с информацией о записи
+    - do: Открыть таб "Навигатор"
+    - assert: Плашка не отображается
+    - do: Открыть таб "Транспорта"
+    - assert: Плашка не отображается
+    - do: Открыть настройки
+    - assert: Плашка не отображается
+    - do: Вернуться на главный экран
+    - assert: Отображается плашка с информацией о записи
+
+    - platforms:
+        - android
+
+
+  Подмена лого активной записи (Charles):
+    - info: |
+        Ручка для тестирования плашки записи - /v1/booking/notifications
+        Для подмены  imageUrl используем картинку с сайта  https://picsum.photos/
+        Нужно скачать картинку и разместить ее на Ядиске
+        Подменять нужно только строчку "imageUrl: "тут ссылка с Ядиска""
+        Гайд по подмене методом Map Local - https://wiki.yandex-team.ru/jandekskarty/testing/manual-po-snifferu-charles/?from=%2Fusers%2Fmayinyard%2FManual-po-snifferu-Charles%2F
+    - preconditions: Устройство подключено к внутренней сети через Charles
+    - *booking_active_order
+    - assert: Отображается плашка с информацией о записи
+    - do: Сохранить json файл ответа /v1/booking/notifications
+    - do: |
+        Привести к виду {
+        notifications: [{
+        title: "Запись на ..:..",
+        description: "Мистер сосиска/......",
+        imageUrl: "тут ссылка с Ядиска"
+        deeplink: "yandexmaps://maps............."
+        }],
+        "totalCount": 11
+         }
+    - do: Выполнить подмену ответа методом Map Local
+    - do: Перезагрузить приложение
+    - assert: Отображается плашка записи с кастомным лого
+
+    - platforms:
+        - android

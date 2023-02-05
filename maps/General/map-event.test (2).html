@@ -1,0 +1,122 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <title>MapEvent</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <!-- YUI -->
+    <script type="text/javascript" src="../../../../tests/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../../../tests/yui3combo/combo.css" />
+    <script type="text/javascript" src="../../../../tests/run-test-case.js"></script>
+    <!-- Code -->
+    <script type="text/javascript">
+        initAPI({
+            lang: "ru-RU",
+            load: "package.full,event.Manager,MapEvent,pane.EventPane",
+            ns: "ym"
+        });
+    </script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+        }
+    </style>
+</head>
+
+<body class="yui3-skin-sam" style="padding: 0 !important; margin: 0 !important;">
+    <div id="outer" style="position:absolute; top: 100px; left: 200px; width: 256px; height: 256px;"></div>
+</body>
+
+<script type="text/javascript">
+    var map;
+
+    function getTestCase(Y) { return {
+        name: 'MapEvent',
+
+        testMapEvent: function () {
+            var res = '',
+                aliasRes = '',
+                listeners = myMap.events.group()
+                    .add('click', function (e) {
+                        res += e.get('globalPixelPosition').join(',') + '/';
+                        res += e.get('coordPosition').join(',') + '/';
+                        res += e.get('position').join(',');
+                    })
+                    .add('click', function (e) {
+                        aliasRes += e.get('globalPixels').join(',') + '/';
+                        aliasRes += e.get('coords').join(',') + '/';
+                        aliasRes += e.get('pagePixels').join(',');
+                    });
+
+            Y.Event.simulate(myMap.panes.get('events').getElement(), 'click', { clientX: 328, clientY: 228 });
+
+            Y.assert(
+                res == '256,256/0,0/328,228' && aliasRes == res,
+                'Координаты вычислены неправильно, получено: ' + res
+            );
+            listeners.removeAll();
+        },
+
+        testGeoObjectEvent: function () {
+            var collection = new ym.GeoObjectCollection(),
+                placemark = new ym.GeoObject({
+                    geometry: {
+                        type: 'Point',
+                        coordinates: [0, 0]
+                    }
+                }, {
+                    iconLayout: function () {
+                        var parent;
+                        return {
+                            events: new ym.event.Manager(),
+                            
+                            setParentElement: function (parentElement) {
+                                if (parentElement) {
+                                    parent = parentElement;
+                                    parent.innerHTML = '<div id="test"></div>';
+                                } else {
+                                    parent.innerHTML = '';
+                                }
+                            }
+                        }
+                    }
+                }),
+                res = '';
+
+            collection.add(placemark);
+            myMap.geoObjects.add(collection);
+
+            // Форсируем создание оверлея.
+            placemark.getOverlay();
+
+            ym.domEvent.manager.add(document.getElementById('test'), 'click', function (e) {
+                placemark.events.fire('click', new ym.MapEvent({
+                    target: placemark,
+                    domEvent: e
+                }, myMap));
+            });
+
+            placemark.events.add('click', function (e) {
+                res += e.get('globalPixelPosition').join(',') + '/';
+                res += e.get('coordPosition').join(',') + '/';
+                res += e.get('position').join(',') + '/';
+            });
+
+            collection.events.add('click', function (e) {
+                res += e.get('globalPixelPosition').join(',') + '|';
+                res += e.get('coordPosition').join(',') + '|';
+                res += e.get('position').join(',') + '|';
+            });
+
+            Y.Event.simulate(document.getElementById('test'), 'click', { clientX: 328, clientY: 228 });
+            Y.assert(res == '256,256/0,0/328,228/256,256|0,0|328,228|', 'Координаты вычислены неправильно, получено: ' + res);
+        }
+    }}
+
+    ym.ready(function () {
+        myMap = new ym.Map("outer", { center: [0, 0], zoom: 1 });
+        runTestCase();
+    });
+</script>
+</html>

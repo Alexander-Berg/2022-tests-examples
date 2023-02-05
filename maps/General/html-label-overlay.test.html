@@ -1,0 +1,120 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <title>overlay.html.Label</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <!-- YUI -->
+    <script type="text/javascript" src="../../../../tests/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../../../tests/yui3combo/combo.css" />
+    <script type="text/javascript" src="../../../../tests/run-test-case.js"></script>
+    <!-- Code -->
+    <script type="text/javascript">
+        initAPI({
+            lang: "ru-RU",
+            load: "package.full,overlay.html.Label,geometry.Point,data.Manager",
+            mode: "dev"
+        });
+    </script>
+    <style type="text/css">
+        #pane { width: 400px; height: 300px; background: #ccc; }
+    </style>
+</head>
+
+<body class="yui3-skin-sam">
+
+<script type="text/javascript">
+
+    function getTestCase(Y) {
+        var geometry = new ymaps.geometry.Point(geoMap.getGlobalPixelCenter()),
+            data = { content: 'Hello' },
+            options = {
+                layout: ymaps.templateLayoutFactory.createClass('<ymaps class="ymaps-label">Label:&nbsp;$[content]</ymaps>'),
+                pane: 'outers'
+            },
+            label,
+            findByClass = function (className) { return document.getElementsByClassName(className)[0] || null; };
+
+        return {
+            name: "overlay.html.Label",
+            debug: false,
+
+            _should: {
+                ignore: {
+//                    testLabelPane: true,
+//                    testSizeChange: true
+                }
+            },
+
+            setUp: function () {
+                window.label = label = new ymaps.overlay.html.Label(geometry, data, options);
+                label.options.setParent(geoMap.options);
+            },
+
+            tearDown: function () {
+                label.setMap(null);
+                label = null;
+            },
+
+            testSetMap: function () {
+                label.setMap(geoMap);
+                Y.assert(findByClass('ymaps-label'), 'Ярлык не добавился в DOM.');
+
+                label.setMap(null);
+                Y.assert(!findByClass('ymaps-label'), 'Ярлык не удалился из DOM.');
+            },
+
+            testLabelPane: function () {
+                label.setMap(geoMap);
+                Y.Assert.areEqual(
+                    findByClass('ymaps-outer-pane'),
+                    findByClass('ymaps-label-overlay').parentNode,
+                    'Оверлей не был добавлен в outers pane'
+                );
+
+                label.options.set('pane', 'floats');
+                Y.Assert.areEqual(
+                    findByClass('ymaps-floats-pane'),
+                    findByClass('ymaps-label-overlay').parentNode,
+                    'Оверлей не был добавлен в float pane'
+                );
+            },
+
+            testSizeChange: function () {
+                var minWidth, middleWidth, maxWidth;
+                label.setMap(geoMap);
+
+                middleWidth = label.getElement().firstChild.firstChild.offsetWidth;
+
+                label.setData({});
+                minWidth = label.getElement().firstChild.firstChild.offsetWidth;
+
+                label.setData({ content: 'FFFFFFFFFFFFFUUUUUUUUUUUUUUUUUUU!!!!11111' });
+                maxWidth = label.getElement().firstChild.firstChild.offsetWidth;
+
+                Y.assert(
+                    (maxWidth > middleWidth) && (middleWidth > minWidth),
+                    'Размеры не изменились.' + [minWidth, middleWidth, maxWidth]
+                );
+            }
+        }
+    }
+    ymaps.ready(function () {
+        geoMap = new ymaps.Map('pane', {
+            center: [39, 54],
+            type: "yandex#map",
+            zoom: 1,
+            behaviors: ['drag', 'scrollZoom', 'multiTouch']
+        });
+
+        mapCenter = geoMap.options.get('projection').toGlobalPixels(geoMap.getCenter(), geoMap.getZoom());
+
+        runTestCase();
+    });
+
+</script>
+
+    <div id="pane"></div>
+
+</body>
+</html>

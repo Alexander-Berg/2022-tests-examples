@@ -1,0 +1,210 @@
+components: geoad_pixel
+testing:
+  - regress
+
+specs-integration:
+  aliases:
+    - &ИнфоPixel-GeoAd
+      - info: |
+          - Dev. Set. -> Misc -> Debug config enable - On
+          - Использовать интенты:
+            [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download-2.b60e70b.png){title=QR-код}
+
+            `yandexnavi://reset_exp`
+            [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download.7ed8e87.png){title=QR-код}
+
+            `yandexnavi://set_ad_page_id?page_id=null`
+            [collapsed-image](https://jing.yandex-team.ru/files/vikelvar/testing_overview_pixel_start.png){title=QR-код}
+
+            `yandexnavi://set_ad_page_id?page_type=overview_geo_ad&page_id=overview_banner_6/testing_overview_pixel_start`
+            [collapsed-image](https://jing.yandex-team.ru/files/zaidova/Снимок%20экрана%202022-06-09%20в%2011.42.40.png){title=QR-код}
+
+            `yandexnavi://add_exp?navi_feature_day_night_fast_switch=enabled&navi_overview_ads_priority_for_RU=overview_geo_ad,brand_route,via&navi_ads_overview_ad_queue=geo_ad_location,geo_ad_route,geo_ad_route_end,direct,yas&navi_ad_product_cooldown_overview_banner=60`
+          - Перезапустить приложение
+          - Девайс подключен к инструментам снятия логов
+
+specs:
+  Pixel-GeoAd в обзоре (логирование) (показ и спокойный тап):
+    - *ИнфоPixel-GeoAd
+    - do: Построить маршрут по России
+    - assert: |
+        - Над карточкой обзора появляется GeoAD баннер
+        - В логах приходит событие RequestHandler со значением
+          `uri=https://verify.yandex.ru/verify?platformid=4&a.si=12345&a.te=123&a.aap=1234&a.A=ev&a.evn=load`
+    - do: Подождать две секунды
+    - assert: |
+        - В логах приходит событие RequestHandler со значением
+          `uri=https://verify.yandex.ru/verify?platformid=4&a.si=12345&a.te=123&a.aap=1234&a.A=im`
+    - do: Подождать еще две секунды
+    - assert: |
+        - В логах приходят события RequestHandler со значениями
+          `uri=https://verify.yandex.ru/verify?platformid=4&a.si=12345&a.te=123&a.aap=1234&a.A=ev&a.evn=MRCViewable`
+          `uri=https://verify.yandex.ru/verify?platformid=4&a.si=12345&a.te=123&a.aap=1234&a.A=ev&a.evn=MRC100Viewable`
+    - do: Тап на баннер GeoAd
+    - assert: |
+        - Открывается карточка с рекламным контентом, соответствующим этому GeoAD баннеру
+        - В логах приходит событие RequestHandler со значением
+          `uri=https://verify.yandex.ru/verify?platformid=4&a.si=12345&a.te=123&a.aap=1234&a.A=cl`
+
+    - platforms:
+        - ios
+        - android
+    - testing:
+        - acceptance_navi
+    - tags:
+        - metric
+
+
+  Pixel-GeoAd в обзоре (логирование) (показ и быстрое скрытие тапом по карте):
+    - *ИнфоPixel-GeoAd
+    - do: Построить маршрут по России
+    - assert: |
+        - Над карточкой обзора появляется GeoAD баннер
+        - В логах приходит событие RequestHandler со значением
+          `uri=https://verify.yandex.ru/verify?platformid=4&a.si=12345&a.te=123&a.aap=1234&a.A=ev&a.evn=load`
+    - do: Быстрее чем две секунды (то есть прямо сразу как только появился баннер) тап на карту, чтобы баннер спрятался (Тап на карту, а не на линии маршрута или балуны)
+    - assert: |
+        - В логах приходит событие RequestHandler со значением
+          `uri=https://verify.yandex.ru/verify?platformid=4&a.si=12345&a.te=123&a.aap=1234&a.A=im`
+        - В логах не приходят события RequestHandler со значениями
+          `uri=https://verify.yandex.ru/verify?platformid=4&a.si=12345&a.te=123&a.aap=1234&a.A=ev&a.evn=MRCViewable`
+          `uri=https://verify.yandex.ru/verify?platformid=4&a.si=12345&a.te=123&a.aap=1234&a.A=ev&a.evn=MRC100Viewable`
+
+    - platforms:
+        - ios
+        - android
+    - testing:
+        - acceptance_navi
+    - tags:
+        - metric
+
+
+  Pixel-GeoAd в обзоре (логирование) (показ и быстрое скрытие тапом по кнопке поиска в обзоре):
+    - *ИнфоPixel-GeoAd
+    - do: Построить маршрут по России
+    - assert: |
+        - Над карточкой обзора появляется GeoAD баннер
+        - В логах приходит событие RequestHandler со значением
+          `uri=https://verify.yandex.ru/verify?platformid=4&a.si=12345&a.te=123&a.aap=1234&a.A=ev&a.evn=load`
+    - do: Быстрее чем две секунды Тап на кнопку "Поиск"
+    - assert: |
+        - В логах приходит событие RequestHandler со значением
+          `uri=https://verify.yandex.ru/verify?platformid=4&a.si=12345&a.te=123&a.aap=1234&a.A=im`
+        - В логах не приходят события RequestHandler со значениями
+          `uri=https://verify.yandex.ru/verify?platformid=4&a.si=12345&a.te=123&a.aap=1234&a.A=ev&a.evn=MRCViewable`
+          `uri=https://verify.yandex.ru/verify?platformid=4&a.si=12345&a.te=123&a.aap=1234&a.A=ev&a.evn=MRC100Viewable`
+
+    - platforms:
+        - ios
+        - android
+    - testing:
+        - acceptance_navi
+    - tags:
+        - metric
+
+
+  Pixel-GeoAd в обзоре (логирование) (показ и быстрое скрытие тапом по кнопке отмена):
+    - *ИнфоPixel-GeoAd
+    - do: Построить маршрут по России
+    - assert: |
+        - Над карточкой обзора появляется GeoAD баннер
+        - В логах приходит событие RequestHandler со значением
+          `uri=https://verify.yandex.ru/verify?platformid=4&a.si=12345&a.te=123&a.aap=1234&a.A=ev&a.evn=load`
+    - do: Быстрее чем две секунды Тап на кнопку "Отмена"
+    - assert: |
+        - В логах приходит событие RequestHandler со значением
+          `uri=https://verify.yandex.ru/verify?platformid=4&a.si=12345&a.te=123&a.aap=1234&a.A=im`
+        - В логах не приходят события RequestHandler со значениями
+          `uri=https://verify.yandex.ru/verify?platformid=4&a.si=12345&a.te=123&a.aap=1234&a.A=ev&a.evn=MRCViewable`
+          `uri=https://verify.yandex.ru/verify?platformid=4&a.si=12345&a.te=123&a.aap=1234&a.A=ev&a.evn=MRC100Viewable`
+
+    - platforms:
+        - ios
+        - android
+    - testing:
+        - acceptance_navi
+    - tags:
+        - metric
+
+
+  Pixel-GeoAd в обзоре (логирование) (показ и быстрое скрытие тапом по кнопке поехали):
+    - *ИнфоPixel-GeoAd
+    - do: Построить маршрут по России
+    - assert: |
+        - Над карточкой обзора появляется GeoAD баннер
+        - В логах приходит событие RequestHandler со значением
+          `uri=https://verify.yandex.ru/verify?platformid=4&a.si=12345&a.te=123&a.aap=1234&a.A=ev&a.evn=load`
+    - do: Быстрее чем две секунды Тап на кнопку "Поехали"
+    - assert: |
+        - В логах приходит событие RequestHandler со значением
+          `uri=https://verify.yandex.ru/verify?platformid=4&a.si=12345&a.te=123&a.aap=1234&a.A=im`
+        - В логах не приходят события RequestHandler со значениями
+          `uri=https://verify.yandex.ru/verify?platformid=4&a.si=12345&a.te=123&a.aap=1234&a.A=ev&a.evn=MRCViewable`
+          `uri=https://verify.yandex.ru/verify?platformid=4&a.si=12345&a.te=123&a.aap=1234&a.A=ev&a.evn=MRC100Viewable`
+
+    - platforms:
+        - ios
+        - android
+    - testing:
+        - acceptance_navi
+    - tags:
+        - metric
+
+
+  Pixel-GeoAd в обзоре (логирование) (показ и быстрый тап):
+    - *ИнфоPixel-GeoAd
+    - do: Построить маршрут по России
+    - assert: |
+        - Над карточкой обзора появляется GeoAD баннер
+        - В логах приходит событие RequestHandler со значением
+          `uri=https://verify.yandex.ru/verify?platformid=4&a.si=12345&a.te=123&a.aap=1234&a.A=ev&a.evn=load`
+    - do: Быстрее чем две секунды Тап на баннер, чтобы открылась его карточка
+    - assert: |
+        - Открывается карточка с рекламным контентом, соответствующим этому GeoAD баннеру
+        - В логах приходит событие RequestHandler со значением
+          `uri=https://verify.yandex.ru/verify?platformid=4&a.si=12345&a.te=123&a.aap=1234&a.A=im`
+        - Затем логах приходит событие RequestHandler со значением
+          `uri=https://verify.yandex.ru/verify?platformid=4&a.si=12345&a.te=123&a.aap=1234&a.A=cl`
+    - do: Подождать две секунды
+    - assert: |
+        - В логах спустя две секунды после прихода события `uri=https://verify.yandex.ru/verify?platformid=4&a.si=12345&a.te=123&a.aap=1234&a.A=im` приходят события RequestHandler со значениями
+          `uri=https://verify.yandex.ru/verify?platformid=4&a.si=12345&a.te=123&a.aap=1234&a.A=ev&a.evn=MRCViewable`
+          `uri=https://verify.yandex.ru/verify?platformid=4&a.si=12345&a.te=123&a.aap=1234&a.A=ev&a.evn=MRC100Viewable`
+
+    - platforms:
+        - ios
+        - android
+    - testing:
+        - acceptance_navi
+    - tags:
+        - metric
+
+
+  Pixel-GeoAd в обзоре (логирование) (показ и быстрый тап с закрытием):
+    - *ИнфоPixel-GeoAd
+    - do: Построить маршрут по России
+    - assert: |
+        - Над карточкой обзора появляется GeoAD баннер
+        - В логах приходит событие RequestHandler со значением
+          `uri=https://verify.yandex.ru/verify?platformid=4&a.si=12345&a.te=123&a.aap=1234&a.A=ev&a.evn=load`
+    - do: Быстрее чем две секунды Тап на баннер, чтобы открылась его карточка
+    - assert: |
+        - Открывается карточка с рекламным контентом, соответствующим этому GeoAD баннеру
+        - В логах приходит событие RequestHandler со значением
+          `uri=https://verify.yandex.ru/verify?platformid=4&a.si=12345&a.te=123&a.aap=1234&a.A=im`
+        - Затем логах приходит событие RequestHandler со значением
+          `uri=https://verify.yandex.ru/verify?platformid=4&a.si=12345&a.te=123&a.aap=1234&a.A=cl`
+    - do: Пока не прошло 2 секунды быстро закрыть баннер
+    - assert: |
+        - В логах приходят события RequestHandler со значениями
+          `uri=https://verify.yandex.ru/verify?platformid=4&a.si=12345&a.te=123&a.aap=1234&a.A=ev&a.evn=MRCViewable`
+        - В логах не приходит событие RequestHandler со значением:
+          `uri=https://verify.yandex.ru/verify?platformid=4&a.si=12345&a.te=123&a.aap=1234&a.A=ev&a.evn=MRC100Viewable`
+
+    - platforms:
+        - ios
+        - android
+    - testing:
+        - acceptance_navi
+    - tags:
+        - metric

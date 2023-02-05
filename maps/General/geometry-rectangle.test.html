@@ -1,0 +1,106 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <title>geometry.Rectangle</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <!-- YUI -->
+    <script type="text/javascript" src="../../../../test/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../../../test/yui3combo/combo.css" />
+    <script type="text/javascript" src="../../../../test/run-test-case.js"></script>
+    <!-- Code -->
+    <script type="text/javascript">
+        initAPI({
+            lang: "ru-RU",
+            load: "Map,geometry.Rectangle",
+            mode: "dev"
+        });
+    </script>
+    <script type="text/javascript" src="../../../../test/util/event-eye.js"></script>
+</head>
+
+<body class="yui3-skin-sam">
+    <div id="container" style="width: 600px; height: 400px;"></div>
+</body>
+
+<script type="text/javascript">
+    function getTestCase(Y) { return {
+        name: "geometry.Rectangle",
+        debug: false,
+
+        setUp: function () {
+            this.rect = new ymaps.geometry.Rectangle([[1, 2], [3, 4]]);
+            this.zoom = 4;
+            geoMap = new ymaps.Map('container', {
+                center: [39, 54],
+                type: "yandex#map",
+                zoom: this.zoom,
+                behaviors: []
+            });
+
+            eventEye.observe(this.rect, ["change", "optionschange"]);
+        },
+
+        tearDown: function () {
+            geoMap.destroy();
+        },
+
+        testEmptyConstructor: function() {
+            this.rect = new ymaps.geometry.Rectangle();
+
+            this.rect.options.set('coordRendering', 'shortestPath');
+            this.rect.setMap(geoMap);
+            this.rect.options.setParent(geoMap.options);
+
+            Y.assert(
+                this.rect.getPixelGeometry().getCoordinates() === null,
+                "Неверный результат для пустого конструктора"
+            );
+        },
+
+        testRenderPixelGeometry: function () {
+            this.rect.options.set('coordRendering', 'shortestPath');
+            this.rect.setMap(geoMap);
+            this.rect.options.setParent(geoMap.options);
+
+            this.rect.setCoordinates([[0, 0], [85.084, -180]]);
+
+            var pixels = this.rect.getPixelGeometry(0).getCoordinates();
+            Y.assert(
+                Math.round(pixels[0][0]) == 128 * Math.pow(2, this.zoom) &&
+                Math.round(pixels[0][1]) == 128 * Math.pow(2, this.zoom) &&
+                Math.round(pixels[1][0]) == 0 &&
+                Math.round(pixels[1][1]) == 0 &&
+                eventEye.length() == 3 && eventEye.check(0, {
+                    type: "optionschange",
+                    target: this.rect
+                }),
+                "Неверный результат getPixelGeometry"
+            );
+        },
+        
+        testGetClosest: function () {
+            this.rect.setMap(geoMap);
+            this.rect.options.setParent(geoMap.options);
+
+            var result = this.rect.getClosest([0, 0]);
+            Y.assert(result);
+        },
+
+        testContains: function () {
+            this.rect.setMap(geoMap);
+            this.rect.options.setParent(geoMap.options);
+
+            Y.assert(!this.rect.contains([3, 5]), '1');
+            Y.assert(this.rect.contains([2.5, 2.5]), '2');
+            Y.assert(this.rect.contains([1, 2]), '3');
+        },
+
+        testICustomizable: function () {
+            this.rect.options.set('a', 1);
+            Y.assert(eventEye.length() == 1 && eventEye.check(0, { type: "optionschange" }));
+        }
+    }}
+    ymaps.ready(runTestCase);
+</script>
+</html>

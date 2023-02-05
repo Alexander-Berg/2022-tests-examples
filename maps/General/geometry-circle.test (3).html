@@ -1,0 +1,180 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <title>geometry.Circle</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <!-- YUI -->
+    <script type="text/javascript" src="../../../../tests/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../../../tests/yui3combo/combo.css" />
+    <script type="text/javascript" src="../../../../tests/run-test-case.js"></script>
+    <!-- Code -->
+    <script type="text/javascript">
+        initAPI({
+            lang: "ru-RU",
+            load: "package.full,geometry.Circle,projection.wgs84Mercator",
+            mode: "dev"
+        });
+    </script>
+    <script type="text/javascript" src="../../../../tests/util/event-eye.js"></script>
+</head>
+
+<body class="yui3-skin-sam">
+    <div id="container" style="width: 600px; height: 400px;"></div>
+</body>
+
+<script type="text/javascript">
+    var placemark;
+    function getTestCase(Y) { return {
+        name: "geometry.Circle",
+//        debug: true,
+
+        setUp: function () {
+            this.circle = new ymaps.geometry.Circle([10, 5], 20000000);
+            this.zoom = 0;
+            geoMap = new ymaps.Map('container', {
+                center: [39, 54],
+                type: "yandex#map",
+                zoom: this.zoom,
+                behaviors: []
+            });
+
+            eventEye.observe(this.circle, ["change", "optionschange", "pixelgeometrychange"]);
+        },
+
+        tearDown: function () {
+            geoMap.destroy();
+        },
+
+        testEmptyConstructor: function() {
+            this.circle = new ymaps.geometry.Circle();
+
+            this.circle.setMap(geoMap);
+            this.circle.options.setParent(geoMap.options);
+
+            Y.assert(
+                this.circle.getPixelGeometry().getCoordinates() === null,
+                "Неверный результат для пустого конструктора"
+            );
+        },
+
+        testRenderPixelGeometry: function() {
+            try {
+                this.circle.getPixelGeometry();
+                Y.fail("Нет ошибки");
+            } catch (e) {
+                Y.assert(e.message == "geometry.main.Circle.getPixelGeometry: Не задана карта.",
+                "Неверное сообщение об ошибке: " + e.message);
+            }
+
+            this.circle.setMap(geoMap);
+            this.circle.options.setParent(geoMap.options);
+
+            this.circle.setCoordinates([0, 0]);
+            var pixelGeometry = this.circle.getPixelGeometry(),
+                center = pixelGeometry.getCoordinates(),
+                radius = pixelGeometry.getRadius();
+
+            Y.assert(
+                Math.round(center[0]) == 128 * Math.pow(2, this.zoom) &&
+                Math.round(center[1]) == 128 * Math.pow(2, this.zoom) &&
+                Math.round(radius) == 128 * Math.pow(2, this.zoom) &&
+                eventEye.length() == 3 && eventEye.check(0, {
+                    type: "optionschange",
+                    target: this.circle
+                }) && eventEye.check(1, {
+                    type: "change",
+                    target: this.circle
+                }) && eventEye.check(2, {
+                    type: "pixelgeometrychange",
+                    target: this.circle
+                }),
+                "Неверный результат getPixelGeometry"
+            );
+        },
+
+        testContains: function () {
+            this.circle.setMap(geoMap);
+            this.circle.options.setParent(geoMap.options);
+            this.circle.options.set('geodesic', true);
+            this.circle.setRadius(1000000);
+
+            Y.assert(this.circle.contains([10, 5]), 'Центр');
+            Y.assert(this.circle.contains([11, 6]), 'Внутренняя');
+            var // solveDirect = geoMap.options.get('projection').getCoordSystem().solveDirectProblem,
+                pointOnCoutour = [19.037824683197165, 5], // solveDirect(this.circle.getCenter(), [1, 0], this.circle.getRadius())
+                pointOutOfCoutour = [19.037833717234715, 5]; //solveDirect(this.circle.getCenter(), [1, 0], this.circle.getRadius() + 1);
+
+            Y.assert(this.circle.contains(pointOnCoutour), 'На контуре');
+            Y.assert(!this.circle.contains(pointOutOfCoutour), 'Не принадлежит');
+        },
+
+        testClosest: function () {
+            this.circle.setMap(geoMap);
+            this.circle.options.setParent(geoMap.options);
+            this.circle.options.set('geodesic', true);
+            this.circle.setRadius(100000);
+
+            var closest = this.circle.getClosest([-80, 5]).position,
+                // solveDirect = geoMap.options.get('projection').getCoordSystem().solveDirectProblem,
+                neededPoint = [9.095880562693862, 5]; // solveDirect(this.circle.getCenter(), [-1, 0], this.circle.getRadius());
+            Y.Assert.areEqual(
+                arraySetFractionLengthRecursive(neededPoint, 1).toString(),
+                arraySetFractionLengthRecursive(closest, 1).toString(),
+                'Снизу'
+            );
+
+            closest = this.circle.getClosest(this.circle.getCenter()).position;
+            neededPoint = [9.095880562693862, 5]; // solveDirect(this.circle.getCenter(), [-1, 0], this.circle.getRadius());
+            Y.Assert.areEqual(
+                arraySetFractionLengthRecursive(neededPoint, 0).toString(),
+                arraySetFractionLengthRecursive(closest, 0).toString(),
+                'Центр'
+            );
+
+            closest = this.circle.getClosest([10, 6]).position;
+            neededPoint = [9.998750444038706, 5.91207885193937]; // solveDirect(this.circle.getCenter(), [0, 1], this.circle.getRadius());
+            Y.Assert.areEqual(
+                arraySetFractionLengthRecursive(neededPoint, 1).toString(),
+                arraySetFractionLengthRecursive(closest, 1).toString(),
+                'Внутри справа'
+            );
+        },
+
+        testICustomizable: function () {
+            this.circle.options.set('a', 1);
+            Y.assert(eventEye.length() == 1 && eventEye.check(0, { type: "optionschange" }));
+        }
+    }}
+
+    function roundRecursive (array) {
+        var result = [];
+
+        for (var i = 0; i < array.length; i++) {
+            if (isNaN(array[i])) {
+                result.push(roundRecursive(array[i]));
+            } else {
+                result.push(Math.round(array[i]));
+            }
+        }
+
+        return result;
+    }
+
+    function arraySetFractionLengthRecursive (array, fractionLength) {
+        var res = [],
+            tens = Math.pow(10, fractionLength);
+
+        for (var i = 0; i < array.length; i++) {
+            res.push(
+                array[i].length ?
+                    arraySetFractionLengthRecursive(array[i], fractionLength) :
+                    Math.round(array[i] * tens) / tens
+            );
+        }
+
+        return res;
+    }
+    ymaps.ready(runTestCase);
+</script>
+</html>

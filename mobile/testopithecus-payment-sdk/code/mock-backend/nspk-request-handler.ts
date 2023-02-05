@@ -1,0 +1,51 @@
+import {
+  HttpRequest,
+  HttpRequestHandler,
+  HttpResponse,
+  HttpResponseBuilder,
+} from '../../../common/code/network/http-layer'
+
+export class NspkRequestHandler implements HttpRequestHandler {
+  public handleRequest(request: HttpRequest): HttpResponse {
+    if (request.url === '/nspk/nspk_bank_apps_android') {
+      return new HttpResponseBuilder()
+        .setCode(200)
+        .setBodyText(
+          '{\n' +
+            '\t"status": "success",\n' +
+            '\t"bank_apps": [\n' +
+            '\t\t{\n' +
+            '\t\t\t"package_name": "com.yandex.payment.sample"\n' +
+            '\t\t}\n' +
+            '\t\t]\n' +
+            '\n}',
+        )
+        .build()
+    } else if (request.url === '/nspk/nspk_bank_apps_ios' || request.url === '/nspk/nspk_bank_apps_common') {
+      return new HttpResponseBuilder()
+        .setCode(200)
+        .setBodyText(
+          '{\n' +
+            '\t"status": "success",\n' +
+            '\t"bank_apps": [\n' +
+            '\t\t{\n' +
+            '\t\t\t"bank_name": "Sample Bank Ltd.",\n' +
+            '\t\t\t"logo_url": "https://qr.nspk.ru/proxyapp/logo/bank100000000004.png",\n' +
+            '\t\t\t"package_name": "com.yandex.payment.sample",\n' +
+            '\t\t\t"schema": "bank100000000004"\n' +
+            '\t\t},\n' +
+            '\t\t{\n' +
+            '\t\t\t"bank_name": "OLOLO Bank Ltd.",\n' +
+            '\t\t\t"logo_url": "https://qr.nspk.ru/proxyapp/logo/bank100000000005.png",\n' +
+            '\t\t\t"package_name": "com.yandex.payment.sample",\n' +
+            '\t\t\t"schema": "bank100000000005"\n' +
+            '\t\t}\n' +
+            '\t\t]\n' +
+            '\n}',
+        )
+        .build()
+    } else {
+      return new HttpResponseBuilder().setCode(500).build()
+    }
+  }
+}

@@ -1,0 +1,115 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <title>hotspot.ShapeContainer</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <!-- YUI -->
+    <script type="text/javascript" src="../../../../tests/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../../../tests/yui3combo/combo.css" />
+    <script type="text/javascript" src="../../../../tests/run-test-case.js"></script>
+    <!-- Code -->
+    <script type="text/javascript">
+        initAPI({
+            lang: "ru-RU",
+            mode: "debug",
+            load: "hotspot.ShapeContainer,hotspot.Shape,hotspot.shape.geometry.Polygon,geometry.pixel.Polygon"
+        });
+    </script>
+</head>
+
+<body class="yui3-skin-sam"></body>
+
+<script type="text/javascript">
+    function getTestCase(Y) { return {
+        name: "hotspot.ShapeContainer",
+        
+        setUp: function () {
+            this.container = new ymaps.hotspot.ShapeContainer();    
+        },
+        
+        tearDown: function () {
+            this.container = null;
+        },
+        
+        createShape: function (coordinates, zIndex) {
+            return new ymaps.hotspot.Shape({
+                    pixelGeometry: new ymaps.geometry.pixel.Polygon([coordinates], 'evenOdd', {convex: true})
+                }, {
+                    zIndex: zIndex
+                });
+        },
+        
+        testTrivial: function () {
+            var shapes = [];
+            shapes[0] = this.createShape([[0, 0], [0, 2], [2, 2], [2, 0]]);
+            
+            for (var i = 0, l = shapes.length; i < l; i++) {
+                shapes[i].setContainer(this.container);    
+            }
+            this.container.add(shapes);
+            var res = this.container.getObjectInPosition([0.5, 0.5], 1);
+            Y.assert(res && res.object == shapes[0], "Неверно определился активный объект.");
+        },
+        
+        testSerialNumber: function () {
+            var shapes = [];
+            shapes[0] = this.createShape([[0, 0], [0, 2], [2, 2], [2, 0]], 1);
+            shapes[1] = this.createShape([[0, 0], [0, 3], [3, 3], [3, 0]], 1);
+            
+            for (var i = 0, l = shapes.length; i < l; i++) {
+                shapes[i].setContainer(this.container);    
+            }
+            this.container.add(shapes);
+            var res = this.container.getObjectInPosition([0.5, 0.5], 1);
+            Y.assert(res && res.object == shapes[1], "Активным должен быть объект, добавленный последним.");
+        },
+        
+        testZIndex: function () {
+            var shapes = [];
+            shapes[0] = this.createShape([[0, 0], [0, 2], [2, 2], [2, 0]], 2);
+            shapes[1] = this.createShape([[0, 0], [0, 3], [3, 3], [3, 0]], 1);
+            
+            for (var i = 0, l = shapes.length; i < l; i++) {
+                shapes[i].setContainer(this.container);    
+            }
+            this.container.add(shapes);
+            var res = this.container.getObjectInPosition([0.5, 0.5], 1);
+            Y.assert(res && res.object == shapes[0], "Активным должен быть объект, имеющий больший zIndex.");
+        },
+        
+        testDifferentSizeShape: function () {
+            var shapes = [];
+            shapes[0] = this.createShape([[0, 0], [0, 2], [2, 2], [2, 0]]);
+            shapes[1] = this.createShape([[0, 0], [0, 10000], [10000, 10000], [10000, 0]]);
+            
+            for (var i = 0, l = shapes.length; i < l; i++) {
+                shapes[i].setContainer(this.container);    
+            }
+            this.container.add(shapes);
+            var res = this.container.getObjectInPosition([700.5, 700.5], 1);
+            Y.assert(res && res.object == shapes[1], "Неверно определился активный объект в случае, когда есть несколько внутренних контейнеров.");
+        },
+        
+        testClear: function () {
+            var shapes = [];
+            shapes[0] = this.createShape([[0, 0], [0, 2], [2, 2], [2, 0]]);
+            shapes[1] = this.createShape([[0, 0], [0, 10000], [10000, 10000], [10000, 0]]);
+            
+            for (var i = 0, l = shapes.length; i < l; i++) {
+                shapes[i].setContainer(this.container);    
+            }
+            this.container.add(shapes);
+            
+            this.container.clear();
+            
+            var res1 = this.container.getObjectInPosition([700.5, 700.5], 1),
+                res2 = this.container.getObjectInPosition([0.5, 0.5], 1);
+            
+            Y.assert(res1 == null && res2 == null, "Некорректно отработал метод clear контейнера.");
+        }
+    }}
+    ymaps.ready(runTestCase);
+</script>
+<div id="map"></div>
+</html>

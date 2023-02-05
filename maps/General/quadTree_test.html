@@ -1,0 +1,419 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <title>util.quadTree</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <!-- YUI -->
+    <script type="text/javascript" src="../../../test/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../../test/yui3combo/combo.css"/>
+    <script type="text/javascript" src="../../../test/run-test-case.js"></script>
+    <!-- Code -->
+    <script type="text/javascript"
+            src="http://localhost:8080/2.0/?lang=ru-RU&load=util.quadTree,util.math.areEqual,hotspot.shape.Rectangle,hotspot.ShapeContainer&mode=debug"></script>
+</head>
+
+<body class="yui3-skin-sam"></body>
+
+<script type="text/javascript">
+
+window.listDump = function (list) {
+    var it = list.getIterator(),
+            obj,
+            cnt = 0,
+            arr = [];
+    while (obj = it.getNext()) {
+        arr.push(obj.position ? obj.id : ('q' + obj.qt));
+    }
+    console.log(arr);
+}
+
+function getTestCase(Y) {
+    return {
+        name:"util.quadTree",
+        testInsert:function () {
+            var manager = new ymaps.util.quadTree.Manager();
+            for (var i = 0; i < 10; i += 0.1) {
+                var obj = {
+                    position:[Math.cos(i), Math.sin(i)]
+                };
+                manager.add(obj);
+            }
+        },
+
+        testSizeInsert:function () {
+            var manager = new ymaps.util.quadTree.Manager(),
+                    positions = [
+                        [-0.5, 0.5],
+                        [0.5, 0.5],
+                        [0.5, -0.5],
+                        [-0.5, -0.5],
+                        [0, 0]
+                    ],
+                    traversedCnt = 0,
+                    L = 100,
+                    traversed = [],
+                    pl = positions.length;
+            for (var i = 0, j; i < L; i++) {
+                for (j = 0; j < pl; ++j) {
+                    var obj = {
+                        position:positions[j],
+                        size:[0.6, 0.6]
+                    };
+                    manager.add(obj);
+                }
+            }
+
+            traversedCnt = 0;
+            manager.traverse([
+                [-0.1, -0.1],
+                [0.1, 0.1]
+            ], function (obj) {
+                traversedCnt++;
+            });
+            Y.assert(traversedCnt == L * pl, '1. Выполнен обход не всех обьектов');
+
+            traversedCnt = 0;
+            manager.traverse([
+                [0.2, 0.2],
+                [1, 1]
+            ], function (obj) {
+                traversedCnt++;
+            });
+            Y.assert(traversedCnt == L * 2, '2. Выполнен обход не всех обьектов');
+
+            traversedCnt = 0;
+            manager.traverse([
+                [1, 0],
+                [1.1, 1]
+            ], function (obj) {
+                traversedCnt++;
+            });
+            Y.assert(traversedCnt == L * 2, '3. Выполнен обход не всех обьектов');
+
+            traversedCnt = 0;
+            manager.traverse([
+                [1, 0.2],
+                [1.1, 1]
+            ], function (obj) {
+                traversedCnt++;
+            });
+            Y.assert(traversedCnt == L, '4. Выполнен обход не всех обьектов');
+
+
+        },
+
+        /**/
+
+        testTraverseAll:function () {
+            var manager = new ymaps.util.quadTree.Manager(),
+                    totalCnt = 0,
+                    traversedCnt = 0,
+                    traversed = [],
+                    f = Math.PI / 20;
+            for (var i = 0; i < 30; i += 1) {
+                var obj = {
+                    position:[Math.cos(i * f), Math.sin(i)],
+                    id:i
+                };
+                manager.add(obj);
+                totalCnt++;
+            }
+            manager.traverse([
+                [-1.1, -1.1],
+                [ 1.1, 1.1]
+            ], function (obj) {
+                traversedCnt++;
+                traversed.push(obj.id);
+            });
+            Y.log('traversed' + traversedCnt + 'of' + totalCnt);
+            Y.assert(totalCnt == traversedCnt, 'Был выполнен обход не всех обьктов');
+        },
+        /**/
+        testTraverseRegion:function () {
+            var manager = new ymaps.util.quadTree.Manager(),
+                    totalCnt = 0,
+                    regionCnt = 0,
+                    traversedCnt = 0,
+                    regionSet = [];
+            for (var i = 0; i < 4000; i += 1) {
+                var obj = {
+                    position:[Math.cos(i) * 10, Math.sin(i) * 10],
+                    id:i
+                };
+                manager.add(obj);
+                totalCnt++;
+                if (obj.position[0] >= 0 && obj.position[1] >= 0) {
+                    regionCnt++;
+                    regionSet[i] = obj;
+                }
+            }
+
+            traversedCnt = 0;
+            manager.traverse([
+                [-1, -1],
+                [1, 1]
+            ], function () {
+
+                traversedCnt++;
+            });
+            Y.log('traversed' + traversedCnt + 'of' + regionCnt + ', all - ' + totalCnt);
+            Y.assert(!traversedCnt, 'Был выполнен обход обьектов вне поля');
+
+            traversedCnt = 0;
+            manager.traverse([
+                [0, 0],
+                [20000, 20000]
+            ], function (obj) {
+                traversedCnt++;
+            });
+            Y.log('traversed' + traversedCnt + 'of' + regionCnt + ', all - ' + totalCnt);
+            Y.assert(regionCnt <= traversedCnt, 'Был выполнен обход не всех обьктов');
+        },
+        /**/
+
+        testSpeed:function () {
+            var manager = new ymaps.util.quadTree.Manager(),
+                    subset = [],
+                    L = 10000,
+                    e = 1e-8;
+            var tsZ = +(new Date());
+            var A = 3, B = 5, C = 3571, x = 77, y = 7;
+            for (var i = 0; i < L; i += 1) {
+                x = A * (x + B) % C;
+                y = A * (y + B) % C;
+                var obj = {
+                    position:[x, y],
+                    id:i
+                };
+                manager.add(obj);
+                subset.push(obj);
+            }
+            var testPosition = subset[L - 1].position,
+                    arrayCallback = function (i) {
+                        // Y.log('got on ' + i + ' iteration');
+                    },
+                    quadCallback = function (obj) {
+                        //Y.log('q on' + obj.id)
+                    };
+
+            var tsZ2 = +(new Date());
+            //пустой запуск для генерации дерева
+            manager.traverse([
+                [testPosition[0] - e, testPosition[1] - e],
+                [testPosition[0] + e, testPosition[1] + e]
+            ], function (obj) {
+            });
+
+            var ts0 = +(new Date());
+            for (var i = 0; i < L; ++i) {
+                if (ymaps.util.math.areEqual(testPosition, subset[i].position)) {
+                    arrayCallback(i);
+                }
+            }
+
+            var ts1 = +(new Date());
+
+            manager.traverse([
+                [testPosition[0] - e, testPosition[1] - e],
+                [testPosition[0] + e, testPosition[1] + e]
+            ], quadCallback);
+
+            var ts2 = +(new Date()),
+                    qT = ts2 - ts1,
+                    aT = ts1 - ts0;
+            Y.log('QT:' + qT);
+            Y.log('array:' + aT);
+            Y.log('create time' + (tsZ2 - tsZ) + ' / ' + (ts0 - tsZ2) + ' на пуск');
+            Y.assert(qT <= aT, "Время работы кваддерева больше чем обход массива")
+        },
+
+        testVersusShapeContainer:function () {
+            var manager = new ymaps.util.quadTree.Manager(),
+                    L = 3000,
+                    container = new ymaps.hotspot.ShapeContainer(),
+                    e = 1e-8,
+                    shapes = [],
+                    objectLookup = [];
+            for (var i = 0; i < L; i += 1) {
+                var obj = {
+                    position:[Math.random() * 100, Math.random() * 100],
+                    id:i
+                };
+                manager.add(obj);
+                objectLookup.push(obj);
+                shapes.push(new ymaps.hotspot.shape.Rectangle([
+                    [obj.position[0] - e, obj.position[1] - e],
+                    [obj.position[0] + e, obj.position[1] + e]
+                ], { priority:i}));
+            }
+
+            container.add(shapes);
+
+            var testPosition = objectLookup[700].position;
+
+            //прогрев данных
+            manager.traverse([
+                [testPosition[0] - e, testPosition[1] - e],
+                [testPosition[0] + e, testPosition[1] + e]
+            ], function (obj) {
+            });
+            container.getObjectInPosition(testPosition, 1);
+
+            var ts0 = +(new Date());
+            var testObjects = [];
+
+            for (var j = 0; j < 100; ++j) {
+                manager.traverse([
+                    [testPosition[0] - e, testPosition[1] - e],
+                    [testPosition[0] + e, testPosition[1] + e]
+                ], function (obj) {
+                    testObjects.push(obj);
+                });
+            }
+
+            var ts1 = +(new Date());
+            for (var j = 0; j < 100; ++j) {
+                var sh1 = container.getObjectInPosition(testPosition, 1);
+            }
+            var ts2 = +(new Date());
+            //console.log(sh1,testObjects);
+            //Y.assert(sh1.object == shape1, "Неверно определилась фигура, в которую попала точка.");
+
+            Y.log('QT:' + (ts1 - ts0));
+            Y.log('hotspots:' + (ts2 - ts1));
+        },
+
+        testVersusShapeContainerDynaCast:function () {
+            var L = 200,
+                    e = 1e-8,
+                    shapes = [],
+                    objectLookup = [];
+            for (var i = 0; i < L; i += 1) {
+                var obj = {
+                    position:[Math.random() * 100, Math.random() * 100],
+                    id:i
+                };
+                objectLookup.push(obj);
+                shapes.push(new ymaps.hotspot.shape.Rectangle([
+                    [obj.position[0] - e, obj.position[1] - e],
+                    [obj.position[0] + e, obj.position[1] + e]
+                ], { priority:i}));
+            }
+
+            var testPosition = objectLookup[100].position;
+
+            var ts0 = +(new Date());
+            var testObjects = [],
+                    deltaObj = [];
+
+            for (var j = 0; j < 100; ++j) {
+                var manager = new ymaps.util.quadTree.Manager();
+                for (var i = 0; i < L; ++i) {
+                    manager.add(objectLookup[i]);
+                }
+                manager.traverse([
+                    [testPosition[0] - e, testPosition[1] - e],
+                    [testPosition[0] + e, testPosition[1] + e]
+                ], function (obj) {
+                    testObjects.push(obj);
+                });
+            }
+
+            var ts1 = +(new Date());
+            for (var j = 0; j < 100; ++j) {
+                var container = new ymaps.hotspot.ShapeContainer();
+
+                container.add(shapes);
+                var sh1 = container.getObjectInPosition(testPosition, 1);
+
+            }
+            var ts2 = +(new Date());
+            Y.log('QT:' + (ts1 - ts0));
+            Y.log('hotspots:' + (ts2 - ts1));
+        },
+
+        testVersusShapeContainerDynaAdd:function () {
+            var L = 2000,
+                    e = 1e-8,
+                    shapes = [],
+                    objectLookup = [];
+            for (var i = 0; i < L; i += 1) {
+                var obj = {
+                    position:[Math.random() * 100, Math.random() * 100],
+                    id:i
+                };
+                objectLookup.push(obj);
+                shapes.push(new ymaps.hotspot.shape.Rectangle([
+                    [obj.position[0] - e, obj.position[1] - e],
+                    [obj.position[0] + e, obj.position[1] + e]
+                ], { priority:i}));
+            }
+
+            var testPosition = objectLookup[100].position;
+
+            var ts0 = +(new Date());
+            var testObjects = [],
+                    deltaObj = [];
+
+            var manager = new ymaps.util.quadTree.Manager();
+            for (var j = 0; j < L; ++j) {
+                manager.add(objectLookup[j]);
+                manager.traverse([
+                    [testPosition[0] - e, testPosition[1] - e],
+                    [testPosition[0] + e, testPosition[1] + e]
+                ], function (obj) {
+                    testObjects.push(obj);
+                });
+            }
+
+            var ts1 = +(new Date());
+            var container = new ymaps.hotspot.ShapeContainer();
+            for (var j = 0; j < L; ++j) {
+                container.add([shapes[j]]);
+                var sh1 = container.getObjectInPosition(testPosition, 1);
+
+            }
+            var ts2 = +(new Date());
+            Y.log('QT:' + (ts1 - ts0));
+            Y.log('HT:' + (ts2 - ts1));
+        },
+
+        testBlockLocation:function () {
+            var manager = new ymaps.util.quadTree.Manager(),
+                    positions = [
+                        [-1, 1],
+                        [1, 1],
+                        [1, -1],
+                        [-1, -1],
+                        [0, 0]
+                    ],
+                    pl = positions.length;
+            for (var i = 0, j; i < 1000; i++) {
+                for (j = 0; j < pl; ++j) {
+                    var obj = {
+                        position:positions[j],
+                        size:[0.1, 0.1]
+                    };
+                    manager.add(obj);
+                }
+            }
+            //console.log('start',manager);
+            var nCnt = 0;
+            manager.blockTraverse([
+                [-0.2, -0.2],
+                [0.2, 0.2]
+            ], function (list, location, node, fullRegionMatch) {
+                Y.log(location.code.toString(2));
+                nCnt++;
+            });
+            Y.log('report from ' + nCnt + ' nodes');
+            //console.log('end',manager);
+        }
+
+
+    }
+}
+ymaps.ready(runTestCase);
+</script>
+</html>

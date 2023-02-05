@@ -1,0 +1,987 @@
+components: push_notifications
+testing:
+  - regress
+
+aliases:
+  #Последовательное отображение всех пушей такси
+  - &taxi_push_statuses
+    - do: Перезапустить МЯК
+    - do: Авторизоваться в аккаунт 'plus-mobgeotest' с паролем 'Gen2022'
+    - do: Построить произвольный маршрут на такси
+    - do: Тап на кнопку параметров (справа от кнопки заказа)
+    - do: Написать в комментарии к заказу 'speed-300, wait-10'
+    - do: Тап на кнопку заказа
+    - do: Принять условия соглашения
+    - assert: |
+        (Поп-ап с пользовательским соглашением может не отобразиться, если такси вызывается не в первый раз)
+        Отображается вебвью такси
+        Идет поиск машин
+    - do: Дождаться, когда машина будет найдена
+    - assert: Отображается пуш-уведомление - "Через N минут приедет..."
+    - do: Дождаться смены статуса заказа
+    - assert: |
+        Отображаются по очереди вслывающие пуш-уведомления в зависимости от статуса заказа:
+        - Водитель по заказу ждет
+        - Водитель начал выполнять заказ
+        - Заказ завершен: стоимость..., оцените поездку
+
+
+specs:
+
+  Открытие карточек через Push-уведомления, когда предварительно был открыт результат поиска:
+    - info: |
+        В браузере открыты Яндекс.Карты
+        В МЯК включены push-уведомления
+        Пользователь авторизован в МЯК и БЯК под одним аккаунтом
+        Открыт экран результатов поиска в МЯК
+    - do: В БЯК, ввести в поиск название организации/топонима
+    - do: Открыть карточку результата
+    - do: Тап на кнопку "Поделиться"
+    - assert: |
+        Отображаются способы отправки данных: "Отправить в телефон", Ссылка, Координаты
+    - do: Выбрать "Отправить в телефон"
+    - assert: На устройство пришло Push-уведомление
+    - do: Тап по Push-уведомлению
+    - assert: Открываются Я.Карты, на экране мини карточка организации, присланной в пуш-уведомлении.
+
+    - platforms:
+      - ios
+      - android
+
+
+  Отправка Push-уведомления организации из Мои места:
+    - info: |
+        В браузере открыты Яндекс.Карты
+        В МЯК включены push-уведомления
+        Пользователь авторизован в МЯК и БЯК
+        Организация в избранном
+    - do: В БЯК, Тап на карте на пин из 'Мои места' (например "Дом")
+    - assert: Открывается карточка места
+    - do: Тап на кнопку "Поделиться"
+    - assert: |
+       Отображаются способы отправки данных: "Отправить в телефон", Ссылка, Координаты
+    - do: Выбрать "Отправить в телефон"
+    - assert: На устройство пришло Push-уведомление
+    - do: Тап на ссылку в уведомлении
+    - assert: Открываются Я.Карты на экране полной карточке организации из 'Мои места'
+
+    - platforms:
+      - ios
+      - android
+
+
+  Авторизация при открытии URL из Push-уведомления (пользователь не авторизован в браузере):
+    - info: |
+        Пользователь авторизован в МЯК
+        Пользователь не авторизован в БЯК
+    - do: |
+        С помощью сервиса отправки Push-уведомлений https://push-beta.n.yandex-team.ru/docs/push.html отправить в приложение Push-уведомление со ссылкой на yandexmaps://open_url?url=https://yandex.ru
+    - assert: На устройство пришло Push-уведомление
+    - do: Тап по Push-уведомлению
+    - assert: |
+        Открылась страница https://yandex.ru в кастом табс
+    - do: Перейти из кастом табс в БЯК (через меню кастом табс - открыть в браузере)
+    - assert: |
+        Открылась страница https://yandex.ru в БЯК
+        В БЯК пользователь авторизован под той же учетной записью, что и в МЯК
+
+    - platforms:
+      - ios
+      - android
+
+
+  Авторизация при открытии URL из Push-уведомления (пользователь авторизован в браузере):
+    - info: |
+        Инструкция по отправке Push-уведомлений: https://wiki.yandex-team.ru/jandekskarty/testing/navi/kak-poslat-pushi-iz-metriki-appmetrica.yandex.ru/
+        Пользователь авторизован в МЯК под одной учетной записью
+        Пользователь авторизован в БЯК под другой учетной записью
+    - do: |
+        С помощью сервиса отправки Push-уведомлений https://push-beta.n.yandex-team.ru/docs/push.html отправить в приложение Push-уведомление со ссылкой на yandexmaps://open_url?url=https://yandex.ru
+    - assert:  На устройство пришло Push-уведомление
+    - do: Тап по Push-уведомлению
+    - assert:  Открылась страница https://yandex.ru в кастом табс
+    - do: Перейти из кастом табс в БЯК (через меню кастом табс - открыть в браузере)
+    - assert: |
+        Открылась страница https://yandex.ru в БЯК
+        В БЯК пользователь авторизован под той же учетной записью, что и в МЯК (авторизация не подтягивается, при переходе в браузер Safari)
+
+    - platforms:
+      - ios
+      - android
+    - testing:
+        - acceptance_maps
+
+
+  Отключение Рекомендации мест, если в прошлой версии пуши были запрещены:
+    - info: |
+        info: Установить версию < 8.4.1, запретить пуши для МЯКа
+    - do: Обновиться до версии >= 8.4.1 открыть настройки
+    - assert: |
+        В навбаре: стрелка 'назад', название экрана 'Настройки' .
+        Отображаются пункты: Основные, Карты, Маршруты, Офлайн-карты, Уведомления, О Приложении, Попробовать бета-версию, Очистить историю поиска (если истории нет - задизейблена)
+    - do: Тап 'Уведомления'
+    - assert: |
+        В навбаре: стрелка 'назад', название экрана 'Уведомления'.
+        Ниже блок со свитчерами:
+          - Определять, кто звонит (для android < 8)
+          - Оценка организации
+          - Рекомендации мест
+          - Добавление адресов
+          - Обновление информации о местах
+        'Рекомендации мест' находится в выключенном состоянии
+
+    - platforms:
+      - android
+
+
+  Открытие приложение через Push-уведомление, отправленное с AppMetrica:
+  - info: |
+      Подготовить сервис AppMetrica для отправки пуша на устройство
+      Статья на Wiki про пуши с AppMetrica - https://wiki.yandex-team.ru/maps/mobile/logic/push-notifications/services/
+  - do:  Отправить пуш на устройство. Параметр 'Действие, при открытии уведомления' - Открыть приложение
+  - assert:  На устройство пришло Push-уведомление
+  - do: Тап по Push-уведомлению
+  - assert:  Открывается приложение МЯК
+
+  - platforms:
+    - android
+
+  Кнопка Не интересно в Push-уведомлении без и с параметром link:
+    - info: |
+        В настройках уведомлений устройства, для приложения Яндекс.Карты, включены уведомления
+    - do: Отправить Пуш на телефон с ссылкой на организацию в поле link -> push_uri, например - https://yandex.ru/maps/15/tula/?clid=1955454&ll=37.626362%2C54.190952&mode=poi&poi%5Bpoint%5D=37.617016%2C54.203972&poi%5Buri%5D=ymapsbm1%3A%2F%2Forg%3Foid%3D143751708524&z=14
+    - assert: |
+        На устройство пришло Push-уведомление
+        В Пуше присутствует кнопка "Не интересно"
+    - do: Тап "Не интересно" в Пуше
+    - assert: Пуш закрылся
+    - do: Отправить Пуш на телефон с пустым полем link
+    - assert: |
+        На устройство пришло Push-уведомление
+        В Пуше присутствует кнопка "Не интересно"
+    - do: Тап "Не интересно" в Пуше
+    - assert: Пуш закрылся
+
+    - platforms:
+        - android
+    - testing:
+        - acceptance_maps
+
+  Кнопка Не интересно в Push-уведомлении без и с параметром forceFeedback:
+    - info: |
+        В настройках уведомлений устройства, для приложения Яндекс.Карты, включены уведомления
+    - do: Отправить Пуш на телефон со значением forcefeedback = true
+    - assert: |
+        На устройство пришло Push-уведомление
+        В Пуше присутствует кнопка "Не интересно"
+    - do: Тап "Не интересно" в Пуше
+    - assert: Пуш закрылся
+    - do: Отправить пуш на телефон без поля forcefeedback
+    - assert: |
+        На устройство пришло Push-уведомление
+        В Пуше присутствует кнопка "Не интересно"
+    - do: Тап "Не интересно" в Пуше
+    - assert: Пуш закрылся
+
+    - platforms:
+        - android
+    - testing:
+        - acceptance_maps
+        - lite_acceptance_maps
+
+  Получение пуш-уведомлений про адреса: # MAPSMOBILETEST-767
+    - info: |
+        В настройках приложения включен свитчер напротив пункта "Добавление адресов"
+        Отображается главный экран приложения
+    - do: Отправить пуш по каналу "Добавление информации" на устройство (канал maps_feedback или maps_address_feedback)
+    - assert:  На устройство пришло Push-уведомление
+    - do: Тап по Push-уведомлению
+    - assert:  Открывается приложение МЯК
+
+    - platforms:
+        - ios
+        - android
+    - testing:
+        - acceptance_maps
+
+  Получение пуш-уведомлений про Актуализацию организаций: # MAPSMOBILETEST-767
+    - info: |
+        В настройках приложения включен свитчер напротив пункта "Актуализация организаций"(Обновление информации о местах)
+        Отображается главный экран приложения
+    - do: Отправить пуш по каналу "Актуализация организаций" на устройство (канал maps_org_feedback)
+    - assert:  На устройство пришло Push-уведомление
+    - do: Тап по Push-уведомлению
+    - assert:  Открывается приложение МЯК
+
+    - platforms:
+        - ios
+        - android
+    - testing:
+        - acceptance_maps
+
+  Получение пуш-уведомлений про Оценку организаций:
+    - info: |
+        В настройках приложения включен свитчер напротив пункта "Оценка организаций"
+        Отображается главный экран приложения
+    - do: Отправить пуш по каналу "Оценка организаций" на устройство (канал  maps_org_reviews_on)
+    - assert:  На устройство пришло Push-уведомление
+    - do: Тап по Push-уведомлению
+    - assert:  Открывается приложение МЯК
+
+    - platforms:
+       - ios
+       - android
+    - testing:
+       - acceptance_maps
+
+
+  Получение пуш-уведомлений про Рекомендации мест:
+  - info: |
+      В настройках приложения включен свитчер напротив пункта "Рекомендации мест"
+      Отображается главный экран приложения
+  - do: Отправить пуш по каналу "Рекомендации мест" на устройство (канал  maps_discovery_on)
+  - assert:  На устройство пришло Push-уведомление
+  - do: Тап по Push-уведомлению
+  - assert:  Открывается приложение МЯК
+
+  - platforms:
+      - ios
+      - android
+  - testing:
+      - acceptance_maps
+
+
+  Обновление приложения с запретом на пуш уведомления:
+    - info: |
+        В настройках уведомлений устройства, для приложения Яндекс.Карты, отключены уведомления
+        Приложение запущено
+    - do: Перейти в Меню - Настройки - Уведомления
+    - assert: Отображаются 4 свитчера каналов, в отключенном состоянии
+    - do: Обновить приложение
+    - do: Перейти в Меню - Настройки - Уведомления
+    - assert: Отображаются 4 свитчера каналов, в отключенном состоянии
+
+    - platforms:
+        - ios
+        - android
+    - tags:
+        - assessors
+
+
+  Включение пуш уведомлений при запрете на их отправку у приложения (Android):
+    - info: |
+        В настройках уведомлений устройства, для приложения Яндекс.Карты, отключены уведомления от всех каналов(выключены все чек-боксы), и отключен основной свитчер "Включить уведомления"
+        Приложение запущено
+    - do: Перейти в Меню - Настройки - Уведомления
+    - assert: Отображаются 4 свитчера каналов, в отключенном состоянии
+    - do: Тап по одному из свитчеров
+    - assert: Открывается системный поп-ап перехода в настройки
+    - do: В поп-апе Тап "настройки"
+    - assert: Произошло перенаправление с него в системные настройки соответствующего канала
+    - do: Не разрешать уведомления, вернуться в Уведомления настройки приложения
+    - assert: Свитчер канала остается в выключенном состоянии
+    - do: Тап по свитчеру
+    - do: В поп-апе Тап "настройки"
+    - assert: Произошло перенаправление с него в системные настройки соответствующего канала
+    - do: Переключить свитчер уведомлений в активное состояние
+    - do: Вернуться в настройки приложения
+    - assert: Свитчер этого канала включен
+    - do: Тап по другому свитчеру
+    - do: В поп-апе Тап "настройки"
+    - assert: Произошло перенаправление с него в системные настройки соответствующего канала
+    - do: Переключить свитчер уведомлений в активное состояние
+    - do: Вернуться в настройки приложения
+    - assert: Свитчер этого канала включен
+
+    - platforms:
+        - android
+    - tags:
+        - assessors
+
+
+  Включение пуш уведомлений при запрете на их отправку у приложения (iOS):
+    - info: |
+        В настройках уведомлений устройства, для приложения Яндекс.Карты, отключены уведомления
+        Приложение запущено
+    - do: Перейти в Меню - Настройки - Уведомления
+    - assert: Отображаются 4 свитчера каналов, в отключенном состоянии
+    - do: Тап по одному из свитчеров
+    - assert: Произошло перенаправление с него в системные настройки устройства
+    - do: Вернуться на экран Уведомления
+    - assert: Свитчер канала остается в выключенном состоянии
+    - do: Тап по свитчеру
+    - assert: Произошло перенаправление с него в системные настройки устройства
+    - do: Перейти в раздел "Уведомления"
+    - do: Переключить свитчер уведомлений в активное состояние
+    - do: Вернуться в настройки приложения
+    - assert: Свитчер этого канала включен
+    - do: Тап по другому свитчеру
+    - assert: |
+        Свитчер этого канала включен
+        Перенаправение в системные настройки не произошло
+
+    - platforms:
+        - ios
+    - tags:
+        - assessors
+
+
+  (Android) Получение пуш-уведомлений Такси при включенном канале "Мои заказы" и активном эксперименте push_settings_from_config:
+    - info: |
+        Версия Android на устройстве равна или больше 8
+        Устройство подключено к внутренней сети через Charles или PDAS
+
+    - do: Включить канал "Мои заказы" в настройках пуш-уведомлений устройства (путь к настройкам может отличаться в зависимости от производителя)
+    - do: Запустить МЯК
+    - do: |
+        Включить тестовые окружения (`Меню -> Настройки -> Debug-Panel -> Environment`):
+        * `Passport environment -> TESTING`
+        * `Mobmaps proxy host -> Testing`
+        * `PaymentSDK Environment -> TESTING`
+    - do: |
+        Перевести webview такси в тестовое окружение:
+        * `Меню -> Настройки -> Debug-Panel -> Webview -> Taxi webview base url -> Testing`
+    - do: |
+        Включить эксперименты c помощью интента
+        [collapsed-image](https://jing.yandex-team.ru/files/vikelvar/taxi_native_order_in_taxi_tab%3DALWAYS_OPEN%26push_settings_from_config.png){title=QR-код}
+
+        `yandexmaps://add_exp?taxi_native_order_in_taxi_tab=ALWAYS_OPEN&push_settings_from_config`
+    - *taxi_push_statuses
+
+    - platforms:
+        - android
+    - testing:
+        - acceptance_maps
+
+
+  (Без Google-сервисов) Получение пуш-уведомлений Такси при включенном канале "Мои заказы" и активном эксперименте push_settings_from_config:
+    - info: |
+        Версия Android на устройстве равна или больше 8
+        Устройство не поддерживает Google-сервисы
+        Устройство подключено к внутренней сети через Charles или PDAS
+    - do: Включить канал "Мои заказы" в настройках пуш-уведомлений устройства (путь к настройкам может отличаться в зависимости от производителя)
+    - do: Запустить МЯК
+    - do: |
+        Включить тестовые окружения (`Меню -> Настройки -> Debug-Panel -> Environment`):
+        * `Passport environment -> TESTING`
+        * `Mobmaps proxy host -> Testing`
+        * `PaymentSDK Environment -> TESTING`
+    - do: |
+        Перевести webview такси в тестовое окружение:
+        * `Меню -> Настройки -> Debug-Panel -> Webview -> Taxi webview base url -> Testing`
+    - do: |
+        Включить эксперименты c помощью интента
+        [collapsed-image](https://jing.yandex-team.ru/files/vikelvar/taxi_native_order_in_taxi_tab%3DALWAYS_OPEN%26push_settings_from_config.png){title=QR-код}
+
+        `yandexmaps://add_exp?taxi_native_order_in_taxi_tab=ALWAYS_OPEN&push_settings_from_config`
+    - *taxi_push_statuses
+
+    - platforms:
+        - android
+    - tags:
+        - not_gp
+    - testing:
+        - acceptance_maps
+
+
+  Получение пуш-уведомлений Такси при включенном канале "Мои заказы" и отсутствии эксперимента push_settings_from_config:
+    - info: |
+        Версия Android на устройстве равна или больше 8
+        Устройство подключено к внутренней сети через Charles или PDAS
+    - do: Включить канал "Мои заказы" в настройках пуш-уведомлений устройства (путь к настройкам может отличаться в зависимости от производителя)
+    - do: Запустить МЯК
+    - do: |
+        Включить тестовые окружения (`Меню -> Настройки -> Debug-Panel -> Environment`):
+        * `Passport environment -> TESTING`
+        * `Mobmaps proxy host -> Testing`
+        * `PaymentSDK Environment -> TESTING`
+    - do: |
+        Перевести webview такси в тестовое окружение:
+        * `Меню -> Настройки -> Debug-Panel -> Webview -> Taxi webview base url -> Testing`
+    - do: Выключить эксперимент `push_settings_from_config` (Меню -> Настройки -> Debug-Panel -> Experiments)
+    - do: Закрыть дебаг-панель
+    - do: |
+        Включить эксперимент c помощью интента
+        [collapsed-image](https://jing.yandex-team.ru/files/vikelvar/taxi_native_order_in_taxi_tab%3DALWAYS_OPEN.png){title=QR-код}
+
+        `yandexmaps://add_exp?taxi_native_order_in_taxi_tab=ALWAYS_OPEN`
+    - *taxi_push_statuses
+
+    - platforms:
+        - android
+
+
+  (Android) Отсутствие пуш-уведомлений Такси при выключенном канале "Мои заказы":
+    - info: |
+        Версия Android на устройстве равна или больше 8
+        Устройство подключено к внутренней сети через Charles или PDAS
+
+    - do: Выключить канал "Мои заказы" в настройках пуш-уведомлений устройства (путь к настройкам может отличаться в зависимости от производителя)
+    - do: Запустить МЯК
+    - do: |
+        Включить тестовые окружения (`Меню -> Настройки -> Debug-Panel -> Environment`):
+        * `Passport environment -> TESTING`
+        * `Mobmaps proxy host -> Testing`
+        * `PaymentSDK Environment -> TESTING`
+    - do: |
+        Перевести webview такси в тестовое окружение:
+        * `Меню -> Настройки -> Debug-Panel -> Webview -> Taxi webview base url -> Testing`
+    - do: |
+        Включить эксперименты c помощью интента
+        [collapsed-image](https://jing.yandex-team.ru/files/vikelvar/taxi_native_order_in_taxi_tab%3DALWAYS_OPEN%26push_settings_from_config.png){title=QR-код}
+
+        `yandexmaps://add_exp?taxi_native_order_in_taxi_tab=ALWAYS_OPEN&push_settings_from_config`
+    - do: Перезапустить МЯК
+    - do: Авторизоваться в аккаунт 'plus-mobgeotest' с паролем 'Gen2022'
+    - do: Построить произвольный маршрут на такси
+    - do: Тап на кнопку параметров (справа от кнопки заказа)
+    - do: Написать в комментарии к заказу 'speed-300, wait-10'
+    - do: Тап на кнопку заказа
+    - do: Принять условия соглашения
+    - assert: |
+        (Условия соглашения могут не отображаться, если запуск происходит не в первый раз)
+        Отображается вебвью такси
+        Идет поиск машин
+    - do: Дождаться, когда машина будет найдена
+    - assert: |
+        Пуш-уведомления отсутствуют
+    - do: Дождаться смены статуса заказа
+    - assert: |
+        Пуш-уведомления отсутствуют
+
+    - platforms:
+        - android
+
+
+  (Android) Получение пуш-уведомлений Такси на Android <=7 при активном эксперименте push_settings_from_config:
+    - info: |
+        Версия Android на устройстве равна или меньше 7
+        Устройство подключено к внутренней сети через Charles или PDAS
+
+    - do: Включить канал "Мои заказы" в настройках пуш-уведомлений устройства (путь к настройкам может отличаться в зависимости от производителя)
+    - do: Запустить МЯК
+    - do: |
+        Включить тестовые окружения (`Меню -> Настройки -> Debug-Panel -> Environment`):
+        * `Passport environment -> TESTING`
+        * `Mobmaps proxy host -> Testing`
+        * `PaymentSDK Environment -> TESTING`
+    - do: |
+        Перевести webview такси в тестовое окружение:
+        * `Меню -> Настройки -> Debug-Panel -> Webview -> Taxi webview base url -> Testing`
+    - do: |
+        Включить эксперименты c помощью интента
+        [collapsed-image](https://jing.yandex-team.ru/files/vikelvar/taxi_native_order_in_taxi_tab%3DALWAYS_OPEN%26push_settings_from_config.png){title=QR-код}
+
+        `yandexmaps://add_exp?taxi_native_order_in_taxi_tab=ALWAYS_OPEN&push_settings_from_config`
+    - *taxi_push_statuses
+
+    - platforms:
+        - android
+    - testing:
+        - acceptance_maps
+
+
+  (Android) Получение пуш-уведомлений Такси на Android <=7 при отсутствии эксперимента push_settings_from_config:
+    - info: |
+        Версия Android на устройстве равна или меньше 7
+        Устройство подключено к внутренней сети через Charles или PDAS
+    - do: Включить канал "Мои заказы" в настройках пуш-уведомлений устройства (путь к настройкам может отличаться в зависимости от производителя)
+    - do: Запустить МЯК
+    - do: |
+        Включить тестовые окружения (`Меню -> Настройки -> Debug-Panel -> Environment`):
+        * `Passport environment -> TESTING`
+        * `Mobmaps proxy host -> Testing`
+        * `PaymentSDK Environment -> TESTING`
+    - do: |
+        Перевести webview такси в тестовое окружение:
+        * `Меню -> Настройки -> Debug-Panel -> Webview -> Taxi webview base url -> Testing`
+    - do: Выключить эксперимент `push_settings_from_config` (Меню -> Настройки -> Debug-Panel -> Experiments)
+    - do: Закрыть дебаг-панель
+    - do: |
+        Включить эксперимент c помощью интента
+        [collapsed-image](https://jing.yandex-team.ru/files/vikelvar/taxi_native_order_in_taxi_tab%3DALWAYS_OPEN.png){title=QR-код}
+
+        `yandexmaps://add_exp?taxi_native_order_in_taxi_tab=ALWAYS_OPEN`
+    - *taxi_push_statuses
+
+    - platforms:
+        - android
+
+
+  (iOS) Получение пуш-уведомлений Такси при активном эксперименте push_settings_from_config:
+    - info: Устройство подключено к внутренней сети через Charles или PDAS
+
+    - do: |
+        Включить тестовые окружения (`Меню -> Настройки -> Debug-Panel -> Environment`):
+        * `Passport environment -> TESTING`
+        * `Mobmaps proxy host -> Testing`
+        * `PaymentSDK Environment -> TESTING`
+    - do: |
+        Перевести webview такси в тестовое окружение:
+        * `Меню -> Настройки -> Debug-Panel -> Webview -> Taxi webview base url -> Testing`
+    - do: |
+        Включить эксперименты c помощью интента
+        [collapsed-image](https://jing.yandex-team.ru/files/vikelvar/taxi_native_order_in_taxi_tab%3DALWAYS_OPEN%26push_settings_from_config.png){title=QR-код}
+
+        `yandexmaps://add_exp?taxi_native_order_in_taxi_tab=ALWAYS_OPEN&push_settings_from_config`
+    - *taxi_push_statuses
+
+    - platforms:
+        - ios
+    - testing:
+        - acceptance_maps
+
+
+  Получение пуш-уведомлений по Самокатам при включенном канале "Мои заказы" и активном эксперименте push_settings_from_config:
+    - estimatedTime: 8m
+    - info: |
+        ТК проходить на Android >=8
+        Девайс подключен к внутренней сети через Charles
+        Если будет невозможно начать или завершить поездку, попробовать включить тычку:
+        Debug-panel -> Feature -> Use flag ignor_telematics (for fake scooter)
+    - do: |
+        Включить эксперименты с помощью интента [collapsed-image](https://jing.yandex-team.ru/files/nikmakarov23/.3d28407.png){title=QR-код}
+
+        `yandexmaps://add_exp?push_settings_from_config&kicksharing_on`
+    - do: Включить тычку Debug-panel -> Environment -> PaymentSDK Environment -> TESTING
+    - do: Включить тычку Debug-panel -> Environment -> Taxi environment -> TESTING
+    - do: Включить тычку Debug-panel -> Environment -> Mobmaps_proxy_host -> TESTING
+    - do: Включить тычку Debug-panel -> Environment -> Passport_environment -> TESTING
+    - do: Включить тычку Debug-panel -> Feature -> Allow invalid card
+    - do: Перезапустить приложение для активации экспериментов и тычек
+    - do: Авторизоваться аккаунтом тестового паспорта с привязанной картой и номером телефона
+    - do: Свернуть МЯК
+    - assert: Отображается главный экран устройства
+    - do: Лонг-тап по иконке приложения на рабочем столе устройства
+    - do: Тап "О приложении"
+    - do: Тап на пункт "Уведомления"
+    - do: Тап на "Мои заказы"
+    - do: Включить настройку отображения пушей во всплывающем окне
+    - do: Открыть приложение МЯК на спане Москвы
+    - do: Забронировать тестовый самокат
+    - assert: Отображается активная карточка бронирования самоката
+    - do: На ПК в браузере открыть админку самокатов https://scooters.yandex-team.ru
+    - do: Найти свой тестовый аккаунт с активной бронью самоката
+    - do: Тап на вкладку "info"
+    - do: Тап на Добавить тег
+    - do: Создать тег пуша `scooter_long_parking_time_push`
+    - assert: На устройстве отображается всплывающее пуш-уведомление "Дружище, чего ждем?"
+    - do: Создать тег пуша `scooter_in_red_area_push`
+    - assert: На устройстве отображается всплывающие пуш-уведомление "Здесь нельзя кататься на самокате"
+    - do: Создать тег пуша `scooter_battery_low_push`
+    - assert: На устройстве отображается всплывающие пуш-уведомление "Пора на парковку - самокат устал"
+
+    - platforms:
+        - android
+    - testing:
+        - acceptance_maps
+
+
+  (Без Google-сервисов) Получение пуш-уведомлений по Самокатам:
+    - info: |
+        Если будет невозможно начать или завершить поездку, попробовать включить тычку:
+        Debug-panel -> Feature -> Use flag ignor_telematics (for fake scooter)
+    - preconditions: |
+        Устройство не поддерживает Google-сервисы
+        Устройство подключено к внутренней сети через Charles
+
+    - do: |
+        Включить эксперименты с помощью интента [collapsed-image](https://jing.yandex-team.ru/files/nikmakarov23/.3d28407.png){title=QR-код}
+
+        `yandexmaps://add_exp?push_settings_from_config&kicksharing_on`
+    - do: Включить тычку Debug-panel -> Environment -> PaymentSDK Environment -> TESTING
+    - do: Включить тычку Debug-panel -> Environment -> Taxi environment -> TESTING
+    - do: Включить тычку Debug-panel -> Environment -> Mobmaps_proxy_host -> TESTING
+    - do: Включить тычку Debug-panel -> Environment -> Passport_environment -> TESTING
+    - do: Включить тычку Debug-panel -> Feature -> Allow invalid card
+    - do: Перезапустить приложение для активации экспериментов и тычек
+    - do: Авторизоваться аккаунтом тестового паспорта с привязанной картой и номером телефона
+    - do: Свернуть МЯК
+    - assert: Отображается главный экран устройства
+    - do: Лонг-тап по иконке приложения на рабочем столе устройства
+    - do: Тап "О приложении"
+    - do: Тап на пункт "Уведомления"
+    - do: Тап на "Мои заказы"
+    - do: Включить настройку отображения пушей во всплывающем окне
+    - do: Открыть приложение МЯК на спане Москвы
+    - do: Забронировать тестовый самокат
+    - assert: Отображается активная карточка бронирования самоката
+    - do: На ПК в браузере открыть админку самокатов https://scooters.yandex-team.ru
+    - do: Найти свой тестовый аккаунт с активной бронью самоката
+    - do: Тап на вкладку "info"
+    - do: Тап на Добавить тег
+    - do: Создать тег пуша `scooter_long_parking_time_push`
+    - assert: На устройстве отображается всплывающее пуш-уведомление "Дружище, чего ждем?"
+    - do: Создать тег пуша `scooter_in_red_area_push`
+    - assert: На устройстве отображается всплывающие пуш-уведомление "Здесь нельзя кататься на самокате"
+    - do: Создать тег пуша `scooter_battery_low_push`
+    - assert: На устройстве отображается всплывающие пуш-уведомление "Пора на парковку - самокат устал"
+
+    - platforms:
+        - android
+    - tags:
+        - not_gp
+    - testing:
+        - acceptance_maps
+
+
+  Получение пуш-уведомлений по Самокатам при включенном канале "Мои заказы" и неактивном эксперименте push_settings_from_config:
+    - info: |
+        ТК проходить на Android >= 8
+        Девайс подключен к внутренней сети через Charles
+        Если будет невозможно начать или завершить поездку, попробовать включить тычку:
+        Debug-panel -> Feature -> Use flag ignor_telematics (for fake scooter)
+    - do: |
+        Использовать интент [collapsed-image](https://jing.yandex-team.ru/files/nikmakarov23/kicksharing_on.6198b78.png){title=QR-код}
+
+        `yandexmaps://add_exp?kicksharing_on`
+    - do: Выключить эксперимент Debug-panel -> Experiments -> push_settings_from_config
+    - do: Включить тычку Debug-panel -> Environment -> PaymentSDK Environment -> TESTING
+    - do: Включить тычку Debug-panel -> Environment -> Taxi environment -> TESTING
+    - do: Включить тычку Debug-panel -> Environment -> Mobmaps_proxy_host -> TESTING
+    - do: Включить тычку Debug-panel -> Environment -> Passport_environment -> TESTING
+    - do: Включить тычку Debug-panel -> Feature -> Allow invalid card
+    - do: Перезапустить приложение для активации экспериментов и тычек
+    - do: Авторизоваться аккаунтом тестового паспорта с привязанной картой и номером телефона
+    - do: Свернуть МЯК
+    - do: Лонг-тап по иконке приложения на рабочем столе устройства
+    - do: Тап "О приложении"
+    - do: Тап на пункт "Уведомления"
+    - do: Тап на "Мои заказы"
+    - do: Включить настройку отображения пушей
+    - do: Открыть приложение МЯК на спане Москвы
+    - do: Забронировать тестовый самокат
+    - assert: Отображается активная карточка бронирования самоката
+    - do: На ПК в браузере открыть админку самокатов https://scooters.yandex-team.ru
+    - do: Найти свой тестовый аккаунт с активной бронью самоката
+    - do: Тап на вкладку "info"
+    - do: Тап на Добавить тег
+    - do: Создать тег пуша `scooter_long_parking_time_push`
+    - assert: На устройстве отображается пуш-уведомление "Дружище, чего ждем?"
+    - do: Создать тег пуша `scooter_in_red_area_push`
+    - assert: На устройстве отображается пуш-уведомление "Здесь нельзя кататься на самокате"
+    - do: Создать тег пуша `scooter_battery_low_push`
+    - assert: На устройстве отображается пуш-уведомление "Пора на парковку - самокат устал"
+
+    - platforms:
+        - android
+
+
+  Отсутствие пуш-уведомлений по Самокатам при выключенном канале "Мои заказы":
+    - info: |
+        ТК проходить на Android >=8
+        Девайс подключен к внутренней сети через Charles
+        Если будет невозможно начать или завершить поездку, попробовать включить тычку:
+        Debug-panel -> Feature -> Use flag ignor_telematics (for fake scooter)
+    - do: |
+        Использовать интент [collapsed-image](https://jing.yandex-team.ru/files/nikmakarov23/kicksharing_on.6198b78.png){title=QR-код}
+
+        `yandexmaps://add_exp?kicksharing_on`
+    - do: Включить тычку Debug-panel -> Environment -> PaymentSDK Environment -> TESTING
+    - do: Включить тычку Debug-panel -> Environment -> Taxi environment -> TESTING
+    - do: Включить тычку Debug-panel -> Environment -> Mobmaps_proxy_host -> TESTING
+    - do: Включить тычку Debug-panel -> Environment -> Passport_environment -> TESTING
+    - do: Включить тычку Debug-panel -> Feature -> Allow invalid card
+    - do: Перезапустить приложение для активации экспериментов и тычек
+    - do: Авторизоваться аккаунтом тестового паспорта с привязанной картой и номером телефона
+    - do: Свернуть МЯК
+    - do: Лонг-тап по иконке приложения на рабочем столе устройства
+    - do: Тап "О приложении"
+    - do: Тап на пункт "Уведомления"
+    - do: Выключить канал "Мои заказы"
+    - do: Открыть приложение МЯК на спане Москвы
+    - do: Забронировать тестовый самокат
+    - assert: Отображается активная карточка бронирования самоката
+    - do: На ПК в браузере открыть админку самокатов https://scooters.yandex-team.ru
+    - do: Найти свой тестовый аккаунт с активной бронью самоката
+    - do: Тап на вкладку "info"
+    - do: Тап на Добавить тег
+    - do: Создать тег пуша `scooter_long_parking_time_push`
+    - assert: На устройстве не отображается пуш-уведомление
+    - do: Создать тег пуша `scooter_in_red_area_push`
+    - assert: На устройстве не отображается пуш-уведомление
+    - do: Создать тег пуша `scooter_battery_low_push`
+    - assert: На устройстве не отображается пуш-уведомление
+
+    - platforms:
+        - android
+
+
+  Получение пуш-уведомлений по Самокатам на Android <=7 при неактивном эксперименте push_settings_from_config:
+    - info: |
+        ТК проходить на Android <=7
+        Девайс подключен к внутренней сети через Charles
+        Девайс подключен к внутренней сети через Charles
+        Если будет невозможно начать или завершить поездку, попробовать включить тычку:
+        Debug-panel -> Feature -> Use flag ignor_telematics (for fake scooter)
+    - do: |
+        Использовать интент [collapsed-image](https://jing.yandex-team.ru/files/nikmakarov23/kicksharing_on.6198b78.png){title=QR-код}
+
+        `yandexmaps://add_exp?kicksharing_on`
+    - do: Выключить эксперимент Debug-panel -> Experiments -> push_settings_from_config
+    - do: Включить тычку Debug-panel -> Environment -> PaymentSDK Environment -> TESTING
+    - do: Включить тычку Debug-panel -> Environment -> Taxi environment -> TESTING
+    - do: Включить тычку Debug-panel -> Environment -> Mobmaps_proxy_host -> TESTING
+    - do: Включить тычку Debug-panel -> Environment -> Passport_environment -> TESTING
+    - do: Включить тычку Debug-panel -> Feature -> Allow invalid card
+    - do: Перезапустить приложение для активации экспериментов и тычек
+    - do: Авторизоваться аккаунтом тестового паспорта с привязанной картой и номером телефона
+    - do: Открыть приложение МЯК на спане Москвы
+    - do: Забронировать тестовый самокат
+    - assert: Отображается активная карточка бронирования самоката
+    - do: На ПК в браузере открыть админку самокатов https://scooters.yandex-team.ru
+    - do: Найти свой тестовый аккаунт с активной бронью самоката
+    - do: Тап на вкладку "info"
+    - do: Тап на Добавить тег
+    - do: Создать тег пуша `scooter_long_parking_time_push`
+    - assert: На устройстве отображается пуш-уведомление "Дружище, чего ждем?"
+    - do: Создать тег пуша `scooter_in_red_area_push`
+    - assert: На устройстве отображается пуш-уведомление "Здесь нельзя кататься на самокате"
+    - do: Создать тег пуша `scooter_battery_low_push`
+    - assert: На устройстве отображается пуш-уведомление "Пора на парковку - самокат устал"
+
+    - platforms:
+        - android
+
+
+  Получение пуш-уведомлений по Самокатам на Android <=7 при активном эксперименте push_settings_from_config:
+    - info: |
+        ТК проходить на Android <=7
+        Девайс подключен к внутренней сети через Charles
+        Если будет невозможно начать или завершить поездку, попробовать включить тычку:
+        Debug-panel -> Feature -> Use flag ignor_telematics (for fake scooter)
+    - do: |
+        Включить эксперименты с помощью интента [collapsed-image](https://jing.yandex-team.ru/files/nikmakarov23/.3d28407.png){title=QR-код}
+
+        `yandexmaps://add_exp?push_settings_from_config&kicksharing_on`
+    - do: Включить тычку Debug-panel -> Environment -> PaymentSDK Environment -> TESTING
+    - do: Включить тычку Debug-panel -> Environment -> Taxi environment -> TESTING
+    - do: Включить тычку Debug-panel -> Environment -> Mobmaps_proxy_host -> TESTING
+    - do: Включить тычку Debug-panel -> Environment -> Passport_environment -> TESTING
+    - do: Включить тычку Debug-panel -> Feature -> Allow invalid card
+    - do: Перезапустить приложение для активации экспериментов и тычек
+    - do: Авторизоваться аккаунтом тестового паспорта с привязанной картой и номером телефона
+    - do: Открыть спан Москвы
+    - do: Забронировать тестовый самокат
+    - assert: Отображается активная карточка бронирования самоката
+    - do: На ПК в браузере открыть админку самокатов https://scooters.yandex-team.ru
+    - do: Найти свой тестовый аккаунт с активной бронью самоката
+    - do: Тап на вкладку "info"
+    - do: Тап на Добавить тег
+    - do: Создать тег пуша `scooter_long_parking_time_push`
+    - assert: На устройстве отображается пуш-уведомление "Дружище, чего ждем?"
+    - do: Создать тег пуша `scooter_in_red_area_push`
+    - assert: На устройстве отображается пуш-уведомление "Здесь нельзя кататься на самокате"
+    - do: Создать тег пуша `scooter_battery_low_push`
+    - assert: На устройстве отображается пуш-уведомление "Пора на парковку - самокат устал"
+
+    - platforms:
+        - android
+    - testing:
+        - acceptance_maps
+
+
+  Получение пуш-уведомления про красную зону при активном бронировании самоката:
+    - info: |
+        Девайс подключен к внутренней сети через Charles
+        Если будет невозможно начать или завершить поездку, попробовать включить тычку:
+        Debug-panel -> Feature -> Use flag ignor_telematics (for fake scooter)
+    - do: |
+        Использовать интент [collapsed-image](https://jing.yandex-team.ru/files/nikmakarov23/kicksharing_on.6198b78.png){title=QR-код}
+
+        `yandexmaps://add_exp?kicksharing_on`
+    - do: Включить тычку Debug-panel -> Environment -> PaymentSDK Environment -> TESTING
+    - do: Включить тычку Debug-panel -> Environment -> Taxi environment -> TESTING
+    - do: Включить тычку Debug-panel -> Environment -> Mobmaps_proxy_host -> TESTING
+    - do: Включить тычку Debug-panel -> Environment -> Passport_environment -> TESTING
+    - do: Включить тычку Debug-panel -> Feature -> Allow invalid card
+    - do: Перезапустить приложение для активации экспериментов и тычек
+    - do: Авторизоваться аккаунтом тестового паспорта с привязанной картой и номером телефона
+    - do: Открыть спан Москвы
+    - do: Забронировать тестовый самокат
+    - assert: Отображается карточка активного бронирования самоката
+    - do: На ПК в браузере открыть админку самокатов https://scooters.yandex-team.ru
+    - do: В поиске найти свой тестовый аккаунт, на котором забронирован самокат
+    - assert: Отображаются данные аккаунта и забронированного самоката
+    - do: Тап на вкладку "info"
+    - assert: Отображается страница "Теги"
+    - do: Тап на кнопку Добавить тег
+    - assert: Открывается карточка создания тега
+    - do: Ввести значение тега `scooter_in_red_area_push`
+    - do: Тап Cоздать
+    - assert: |
+        Карточка создания тега закрывается
+        В списке тегов отображается отправленный тег
+        В течении 30 секунд на девайс приходит пуш-уведомление "Здесь нельзя кататься на самокате"
+
+    - platforms:
+        - android
+        - ios
+    - testing:
+        - acceptance_maps
+
+
+  Получение пуш-уведомления про низкий заряд при активном бронировании самоката:
+    - info: |
+        Девайс подключен к внутренней сети через Charles
+        Если будет невозможно начать или завершить поездку, попробовать включить тычку:
+        Debug-panel -> Feature -> Use flag ignor_telematics (for fake scooter)
+    - do: |
+        Использовать интент [collapsed-image](https://jing.yandex-team.ru/files/nikmakarov23/kicksharing_on.6198b78.png){title=QR-код}
+
+        `yandexmaps://add_exp?kicksharing_on`
+    - do: Включить тычку Debug-panel -> Environment -> PaymentSDK Environment -> TESTING
+    - do: Включить тычку Debug-panel -> Environment -> Taxi environment -> TESTING
+    - do: Включить тычку Debug-panel -> Environment -> Mobmaps_proxy_host -> TESTING
+    - do: Включить тычку Debug-panel -> Environment -> Passport_environment -> TESTING
+    - do: Включить тычку Debug-panel -> Feature -> Allow invalid card
+    - do: Перезапустить приложение для активации экспериментов и тычек
+    - do: Авторизоваться аккаунтом тестового паспорта с привязанной картой и номером телефона
+    - do: Открыть спан Москвы
+    - do: Забронировать тестовый самокат
+    - assert: Отображается карточка активного бронирования самоката
+    - do: На ПК в браузере открыть админку самокатов https://scooters.yandex-team.ru
+    - do: В поиске найти свой тестовый аккаунт, на котором забронирован самокат
+    - assert: Отображаются данные аккаунта и забронированного самоката
+    - do: Тап на вкладку "info"
+    - assert: Отображается страница "Теги"
+    - do: Тап на кнопку Добавить тег
+    - assert: Открывается карточка создания тега
+    - do: Ввести значение тега `scooter_battery_low_push`
+    - do: Тап Cоздать
+    - assert: |
+        Карточка создания тега закрывается
+        В списке тегов отображается отправленный тег
+        В течении 30 секунд на девайс приходит пуш-уведомление "Пора на парковку - самокат устал"
+
+    - platforms:
+        - android
+        - ios
+
+
+  Получение пуш-уведомления про длительное ожидаение при активном бронировании самоката:
+    - info: |
+        Девайс подключен к внутренней сети через Charles
+        Если будет невозможно начать или завершить поездку, попробовать включить тычку:
+        Debug-panel -> Feature -> Use flag ignor_telematics (for fake scooter)
+    - do: |
+        Использовать интент [collapsed-image](https://jing.yandex-team.ru/files/nikmakarov23/kicksharing_on.6198b78.png){title=QR-код}
+
+        `yandexmaps://add_exp?kicksharing_on`
+    - do: Включить тычку Debug-panel -> Environment -> PaymentSDK Environment -> TESTING
+    - do: Включить тычку Debug-panel -> Environment -> Taxi environment -> TESTING
+    - do: Включить тычку Debug-panel -> Environment -> Mobmaps_proxy_host -> TESTING
+    - do: Включить тычку Debug-panel -> Environment -> Passport_environment -> TESTING
+    - do: Включить тычку Debug-panel -> Feature -> Allow invalid card
+    - do: Перезапустить приложение для активации экспериментов и тычек
+    - do: Авторизоваться аккаунтом тестового паспорта с привязанной картой и номером телефона
+    - do: Открыть спан Москвы
+    - do: Забронировать тестовый самокат
+    - assert: Отображается карточка активного бронирования самоката
+    - do: На ПК в браузере открыть админку самокатов https://scooters.yandex-team.ru
+    - do: В поиске найти свой тестовый аккаунт, на котором забронирован самокат
+    - assert: Отображаются данные аккаунта и забронированного самоката
+    - do: Тап на вкладку "info"
+    - assert: Отображается страница "Теги"
+    - do: Тап на кнопку Добавить тег
+    - assert: Открывается карточка создания тега
+    - do: Ввести значение тега `scooter_long_parking_time_push`
+    - do: Тап Cоздать
+    - assert: |
+        Карточка создания тега закрывается
+        В списке тегов отображается отправленный тег
+        В течении 30 секунд на девайс приходит пуш-уведомление "Дружище, чего ждем?"
+
+    - platforms:
+        - android
+        - ios
+
+
+  Отображение меню "Уведомления" в настройках приложения:
+    - do: Установить приложение МЯК в первый раз
+    - do: Выключить Интернет на устройстве
+    - do: Открыть приложение
+    - do: Включить эксперимент push_settings_from_config (Настройки -> Debug Panel -> Experiments)
+    - do: Выгрузить приложение из памяти
+    - do: Открыть приложение
+    - do: Открыть пункт Уведомления (Меню -> Настройки -> Уведомления)
+    - assert: Меню подгружается
+
+    - platforms:
+        - android
+        - ios
+
+
+  Настройки пушей:
+    - precondition: |
+        Девайс подключен к Charles
+        Первый запуск приложения
+    - do: |
+        Использовать интент:
+        [collapsed-image](https://jing.yandex-team.ru/files/dabrynskaya/Снимок%20экрана%202022-05-26%20в%2013.24.58.png){title=QR-код}
+
+        `yandexmaps://add_exp?push_settings_from_config=enabled`
+    - do: Перезагрузить приложение
+    - assert: |
+        Отображаются запросы:
+           - https://geointernal.mob.maps.yandex.net/v1/startup/ru.yandex.traffic/номер сборки
+           - https://mobile-maps-common.s3.yandex.net/configs/production/900fdf421d6266642c43edeb7658be46/ru.yandex.traffic/@13.8.0/payload.json
+    - do: Тап на payload.json в ручке https://mobile-maps-common.s3.yandex.net/configs/production/900fdf421d6266642c43edeb7658be46/ru.yandex.traffic/@13.8.0
+    - assert: В response отображается ключ "maps-push-notifications" с непустыми значениями
+
+    - platforms:
+        - ios
+
+
+  Настройки пушей с включенным экспериментом:
+    - precondition: |
+        Девайс подключен к Charles
+        Первый запуск приложения
+    - do: Выключить эксперимент `new_maps_settings`
+    - do: |
+        Использовать интент:
+        [collapsed-image](https://jing.yandex-team.ru/files/dabrynskaya/Снимок%20экрана%202022-05-26%20в%2013.24.58.png){title=QR-код}
+
+        `yandexmaps://add_exp?push_settings_from_config=enabled`
+    - do: Перезагрузить приложение
+    - assert: Отображаются запрос - https://mobile-maps-common.s3.yandex.net/configs/production/900fdf421d6266642c43edeb7658be46/ru.yandex.traffic/@13.8.0/payload.json
+    - do: Тап на payload.json
+    - assert: |
+        В response отображается ключ "maps-push-notifications"
+        В папке "configs" отображается количество настроек уведомления
+    - do: Перейти в Меню -> Настройки -> Уведомления
+    - assert: Количество настроек уведомления совпадают с количеством настроек из конфига
+
+    - platforms:
+        - ios
+
+
+  Настройки пушей с включенным экспериментом. Переключение уведомлений:
+    - do: Выключить эксперимент `new_maps_settings`
+    - do: |
+        Использовать интент:
+        [collapsed-image](https://jing.yandex-team.ru/files/dabrynskaya/Снимок%20экрана%202022-05-26%20в%2013.24.58.png){title=QR-код}
+
+        `yandexmaps://add_exp?push_settings_from_config=enabled`
+    - do: Перезагрузить приложение
+    - do: |
+        Перейти в Меню -> Настройки -> Уведомления
+        Включить любой свитчер
+    - assert: Свитчер включился (могут включиться все свитчеры)
+    - do: Выключить любой свитчер
+    - assert: Выключился выбранный свитчер
+
+    - platforms:
+        - ios
+
+
+  Настройки пушей с выключенным экспериментом:
+    - do: |
+        Выключить эксперимент `new_maps_settings`
+        Выключить эксперимент `push_settings_from_config`
+        Перезагрузить приложение
+    - do: Перейти в Меню -> Настройки -> Уведомления
+    - assert: Отображаются 4 настройки уведомления
+
+    - platforms:
+        - ios

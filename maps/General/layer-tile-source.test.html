@@ -1,0 +1,61 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <title>Layer</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta name="viewport" content="initial-scale=1.0, user-scalable=no, maximum-scale=1" />
+    <!-- YUI -->
+    <script type="text/javascript" src="../../../../test/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../../../test/yui3combo/combo.css" />
+    <script type="text/javascript" src="../../../../test/run-test-case.js"></script>
+    <!-- Code -->
+    <script type="text/javascript">
+        initAPI({
+            load: "Layer,projection.wgs84Mercator",
+            lang: "en-US",
+            mode: "debug"
+        });
+    </script>
+</head>
+<body class="yui3-skin-sam"> 
+<script type="text/javascript">
+    function getTestCase(Y) { return {
+        name: "Layer",
+        
+        testTileSourceTemplate: function() {
+            var layer = new ymaps.Layer('domain1=%d|8', { projection: ymaps.projection.wgs84Mercator }),
+                tileNumber = [1, 2]; // [1, 10] -> 110 + 1 -> 7
+            Y.assert(layer.getTileUrl(tileNumber, 3) == 'domain1=7', "Неверно посчитан номер домена для n=8.");
+            
+            layer.setTileUrlTemplate('domain1=%d|4');
+            // [3, 5] -> [11, 101] -> 11 -> 3 + 1 -> 4
+            Y.assert(layer.getTileUrl([3, 5], 12) == 'domain1=4', "Неверно посчитан номер домена для domain1=%d|4.");
+            
+            layer.setTileUrlTemplate('domain1=%d');
+            // [3, 5] -> [11, 101] -> 11 -> 3 + 1 -> 4
+            Y.assert(layer.getTileUrl([3, 5], 12) == 'domain1=4', "Неверно посчитан номер домена для domain1=%d.");
+        },
+        
+        testTileSourceFunctionTemplate: function() {
+            var layer = new ymaps.Layer(function(tile, zoom) {
+                    return 'lala' + tile[0].toString() + 'lala' + zoom.toString();
+                }, { projection: ymaps.projection.wgs84Mercator });
+            Y.assert(layer.getTileUrl([3, 5], 12) == 'lala3lala12', "");
+        },
+        
+        testMultiQuery: function() {
+            var layer = new ymaps.Layer(
+                    'domain1=%d|8__domain2=%d|4__domain3=%d|8__domain4=%d',
+                    {
+                        projection: ymaps.projection.wgs84Mercator
+                    }
+                ),
+                tileNumber = [1, 2]; // [1, 10] -> 110 + 1 -> 7 и 10 + 1 -> 3
+            Y.assert(layer.getTileUrl(tileNumber, 3) == 'domain1=7__domain2=3__domain3=7__domain4=3', "Неверно посчитан номер для сложного шаблона.");
+        }
+    }}
+    ymaps.ready(runTestCase);
+</script>
+</body>
+</html>

@@ -1,0 +1,147 @@
+annotations:
+  project: maps-front-router-api
+meta:
+  id: maps-front-router-api_testing
+  project_id: maps-front-router-api
+  inherit_acl: true
+  account_id: ''
+spec:
+  account_id: ''
+  deploy_units:
+    app:
+      patchers_revision: 11
+      logbroker_tools_sandbox_info:
+        revision: 2739742779
+      tvm_sandbox_info:
+        revision: 2728323868
+      endpoint_sets:
+        - port: 80
+      images_for_boxes: {}
+      network_defaults:
+        network_id: _MAPSTESTQNETS_
+      tvm_config:
+        mode: enabled
+        blackbox_environment: Prod
+        client_port: 2
+        clients:
+          - source:
+              alias: router-api
+              app_id: 2015949
+            destinations:
+              - alias: apikeys-int
+                app_id: 2006077
+              - alias: driving-router
+                app_id: 2010298
+              - alias: masstransit-router
+                app_id: 2012632
+              - alias: driving-matrix-router
+                app_id: 2017357
+              - alias: masstransit-matrix-router
+                app_id: 2025065
+            secret_selector:
+              alias: secrets_file
+              id: tvmSecret
+      multi_cluster_replica_set:
+        replica_set:
+          clusters:
+            #- cluster: man
+              #spec:
+                #constraints:
+                  #antiaffinity_constraints:
+                    #- key: rack
+                      #max_pods: 1
+                #replica_count: 1
+            - cluster: sas
+              spec:
+                constraints:
+                  antiaffinity_constraints:
+                    - key: rack
+                      max_pods: 1
+                replica_count: 1
+            - cluster: vla
+              spec:
+                constraints:
+                  antiaffinity_constraints:
+                    - key: rack
+                      max_pods: 1
+                replica_count: 1
+          deployment_strategy:
+            max_unavailable: 2
+          pod_template_spec:
+            spec:
+              disk_volume_requests:
+                - id: maps-front-router-api_testing-disk-0
+                  storage_class: hdd
+                  quota_policy:
+                    bandwidth_guarantee: 5242880 # 5 MB/s
+                    bandwidth_limit: 10485760 # 10 MB/s
+                    capacity: 5368709120
+                  labels:
+                    used_by_infra: true
+              resource_requests:
+                network_bandwidth_guarantee: 5242880
+                memory_guarantee: 1073741824
+                memory_limit: 1073741824
+                vcpu_guarantee: 250
+                vcpu_limit: 250
+              host_infra:
+                monitoring:
+                  unistats:
+                    - workload_id: app_workload
+                      port: 7032
+                      path: /unistat
+              secret_refs:
+                secrets_file:
+                  secret_id: sec-01fyy7by85qkxenc133x2c96qg
+                  secret_version: ver-01fyy7by8chahgbaawqrnq4bt6
+              pod_agent_payload:
+                spec:
+                  boxes:
+                    - id: app_box
+                      rootfs: {}
+                      static_resources:
+                        - resource_ref: etc.yandex.router-api
+                          mount_point: /etc/yandex/router-api
+                        - resource_ref: usr.share.yandex.maps.inthosts
+                          mount_point: /usr/share/yandex/maps/inthosts
+                  mutable_workloads:
+                    - workload_ref: app_workload
+                  resources:
+                    static_resources:
+                      - id: usr.share.yandex.maps.inthosts
+                        url: 'sbr:3050095132'
+                        verification:
+                          checksum: 'EMPTY:'
+                          check_period_ms: 180000
+                      - id: etc.yandex.router-api
+                        verification:
+                          checksum: 'EMPTY:'
+                          check_period_ms: 180000
+                        files:
+                          files:
+                            - file_name: secrets.json
+                              multi_secret_data:
+                                secret_alias: secrets_file
+                  workloads:
+                    - id: app_workload
+                      box_ref: app_box
+                      liveness_check:
+                        tcp_check:
+                          port: 80
+                      readiness_check:
+                        http_get:
+                          port: 80
+                          path: /ping
+                          any: true
+                          time_limit:
+                            max_execution_time_ms: 1000
+                      stop_policy:
+                        container:
+                          command_line: bash -c "/detach.sh"
+                          time_limit:
+                            max_execution_time_ms: 20000
+                            max_restart_period_ms: 30000
+                            min_restart_period_ms: 30000
+                        max_tries: 2
+                      transmit_logs: true
+  revision_info: {}

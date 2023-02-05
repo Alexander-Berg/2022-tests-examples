@@ -1,0 +1,129 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <title>util.ContentSizeObserver</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <!-- YUI -->
+    <script type="text/javascript" src="../../../test/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../../test/yui3combo/combo.css" />
+    <script type="text/javascript" src="../../../test/run-test-case.js"></script>
+    <!-- Code -->
+    <script type="text/javascript">
+        initAPI({
+            lang: "ru-RU",
+            mode: "debug",
+            load: "util.ContentSizeObserver,domEvent.override.common,util.ImageLoadObserver,util.dom.style"
+        });
+    </script>
+    <style type="text/css">
+        #mask { background: blue; position: absolute; top: 0; left: 0; width: 200px; height: 100px; z-index: -1;}
+        #container { background: #ccc; opacity: 0.8; }
+        #content { background: #ff0000;  }
+        img { display: block; }
+    </style>
+</head>
+
+<body class="yui3-skin-sam">
+
+<script type="text/javascript">
+    function debug(msg) {
+        //debugger;
+        alert(msg.join(' | '));
+    }
+
+    if (!('console' in window)) {
+        console = {
+            log: function (msg) {
+               // alert(msg);
+            }
+        }
+    }
+
+    function $(id) {
+        return typeof(id) == 'string' ? document.getElementById(id) : id;
+    }
+
+    function getTestCase(Y) {
+        return {
+            name: "util.ContentSizeObserver",
+
+            testA: function () {
+                var content = '\
+<img src="http://ajaxy.ru/yandex/delayed_loading/w100.png?' + Math.random()*10 + '" />\
+<img src="http://ajaxy.ru/yandex/delayed_loading/w150.png?' + Math.random()*10 + '" />\
+<img src="http://ajaxy.ru/yandex/delayed_loading/w200.png?' + Math.random()*10 + '" />\
+<img src="http://ajaxy.ru/yandex/delayed_loading/w300.png?' + Math.random()*10 + '" />\
+<img src="http://ajaxy.ru/yandex/delayed_loading/w400.png?' + Math.random()*10 + '" />\
+<img src="http://ajaxy.ru/yandex/delayed_loading/w500.png?' + Math.random()*10 + '" />\
+                ',
+                    node = $('container'),
+                    sizechangeCount = 0,
+                    _test = this,
+                    cso = new ymaps.util.ContentSizeObserver(node, {
+                        maxWidth: 200,
+                        maxHeight: 100,
+                        scrollX: true,
+                        scrollY: true
+                    });
+                    //ilo;
+
+                // вешаем событие на изменение контента
+                cso.events
+                    .add('sizechange', function fn (e) {
+                        sizechangeCount++;
+                        var result = e.get('sizeByContent');
+                        ymaps.util.dom.style.css(node, {
+                            width:      result.width + 'px',
+                            height:     result.height + 'px',
+                            overflowX:  (result.scrollX ? 'scroll' : 'hidden'),
+                            overflowY:  (result.scrollY ? 'scroll' : 'hidden')
+                        });
+                    });
+
+                // обновляем содержимое
+                node.innerHTML = content;
+
+                // перезапускаем sizechangeobserver
+                cso.observe();
+
+                var ilo = new ymaps.util.ImageLoadObserver(node);
+
+                // вешаем событие на полную загрузку контента
+                ilo.events.add('complete', function fn (e) {
+
+                    ilo.events.remove('complete', fn);
+
+                    _test.resume(function () {
+                        Y.assert(
+                            sizechangeCount == 6,/** тут было 5, почему так? */
+                            'Событие было брошено неверное кол-во раз ('+ sizechangeCount +')'
+                        );
+                    });
+                });
+
+                _test.wait(function () {
+                    Y.fail('Обработчик complete не сработал');
+                }, 10000);
+
+            }
+        }
+
+    }
+    ymaps.ready(runTestCase);
+</script>
+    <br/>Серый: нода (контейнер)
+    <br/>Красный: жесткий (непереносимый) контент
+    <br/>Синий: фиксированный шаблон 300x200
+
+    <br/><br/>
+<div style="position:relative; height: 250px;">
+    <div id="container"></div>
+    <div id="mask"></div>
+</div>
+
+console:
+<br/><textarea style="width:500px;height:100px;" id="myConsole">alert($('container'))</textarea>
+<input type="button" value="eval()" onclick="eval($('myConsole').value)" />
+</body>
+</html>

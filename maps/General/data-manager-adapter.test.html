@@ -1,0 +1,183 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <title>data.Adapter</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <!-- YUI -->
+    <script type="text/javascript" src="../../../test/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../../test/yui3combo/combo.css" />
+    <script type="text/javascript" src="../../../test/run-test-case.js"></script>
+    <script type="text/javascript" src="../../../test/util/event-eye.js"></script>
+    <!-- Code -->
+    <script type="text/javascript">
+        initAPI({
+            lang: "ru-RU",
+            load: "data.Manager,data.Adapter,geometry.Polygon,option.Manager",
+            ns: "ym",
+            mode: "dev"
+        });
+    </script>
+</head>
+
+<body class="yui3-skin-sam">
+
+<script type="text/javascript">
+
+    function getTestCase(Y) {
+        return {
+            name: "data.Adapter",
+
+            setUp: function () {
+                this.polygon = new ym.geometry.Polygon([
+                    [[1, 2], [3, 4]],
+                    [[1, 1], [2, 2]]
+                ]);
+                this.dataAdapter = new ym.data.Adapter(this.polygon, "change", {
+                    "fillRule": {
+                        unset: function (polygon) {
+                            polygon.setFillRule("nonZero");
+                        }
+                    },
+                    "coordinates": {
+                        get: function (polygon) {
+                            return polygon.getCoordinates();
+                        },
+
+                        set: function (polygon, coordinates) {
+                            polygon.setCoordinates(coordinates);
+                        },
+
+                        unset: function (polygon) {
+                            polygon.setCoordinates([]);
+                        }
+                    },
+                    "coordinates.*": {
+                        get: function (polygon, path) {
+                            path = path.split(".");
+                            var result = polygon.get(path[0]);
+                            for (var i = 1, l = path.length; i < l; i++) {
+                                result = result[path[i]];
+                            }
+                            return result;
+                        },
+
+                        set: function (polygon, coordinates, path) {
+                            path = path.split(".");
+                            if (path.length == 1) {
+                                polygon.set(path[0], coordinates);
+                            } else if (path.length == 2) {
+                                polygon.getChildGeometry(path[0]).set(path[1], coordinates);
+                            }
+                        },
+
+                        unset: function (polygon, path) {
+                            path = path.split(".");
+                            var childGeometry = polygon;
+                            for (var i = 0, l = path.length; i < l; i++) {
+                                childGeometry = polygon.getChildGeometry(path[i]);
+                            }
+                            childGeometry.setCoordinates([]);
+                        }
+                    }
+                }, {
+                    get: function (polygon) {
+                        return {
+                            coordinates: polygon.getCoordinates(),
+                            fillRule: polygon.getFillRule()
+                        }
+                    },
+                    unset: function (polygon) {
+                        polygon.setCoordinates([]);
+                        polygon.setFillRule("nonZero");
+                    }
+                });
+
+                eventEye.observe(this.dataAdapter, ["change"]);
+            },
+
+            testGet: function () {
+                Y.assert(
+                    this.dataAdapter.get("coordinates") == this.polygon.getCoordinates() &&
+                    this.dataAdapter.get("coordinates.0") == this.polygon.get(0) &&
+                    this.dataAdapter.get("coordinates.1.1.0") == 2 &&
+                    this.dataAdapter.get("coordinates.2", "test") == "test" &&
+                    this.dataAdapter.get("wrong.data", "test") == "test"
+                );
+            },
+
+            testGetAll: function () {
+                var data = this.dataAdapter.getAll();
+                Y.assert(
+                    data.coordinates.length == 2 &&
+                    data.coordinates[0][0][1] == 2 &&
+                    data.fillRule == "evenOdd"
+                );
+            },
+
+            testSet: function () {
+                this.dataAdapter.set("coordinates", [[[0, 0], [1, 1]]]);
+                Y.assert(
+                    this.dataAdapter.get("coordinates.0") == "0,0,1,1,0,0" &&
+                    eventEye.length() == 1 && eventEye.check(0, {
+                        type: "change",
+                        target: this.dataAdapter
+                    }),
+                    "Неверный результат 1"
+                );
+
+                eventEye.reset();
+                this.dataAdapter.set("coordinates.0", [[5, 5], [6, 6]]);
+                Y.assert(
+                    this.dataAdapter.get("coordinates") == "5,5,6,6,5,5" &&
+                    eventEye.length() == 1 && eventEye.check(0, {
+                        type: "change",
+                        target: this.dataAdapter
+                    }),
+                    "Неверный результат 2"
+                );
+
+                eventEye.reset();
+                this.dataAdapter.set({
+                    "coordinates.0.1": [3, 4],
+                    "coordinates.1": [[1, 2], [3, 3]]
+                });
+                Y.assert(
+                    this.dataAdapter.get("coordinates") == "5,5,3,4,5,5,1,2,3,3,1,2" &&
+                    eventEye.length() == 1 && eventEye.check(0, {
+                        type: "change",
+                        target: this.dataAdapter
+                    }),
+                    "Неверный результат 3"
+                );
+            },
+
+            testSingleUnset: function () {
+                this.dataAdapter.unset("coordinates.0");
+                Y.assert(
+                    !this.polygon.getCoordinates()[0].length
+                );
+            },
+
+            testArrayUnset: function () {
+                this.dataAdapter.unset(["coordinates", "fillRule"]);
+                Y.assert(
+                    !this.polygon.getCoordinates().length &&
+                    this.polygon.getFillRule() == "nonZero"
+                );
+            },
+
+            testUnsetAll: function () {
+                this.dataAdapter.unsetAll();
+                Y.assert(
+                    !this.polygon.getCoordinates().length &&
+                    this.polygon.getFillRule() == "nonZero"
+                );
+            }
+        }
+    }
+    ym.ready(runTestCase);
+</script>
+
+</body>
+</html>

@@ -1,0 +1,113 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <title>Hotspot.Layer</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <!-- YUI -->
+    <script type="text/javascript" src="../../../test/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../../test/yui3combo/combo.css" />
+    <script type="text/javascript" src="../../../test/run-test-case.js"></script>
+    <!-- Code -->
+    <script type="text/javascript">
+        initAPI({
+            lang: "ru-RU",
+            mode: "debug",
+            load: "package.full"
+        });
+    </script>
+   </head>
+
+<body class="yui3-skin-sam"></body>
+
+<script type="text/javascript">
+    function getTestCase(Y) { return {
+        name: "hotspot.Layer",
+        
+        testLayerOptions: function() {
+            var tileUrlTemplate = 'http://lrs.maps.yandex.net/tiles?l=jnj&%l&%c&tm=9fd0d6d74ab470d101a55e1839d0bdc2',
+                keyTemplate = "%c&l=jnj&tm=9fd0d6d74ab470d101a55e1839d0bdc2",
+                objSource = new ymaps.hotspot.ObjectSource(tileUrlTemplate, keyTemplate),
+                layer1 = new ymaps.hotspot.Layer(objSource, {zIndex: 1}),
+                map = new ymaps.Map('map', { center: [37.621587, 55.74954], zoom: 10});
+            map.layers.add(layer1);
+            layer1.options.set({zIndex: 2});
+            Y.assert(layer1.options.get('zIndex') == 2, "Не установилось нужное значение приоритета.");
+            map.layers.remove(layer1);
+            map.destroy();
+        },
+        
+        testTwoTileShapes: function() {
+            // некоторые хотспотные шейпы могут занимать больше 1 тайла.
+            // подгружаться они будут как в запросах для одного, так и в запросах для другого тайла,
+            // так как формально они находятся и там и там
+            var tileUrlTemplate = 'test/get-hotspots.xml?%c',
+            //var tileUrlTemplate = 'test/tile_%c',
+                keyTemplate = 'testCallback%c',
+                imgUrlTemplate = 'test/tile_%c.png',
+                objSource = new ymaps.hotspot.ObjectSource(tileUrlTemplate, keyTemplate),
+                map = new ymaps.Map('map', { center: [40.904305023725264, 29.17731018158406], zoom: 19}),
+                layer = new ymaps.hotspot.Layer(objSource, {cursor: 'help'}),
+                imgLayer = new ymaps.Layer(imgUrlTemplate, {layerTileTransparent: true});
+                
+            map.layers.add(layer);
+            map.layers.add(imgLayer);
+            
+            layer.events.add('mouseenter', function(e) {
+                if (console) {
+                    console.log('mouseenter');
+                    console.log('ctrl', e.get('domEvent').originalEvent.ctrlKey);
+                }    
+            });
+            layer.events.add('mouseleave', function() {console && console.log('mouseleave');});
+            window.layer = layer;
+            window.map = map;
+            map.controls.add('trafficControl');
+        },
+        
+        _testPhotos: function() {
+            window.Y = Y;
+            var map = new ymaps.Map('map', { center: [55.74954, 37.621587], zoom: 10}),
+                tm = '1cfd33ce9a512a3a02b2a928e201918e',
+                photoSource = new ymaps.hotspot.ObjectSource('http://lrs.maps.yandex.net/tiles?l=phj&%c&tm='+ tm + '&lang=ru-RU', "%c&l=phj&tm="+ tm);
+            
+             var pngLayer = new ymaps.Layer('http://lrs.maps.yandex.net/tiles?l=pht&%c&tm='+ tm + '&lang=ru-RU', {layerTileTransparent: true}),
+                 photoLayer = new ymaps.hotspot.Layer(photoSource, {zIndex: 2, openBalloonOnClick: false, showEmptyHint: true});
+             map.layers.add(pngLayer);
+             map.layers.add(photoLayer);
+             map.layers.remove(photoLayer);
+             photoSource.events.fire('update');
+             map.layers.add(photoLayer);
+             map.behaviors.disable(['dblClickZoom']);
+             map.layers.remove(photoLayer);
+             map.layers.add(photoLayer);
+        },
+        
+        _testNewLayer: function() {
+            // сравнивать с http://n.euclid.rdr.deneb.maps.dev.yandex.net:17074/?l=wskl&x=79120&y=40900&z=17
+            // сохраненная копия лежит в папке test
+            var tileUrlTemplate = 'http://maps-wiki.dfilatov.alexa.maps.dev.yandex.ru/actions/test-hotspots.xml?%c',
+            //var tileUrlTemplate = 'test/test-hotspots.jsonp?%c',
+                keyTemplate = 'test&%c',
+                objSource = new ymaps.hotspot.ObjectSource(tileUrlTemplate, keyTemplate),
+                map = new ymaps.Map('map', { center: [55.74954, 37.621587], zoom: 10}),
+                interactivityModel = ymaps.util.extend(ymaps.interactivityModel.map, {
+                    // беру модель интерактивности карты и хочу, чтобы клик "пробивал" хотспоты
+                    // если я это не выставлю, карта клики не получит через хотспоты.
+                    click: {
+                        generateMapEvent: true
+                    }
+                }),
+                layer = new ymaps.hotspot.Layer(objSource, {
+                    proirity: 6,
+                    interactivityModel: interactivityModel,
+                    dontChangeCursor: false,
+                    showHintOnHover: false
+                });
+            map.layers.add(layer);
+        }
+    }}
+    ymaps.ready(runTestCase);
+</script>
+<div id="map" style="height: 500px; width: 760px; overflow: hidden; position: relative;"></div>
+</html>

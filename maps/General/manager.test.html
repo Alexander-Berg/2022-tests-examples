@@ -1,0 +1,120 @@
+﻿<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <title>hotspot.Manager</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <!-- YUI -->
+    <script type="text/javascript" src="../../../test/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../../test/yui3combo/combo.css" />
+    <script type="text/javascript" src="../../../test/run-test-case.js"></script>
+    <!-- Code -->
+    <script type="text/javascript">
+        initAPI({
+            lang: "ru-RU",
+            mode: "debug",
+            coordorder: "longlat",
+            load: "hotspot.Manager,package.map,hotspot.Shape,hotspot.shape.geometry.Rectangle,geometry.pixel.Rectangle,hotspot.ShapeContainer"
+        });
+    </script>
+</head>
+
+<body class="yui3-skin-sam"></body>
+
+<script type="text/javascript">
+    function getTestCase(Y) { return {
+        name: "hotspot.Manager",
+        
+        setUp: function () {
+            this.map = new ymaps.Map('map', { center: [180, 55.76], zoom: 7 });
+            this.manager = new ymaps.hotspot.Manager(this.map);
+            this.container = new ymaps.hotspot.ShapeContainer();
+            this.manager.containerList.insert(this.container);
+            this.log = '';
+            this.shapes = [];
+        },
+        
+        tearDown: function () {
+            this.destroyShapes();
+            this.container.clear();
+            this.container = null;
+            this.manager = null;
+            this.map.destroy();
+            this.log = null;
+        },
+        
+        createShape: function (coordinates, zIndex) {
+            var shape = new ymaps.hotspot.Shape({
+                    pixelGeometry: new ymaps.geometry.pixel.Rectangle(coordinates)
+                }, {
+                    zIndex: zIndex
+                });
+            
+            shape.setContainer(this.container);
+            this.container.add([shape]);
+            
+            shape.events.add(['click', 'mouseenter', 'mouseleave', 'mousemove'], this.onEvent, this);
+            this.shapes.push(shape);
+            return shape;
+        },
+        
+        destroyShapes: function () {
+            for (var i = 0, l = this.shapes.length; i < l; i++) {
+                this.shapes[i].events.remove(['click', 'mouseenter', 'mouseleave', 'mousemove'], this.onEvent, this);
+            }
+            this.shapes = null;
+        },
+        
+        onEvent: function (e) {
+            this.log += ' ' + e.get('type');    
+        },
+        
+        testTest: function () {
+            this.createShape([[0, 0], [3, 3]], 1);
+            var position = this.map.converter.globalToPage([1, 1]),
+                event = new ymaps.MapEvent({ target: this.map, position: position }, this.map);
+            var res = this.manager.test('click', event);
+            Y.assert(res && res.object == this.shapes[0], "Не нашелся активный объект.");
+        },
+        
+        testFire: function () {
+            this.createShape([[0, 0], [3, 3]], 1);
+            var position = this.map.converter.globalToPage([1, 1]),
+                event = new ymaps.MapEvent({ target: this.map, position: position }, this.map);
+            this.manager.fire('click', event, this.manager.test('click', event));
+            Y.assert(this.log == ' mouseenter click', "Неправильно обработан клик.");
+        },
+        
+        testBlur: function () {
+            this.createShape([[0, 0], [3, 3]], 1);
+            var position = this.map.converter.globalToPage([1, 1]),
+                event = new ymaps.MapEvent({ target: this.map, position: position }, this.map);
+            this.manager.fire('click', event, this.manager.test('click', event));
+            this.manager.blur();
+            Y.assert(this.log == ' mouseenter click mouseleave', "Не сработал blur.");
+        },
+        
+        testClick: function () {
+            this.createShape([[0, 0], [3, 3]], 1);
+            this.createShape([[10, 10], [30, 30]], 1);
+            var position = this.map.converter.globalToPage([1, 1]);
+            this.map.events.fire('click', new ymaps.MapEvent({ target: this.map, position: position }, this.map));
+            Y.assert(this.log == ' mouseenter click', 'Неправильно обработан клик.');
+        },
+        
+        testClickLeave: function () {
+            this.createShape([[0, 0], [3, 3]], 1);
+            this.createShape([[10, 10], [30, 30]], 1);
+            var position = this.map.converter.globalToPage([1, 1]);
+            this.map.events.fire('click', new ymaps.MapEvent({ target: this.map, position: position }, this.map));
+            this.map.events.fire('click', new ymaps.MapEvent({
+                target: this.map,
+                position: [ position[0] + 100, position[1] ]
+            }, this.map));
+            Y.assert(this.log == ' mouseenter click mouseleave', 'Неправильно обработан клик.');
+        }
+    }}
+    ymaps.ready(runTestCase);
+</script>
+<div id="map"></div>
+</html>

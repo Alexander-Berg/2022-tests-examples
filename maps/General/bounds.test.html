@@ -1,0 +1,444 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <title>util.bounds</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <!-- YUI -->
+    <script type="text/javascript" src="../../../test/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../../test/yui3combo/combo.css"/>
+    <script type="text/javascript" src="../../../test/run-test-case.js"></script>
+    <!-- Code -->
+    <script type="text/javascript">
+        initAPI({
+            lang: "ru-RU",
+            load: "util.bounds,projection.wgs84Mercator,util.math.areEqual",
+            ns: "ym",
+            mode: "debug"
+        });
+    </script>
+    <script type="text/javascript">
+        initAPI({
+            lang: "ru-RU",
+            load: "util.bounds,projection.wgs84Mercator",
+            ns: "ym2",
+            mode: "debug",
+            coordorder: "longlat"
+        });
+    </script>
+</head>
+
+<body class="yui3-skin-sam"></body>
+
+<script type="text/javascript">
+function getTestCase (Y) {
+    return {
+        name: "util.bounds",
+        testGetCenterAndZoom: function () {
+            var sqrt2 = Math.pow(2, 0.5),
+                    bounds = [
+                        projection.fromGlobalPixels([-20, 75 / sqrt2], 0),
+                        projection.fromGlobalPixels([75 / sqrt2 + 20, 0], 0)
+                    ];
+
+            var res = utilBounds1.getCenterAndZoom(bounds, [300, 150]), center = projection.toGlobalPixels(res.center, 0);
+            Y.assert(eq(res.zoom, 1) && eq(center[1], .5 * 75 / sqrt2) && eq(center[0], .5 * 75 / sqrt2),
+                    'testGetCenterAndZoom # 1 Неправильно рассчитался целый зум');
+
+            var res = utilBounds1.getCenterAndZoom(bounds, [300, 150], projection, { preciseZoom: true }),
+                    center = projection.toGlobalPixels(res.center, 0);
+
+            Y.assert(eq(res.zoom, 1.5) && eq(center[1], .5 * 75 / sqrt2) && eq(center[0], .5 * 75 / sqrt2),
+                    'testGetCenterAndZoom # 2 Неправильно рассчитался нецелый зум');
+
+            var res = utilBounds1.getCenterAndZoom([
+                [55.73354599679774, 37.588128],
+                [55.734545996797735, 37.589128]
+            ], [1260, 522]);
+
+            Y.assert(eq(res.zoom, 18) && eq(res.center[1], 37.588628) && eq(res.center[0], 55.734046),
+                    'testGetCenterAndZoom # 3 Неправильно рассчитались границы Москвы');
+        },
+
+        testGetCenterAndZoomLongLat: function () {
+            var sqrt2 = Math.pow(2, 0.5), bounds = [
+                projection2.fromGlobalPixels([-20, 75 / sqrt2], 0),
+                projection2.fromGlobalPixels([75 / sqrt2 + 20, 0], 0)
+            ];
+
+            var res = utilBounds2.getCenterAndZoom(bounds, [300, 150]), center = projection2.toGlobalPixels(res.center,
+                    0);
+
+            Y.assert(eq(res.zoom, 1) && eq(center[0], .5 * 75 / sqrt2) && eq(center[1], .5 * 75 / sqrt2),
+                    'testGetCenterAndZoomLongLat # 1 Неправильно рассчитался целый зум');
+
+            var res = utilBounds2.getCenterAndZoom(bounds, [300, 150], projection2, true),
+                    center = projection2.toGlobalPixels(res.center, 0);
+
+            Y.assert(eq(res.zoom, 1.5) && eq(center[0], .5 * 75 / sqrt2) && eq(center[1], .5 * 75 / sqrt2),
+                    'testGetCenterAndZoomLongLat # 2 Неправильно рассчитался нецелый зум');
+
+            var res = utilBounds2.getCenterAndZoom([
+                [37.588128, 55.73354599679774],
+                [37.589128, 55.734545996797735]
+            ], [1260, 522]);
+            Y.assert(eq(res.zoom, 18) && eq(res.center[0], 37.588628) && eq(res.center[1], 55.734046),
+                    'testGetCenterAndZoomLongLat # 3Неправильно рассчитались границы Москвы');
+        },
+
+        testPixelToGeo: function () {
+            var pixelBounds = [
+                        [1500 + 192, -200],
+                        [-1500 + 192, 200]
+                    ],
+                    geoBounds = utilBounds1.fromGlobalPixelBounds(pixelBounds, projection, 0);
+
+            Y.assert(eq(geoBounds[0][1], -90) && eq(geoBounds[1][1], -90) && geoBounds[0][1] > geoBounds[1][1],
+                    'testPixelToGeo # 1 Неправильно сконвертировался bounds больше чем на мир');
+
+            var b2 = [
+                        [-64, 20],
+                        [128, 10]
+                    ],
+                    g2 = utilBounds1.fromGlobalPixelBounds(b2, projection, 0);
+
+            Y.assert(eq(g2[0][1], 90) && eq(g2[1][1], 0) && g2[0][0] < g2[1][0],
+                    'testPixelToGeo # 2 Неправильно сконвертировался bounds меньше чем на мир');
+        },
+
+        testGeoToPixel: function () {
+            var res1 = utilBounds1.toGlobalPixelBounds([
+                [0, 0],
+                [0, 90]
+            ], projection, 0);
+            var res2 = utilBounds2.toGlobalPixelBounds([
+                [0, 0],
+                [90, 0]
+            ], projection2, 0);
+            Y.assert(eq(res1[0][0], 128) && eq(res1[1][0], 192) && eq(res2[0][0], 128) && eq(res2[1][0], 192),
+                    'testGeoToPixel # 1 Неправильно переведен bounds 0-90');
+
+            res1 = utilBounds1.toGlobalPixelBounds([
+                [87, 90],
+                [88, 0]
+            ], projection, 0);
+            res2 = utilBounds2.toGlobalPixelBounds([
+                [90, 88],
+                [0, 87]
+            ], projection2, 0);
+            Y.assert(eq(res1[0][0], -64) && eq(res1[1][0], 128) && eq(res2[0][0], -64) && eq(res2[1][0], 128),
+                    'testGeoToPixel # 2 Неправильно переведен bounds 90-0');
+
+            res1 = utilBounds1.toGlobalPixelBounds([
+                [-87, 0],
+                [-88, -90]
+            ], projection, 0);
+            res2 = utilBounds2.toGlobalPixelBounds([
+                [0, -88],
+                [-90, -87]
+            ], projection2, 0);
+            Y.assert(eq(res1[0][0], 128) && eq(res1[1][0], 320) && eq(res2[0][0], 128) && eq(res2[1][0], 320),
+                    'testGeoToPixel # 3 Неправильно переведен bounds 0,-90');
+        },
+
+        testBoundsContains: function () {
+            var
+                    bounds1 = [
+                        [10, 170],
+                        [40, -165]
+                    ],
+                    bounds2 = [
+                        [-30, -170],
+                        [70, 170]
+                    ],
+                    point1 = [ bounds1[0][0] + 1, bounds1[1][1] + 10 ],
+                    point2 = [ bounds1[0][0] + 4, bounds1[1][1] - 8 ];
+
+            Y.assert(utilBounds1.contains(bounds1, point1, projection) == false, 'bounds contains # 1');
+            Y.assert(utilBounds1.contains(bounds1, point2, projection) == true, 'bounds contains # 2');
+            Y.assert(utilBounds1.contains(bounds2, point1, projection) == true, 'bounds contains # 3');
+            Y.assert(utilBounds1.contains(bounds2, point2, projection) == false, 'bounds contains # 4');
+
+            bounds1 = [
+                [10, 20],
+                [40, 50]
+            ];
+            bounds2 = [
+                [-30, 50],
+                [70, -50]
+            ];
+            point1 = [ bounds1[0][0] + 1, bounds1[1][1] + 10 ];
+            point2 = [ bounds1[0][0] + 4, bounds1[1][1] - 8 ];
+
+            Y.assert(utilBounds1.contains(bounds1, point1, projection) == false, 'bounds contains # 5');
+            Y.assert(utilBounds1.contains(bounds1, point2, projection) == true, 'bounds contains # 6');
+            Y.assert(utilBounds1.contains(bounds2, point1, projection) == true, 'bounds contains # 7');
+            Y.assert(utilBounds1.contains(bounds2, point2, projection) == false, 'bounds contains # 8');
+        },
+
+        testPointContains: function () {
+            var
+                    bounds1 = [
+                        [10, 170],
+                        [40, -165]
+                    ],
+                    bounds2 = [
+                        [-30, -170],
+                        [70, 170]
+                    ],
+                    innerRect1 = [
+                        [bounds1[0][0] + 10, bounds1[0][1] + 4],
+                        [bounds1[1][0] - 10, bounds1[1][1] + 8]
+                    ],
+                    innerRect2 = [
+                        [innerRect1[0][0], innerRect1[0][1] + 50],
+                        [innerRect1[1][0], innerRect1[1][1] + 30]
+                    ];
+
+            Y.assert(utilBounds1.contains(bounds1, innerRect1, projection) == false, 'point contains # 1');
+            Y.assert(utilBounds1.contains(bounds1, innerRect2, projection) == false, 'point contains # 2');
+            Y.assert(utilBounds1.contains(bounds2, innerRect1, projection) == false, 'point contains # 3');
+            Y.assert(utilBounds1.contains(bounds2, innerRect2, projection) == true, 'point contains # 4');
+
+            bounds1 = [
+                [10, 20],
+                [40, 50]
+            ];
+            bounds2 = [
+                [-30, 50],
+                [70, -50]
+            ];
+            innerRect1 = [
+                [bounds1[0][0] + 10, bounds1[0][1] + 4],
+                [bounds1[1][0] - 10, bounds1[1][1] + 8]
+            ];
+            innerRect2 = [
+                [innerRect1[0][0], innerRect1[0][1] + 50],
+                [innerRect1[1][0], innerRect1[1][1] + 30]
+            ];
+
+            Y.assert(utilBounds1.contains(bounds1, innerRect1, projection) == false, 'point contains # 5');
+            Y.assert(utilBounds1.contains(bounds1, innerRect2, projection) == false, 'point contains # 6');
+            Y.assert(utilBounds1.contains(bounds2, innerRect1, projection) == false, 'point contains # 7');
+            Y.assert(utilBounds1.contains(bounds2, innerRect2, projection) == true, 'point contains # 8');
+        },
+
+        testIntersection: function () {
+            var
+                    bounds1 = [
+                        [10, 170],
+                        [40, -170]
+                    ],
+                    bounds2 = [
+                        [-30, -170],
+                        [70, 170]
+                    ],
+                    innerRect1 = [
+                        [bounds1[0][0] + 10, bounds1[0][1] + 4],
+                        [bounds1[1][0] - 10, bounds1[1][1] + 8]
+                    ],
+                    innerRect2 = [
+                        [innerRect1[0][0], innerRect1[0][1] + 50],
+                        [innerRect1[1][0], innerRect1[1][1] + 30]
+                    ],
+                    intersection1 = utilBounds1.getIntersection(bounds1, innerRect1, projection),
+                    intersection2 = utilBounds1.getIntersection(bounds2, innerRect1, projection),
+                    intersection3 = utilBounds1.getIntersection(bounds2, innerRect2, projection);
+
+            Y.assert(areEqual(intersection1[0], [20, 174]) && areEqual(intersection1[1], [30, -170]),
+                    'getIntersection # 1');
+            Y.assert(areEqual(intersection2[0], [20, -170]) && areEqual(intersection2[1], [30, -162]),
+                    'getIntersection # 2');
+            Y.assert(areEqual(intersection3[0], [20, -136]) && areEqual(intersection3[1], [30, -132]),
+                    'getIntersection # 3');
+
+            bounds1 = [
+                [10, 20],
+                [40, 50]
+            ];
+            bounds2 = [
+                [-30, 50],
+                [70, -50]
+            ];
+            innerRect1 = [
+                [bounds1[0][0] + 10, bounds1[0][1] + 4],
+                [bounds1[1][0] - 10, bounds1[1][1] + 8]
+            ];
+            innerRect2 = [
+                [innerRect1[0][0], innerRect1[0][1] + 50],
+                [innerRect1[1][0], innerRect1[1][1] + 30]
+            ];
+            intersection1 = utilBounds1.getIntersection(bounds1, innerRect1, projection);
+            intersection2 = utilBounds1.getIntersection(bounds2, innerRect1, projection);
+            intersection3 = utilBounds1.getIntersection(bounds2, innerRect2, projection);
+
+            Y.assert(areEqual(intersection1[0], [20, 24]) && areEqual(intersection1[1], [30, 50]), 'getIntersection # 4');
+            Y.assert(areEqual(intersection2[0], [20, 50]) && areEqual(intersection2[1], [30, 58]), 'getIntersection # 5');
+            Y.assert(areEqual(intersection3[0], [20, 74]) && areEqual(intersection3[1], [30, 88]), 'getIntersection # 6');
+        },
+
+        testIntersects: function () {
+            var
+                    bounds1 = [
+                        [10, 170],
+                        [40, -165]
+                    ],
+                    bounds2 = [
+                        [-30, -170],
+                        [70, 170]
+                    ],
+                    innerRect1 = [
+                        [bounds1[0][0] + 10, bounds1[0][1] + 4],
+                        [bounds1[1][0] - 10, bounds1[1][1] + 8]
+                    ],
+                    innerRect2 = [
+                        [innerRect1[0][0], innerRect1[0][1] + 50],
+                        [innerRect1[1][0], innerRect1[1][1] + 30]
+                    ];
+
+            Y.assert(utilBounds1.areIntersecting(bounds1, innerRect1, projection) == true, 'areIntersecting # 1');
+            Y.assert(utilBounds1.areIntersecting(bounds1, innerRect2, projection) == false, 'areIntersecting # 2');
+            Y.assert(utilBounds1.areIntersecting(bounds2, innerRect1, projection) == true, 'areIntersecting # 3');
+            Y.assert(utilBounds1.areIntersecting(bounds2, innerRect2, projection) == true, 'areIntersecting # 4');
+
+            bounds1 = [
+                [10, 20],
+                [40, 50]
+            ];
+            bounds2 = [
+                [-30, 50],
+                [70, -50]
+            ];
+            innerRect1 = [
+                [bounds1[0][0] + 10, bounds1[0][1] + 4],
+                [bounds1[1][0] - 10, bounds1[1][1] + 8]
+            ];
+            innerRect2 = [
+                [innerRect1[0][0], innerRect1[0][1] + 50],
+                [innerRect1[1][0], innerRect1[1][1] + 30]
+            ];
+
+            Y.assert(utilBounds1.areIntersecting(bounds1, innerRect1, projection) == true, 'areIntersecting # 5');
+            Y.assert(utilBounds1.areIntersecting(bounds1, innerRect2, projection) == false, 'areIntersecting # 6');
+            Y.assert(utilBounds1.areIntersecting(bounds2, innerRect1, projection) == true, 'areIntersecting # 7');
+            Y.assert(utilBounds1.areIntersecting(bounds2, innerRect2, projection) == true, 'areIntersecting # 8');
+        },
+
+        testDimension: function () {
+            var
+                    bounds1 = [
+                        [10, 170],
+                        [40, -170]
+                    ],
+                    bounds2 = [
+                        [-30, -170],
+                        [70, 170]
+                    ],
+                    innerRect1 = [
+                        [bounds1[0][0] + 10, bounds1[0][1] + 4],
+                        [bounds1[1][0] - 10, bounds1[1][1] + 8]
+                    ],
+                    innerRect2 = [
+                        [innerRect1[0][0], innerRect1[0][1] + 50],
+                        [innerRect1[1][0], innerRect1[1][1] + 30]
+                    ];
+
+            Y.assert(areEqual(utilBounds1.getSize(bounds1, projection), [30, 20]), 'getSize # 1');
+            Y.assert(areEqual(utilBounds1.getSize(bounds2, projection), [100, 340]), 'getSize # 2');
+            Y.assert(areEqual(utilBounds1.getSize(innerRect1, projection), [10, 24]), 'getSize # 3');
+            Y.assert(areEqual(utilBounds1.getSize(innerRect2, projection), [10, 4]), 'getSize # 4');
+
+            bounds1 = [
+                [10, 20],
+                [40, 50]
+            ];
+            bounds2 = [
+                [-30, 50],
+                [70, -50]
+            ];
+            innerRect1 = [
+                [bounds1[0][0] + 10, bounds1[0][1] + 4],
+                [bounds1[1][0] - 10, bounds1[1][1] + 8]
+            ];
+            innerRect2 = [
+                [innerRect1[0][0], innerRect1[0][1] + 50],
+                [innerRect1[1][0], innerRect1[1][1] + 30]
+            ];
+
+            Y.assert(areEqual(utilBounds1.getSize(bounds1, projection), [30, 30]), 'getSize # 5');
+            Y.assert(areEqual(utilBounds1.getSize(bounds2, projection), [100, 260]), 'getSize # 6');
+            Y.assert(areEqual(utilBounds1.getSize(innerRect1, projection), [10, 34]), 'getSize # 7');
+            Y.assert(areEqual(utilBounds1.getSize(innerRect2, projection), [10, 14]), 'getSize # 8');
+        },
+
+        testCenter: function () {
+            var
+                    bounds1 = [
+                        [10, 170],
+                        [40, -170]
+                    ],
+                    bounds2 = [
+                        [-30, -170],
+                        [70, 170]
+                    ],
+                    innerRect1 = [
+                        [bounds1[0][0] + 10, bounds1[0][1] + 4],
+                        [bounds1[1][0] - 10, bounds1[1][1] + 8]
+                    ],
+                    innerRect2 = [
+                        [innerRect1[0][0], innerRect1[0][1] + 50],
+                        [innerRect1[1][0], innerRect1[1][1] + 30]
+                    ];
+
+            Y.assert(areEqual(utilBounds1.center(bounds1, projection), [25.95629902829223, -180]), 'center # 1');
+            Y.assert(areEqual(utilBounds1.center(bounds2, projection), [32.248388686897854, 0]), 'center # 2');
+            Y.assert(areEqual(utilBounds1.center(innerRect1, projection), [25.103219495295654, -174]), 'center # 3');
+            Y.assert(areEqual(utilBounds1.center(innerRect2, projection), [25.103219495295654, -134]), 'center # 4');
+
+            bounds1 = [
+                [10, 20],
+                [40, 50]
+            ];
+            bounds2 = [
+                [-30, 50],
+                [70, -50]
+            ];
+            innerRect1 = [
+                [bounds1[0][0] + 10, bounds1[0][1] + 4],
+                [bounds1[1][0] - 10, bounds1[1][1] + 8]
+            ];
+            innerRect2 = [
+                [innerRect1[0][0], innerRect1[0][1] + 50],
+                [innerRect1[1][0], innerRect1[1][1] + 30]
+            ];
+
+            Y.assert(areEqual(utilBounds1.center(bounds1, projection), [25.95629902829223, 35]), 'center # 5');
+            Y.assert(areEqual(utilBounds1.center(bounds2, projection), [32.248388686897854, -180]), 'center # 6');
+            Y.assert(areEqual(utilBounds1.center(innerRect1, projection), [25.103219495295654, 41]), 'center # 7');
+            Y.assert(areEqual(utilBounds1.center(innerRect2, projection), [25.103219495295654, 81]), 'center # 8');
+        }
+    }
+}
+
+var areEqual, projection, projection2,
+        utilBounds1, utilBounds2, inited = 0;
+
+var eq = function (a, b) {
+    return Math.abs(a - b) < 1e-6;
+};
+
+ym.ready(onReady);
+ym2.ready(onReady);
+
+function onReady () {
+    if (++inited < 2) return;
+    areEqual = ym.util.math.areEqual;
+    projection = ym.projection.wgs84Mercator;
+    projection2 = ym2.projection.wgs84Mercator;
+    utilBounds1 = ym.util.bounds;
+    utilBounds2 = ym2.util.bounds;
+    runTestCase();
+}
+
+</script>
+</html>

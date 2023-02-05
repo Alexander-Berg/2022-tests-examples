@@ -1,0 +1,55 @@
+templates:
+    - mobile/geo/maps/maps/ios/support/sandbox_arc/templates/fastlane_no_build.yaml
+    - mobile/geo/maps/maps/ios/support/sandbox_arc/templates/fastlane_with_magick.yaml
+    - mobile/geo/maps/maps/ios/support/sandbox_arc/templates/maps_common_env.yaml
+    - mobile/geo/maps/maps/ios/support/sandbox_arc/templates/maps_linux_env.yaml
+config:
+    name:
+        mobile-maps-client-ios::common
+    build_counter:
+        maps_mobile:Maps_Ios_Build_Counter
+    runner_version:
+        2022.06.07-9557897
+stages:
+    build:
+        <<: *fastlane_with_magick
+        <<: *maps_common_env
+        env:
+            # Path parametes
+            SRC_ROOT: "$PWD"
+            BUILDSCRIPTS_ROOT: "%env.SRC_ROOT%/../../tools/ios/buildscripts"
+            GRADLE_ROOT: "%env.SRC_ROOT%/.."
+            MAGICK_ROOT: "$HOME/.imagemagick"
+            # Fastlane parameters
+            BETA_PROJ: maps
+            BITCODE: "false"
+            BUILD_CONFIG: AdHoc
+            MAPKIT_ENVIRONMENT: testing
+            SHOULD_RUN_UI_TESTS: "false"
+            SHOULD_RUN_UNIT_TESTS: "false"
+            SHOULD_LINT: "false"
+            # Lane command
+            LANE_COMMAND: "qa ipa_output_path:%env.SRC_ROOT% --verbose"
+        fail_fast:
+            true
+        artifacts:
+            +../../tools/ios/buildscripts/build/*.zip: dsym
+            +../../tools/ios/buildscripts/build/gym_log: gym_log
+        internal_artifacts:
+            yandexmaps-iphoneos.ipa: beta.ipa
+
+    upload_and_report:
+        <<: *fastlane_no_build
+        <<: *maps_linux_env
+        depends_on:
+            - build
+        env:
+            # Path parametes
+            SRC_ROOT: "$PWD"
+            BUILDSCRIPTS_ROOT: "%env.SRC_ROOT%/../../tools/ios/buildscripts"
+            GRADLE_ROOT: "%env.SRC_ROOT%/.."
+            # Fastlane parameters
+            BETA_PROJ: maps
+            UPDATE_TICKETS: "true"
+            # Lane command
+            LANE_COMMAND: "upload_and_report ipa_path:%internal.build:beta.ipa%"

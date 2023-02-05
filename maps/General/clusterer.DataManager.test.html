@@ -1,0 +1,134 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <title>clusterer.DataManager</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <!-- YUI -->
+    <script type="text/javascript" src="../../../test/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../../test/yui3combo/combo.css"/>
+    <script type="text/javascript" src="../../../test/run-test-case.js"></script>
+    <!-- Code -->
+    <script type="text/javascript">
+        initAPI({
+            lang: "ru-RU",
+            load: "clusterer.DataManager,data.Manager,Placemark",
+            mode: "debug",
+            ns: "ym"
+        });
+    </script>
+</head>
+
+<body class="yui3-skin-sam"></body>
+<style type="text/css">
+    #map {
+        position: absolute;
+        left: 400px;
+        top: 100px;
+        height: 800px;
+        width: 800px;
+        overflow: hidden;
+    }
+</style>
+<script type="text/javascript">
+    function getTestCase (Y) {
+        return {
+            name: "Cluster",
+
+            setUp: function () {
+                this.point = [37.621587, 55.74954];
+                this.dataManager = new ym.data.Manager({
+                    activeObject: new ym.Placemark(this.point, {name: 'asdasd'}, {bb: 22}),
+                    geoObjects: [
+                        new ym.Placemark(this.point, {name: '111', balls: [{z: 1}, {z: 2}]}),
+                        new ym.Placemark(this.point, {name: '222'}),
+                        new ym.Placemark(this.point, {name: '333'}, {vvvvvv: 'updown'})
+                    ]
+                });
+
+                this.dataManager.get('activeObject').state.set('saveTheWorld', '4 8 15 16 23 42');
+                this.dataManager.get('geoObjects.1').state.set('alpha', 'beta');
+                
+                this.clusterDataManager = new ym.clusterer.DataManager(this.dataManager);
+            },
+
+            tearDown: function () {
+                this.dataManager.destroy();
+                this.dataManager = null;
+                this.clusterDataManager.destroy();
+                this.clusterDataManager = null;
+            },
+            
+            testGetGeoObjectProperty: function () {
+                Y.assert(this.clusterDataManager.get('geoObjects.0.properties.balls.1.z') == 2);
+            },
+
+            testGetGeoObjectState: function () {
+                Y.assert(this.clusterDataManager.get('geoObjects.1.state.alpha') == 'beta');
+            },
+
+            testGetGeoObjectOption: function () {
+                Y.assert(this.clusterDataManager.get('geoObjects.2.options.vvvvvv') == 'updown');
+            },
+            
+            testGetActiveObjectProperty: function () {
+                Y.assert(this.clusterDataManager.get('activeObject.properties.name') == 'asdasd');
+            },
+
+            testGetActiveObjectState: function () {
+                Y.assert(this.clusterDataManager.get('activeObject.state.saveTheWorld') == '4 8 15 16 23 42');
+            },
+
+            testGetActiveObjectOption: function () {
+                Y.assert(this.clusterDataManager.get('activeObject.options.bb') == 22);
+            },
+            
+            testGeoObjectPropertyChange: function () {
+                var changeEventFired = false;
+                this.clusterDataManager.events.add('change', function () { changeEventFired = true; });
+                this.dataManager.get('geoObjects')[1].properties.set('name', 'zzz');
+                Y.assert(changeEventFired);
+            },
+
+            testGeoObjectStateChange: function () {
+                var changeEventFired = false;
+                this.clusterDataManager.events.add('change', function () { changeEventFired = true; });
+                this.dataManager.get('geoObjects')[1].state.set('alpha', 'vega');
+                Y.assert(changeEventFired);
+            },
+
+            testGeoObjectOptionChange: function () {
+                var changeEventFired = false;
+                this.clusterDataManager.events.add('change', function () { changeEventFired = true; });
+                this.dataManager.get('geoObjects')[0].options.set('alpha', 'vega');
+                Y.assert(changeEventFired);
+            },
+
+            testActiveObjectChange: function () {
+                var changeEventFired = false;
+                this.clusterDataManager.events.add('change', function () { changeEventFired = true; });
+                this.dataManager.set('activeObject', new ym.Placemark(this.point));
+                Y.assert(changeEventFired);
+            },
+
+            testActiveObjectPropertyChange: function () {
+                var changeEventFired = false;
+                this.clusterDataManager.events.add('change', function () { changeEventFired = true; });
+                this.dataManager.get('activeObject').properties.set('name', 'zzz');
+                Y.assert(changeEventFired);
+            },
+            
+            testUpdateActiveObject: function () {
+                var changeEventCount = 0;
+                this.clusterDataManager.events.add('change', function () { ++changeEventCount; });
+                this.dataManager.get('activeObject').properties.set('asd', '123');
+                this.dataManager.set('activeObject', new ym.Placemark(this.point));
+                this.dataManager.get('activeObject').properties.set('asdasd', 'zczxcz');
+                Y.assert(changeEventCount == 3);
+            }
+        }
+    }
+    ym.ready(runTestCase);
+</script>
+
+<div id='map'></div>
+</html>

@@ -1,0 +1,101 @@
+components: geoad_pixel_2
+testing:
+  - regress
+
+specs-integration:
+  aliases:
+    - &инфо_геоад_пиксель
+      - info: |
+          - Dev. Set. -> Misc -> Debug config enable - On
+          - Использовать интенты:
+            [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download-2.b60e70b.png){title=QR-код}
+
+            `yandexnavi://reset_exp`
+            [collapsed-image](https://jing.yandex-team.ru/files/mikhail-vin/download.7ed8e87.png){title=QR-код}
+
+            `yandexnavi://set_ad_page_id?page_id=null`
+            [collapsed-image](https://jing.yandex-team.ru/files/vikelvar/testing_pixel_audit_2_overview.png){title=QR-код}
+
+            `yandexnavi://set_ad_page_id?page_type=overview_geo_ad&page_id=overview_banner_6/testing_pixel_audit_2_overview`
+            [collapsed-image](https://jing.yandex-team.ru/files/vikelvar/overview_cooldown.png){title=QR-код}
+
+            `yandexnavi://add_exp?navi_feature_zsb_statuses_logging=enabled&navi_feature_day_night_fast_switch=enabled&navi_ad_product_cooldown_overview_banner=10&navi_ads_logging_zsb_closing_errors=enabled`
+          - Перезапустить приложение
+          - Девайс подключен к инструментам снятия логов или открыта Log-view панель
+    - &шаг_построения_маршрута
+      - do: Построить маршут по России
+
+specs:
+  Логирование IDFA для GeoAd-Pixel при разрешении доступа:
+    - info: |
+        - Версия iOS - 14.5 и выше
+        - Нави разрешён доступ к IDFA (Настройки iPhone -> Навигатор -> Разрешить отслеживание -> Включить тычку)
+    - *инфо_геоад_пиксель
+    - *шаг_построения_маршрута
+    - assert: |
+        - Над карточкой обзора отображается баннер GeoAd
+        - В логи приходит URL `https://ad.doubleclick.net`
+        - В URL содержится параметр `dc_lat=0`
+        - В URL содержится параметр `dc_rdid=N`, где вместо N отображается IDFA пользователя
+
+    - platforms:
+        - ios
+    - testing:
+        - acceptance_navi
+    - tags:
+        - metric
+
+
+  Отсуствие логирования IDFA в GeoAd-Pixel при запрете доступа:
+    - info: |
+        - Версия iOS - 14.5 и выше
+        - Нави запрещён доступ к IDFA (Настройки iPhone -> Навигатор -> Разрешить отслеживание -> Выключить тычку)
+    - *инфо_геоад_пиксель
+    - *шаг_построения_маршрута
+    - assert: |
+        - Над карточкой обзора отображается баннер GeoAd
+        - В логи приходит URL `https://ad.doubleclick.net`
+        - В URL содержится параметр `dc_lat=1`
+        - В URL содержится параметр `dc_rdid=` с пустым значением
+
+    - platforms:
+        - ios
+    - testing:
+        - acceptance_navi
+    - tags:
+        - metric
+
+  Логирование GAID при отображении GeoAd-Pixel:
+    - *инфо_геоад_пиксель
+    - *шаг_построения_маршрута
+    - assert: |
+        - Над карточкой обзора отображается баннер GeoAd
+        - В логи приходит URL `https://ad.doubleclick.net`
+        - В URL содержится параметр `dc_lat=0`
+        - В URL содержится параметр `dc_rdid=N`, где вместо N отображается GAID пользователя
+
+    - platforms:
+        - android
+    - testing:
+        - acceptance_navi
+    - tags:
+        - metric
+
+  Отсутствие логирования GAID в GeoAd-Pixel на устройствах без Google-сервисов:
+    - info: |
+        - Устройство пользователя не поддерживает Google-сервисы
+    - *инфо_геоад_пиксель
+    - *шаг_построения_маршрута
+    - assert: |
+        - Над карточкой обзора отображается баннер GeoAd
+        - В логи приходит URL `https://ad.doubleclick.net`
+        - В URL содержится параметр `dc_lat=1`
+        - В URL содержится параметр `dc_rdid=` с пустым значением
+
+    - platforms:
+        - android
+    - testing:
+        - acceptance_navi
+    - tags:
+        - metric
+        - not_gp

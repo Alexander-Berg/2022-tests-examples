@@ -1,0 +1,341 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <title>map.pane.Manager</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <!-- YUI -->
+    <script type="text/javascript" src="../../../../test/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../../../test/yui3combo/combo.css" />
+    <script type="text/javascript" src="../../../../test/run-test-case.js"></script>
+    <!-- Code -->
+   <script type="text/javascript">
+        initAPI({
+            lang: "ru-RU",
+            load: "Map,map.pane.Manager,pane.StaticPane",
+            mode: "debug"
+        });
+    </script>
+    <style type="text/css">
+        #container {
+            width: 400px;
+            height: 300px;
+        }
+    </style>
+</head>
+
+<body class="yui3-skin-sam">
+    <div id="container"></div>
+</body>
+
+<script type="text/javascript">
+    function getTestCase(Y) {
+        return {
+            name: "map.pane.Manager",
+//            debug: true,
+
+            setUp: function () {
+                this.myMap = new ymaps.Map('container', {
+                    center: [55.74954, 37.621587],
+                    zoom: 10,
+                    type: null
+                });
+                this.myMap.panes.destroy();
+                this.paneManager = new ymaps.map.pane.Manager(this.myMap);
+            },
+
+            tearDown: function () {
+                this.paneManager.destroy();
+                this.myMap.destroy();
+            },
+
+            /************************* append *************************/
+
+            testAppend: function() {
+                var pane = new ymaps.pane.StaticPane(this.myMap);
+                this.paneManager.append('test', pane);
+                var pane2 = new ymaps.pane.StaticPane(this.myMap);
+                this.paneManager.append('test2', pane2);
+
+                Y.assert(
+                    this.isPaneInner(pane) && this.checkPaneElementZIndex(pane, 0) &&
+                    this.isPaneInner(pane2) && this.checkPaneElementZIndex(pane2, 1)
+                );
+            },
+
+            testFailOnAppendSameKey: function() {
+                try {
+                    this.paneManager.append('test', new ymaps.pane.StaticPane(this.myMap));
+                    this.paneManager.append('test', new ymaps.pane.StaticPane(this.myMap));
+                } catch (e) {
+                    Y.assert(e.message == 'map.pane.Manager.append: Для данной карты пейн с ключом "test" уже существует');
+                    return;
+                }
+                Y.fail();
+            },
+
+            /************************* get *************************/
+
+            testGet: function () {
+                var pane = new ymaps.pane.StaticPane(this.myMap);
+                this.paneManager.append('test', pane);
+
+                Y.assert(this.paneManager.get('test') == pane);
+            },
+
+            testCreateByGet: function () {
+                Y.assert(this.isPaneInner(this.paneManager.get('areas')));
+            },
+
+            testGetWrongKey: function() {
+                Y.assert(this.paneManager.get('wrongkey') === null);
+            },
+
+            /************************* insertBefore *************************/
+
+            testInsertBefore: function () {
+                var pane = new ymaps.pane.StaticPane(this.myMap);
+                this.paneManager.append('test', pane);
+                var pane2 = new ymaps.pane.StaticPane(this.myMap);
+                this.paneManager.insertBefore('test2', pane2, 'test');
+
+                Y.assert(
+                    this.isPaneInner(pane) && this.checkPaneElementZIndex(pane, 1) &&
+                    this.isPaneInner(pane2) && this.checkPaneElementZIndex(pane2, 0)
+                );
+            },
+
+            testFailOnInsertBeforeSameKey: function() {
+                try {
+                    this.paneManager.append('test', new ymaps.pane.StaticPane(this.myMap));
+                    this.paneManager.insertBefore('test', new ymaps.pane.StaticPane(this.myMap), 'test');
+                } catch (e) {
+                    Y.assert(e.message == 'map.pane.Manager.insertBefore: Для данной карты пейн с ключом "test" уже существует');
+                    return;
+                }
+                Y.fail();
+            },
+
+            testFailOnInsertBeforeWithWrongReferenceKey: function() {
+                try {
+                    this.paneManager.append('test', new ymaps.pane.StaticPane(this.myMap));
+                    this.paneManager.insertBefore('test2', new ymaps.pane.StaticPane(this.myMap), 'test3');
+                } catch (e) {
+                    Y.assert(e.message == 'map.pane.Manager.insertBefore: Для данной карты пейн с ключом "test3" отсутствует');
+                    return;
+                }
+                Y.fail();
+            },
+
+            /************************* remove *************************/
+
+            testRemove: function () {
+                var pane = new ymaps.pane.StaticPane(this.myMap);
+                this.paneManager.append('test', pane);
+                var pane2 = new ymaps.pane.StaticPane(this.myMap);
+                this.paneManager.append('test2', pane2);
+
+                this.paneManager.remove(pane);
+                Y.assert(
+                    pane.getElement().parentNode != this.paneManager.getInnerElement() &&
+                    this.isPaneInner(pane2) && this.checkPaneElementZIndex(pane2, 0)
+                );
+            },
+
+            testFailOnRemoveWrongKey: function() {
+                var pane = new ymaps.pane.StaticPane(this.myMap);
+                try {
+                    this.paneManager.remove(pane);
+                } catch (e) {
+                    Y.assert(e.message == 'map.pane.Manager.remove: Для данной карты пейн отсутствует');
+                    return;
+                }
+                Y.fail();
+            },
+
+            /************************* zIndex *************************/
+
+            testZIndex: function() {
+                var pane = new ymaps.pane.StaticPane(this.myMap, {
+                    zIndex: -2,
+                    overflow: "visible"
+                });
+                this.paneManager.append('test', pane);
+                var pane2 = new ymaps.pane.StaticPane(this.myMap, {
+                    zIndex: 2
+                });
+                this.paneManager.append('test2', pane2);
+                var pane3 = new ymaps.pane.StaticPane(this.myMap, {
+                    zIndex: 1,
+                    overflow: "visible"
+                });
+                this.paneManager.append('test3', pane3);
+                var pane4 = new ymaps.pane.StaticPane(this.myMap, {
+                    zIndex: -1
+                });
+                this.paneManager.append('test4', pane4);
+
+                Y.assert(
+                    this.isPaneOuter(pane) && this.checkPaneElementZIndex(pane, -8) &&
+                    this.isPaneInner(pane2) && this.checkPaneElementZIndex(pane2, 9) &&
+                    this.isPaneOuter(pane3) && this.checkPaneElementZIndex(pane3, 6) &&
+                    this.isPaneInner(pane4) && this.checkPaneElementZIndex(pane4, -1)
+                );
+            },
+
+            /************************* getUpper *************************/
+
+            testCreateByGetUpper: function() {
+                Y.assert(
+                    this.paneManager.getUpper('areas', 'outerHint') == 'outerHint'
+                );
+            },
+
+            testWrongGetUpper: function() {
+                try {
+                    Y.assert(
+                        this.paneManager.getUpper('test', 'test2', 'test3')
+                    );
+                } catch (e) {
+                    Y.assert(e.message == 'map.pane.Manager: Пейн с именем "test" не найден');
+                    return;
+                }
+                Y.fail();
+            },
+
+            testGetUpper: function() {
+                var pane = new ymaps.pane.StaticPane(this.myMap, {
+                    zIndex: 2,
+                    overflow: "visible"
+                });
+                this.paneManager.append('test', pane);
+                var pane2 = new ymaps.pane.StaticPane(this.myMap, {
+                    zIndex: 2
+                });
+                this.paneManager.append('test2', pane2);
+                var pane3 = new ymaps.pane.StaticPane(this.myMap, {
+                    zIndex: 1,
+                    overflow: "visible"
+                });
+                this.paneManager.append('test3', pane3);
+                var pane4 = new ymaps.pane.StaticPane(this.myMap, {
+                    zIndex: 3
+                });
+                this.paneManager.append('test4', pane4);
+
+                Y.assert(
+                    this.paneManager.getUpper('test', 'test2', 'test3') == 'test2'
+                );
+            },
+
+            testGetUpperForAll: function() {
+                var pane = new ymaps.pane.StaticPane(this.myMap, {
+                    zIndex: 1,
+                    overflow: "visible"
+                });
+                this.paneManager.append('test', pane);
+                var pane2 = new ymaps.pane.StaticPane(this.myMap, {
+                    zIndex: 1
+                });
+                this.paneManager.append('test2', pane2);
+                var pane3 = new ymaps.pane.StaticPane(this.myMap, {
+                    zIndex: 1,
+                    overflow: "visible"
+                });
+                this.paneManager.append('test3', pane3);
+                var pane4 = new ymaps.pane.StaticPane(this.myMap, {
+                    zIndex: 1
+                });
+                this.paneManager.append('test4', pane4);
+
+                Y.assert(
+                    this.paneManager.getUpper() == 'test4'
+                );
+            },
+
+            /************************* getLower *************************/
+
+            testWrongGetLower: function() {
+                try {
+                    Y.assert(
+                        this.paneManager.getLower('test', 'test2', 'test3')
+                    );
+                } catch (e) {
+                    Y.assert(e.message == 'map.pane.Manager: Пейн с именем "test" не найден');
+                    return;
+                }
+                Y.fail();
+            },
+
+            testGetLower: function() {
+                var pane = new ymaps.pane.StaticPane(this.myMap, {
+                    zIndex: 2,
+                    overflow: "visible"
+                });
+                this.paneManager.append('test', pane);
+                var pane2 = new ymaps.pane.StaticPane(this.myMap, {
+                    zIndex: 1
+                });
+                this.paneManager.append('test2', pane2);
+                var pane3 = new ymaps.pane.StaticPane(this.myMap, {
+                    zIndex: 1,
+                    overflow: "visible"
+                });
+                this.paneManager.append('test3', pane3);
+                var pane4 = new ymaps.pane.StaticPane(this.myMap, {
+                    zIndex: -1
+                });
+                this.paneManager.append('test4', pane4);
+
+                Y.assert(
+                    this.paneManager.getLower('test', 'test2', 'test3') == 'test2'
+                );
+            },
+
+            testGetLowerForAll: function() {
+                var pane = new ymaps.pane.StaticPane(this.myMap, {
+                    zIndex: 1,
+                    overflow: "visible"
+                });
+                this.paneManager.append('test', pane);
+                var pane2 = new ymaps.pane.StaticPane(this.myMap, {
+                    zIndex: 1
+                });
+                this.paneManager.append('test2', pane2);
+                var pane3 = new ymaps.pane.StaticPane(this.myMap, {
+                    zIndex: 1,
+                    overflow: "visible"
+                });
+                this.paneManager.append('test3', pane3);
+                var pane4 = new ymaps.pane.StaticPane(this.myMap, {
+                    zIndex: 1
+                });
+                this.paneManager.append('test4', pane4);
+
+                Y.assert(
+                    this.paneManager.getLower() == 'test'
+                );
+            },
+
+            /************************* Хэлперы *************************/
+
+            isPaneInner: function (pane) {
+                return pane.getElement().parentNode == this.paneManager.getInnerElement();
+            },
+
+            isPaneOuter: function (pane) {
+                return pane.getElement().parentNode == this.paneManager.getOuterElement();
+            },
+
+            checkPaneElementZIndex: function (pane, zIndex) {
+                return pane.getElement().style.zIndex == zIndex;
+            }
+        }
+    }
+
+    ymaps.ready(function () {
+        runTestCase();
+    });
+
+</script>
+</html>

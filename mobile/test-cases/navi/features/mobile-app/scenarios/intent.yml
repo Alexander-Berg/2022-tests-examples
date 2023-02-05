@@ -1,0 +1,302 @@
+components: intent
+tags:
+  - not_suitable_for_farm
+testing:
+  - regress
+
+specs:
+  Проверка интента build_route_on_map. Разные состояния Навигатора.:
+    - info: |
+        Включить `Dev.Settings -> Misc -> Unlimit intents enabled -> On`
+        Перезагрузить приложение
+    - description: |
+        **Начиная с release_stesting 3.70.7977/release_stesting 3.70.8364 отказались от использования параметра arrival**
+        В случае , если количество разрешенных запросов для приложения закончилось, переустановить навигатор, либо изменить время девайса на сутки вперед.
+    - do: |
+        Выполнить интент при открытом Навигаторе.
+        iOS `yandexnavi://build_route_on_map?lat_=55.751802&lon_=37.586684&lat_to=55.758192&lon_to=37.642817&lat_via_0=55.753192&lon_via_0=37.622817&lat_arrival_via_0_0=55.753193&lon_arrival_via_0_0=37.622818&lat_arrival_to_0=55.758192&lon_arrival_to_0=37.642818`
+        Android `adb shell am start -a android.intent.action.VIEW -d "yandexnavi://build_route_on_map?lat_=55.751802\&lon_=37.586684\&lat_to=55.758192\&lon_to=37.642817\&lat_via_0=55.753192\&lon_via_0=37.622817\&lat_arrival_via_0_0=55.753193\&lon_arrival_via_0_0=37.622818\&lat_arrival_to_0=55.758192\&lon_arrival_to_0=37.642818"`
+    - assert: В Навигаторе строится маршрут, координаты точек from, to, arrival соответствуют введенным координатам
+    - do: |
+        Повторить выполнение интента для трёх состояний навигатора:
+        - только что установили, ещё не запускали;
+        - свернули навигатор в фон;
+        - выгрузили навигатор (высвайпнули из меню мультизадачности)
+        проверяем получение интента:
+        Для этого подключаем девайс к компьютеру, запускаем консоль и вводим команду
+        iOS `yandexnavi://build_route_on_map?lat_=55.751802&lon_=37.586684&lat_to=55.758192&lon_to=37.642817&lat_via_0=55.753192&lon_via_0=37.622817&lat_arrival_via_0_0=55.753193&lon_arrival_via_0_0=37.622818&lat_arrival_to_0=55.758192&lon_arrival_to_0=37.642818`
+        Android `adb shell am start -a android.intent.action.VIEW -d "yandexnavi://build_route_on_map?lat_=55.751802\&lon_=37.586684\&lat_to=55.758192\&lon_to=37.642817\&lat_via_0=55.753192\&lon_via_0=37.622817\&lat_arrival_via_0_0=55.753193\&lon_arrival_via_0_0=37.622818\&lat_arrival_to_0=55.758192\&lon_arrival_to_0=37.642818"`
+         (для ЯАвто можно использовать `adb shell am start -W -a android.intent.action.VIEW -d "yandexauto://launch?name=navi" yandex.auto`)
+    - assert: Навигатор открывается, креша не происходит
+
+    - tags:
+      - assessors
+    - platforms:
+      - geely
+      - vaz
+      - carsharing_t3
+      - ios
+      - nissan
+      - android
+    - testing:
+      - acceptance_navi
+
+
+  Отсутствие креша при пустом интенте:
+    - info: |
+        Если на устройстве есть сторовский Навигатор, то удалить его.
+        Открыть интент на устройстве с помощью adb **(сначала зайдите в режим редактирования этого кейса и оттуда скопируйте строку интента!!!)**: - если выделено красным то можно без редактирования
+        `adb shell am start -d "yandexnavi:"`
+        можно открыть интент (на Анроиде - используя html-файл):
+        `yandexnavi://`
+    - do: |
+        Прокинуть интент для 3 состояний Навигатора :
+        - Навигатор установлен;
+        - Навигатор свернут;
+        - Навигатор выгружен.
+    - assert: Креша не происходит
+
+    - platforms:
+      - android
+    - tags:
+      - assessors
+
+
+  Проверка интента build_route_on_map (from, to, arrival):
+    - info: |
+        В случае , если количество разрешенных запросов для приложения закончилось, переустановить навигатор
+        Включить `Dev.Settings -> Misc -> Unlimit intents enabled -> On`
+        Перезагрузить приложение
+    - do: |
+        - Выполнить интент со всеми параметрами
+        - [collapsed-image](https://jing.yandex-team.ru/files/fedonina71/download.png){title=QR-код}
+    - assert: В Навигаторе строится маршрут, координаты точек from, to, arrival соответствуют введенным координатам
+
+    - tags:
+      - assessors
+      - mapkit_ready
+    - platforms:
+      - ios
+      - android
+    - testing:
+      - acceptance_navi
+    - integration_run:
+      - mapkit
+
+
+  Проверка интента build_route_on_map (to, arrival):
+    - info: |
+        В случае , если количество разрешенных запросов для приложения закончилось, переустановить навигатор
+        Включить `Dev.Settings -> Misc -> Unlimit intents enabled -> On`
+        Перезагрузить приложение
+    - do: |
+        - Выполнить интент в выгруженном состоянии Навигатора
+        - [collapsed-image](https://jing.yandex-team.ru/files/fedonina71/download-1.png){title=QR-код}
+    - assert: |
+        - Навигатор запускается
+        - Маршрут строится из текущего местоположения
+    - do: |
+        - Выполнить интент в свернутом состоянии Навигатора
+        - [collapsed-image](https://jing.yandex-team.ru/files/fedonina71/download-1.png){title=QR-код}
+    - assert: |
+        - Навигатор запускается
+        - Маршрут строится из текущего местоположения
+    - do: |
+        - [Android] Прокинуть интент `adb shell am start -a ru.yandex.yandexnavi.action.BUILD_ROUTE_ON_MAP -e lat_to 55.758192 -e lon_to 37.642817
+        - [iOS] "yandexnavi://build_route_on_map?lat_to=55.758192&lon_to=37.642817"`
+    - assert: Маршрут строится из текущего местоположения
+
+    - tags:
+        - assessors
+        - mapkit_ready
+    - platforms:
+        - ios
+        - android
+    - testing:
+        - acceptance_navi
+    - integration_run:
+        - mapkit
+
+
+  Проверка интента build_route_on_map (from, to):
+    - info:
+        В случае , если количество разрешенных запросов для приложения закончилось, переустановить Навигатор
+        Включить `Dev.Settings -> Misc -> Unlimit intents enabled -> On`
+        Перезагрузить приложение
+    - do: |
+        - Выполнить интент  в выгруженном состоянии Навигатора
+        - [collapsed-image](https://jing.yandex-team.ru/files/fedonina71/from%20to.png){title=QR-код}
+    - assert: |
+        - Навигатор запускается
+        - Маршрут строится согласно точкам from и to
+    - do: |
+        - Выполнить интент в свернутом состоянии Навигатора
+        - [collapsed-image](https://jing.yandex-team.ru/files/fedonina71/from%20to.png){title=QR-код}
+    - assert: |
+        - Навигатор запускается
+        - Маршрут строится согласно точкам from и to
+    - do: |
+        - [Android] Выполнить интент в запущенном состоянии Навигатора `adb shell am start -a ru.yandex.yandexnavi.action.BUILD_ROUTE_ON_MAP -e lat_from 55.751802 -e lon_from 37.586684 -e lat_to 55.758192 -e lon_to 37.642817 "yandexnavi://build_route_on_map?lat_from=55.751802&lon_from=37.586684&lat_to=55.758192&lon_to=37.642817"`
+    - assert: Маршрут строится согласно точкам from и to
+
+    - tags:
+        - assessors
+        - mapkit_ready
+    - platforms:
+        - ios
+        - android
+    - testing:
+        - acceptance_navi
+    - integration_run:
+        - mapkit
+
+
+  Проверка интента build_route_on_map (from, to, arrival_via, via):
+    - info: |
+        В случае , если количество разрешенных запросов для приложения закончилось, переустановить навигатор
+        Включить `Dev.Settings -> Misc -> Unlimit intents enabled -> On`
+        Перезагрузить приложение
+    - do: |
+        - Выполнить интент с параметрами via и arrival_via в выгруженном состоянии Навигатора
+        - [collapsed-image](https://jing.yandex-team.ru/files/fedonina71/from%2C%20to%2C%20arrival_via%2C%20via.png){title=QR-код}
+    - assert: |
+        - Навигатор запускается
+        - Маршрут строится согласно точкам from и to с промежуточной точкой via
+    - do: |
+        - Выполнить интент с параметрами via и arrival_via в свернутом состоянии Навигатора
+        - [collapsed-image](https://jing.yandex-team.ru/files/fedonina71/from%2C%20to%2C%20arrival_via%2C%20via.png){title=QR-код}
+    - assert: |
+        - Навигатор запускается
+        - Маршрут строится согласно точкам from и to с промежуточной точкой via
+    - do: |
+        - Выполнить интент с параметрами via и arrival_via в запущенном состоянии Навигатора
+        - [collapsed-image](https://jing.yandex-team.ru/files/fedonina71/from%2C%20to%2C%20arrival_via%2C%20via.png){title=QR-код}
+    - assert: |
+        - Маршрут строится согласно точкам from и to с промежуточной точкой via
+
+    - tags:
+        - assessors
+        - mapkit_ready
+    - platforms:
+        - ios
+        - android
+    - testing:
+        - acceptance_navi
+    - integration_run:
+        - mapkit
+
+
+  Игнорирование интентов с ключом 025:
+    - info: |
+        Включить `Dev.Settings -> Misc -> Unlimit intents enabled -> On`
+        Перезагрузить приложение
+    - description: |
+        Нужно удостовериться, что мы игнорируем интенты от клиентов с id=025, и не игнорируем интенты от остальных клиентов.
+        **Шаги для реализации интентов на Android :**
+        1) Отладка по USB должна быть включена на девайсе
+        2) Подключить девайс к компьютеру с запущенным приложением cmd.exe
+        3) Ввести в командную строку команду adb shell am start -a android.intent.action.VIEW -d "yandexnavi://...", где "yandexnavi://..." - это выбранный интент
+        **Для реализации интентов на iOS** необходимо переслать выбранный интент (например через Telegram) на девайс в виде ссылки, а затем перейти по ней.
+    - do: |
+        Интент со значением client=25 должен игнорироваться (ни выполнения, ни webview).
+        Пример интента:
+        iOS `yandexnavi://build_route_on_map?lat_from=55.751802&lon_from=37.586684&lat_to=55.758192&lon_to=37.642817&client=025&signature=U7HTV4woExz%2F%2B3q8S%2BiRQebbBxYr%2FrkNE1ELmQiyrfBH1bzqdQ%2BMdTaEGhEIkwLNhbEYNOV1ILWeJBgU9sDtUg%3D%3D`
+        Android `adb shell am start -a android.intent.action.VIEW -d “yandexnavi://build_route_on_map?lat_from=55.751802&lon_from=37.586684&lat_to=55.758192&lon_to=37.642817&client=025&signature=U7HTV4woExz%2F%2B3q8S%2BiRQebbBxYr%2FrkNE1ELmQiyrfBH1bzqdQ%2BMdTaEGhEIkwLNhbEYNOV1ILWeJBgU9sDtUg%3D%3D"`
+    - assert: |
+        - интент игнорируется приложенем
+    - do: |
+        Интент со значением client не равным 25 должен работать без ограничений
+        Пример интента:
+        iOS `yandexnavi://build_route_on_map?lat_from=55.751802&lon_from=37.586684&lat_to=55.758192&lon_to=37.642817&client=026&signature=W%2BSRJrJOJEOPluS17%2Fzuu8l9%2F2DRIwZ2PWgn92EoAQjLkz8CJbzyRhSAhgrF6QLe%2FtenByMIHaUbA%2FTulRXqwA%3D%3D`
+        Android `adb shell am start -a android.intent.action.VIEW -d “yandexnavi://build_route_on_map?lat_from=55.751802&lon_from=37.586684&lat_to=55.758192&lon_to=37.642817&client=026&signature=W%2BSRJrJOJEOPluS17%2Fzuu8l9%2F2DRIwZ2PWgn92EoAQjLkz8CJbzyRhSAhgrF6QLe%2FtenByMIHaUbA%2FTulRXqwA%3D%3D"`
+    - assert: |
+        - интент успешно работает
+    - do: |
+        Интент без подписи (без элемента signature) должен работать только 10 раз в сутки (на debug ограничение отсутствует)
+        iOS `yandexnavi://build_route_on_map?lat_from=55.751802&lon_from=37.586684&lat_to=55.758192&lon_to=37.642817`
+        Android `adb shell am start -a android.intent.action.VIEW -d “yandexnavi://build_route_on_map?lat_from=55.751802&lon_from=37.586684&lat_to=55.758192&lon_to=37.642817"`
+    - assert: |
+        - интент работает не более 10 раз за сутки (на debug ограничение отсутствует)
+
+    - platforms:
+        - ios
+        - android
+    - tags:
+        - assessors
+
+
+  Проверка интента build_route_on_map c vehicle_options  вне зависимости от значения vehicle_type для грузового каркаса:
+    - do: Тап Меню
+    - do: Тап Настройки
+    - do: Тап Навигация
+    - do: Тап Маршруты для грузовиков - On
+    - do: Выполнить интент
+          `yandexnavi://build_route_on_map?lat_from=55.679138&lon_from=37.263663&lat_to=55.758192&lon_to=37.642817&vehicle_type=default&height=5&eco_class=6&width=14`
+          [collapsed-image](https://jing.yandex-team.ru/files/nataliya99/QR-код%201.png){title=QR-код}
+    - do: Запустить симуляцию ведения
+    - assert: |
+        В приложении строится маршрут, координаты точек from, to, arrival соответствуют введенным координатам 37.263663 55.758192
+        Курсор изменился на легковой (дизайн в зависимости от выбранного в профиле)
+    - do: Тап Меню
+    - do: Тап Настройки
+    - do: Тап Параметры грузовика
+    - assert: |
+        В блоке высота стоит значение 5
+        В блоке экологический класс стоит значение 6
+        В блоке ширина стоит значение 14
+
+    - tags:
+        - assessors
+    - platforms:
+        - ios
+        - android
+    - testing:
+        - acceptance_navi
+
+
+  Проверка интента build_route_on_map c vehicle_options  вне зависимости от значения vehicle_type для легкового каркаса:
+    - do: Тап Меню
+    - do: Тап Настройки
+    - do: Тап Навигация
+    - do: Тап Маршруты для грузовиков - Off
+    - do: Выполнить интент
+          `yandexnavi://build_route_on_map?lat_from=55.679138&lon_from=37.263663&lat_to=55.758192&lon_to=37.642817&vehicle_type=truck&height=5&eco_class=6&width=14`
+          [collapsed-image](https://jing.yandex-team.ru/files/nataliya99/QR-код2.png){title=QR-код}
+    - do: Запустить симуляцию ведения
+    - assert: |
+        В приложении строится маршрут, координаты точек from, to, arrival соответствуют введенным координатам 37.263663 55.758192
+        Курсор изменился на грузовой (дизайн в зависимости от выбранного в профиле)
+    - do: Тап Меню
+    - do: Тап Настройки
+    - do: Тап Параметры грузовика
+    - assert: |
+        В блоке высота стоит значение 5
+        В блоке экологический класс стоит значение 6
+        В блоке ширина стоит значение 14
+
+    - tags:
+        - assessors
+    - platforms:
+        - ios
+        - android
+    - testing:
+        - acceptance_navi
+
+
+  Проверка интента build_route_on_map c vehicle_options  вне зависимости от значения vehicle_type для такси:
+    - do: Запустить приложение
+    - do: Выполнить интент
+          `yandexnavi://build_route_on_map?lat_from=55.679138&lon_from=37.263663&lat_to=55.758192&lon_to=37.642817&client=6&height=5&signature=QPZbujlAxB5ciaGuf%2FLZZ%2F79CtxqDvXpGwdStHQqiIXzYi3ahj%2FpkvL7GnYqACB9bUS5Y7M8XEw%2BRmqhWPpEIQ%3D%3D`
+          [collapsed-image](https://jing.yandex-team.ru/files/nataliya99/QR-код3.png){title=QR-код}
+    - do: Запустить симуляцию ведения
+    - assert: |
+        В приложении строится маршрут, координаты точек from, to, arrival соответствуют введенным координатам 37.263663 55.758192
+        Курсор изменился на жёлтое такси
+
+    - tags:
+        - assessors
+    - platforms:
+        - ios
+        - android
+    - testing:
+        - acceptance_navi

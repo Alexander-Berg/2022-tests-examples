@@ -1,0 +1,72 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <title>geoObject.addon.hint lazyInit</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <!-- YUI -->
+    <script type="text/javascript" src="../../../../test/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../../../test/yui3combo/combo.css"/>
+    <script type="text/javascript" src="../../../../test/run-test-case.js"></script>
+    <!-- Code -->
+    <script type="text/javascript">
+        initAPI({
+            lang: "ru-RU",
+            // Используем полный пакет, чтобы быть уверенными, то никакая сущность не провоцирует создание аддона.
+            // Даже другие аддоны.
+            load: "package.full,util.augment,geoObject.Hint,system.browser",
+            mode: "debug"
+        });
+    </script>
+    <script type="text/javascript" src="../../../../test/util/event-eye.js"></script>
+</head>
+
+<body class="yui3-skin-sam">
+<div id="testMap" style="height: 500px; width: 760px; overflow: hidden; position: relative;">
+</div>
+</body>
+
+<script type="text/javascript">
+    getTestCase = function (Y) {
+        return {
+            name: 'geoObject.addon.hint lazyInit',
+            // debug: true,
+
+            setUp: function () {
+                this.geoMap = new ymaps.Map("testMap", {
+                    center: [55.72, 37.64],
+                    zoom: 10
+                });
+            },
+
+            tearDown: function () {
+                this.geoMap.destroy();
+            },
+
+            testLazyInit: function () {
+                var managerCounter = 0;
+                var CustomManager = function () {
+                    managerCounter++;
+                    ymaps.geoObject.Hint.apply(this, Array.prototype.slice.call(arguments));
+                };
+
+                ymaps.util.augment(CustomManager, ymaps.geoObject.Hint);
+
+                // Все кейсы здесь не охватить. Проверяем самый общий.
+                var geoObject = new ymaps.Placemark(this.geoMap.getCenter(), {}, { hintManager: CustomManager });
+                this.geoMap.geoObjects.add(geoObject);
+
+                // Ждем некоторое время чтобы дать сущностям,
+                // которые работает в nextTick доработать.
+                this.wait(function () {
+                    Y.assert(managerCounter == 0, 'Менеджер был неявно проинициализирован.');
+                    geoObject.hint.open('1233123');
+                    Y.assert(managerCounter == 1, 'Менеджер не был создан после явного вызова.');
+                }, 3000);
+            }
+        };
+    };
+
+    ymaps.ready(runTestCase);
+</script>
+</html>
+

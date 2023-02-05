@@ -1,0 +1,240 @@
+<!doctype html>
+<html>
+<head>
+    <title>Rollup test</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <!-- YUI -->
+    <script type="text/javascript" src="../../../test/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../../test/yui3combo/combo.css"/>
+    <script type="text/javascript" src="http://yandex.st/jquery/1.6.4/jquery.min.js"></script>
+    <script type="text/javascript" src="../../../test/run-test-case.js"></script>
+    <!-- Code -->
+    <script type="text/javascript">
+        initAPI({
+            lang: "ru-RU",
+            load: "package.full,util.dom.element,util.math.areEqual",
+            mode: "debug"
+        });
+    </script>
+</head>
+
+<body class="yui3-skin-sam"></body>
+<div id="map" style='width:600px;height:400px'>
+
+</div>
+<style>
+    html, html body {
+        width: 100%;
+        height: 100%;
+    }
+    
+    #rollup-header {
+        display: 'block';
+        background-color: #999999;
+        width: 200px;
+        height: 30px;
+        border: 1px solid green;
+        text-align: center;
+        vertical-align: middle;
+        color: white;
+        font-size: 15px;
+    }
+    #rollup-body {
+        border: 5px solid yellow;
+    }
+</style>
+<script type="text/javascript">
+
+function getTestCase (Y) {
+    
+    var map = new ymaps.Map('map', {
+                center: [55.777153093859496, 37.639130078124964],
+                zoom: 10
+            }),
+            equals = ymaps.util.math.areEqual;
+
+    return {
+        name: "controls",
+        
+        testRollup: function () {
+            var button = new ymaps.control.RollupButton({
+                    items: [
+                        new ymaps.control.Button({data: {content: 'Раз ролап'}}),
+                        new ymaps.control.Button({data: {content: 'Два ролап'}}),
+                        new ymaps.control.Button({data: {content: 'Три ролап'}})
+                    ]
+                });
+            map.controls.add(button);
+            
+            var myRollupLayout = ymaps.templateLayoutFactory.createClass(
+                    "<div id='rollup-header'>[if state.expanded]Свернуть[else]Развернуть[endif]</div>" +
+                    "<div id='rollup-body'></div>", {
+                        
+                    build: function () {
+                        myRollupLayout.superclass.build.call(this);
+                        this.checkExpandCallback = ymaps.util.bind(this.checkExpanded, this);
+                        $('#rollup-header').bind('click', this.checkExpandCallback);
+                        this.events.fire('childcontainerchange', {
+                            newChildContainerElement: $('#rollup-body').get(0),
+                            oldChildContainerElement: this.childContainerElement
+                        });
+                        this.childContainerElement = $('#rollup-body').get(0);
+                    },
+                    
+                    clear: function () {
+                        $('#rollup-header').unbind('click', this.checkExpandCallback);
+                        myRollupLayout.superclass.clear.call(this);
+                    },
+                    
+                    getChildContainerElement: function () {
+                        return this.childContainerElement;
+                    },
+                    
+                    checkExpanded: function () {
+                        if (this.getData().state.get('expanded')) {
+                            this.events.fire('collapse');
+                        } else {
+                            this.events.fire('expand');
+                        }
+                    }
+                }),
+            
+                rollupButton = new ymaps.control.RollupButton({
+                    items: [
+                        new ymaps.control.Button({data: {content: 'Раз ролап'}}),
+                        new ymaps.control.Button({data: {content: 'Два ролап'}}),
+                        new ymaps.control.Button({data: {content: 'Три ролап'}})
+                    ]
+                }, {
+                    layout: myRollupLayout
+                });
+                
+            map.controls.add(rollupButton, {right: 5, top: 5});
+            
+            // события
+            // update, change -> update
+            // expand -> expand
+            // collapse -> collapse
+            var res = '',
+                layout = button.getLayout(),
+                controlListener = button.events.group();
+            controlListener
+                .add(['update', 'change'], function () {
+                    res += 'update_';
+                })
+                .add('expand', function () {
+                    res += 'expand_';
+                })
+                .add('collapse', function () {
+                    res += 'collapse_';
+                });            
+            layout.events.fire('update').fire('change').fire('expand').fire('collapse');
+            Y.assert(res == 'update_update_expand_collapse_', "Не все события от лейаута дошли до контрола");
+            controlListener.removeAll();
+            map.controls.remove(button);
+            map.controls.add(button);
+        },
+        
+        testRollupInRadioGroup: function () {
+            var items = [],
+                res = '',
+                buttons = [];
+            ['one', 'two', 'three'].forEach(function (name) {
+                var btn = new ymaps.control.Button(name);
+                btn.events.add(['select', 'deselect'], function (e) {
+                    res += ' ' + e.get('type');
+                });
+                items.push(btn);
+                buttons.push(btn);
+            });
+        
+            var rollup = new ymaps.control.RollupButton({
+                items: items
+            });
+        
+            var tools = new ymaps.control.MapTools([
+                'default',
+                rollup
+            ]);
+        
+            map.controls.add(tools, {bottom: 5});
+            buttons[1].select();
+            Y.assert(res == ' select', "Неверно отработал выбор кнопки в роллапе, добавленном в радиогруппу.");
+        },
+
+        testExpand: function () {
+            var rollup = new ymaps.control.RollupButton({
+                items: [
+                    new ymaps.control.Button('11111'),
+                    new ymaps.control.Button('22222'),
+                    new ymaps.control.Button('33333')
+                ]
+            });
+            map.controls.add(rollup, {top: 120, left: 120});
+
+            rollup.state.set('expanded', true);
+
+            var bounds = rollup.get(1).getLayout().getClientBounds();
+            Y.assert(!equals(bounds, [0,0]), "Параметр expanded не сработал");
+
+            rollup.state.set('expanded', false);
+
+            map.controls.remove(rollup);
+        },
+        
+        testItemEventField: function () {
+            var rollup = new ymaps.control.RollupButton(),
+                res = null;
+            map.controls.add(rollup);
+            rollup.add(new ymaps.control.Button('firstButton'));
+            rollup.events.add('select', function (e) {
+                res = e.get('item');
+            });
+            rollup.get(0).select();
+            Y.assert(res != null, "В событии select не передана ссылка на выбранный элемент.");
+            map.controls.remove(rollup);
+        },
+
+        testSelectedIndex: function () {
+            var rollup = new ymaps.control.RollupButton();
+            map.controls.add(rollup, {top: 10, left: 10});
+
+            rollup.add(new ymaps.control.Button('1111'));
+            rollup.add(new ymaps.control.Button('2222'));
+            rollup.add(new ymaps.control.Button('3333'));
+            rollup.add(new ymaps.control.Button('4444'));
+
+            rollup.get(2).select();
+            Y.assert(rollup.getSelectedIndex() == 2, "Неверный getSelectedIndex.");
+
+            rollup.remove(rollup.get(1));
+            Y.assert(rollup.getSelectedIndex() == 1, "Неверный getSelectedIndex после удаления предществующего дочернего элемента.");
+        },
+
+        testSelectedIndex2: function () {
+            var rollup = new ymaps.control.RollupButton();
+            map.controls.add(rollup, {top: 10, left: 10});
+
+            rollup.add(new ymaps.control.Button('1111'));
+
+            var selectedBtn1 = new ymaps.control.Button('2222'),
+                selectedBtn2 = new ymaps.control.Button('2222');
+
+            selectedBtn1.select();
+            selectedBtn2.select();
+
+            rollup.add(selectedBtn1);
+            rollup.add(selectedBtn2);
+            rollup.add(new ymaps.control.Button('4444'));
+
+            Y.assert(rollup.getSelectedIndex() == 2, "Неверный getSelectedIndex.");
+
+        }
+    }
+}
+ymaps.ready(runTestCase);
+
+</script>
+
+</body>
+</html>

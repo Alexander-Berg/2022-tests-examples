@@ -1,7 +1,0 @@
-OWNER(
-    frolstas
-)
-
-RECURSE(
-    unit
-)

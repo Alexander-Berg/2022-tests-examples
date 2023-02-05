@@ -1,0 +1,134 @@
+apply plugin: 'com.android.application'
+apply plugin: 'kotlin-android'
+apply plugin: 'kotlin-android-extensions'
+apply plugin: 'upload-beta-android'
+
+buildscript {
+    repositories {
+        maven { url 'https://artifactory.yandex.net/artifactory/mobile/' }
+        maven { url 'https://artifactory.yandex.net/artifactory/public/' }
+    }
+    dependencies {
+        classpath 'com.yandex.mobile.tools:upload-beta:3.4.6'
+    }
+}
+
+ext {
+    supportedAbi = getArchs()
+    buildNumber = getBuildNumber()
+}
+
+android {
+    compileSdkVersion versions.compileSdk
+    buildToolsVersion versions.buildTools
+    ndkVersion versions.ndkVersion
+
+    defaultConfig {
+        multiDexEnabled true
+
+        applicationId "ru.yandex.yandexnavi.guidance_lib_test_app"
+        minSdkVersion 21
+        targetSdkVersion 31
+        versionCode 1
+        versionName "1.0"
+
+        ndk {
+            abiFilters supportedAbi
+        }
+    }
+
+    buildTypes {
+        debug {
+            debuggable true
+            jniDebuggable true
+
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+        release {
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    sourceSets {
+        main {
+            java {
+                srcDirs 'src/main/java'
+            }
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    signingConfigs {
+        debug {
+            storeFile file('../debug.keystore')
+            storePassword 'password'
+            keyPassword 'password'
+            keyAlias 'YandexMapsDebug'
+       }
+   }
+}
+
+dependencies {
+    implementation project(path: ":balloons-gallery")
+    implementation project(path: ":guidance-ui")
+    implementation project(path: ":navikit:cpp")
+
+    implementation "androidx.multidex:multidex:$versions.androidx.multidex"
+
+    implementation "io.reactivex.rxjava2:rxandroid:$versions.rxAndroid"
+    implementation "io.reactivex.rxjava2:rxkotlin:$versions.rxKotlin"
+    implementation "io.reactivex.rxjava2:rxjava:$versions.rxJava"
+}
+
+android.applicationVariants.all { buildVariant ->
+    setupOutput(buildVariant)
+}
+
+uploadBeta {
+    uploadBuildTypes = ['debug']
+    applicationName = 'ynta'
+    getApplicationFilename = { variant ->
+        for (output in variant.outputs) {
+            if (output.outputFile.path.contains("debug")) {
+                return output.outputFile.path
+            }
+        }
+        return variant.outputs[0].outputFile.path
+    }
+}
+
+def changeApkNameEnding(filename) {
+    return filename.replace('-unsigned', '').replace('.apk', "-${getRawVersion()}-$buildNumber" + '.apk')
+}
+
+def setupOutput(variant) {
+    variant.outputs.all {
+        outputFileName = changeApkNameEnding(outputFile.name)
+        versionCodeOverride = "${getRawVersion()}" + buildNumber as int
+    }
+}
+
+def getRawVersion() {
+    return "100"
+}
+
+def getArchs() {
+    def archs = project.findProperty('ru.yandex:abi')?.tokenize(',') ?: ['armeabi-v7a', 'x86', 'arm64-v8a']
+    return archs as String[]
+}
+
+def getBuildNumber() {
+    if (project.isServerBuild) {
+        return project.property('build.number')
+    }
+
+    return 1
+}

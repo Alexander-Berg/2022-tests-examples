@@ -1,0 +1,188 @@
+apply plugin: 'com.android.application'
+apply plugin: 'kotlin-android'
+apply plugin: 'kotlin-android-extensions'
+apply plugin: 'kotlin-kapt'
+
+def signerEnabled = isServerBuild
+if (signerEnabled) {
+    apply plugin: 'yandex-signer-android'
+}
+if (isProjectedBetaEnabled()) {
+    apply plugin: 'upload-beta-android'
+}
+
+buildscript {
+    repositories {
+        maven { url 'https://artifactory.yandex.net/artifactory/mobile/' }
+        maven { url 'https://artifactory.yandex.net/artifactory/public/' }
+    }
+    dependencies {
+        classpath 'com.yandex.mobile.tools:upload-beta:3.4.6'
+    }
+}
+
+def buildTime = isServerBuild ? System.currentTimeMillis() : 0L
+
+apply from: "../../gradle/versions.gradle"
+
+ext {
+    supportedAbi = getArchs()
+    buildNumber = getBuildNumber()
+}
+
+android {
+    compileSdkVersion versions.compileSdk
+    buildToolsVersion versions.buildTools
+    ndkVersion versions.ndkVersion
+
+    defaultConfig {
+        applicationId "ru.yandex.yandexnavi.projected.testapp"
+        minSdkVersion 23
+        targetSdkVersion 31
+        versionCode 1
+        versionName "1.0.0"
+
+        if (supportedAbi.size() > 1) {
+            ndk {
+                abiFilters supportedAbi
+            }
+        }
+
+        manifestPlaceholders = [
+            applicationClientId: 'e1af730960ff4d9ba7b1a646eed7ca0d',
+        ]
+
+        buildConfigField 'long', 'BUILD_TIME', "${buildTime}L"
+        buildConfigField 'String', 'API_KEY', "\"814b48d5-2740-424e-a627-3797acca790c\""
+
+        resValue "string", "passport_sync_adapter_content_authority", "com.yandex.passport.sync." + applicationId
+    }
+
+    signingConfigs {
+        debug {
+            storeFile file('../../debug.keystore')
+            storePassword 'password'
+            keyPassword 'password'
+            keyAlias 'YandexMapsDebug'
+        }
+    }
+
+    buildTypes {
+        debug {
+            debuggable true
+            manifestPlaceholders = [
+                permissionProtectionLevel: 'normal',
+                passportPermissionSuffix : ".debug",
+            ]
+
+            resValue "string", "passport_account_type", "com.yandex.passport.debug"
+            signingConfig signingConfigs.debug
+        }
+
+        release {
+            manifestPlaceholders = [
+                permissionProtectionLevel: 'signature',
+                passportPermissionSuffix : "",
+            ]
+        }
+    }
+
+    splits {
+        abi {
+            enable true
+            reset()
+            include supportedAbi
+            universalApk supportedAbi.size() > 1
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility = '1.8'
+        targetCompatibility = '1.8'
+    }
+
+    if (project.isServerBuild) {
+        yandexSigner {
+            oauthToken = System.getenv("YANDEX_SIGNER_OAUTH")
+            applicationName = "ru.yandex.yandexnavi.projected.testapp"
+            retryCount = 3
+            signedFileSuffix = ''
+        }
+    }
+}
+
+dependencies {
+    implementation project(':projected:kit')
+    implementation project(path: ":guidance-ui")
+    implementation project(path: ":navikit:cpp")
+    implementation project(":common:process")
+    implementation project(":common:analytics-full")
+
+    implementation "androidx.multidex:multidex:$versions.androidx.multidex"
+
+    implementation "com.google.dagger:dagger:$versions.dagger"
+    kapt "com.google.dagger:dagger-compiler:$versions.dagger"
+
+    implementation "org.jetbrains.kotlin:kotlin-stdlib:$versions.kotlin"
+    implementation "androidx.core:core-ktx:$versions.androidx.core"
+    implementation "androidx.appcompat:appcompat:$versions.androidx.appcompat"
+
+    implementation "io.reactivex.rxjava2:rxkotlin:$versions.rxKotlin"
+    implementation "io.reactivex.rxjava2:rxandroid:$versions.rxJava"
+    implementation 'com.jakewharton.timber:timber:4.7.1'
+}
+
+def changeApkNameEnding(filename) {
+    return filename.replace('-unsigned', '').replace('.apk', "-${getRawVersion()}-$buildNumber" + '.apk')
+}
+
+def getRawVersion() {
+    return "100"
+}
+
+def setupOutput(variant) {
+    variant.outputs.all {
+        outputFileName = changeApkNameEnding(outputFile.name)
+        versionCodeOverride = "${getRawVersion()}" + buildNumber as int
+    }
+}
+
+android.applicationVariants.all { buildVariant ->
+    setupOutput(buildVariant)
+}
+
+if (isProjectedBetaEnabled()) {
+    uploadBeta {
+        applicationName "projected_testapp"
+        uploadBuildTypes = ['debug', 'release']
+        getApplicationFilename = { variant ->
+            for (output in variant.outputs) {
+                if (output.outputFile.path.contains("universal")) {
+                    return output.outputFile.path
+                }
+            }
+            return variant.outputs[0].outputFile.path
+        }
+    }
+}
+
+ext.mapsmobiLibraries = [
+    'maps.mobile'
+]
+
+def isProjectedBetaEnabled() {
+    return project.hasProperty('projected.beta')
+}
+
+def getArchs() {
+    def archs = project.findProperty('ru.yandex:abi')?.tokenize(',') ?: ['armeabi-v7a', 'x86', 'arm64-v8a']
+    return archs as String[]
+}
+
+def getBuildNumber() {
+    if (project.isServerBuild) {
+        return project.property('build.number')
+    }
+
+    return 1
+}

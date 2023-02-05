@@ -1,0 +1,62 @@
+#!/usr/bin/env bash
+
+RED='\e[31m'
+GREEN='\e[32m'
+BOLD='\e[1m'
+NC='\e[0m'
+
+ROOT="$PWD"
+TEST_CASES_PATH="mobile/geo/qa/test-cases"
+PALMSYNC_RELATIVE_PATH='tools/palmsync'
+COMMON_PROJECT='common'
+PROJECTS=(
+  "mapsmobile"
+  "navi"
+  "kartograph"
+)
+
+# https://docs.yandex-team.ru/devtools/src/arc/hooks#pre-push
+read -a INPUT
+LOCAL_HASH="${INPUT[1]}"
+NO_HASH='0000000000000000000000000000000000000000'
+
+# при удалении ветки пропускаем валидацию
+if [[ $LOCAL_HASH == "$NO_HASH" ]]; then
+  exit 0
+fi
+
+# при отсутствии изменений пропускаем валидацию
+if [[ -z $LOCAL_HASH ]]; then
+  exit 0
+fi
+
+MERGE_BASE="$(arc merge-base "$LOCAL_HASH" trunk)"
+ALL_FILES_CHANGED="$(arc diff --name-only "$MERGE_BASE" "$LOCAL_HASH" "$TEST_CASES_PATH")"
+
+echo "merge base:$MERGE_BASE"
+echo "local hash:$LOCAL_HASH"
+echo -e "${BOLD}Изменённые файлы:${NC}\n$ALL_FILES_CHANGED"
+
+exit_code=0
+errors=''
+for project in "${PROJECTS[@]}"; do
+  if grep -E -m1 -q "^$TEST_CASES_PATH/($project|$COMMON_PROJECT)"; then
+    cd "$ROOT/$TEST_CASES_PATH/$project/$PALMSYNC_RELATIVE_PATH" || exit 1
+    echo -e "${BOLD}Валидация $project${NC}"
+    palmsync_result="$(npm run palmsync:validate 2>&1)"
+    if [[ $? -ne 0 ]]; then
+      ((exit_code++))
+      errors="$errors$palmsync_result\n\n"
+    fi
+  fi <<<"$ALL_FILES_CHANGED"
+done
+
+if [[ $exit_code -eq 0 ]]; then
+  echo -e "${GREEN}${BOLD}Валидация прошла успешно.${NC}\n"
+else
+  echo -e "${RED}${BOLD}Ошибки валидации:${NC}"
+  echo "$errors"
+  echo -e "${RED}${BOLD}Валидация завершилась с ошибками. Изменения не отправлены на сервер.${NC}"
+fi
+
+exit $exit_code

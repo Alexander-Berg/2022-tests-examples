@@ -1,0 +1,218 @@
+components: startup_config
+testing:
+  - regress
+
+specs:
+  Отображение стартап конфига:
+    - info: |
+        Перехватить трафик с устройства.
+        Установлено Production окружение для хостов в дебаг-панели
+    - do: Запустить приложение
+    - assert: |
+        Отображается главный экран приложения
+        Пришел конфиг:
+        iOS: https://geointernal.mob.maps.yandex.net/v1/startup/ru.yandex.traffic/
+        Android: https://geointernal.mob.maps.yandex.net/v1/startup/ru.yandex.yandexmaps/
+        На проде установлено большое время кэширования
+        Если запроса нет, переключите mobmaps proxy host на TESTING и обратно на PROD со сбросом кэша
+    - do: Проверить параметры конфига /v1/startup/...
+    - assert: |
+        Хедеры в запросе и ответе не дублируются
+        Ответ конфига 302
+        В ответе есть хедер Location с адресом на JSON конфиг
+        iOS: https://mobile-maps-common.s3.yandex.net/configs/production/*/ru.yandex.traffic/@*/
+        Android: https://mobile-maps-common.s3.yandex.net/configs/production/*/ru.yandex.yandexmaps/@*/
+    - do: Проверить конфиг по адресу из Location
+    - assert: |
+        Конфиг по данному адресу пришел (ответ 200)
+        В конфиге содежится:
+        Основные разделы (при отсутствие любого из этих разделов конфиг будет считаться битым и перезапрашиваться при каждом старте):
+        Информация о голосах (maps-guidance-voices)
+        Промо (maps-promo-quests)
+        Спецпредложения (maps-search-results-banners)
+        Данные о загруженности метро для города (metro-traffic-level-meta)
+        Другие разделы, например:
+        Регионы с транспортом (maps-transport-regions)
+        Поисковые категории (maps-search-categories)
+
+    - platforms:
+        - ios
+        - android
+    - integration_run:
+        - kotlin
+
+  Кеширование стартап конфига:
+    - info: |
+        Перехватить трафик с устройства
+        Установлено TESTING окружение для хостов в дебаг-панели
+    - do: Запустить приложение
+    - assert: |
+        Отображается главный экран приложения
+        Пришел конфиг:
+        iOS: https://mobmaps-proxy-api-ext.c.maps.yandex.net/v1/startup/ru.yandex.traffic/
+        Android: https://mobmaps-proxy-api-ext.c.maps.yandex.net/v1/startup/ru.yandex.yandexmaps/
+        В ответе есть хедер Location с адресом на JSON конфиг
+        iOS: https://mobile-maps-common.s3.yandex.net/configs/staging/*/ru.yandex.traffic/@*/
+        Android: https://mobile-maps-common.s3.yandex.net/configs/staging/*/ru.yandex.yandexmaps/@*/
+        В json конфига присутствуте время кэширования конфига cache_time
+    - do: Перезапустить приложение
+    - assert: |
+        Отображается главный экран приложения
+        Новый конфиг не пришел
+        Перезапрос конфига произойдет по истечению времени в cache_time
+    - do: Изменить дату на устройстве на день вперед и перезапустить приложение
+    - assert: |
+        Пришел новый конфиг
+
+    - platforms:
+        - ios
+        - android
+    - integration_run:
+        - kotlin
+
+  Ошибки при редиректе конфига:
+    - info: |
+        Перехватить трафик с устройства
+        Перевый запуск приложения за день
+        Установлено Production окружение для хостов в дебаг-панели
+        Подготовить подмену кода ответа для:
+        iOS: https://geointernal.mob.maps.yandex.net/v1/startup/ru.yandex.traffic/
+        Android: https://geointernal.mob.maps.yandex.net/v1/startup/ru.yandex.yandexmaps/
+        В ответе есть хедер Location с адресом на JSON конфиг
+        iOS: https://mobile-maps-common.s3.yandex.net/configs/staging/*/ru.yandex.traffic/@*/
+        Android: https://mobile-maps-common.s3.yandex.net/configs/staging/*/ru.yandex.yandexmaps/@*/
+    - do: Изменить ответ с 302 на 401
+    - assert: |
+        Конфиг не получен
+        Приложение работает стабильно
+        Через некоторое время происходит перезапрос конфига
+    - do: Изменить ответ на 501
+    - assert: |
+        Конфиг не получен
+        Приложение работает стабильно
+        Через некоторое время происходит перезапрос конфига
+    - do: Изменить адрес в ответе в хедере Location
+    - assert: |
+        Происходит редирект по новому адресу
+        Конфиг не приходит, тк адрес не верный
+        Приложение работает стабильно
+        Через некоторое время происходит перезапрос конфига
+    - do: Удалить адрес из Location
+    - assert: |
+        Конфиг не получен
+        Приложение работает стабильно
+        Через некоторое время происходит перезапрос конфига
+
+    - platforms:
+        - ios
+        - android
+    - integration_run:
+        - kotlin
+
+  Ошибки при получении конфига:
+    - info: |
+        Устройство подключено к Charles
+        Перевый запуск приложения за день
+        Установлено Production окружение для хостов в дебаг-панели
+        Подготовить подмену кода ответа для:
+        iOS: https://mobile-maps-common.s3.yandex.net/configs/production/*/ru.yandex.traffic/@*/
+        Android: https://mobile-maps-common.s3.yandex.net/configs/production/*/ru.yandex.yandexmaps/@*/
+    - do: Изменить код ответа на 401
+    - assert: |
+        Конфиг не получен
+        Приложение работает стабильно
+    - do: Debug-panel > Environment > Mobmaps proxy host
+    - do: Тап Testing
+    - do: Тап Prod
+    - assert: Произошел перезапрос конфига
+    - do: Изменить код ответа на 501
+    - assert: |
+        Конфиг не получен
+        Приложение работает стабильно
+    - do: Debug-panel > Environment > Mobmaps proxy host
+    - do: Тап Testing
+    - do: Тап Prod
+    - assert: Произошел перезапрос конфига
+    - do: Подменить содержимое json конфига на пустой файл
+    - assert: |
+        Получен пустой конфиг
+        Приложение работает стабильно
+    - do: Убрать из json конфига часть полей
+    - assert: |
+        Приложение работает стабильно
+        Конфиг получен без удаленного контента
+        Перезапроса конфига не будет, тк технически конфиг получен
+
+    - platforms:
+        - ios
+        - android
+    - integration_run:
+        - kotlin
+
+  Загрузка настроек пуш-уведомлений из стартап конфига:
+    - info: |
+        Перехватить трафик с устройства
+        Получен эксперимент push_settings_from_config
+        Mobmaps proxy host переключен на TESTING и обратно на PROD
+        Пришел конфиг по адресу https://geointernal.mob.maps.yandex.net/v1/startup/ru.yandex.yandexmaps/
+    - do: Открыть хедеры ответа конфига
+    - assert: В хедерах есть Location со ссылкой на JSON-конфиг https://mobile-maps-common.s3.yandex.net/configs/production/*/ru.yandex.yandexmaps/@*/
+    - do: Проверить конфиг по адресу из Location
+    - assert: |
+        Конфиг пришёл с кодом 200
+        В JSON-конфиге содержится информация о каналах пуш-уведомлений maps-push-notifications
+    - do: Открыть основные настройки МЯК (Меню -> Настройки -> Основные)
+    - assert: |
+        Количество ключей channel_id соотвествует количеству свитчеров каналов пуш уведомлений в основных настройках МЯК (Меню -> Настройки -> Основные)
+        Название в ключе tite соответствует названию канала в МЯК на выбранном языке
+        Название в ключе description соотвествует описанию канала в МЯК на выбранном языке
+        [Пример](https://jing.yandex-team.ru/files/vikelvar/tg_image_782343519.jpeg)
+
+    - platforms:
+        - android
+        - ios
+
+
+  Подмена хоста мобильной прокси через эксперимент и через Debug-Panel:
+    - precondition: |
+        В Charles через метод rewrite подменяем хост `https://mobmaps-proxy-api-ext.c.maps.yandex.net/` на [https://geointernal.mob.maps.yandex.net/](https://jing.yandex-team.ru/files/dabrynskaya/mobmaps_host-1.xml)
+        Девайс подключен к Charles
+        Первый запуск приложения
+    - do: |
+        Использовать интент:
+        [collapsed-image](https://jing.yandex-team.ru/files/dabrynskaya/Снимок%20экрана%202022-05-06%20в%2013.08.08.png){title=QR-код}
+
+        `yandexmaps://add_exp?mobmaps_proxy_host=https://mobmaps-proxy-api-ext.c.maps.yandex.net/`
+    - do: |
+        Очистить все запросы в сниффере
+        Перезагрузить приложение
+    - assert: |
+        При открытии приложения дергаются ручки : такси, самокаты и остальные, которые используют мобильную проксю
+        Хост в сниффере должен отображаться как `https://geointernal.mob.maps.yandex.net`
+        В столбце notes написано Rewrite Tool: URL "https://mobmaps-proxy-api-ext.c.maps.yandex.net/..." => "https://geointernal.mob.maps.yandex.net/..."
+
+    - platforms:
+        - android
+        - ios
+
+
+  Подмена хоста мобильной прокси через эксперимент и через Debug-Panel. Невалидное значение:
+    - precondition: |
+        В Charles через метод rewrite подменяем хост `https://mobmaps-proxy-api-ext.c.maps.yandex.net/` на [https://geointernal.mob.maps.yandex.net/](https://jing.yandex-team.ru/files/dabrynskaya/mobmaps_host-1.xml)
+        Девайс подключен к Charles
+        Первый запуск приложения
+    - do: |
+        Использовать интент с невалидным значением:
+        [collapsed-image](https://jing.yandex-team.ru/files/dabrynskaya/Снимок%20экрана%202022-05-06%20в%2014.33.41.png){title=QR-код}
+
+        `yandexmaps://add_exp?mobmaps_proxy_host=ndf14;!3kf`
+    - do: |
+        Очистить все запросы в сниффере
+        Перезагрузить приложение
+    - assert: |
+        При открытии приложения дергаются ручки : такси, самокаты и остальные, которые используют мобильную проксю
+        Хост в сниффере должен отображаться продовый : `https://geointernal.mob.maps.yandex.net`
+
+    - platforms:
+        - android
+        - ios

@@ -1,0 +1,354 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <title>component.array.BaseArray</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <!-- YUI -->
+    <script type="text/javascript" src="../../../../tests/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../../../tests/yui3combo/combo.css" />
+    <script type="text/javascript" src="../../../../tests/run-test-case.js"></script>
+    <!-- Code -->
+    <script type="text/javascript">
+        initAPI({
+            lang: "ru-RU",
+            load: "package.full,component.array.BaseArray,util.bind",
+            mode: "dev"
+        });
+    </script>
+</head>
+
+<body class="yui3-skin-sam">
+    <div id="testMap" style="height: 500px; width: 760px; overflow: hidden; position: relative;">
+    </div>
+</body>
+
+<script type="text/javascript">
+    getTestCase = function (Y) {
+        return {
+            // debug: true,
+            name: 'component.array.BaseArray',
+            
+            setUp: function () {
+                this.added = [];
+                this.removed = [];
+                this.array = new ymaps.component.array.BaseArray({
+                    onAdd: ymaps.util.bind(function (child, index) {
+                        this.added.push({
+                            child: child,
+                            index: index
+                        });
+                    }, this),
+
+                    onRemove: ymaps.util.bind(function (child, index) {
+                        this.removed.push({
+                            child: child,
+                            index: index
+                        });
+                    }, this)
+                });
+            },
+
+            tearDown: function () {},
+
+            testAdd: function () {
+                var dataToAdd = [
+                        null, 0, "", {}, 1, []
+                    ],
+                    lastAdded;
+
+                try {
+                    this.array.add();
+                    Y.fail("Нет ошибки");
+                } catch (e) {
+                    Y.assert(
+                        e.message == 'component.array.BaseArray.add: не передан добавляемый объект',
+                        "Нет ошибки при выхове .add()"
+                    );
+                }
+                
+                for (var i = 0, l = dataToAdd.length; i < l; i++) {
+                    this.array.add(dataToAdd[i]);
+                    lastAdded = this.added.pop();
+                    Y.assert(
+                        this.array.getLength() == i + 1 && lastAdded.index == i && lastAdded.child == dataToAdd[i],
+                        "Неверное значение длины группы при добавлении одиночных объектов"
+                    );
+                    Y.assert(
+                        this.array.get(i) == dataToAdd[i],
+                        "Неверное значение элемента группы при добавлении одиночных объектов: " + dataToAdd[i] + "!=" + this.array.get(i)
+                    );
+                }
+            },
+
+            testAddIndex: function () {
+                this.array.add(1, 0);
+                var lastAdded = this.added.pop();
+                Y.assert(
+                    this.array.getLength() == 1 && this.array.get(0) == 1 && lastAdded.index == 0 && lastAdded.child == 1,
+                    'Ошибка при добавлении объекта с 0ым индексом в группу'
+                );
+                // Запредельные индексы
+                this.array.add(2, 5);
+                lastAdded = this.added.pop();
+                Y.assert(
+                    this.array.getLength() == 2 && this.array.get(1) == 2 && lastAdded.index == 1 && lastAdded.child == 2,
+                    'Ошибка при добавлении объекта с запредельным положительным индексом в группу'
+                );
+                this.array.add(3, -5);
+                lastAdded = this.added.pop();
+                Y.assert(
+                    this.array.getLength() == 3 && this.array.get(0) == 3 && lastAdded.index == 0 && lastAdded.child == 3,
+                    'Ошибка при добавлении объекта с запредельным отрицательным индексом в группу'
+                );
+                // Промежуточный индекс
+                this.array.add(4, 2);
+                lastAdded = this.added.pop();
+                Y.assert(
+                    this.array.getLength() == 4 && this.array.get(2) == 4 && lastAdded.index == 2 && lastAdded.child == 4,
+                    'Ошибка при добавлении объекта с промежуточным индексом в группу'
+                );
+            },
+
+            testRemove: function () {
+                var dataToAdd = [
+                        0, 1, "", null, [], {}
+                    ],
+                    deleted,
+                    lastRemoved;
+                for (var i = 0, l = dataToAdd.length; i < l; i++) {
+                    this.array.add(dataToAdd[i]);
+                }
+
+                try {
+                    this.array.remove();
+                    Y.fail("Нет ошибки");
+                } catch (e) {
+                    Y.assert(
+                        e.message == 'component.array.BaseArray.remove: не передан удаляемый объект',
+                        "Нет ошибки при выхове .add()"
+                    );
+                }
+
+                // 0 как элемент группы
+                deleted = this.array.remove(0);
+                lastRemoved = this.removed.pop();
+                Y.assert(
+                    deleted == 0 && this.array.getLength() == 5 &&
+                    lastRemoved.index == 0 && lastRemoved.child == 0,
+                    'Ошибка при удалении 0'
+                );
+                // Массив как элемент группы
+                deleted = this.array.remove(dataToAdd[4]);
+                lastRemoved = this.removed.pop();
+                Y.assert(
+                    deleted == dataToAdd[4] && this.array.getLength() == 4 &&
+                    lastRemoved.index == 3 && lastRemoved.child == dataToAdd[4],
+                    'Ошибка при удалении dataToAdd[4]'
+                );
+                // null как элемент группы
+                deleted = this.array.remove(null);
+                lastRemoved = this.removed.pop();
+                Y.assert(
+                    deleted == null && this.array.getLength() == 3 &&
+                    lastRemoved.index == 2 && lastRemoved.child == null,
+                    'Ошибка при удалении null'
+                );
+                // Несуществующий в группе объект
+                deleted = this.array.remove({});
+                lastRemoved = this.removed.pop();
+                Y.assert(
+                    !deleted && this.array.getLength() == 3 && !lastRemoved,
+                    'Ошибка при удалении несуществующего в группе {}'
+                );
+            },
+
+            testSplice: function () {
+                var dataToAdd = [
+                        0, 1, "", null, [], {}
+                    ],
+                    deleted,
+                    lastRemoved,
+                    lastAdded;
+                for (var i = 0, l = dataToAdd.length; i < l; i++) {
+                    this.array.add(dataToAdd[i]);
+                }
+                this.added.length = 0;
+
+                deleted = this.array.splice(1, 0);
+                lastRemoved = this.removed.pop();
+                lastAdded = this.added.pop();
+                Y.assert(
+                    deleted.length == 0 && !lastRemoved && !lastAdded,
+                    'Ошибка при .splice(1, 0)'
+                );
+
+                deleted = this.array.splice(1, 1);
+                lastRemoved = this.removed.pop();
+                lastAdded = this.added.pop();
+                Y.assert(
+                    deleted.length == 1 && deleted[0] == 1 &&
+                    lastRemoved.index == 1 && lastRemoved.child == 1 && !lastAdded,
+                    'Ошибка при .splice(1, 1)'
+                );
+
+                deleted = this.array.splice(1, 2, 1, 2);
+                lastRemoved = this.removed.splice(0, this.removed.length);
+                lastAdded = this.added.splice(0, this.added.length);
+                Y.assert(
+                    deleted.length == 2 && deleted[0] == "" && deleted[1] == null &&
+                    lastRemoved.length == 2 && lastRemoved[0].index == 1 && lastRemoved[0].child == "" && lastRemoved[1].index == 1 && lastRemoved[1].child == null &&
+                    lastAdded.length == 2 && lastAdded[0].index == 1 && lastAdded[0].child == 1 && lastAdded[1].index == 2 && lastAdded[1].child == 2,
+                    'Ошибка при .splice(1, 2, 1, 2)'
+                );
+
+                var arrToReplace = [1, 2];
+                deleted = this.array.splice(-1, 3, arrToReplace);
+                lastRemoved = this.removed.splice(0, this.removed.length);
+                lastAdded = this.added.splice(0, this.added.length);
+                Y.assert(
+                    deleted.length == 1 && deleted[0] == dataToAdd[5] &&
+                    lastRemoved.length == 1 && lastRemoved[0].index == 4 && lastRemoved[0].child == dataToAdd[5] &&
+                    lastAdded.length == 1 && lastAdded[0].index == 4 && lastAdded[0].child == arrToReplace,
+                    'Ошибка при .splice(-1, 3, [1, 2])'
+                );
+            },
+
+            testRemoveAll: function () {
+                this.array.removeAll();
+                var lastRemoved = this.removed.pop();
+                Y.assert(
+                    !lastRemoved && this.array.getLength() == 0,
+                    'Ошибка при .removeAll() для пустой группы'
+                );
+
+                var dataToAdd = [0, 1, 2, 3, 4];
+                for (var i = 0, l = dataToAdd.length; i < l; i++) {
+                    this.array.add(dataToAdd[i]);
+                }
+
+                this.array.removeAll();
+                lastRemoved = this.removed.splice(0, this.removed.length);
+                Y.assert(
+                    lastRemoved.length == 5 && this.array.getLength() == 0,
+                    'Ошибка при .removeAll() для группы [0, 1, 2, 3, 4]'
+                );
+                for (var i = 0, l = lastRemoved.length; i < l; i++) {
+                    Y.assert(
+                        lastRemoved[i].index == 0 && lastRemoved[i].child == i,
+                        'lastRemoved["+ i +"].index = ' + lastRemoved[i].index + " lastRemoved["+ i +"].child = " + lastRemoved[i].o
+                    );
+                }
+            },
+
+            testGet: function () {
+                var dataToAdd = [1, 2, 3, 4];
+                for (var i = 0, l = dataToAdd.length; i < l; i++) {
+                    this.array.add(dataToAdd[i]);
+                }
+
+                try {
+                    this.array.get();
+                    Y.fail("Нет ошибки");
+                } catch (e) {
+                    Y.assert(
+                        e.message == 'component.array.BaseArray.get: не передан индекс объекта',
+                        "Нет ошибки при выхове .get()"
+                    );
+                }
+                Y.Assert.areEqual(1, this.array.get(0), ".get(0) возвращает не 1");
+                Y.Assert.isNull(this.array.get(5), ".get(5) возвращает не null");
+                Y.Assert.areEqual(3, this.array.get(-2), ".get(-2) возвращает не 3");
+                Y.Assert.isNull(this.array.get(-5), ".get(-5) возвращает не null");
+            },
+
+            testIndexOf: function () {
+                var dataToAdd = [1, 2, 3, 4];
+                for (var i = 0, l = dataToAdd.length; i < l; i++) {
+                    this.array.add(dataToAdd[i]);
+                }
+
+                Y.Assert.areEqual(-1, this.array.indexOf(0), ".indefOf(0) возвращает не -1");
+                Y.Assert.areEqual(-1, this.array.indexOf(null), ".indefOf(null) возвращает не -1");
+                Y.Assert.areEqual(2, this.array.indexOf(3), ".indefOf(3) возвращает не 2");
+                Y.Assert.areEqual(-1, this.array.indexOf("3"), ".indefOf('3') возвращает не -1");
+                Y.Assert.areEqual(-1, this.array.indexOf(true), ".indefOf(true) возвращает не -1");
+            },
+
+            testLength: function () {
+                Y.Assert.areEqual(0, this.array.getLength(), ".getLength() пустой группы != 0");
+
+                var dataToAdd = [1, 2, 3, 4];
+                for (var i = 0, l = dataToAdd.length; i < l; i++) {
+                    this.array.add(dataToAdd[i]);
+                }
+
+                Y.Assert.areEqual(4, this.array.getLength(), ".getLength() группы [1, 2, 3, 4] != 4");
+                this.array.remove(1);
+                Y.Assert.areEqual(3, this.array.getLength(), ".getLength() группы [2, 3, 4] != 3");
+                this.array.removeAll();
+                Y.Assert.areEqual(0, this.array.getLength(), ".getLength() группы [] != 0");
+            },
+
+            testEach: function () {
+                var context = this,
+                    func = function (o, i) {
+                        str += o + "," + i + "," + (this == context) + ";";
+                    },
+                    str;
+                this.array.add(1);
+                this.array.add(2);
+
+                str = "";
+                this.array.each(func);
+                Y.Assert.areEqual(
+                    "1,0,false;2,1,false;",
+                    str,
+                    ".getLength() группы [] != 0"
+                );
+
+                str = "";
+                this.array.each(func, this);
+                Y.Assert.areEqual(
+                    "1,0,true;2,1,true;",
+                    str,
+                    ".getLength() группы [] != 0"
+                );
+            },
+
+            testIterator: function () {
+                this.array.add(1);
+                this.array.add(2);
+                this.array.add(3);
+                this.array.add(4);
+
+                var iterator = this.array.getIterator();
+                
+                Y.assert(
+                    iterator.getNext() == 1 &&
+                    iterator.getNext() == 2 &&
+                    iterator.getNext() == 3 &&
+                    iterator.getNext() == 4 &&
+                    iterator.getNext() === null
+                );
+
+                iterator = this.array.getIterator();
+
+                this.array.remove(3);
+                this.array.remove(iterator.getNext());
+                this.array.add(1, 0);
+
+                Y.assert(
+                    iterator.getNext() == 2 &&
+                    iterator.getNext() == 4 &&
+                    !iterator.getNext() &&
+                    iterator.getNext() === null
+                );
+            }
+        }
+    };
+
+    ymaps.ready(runTestCase);
+</script>
+</html>
+

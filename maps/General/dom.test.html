@@ -1,0 +1,262 @@
+<!doctype html>
+<html>
+<head>
+    <title>util.dom</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <!-- YUI -->
+    <script type="text/javascript" src="../../../test/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../../test/yui3combo/combo.css"/>
+    <script type="text/javascript" src="../../../test/run-test-case.js"></script>
+    <!-- Code -->
+    <script type="text/javascript">
+        initAPI({
+            lang: "ru-RU",
+            mode: "dev",
+            load: "util.dom.element,util.dom.style,util.dom.className,util.math.areEqual"
+        });
+    </script>
+
+</head>
+
+<body class="yui3-skin-sam" style="margin: 0px; padding:0;">
+
+<div id="offset1">
+    <div id="offset2" style="position: absolute; top: 100px; left: 100px;">
+        <div id="offset3" style="margin-top: 10px; margin-left: 10px;">
+            <span id="content" style="background-color: red;">
+                1111
+            </span>
+            <span id="offset4" style="background-color:green;">
+                <span id="offset5" style="width: 100px; height: 100px; background-color: red;">
+                    2222
+                </span>
+            </span>
+        </div>
+        <div style="position: absolute; top:0; left:0;">
+            <div style="height: 2500px;">12312</div>
+            <div id="offset6" style=" margin-left: -100px; background-color: #4169e1; width: 150px; height: 150px;"></div>
+        </div>
+    </div>
+</div>
+
+<div id="test"></div>
+<div id="test2">
+    <div class="c a" id="target1">
+        <div class="a-b" id="target2"></div>
+    </div>
+    <div class="c">
+        <div class="a"></div>
+    </div>
+</div>
+<div id="create-test"></div>
+<div style="font-family: Courier, monospace; font-size: 10px">
+    <div style="width: 50em; height: 30em;">
+        <div id="weird"
+             style="position:relative;left:5px;top:6px;width: 50%; height:50%; border: 1em solid green; padding: 1em;"></div>
+    </div>
+</div>
+
+<script type="text/javascript">
+    function getTestCase (Y) {
+        var equals = ymaps.util.math.areEqual;
+        return {
+            name: "util.dom",
+
+            testCreate: function () {
+                var node = ymaps.util.dom.element.create({
+                    tagName: 'test',
+                    className: 'create-test',
+                    attr: {
+                        enabled: 'enabled'
+                    },
+                    css: {
+                        position: 'absolute'
+                    },
+                    size: [10, 15],
+                    position: [20, 25],
+                    html: 'Hurray!',
+                    parentNode: document.getElementById('create-test')
+                });
+
+                Y.assert(
+                        node.tagName.toLowerCase() == 'test' &&
+                        node.className == 'create-test' &&
+                        node.getAttribute('enabled') == 'enabled' &&
+                        node.style.position == 'absolute' &&
+                        node.style.width == '10px' &&
+                        node.style.height == '15px' &&
+                        node.style.left == '20px' &&
+                        node.style.top == '25px' &&
+                        node.innerHTML == 'Hurray!' &&
+                        node.parentNode == document.getElementById('create-test'),
+                        'create сработал неправильно')
+            },
+
+            testDelete: function () {
+                var node = ymaps.util.dom.element.create({
+                    parentNode: document.body
+                });
+                ymaps.util.dom.element.html(node, 'test<ymaps id="deleted">custom</ymaps>');
+                ymaps.util.dom.element.remove(node);
+                Y.assert(!document.getElementById('deleted'), 'нода не была удалена');
+            },
+
+            testHtml: function () {
+                var dom = ymaps.util.dom;
+
+                document.createElement('ymaps');
+                var text = '<ymaps><ymaps>Text</ymaps></ymaps>',
+                        node = document.createElement('ymaps-wrap'),
+                        parent = document.getElementById('test'),
+                        failed;
+
+                try {
+                    dom.element.html(node, text);
+                }
+                catch (e) {
+                    failed = true;
+                }
+
+                Y.assert(failed, 'Отладчик не предупредил, что элемент не добавлен в дерево');
+
+                parent.appendChild(node);
+                dom.element.html(node, text);
+
+                Y.assert(node.innerHTML == text, 'Неправильно отработало выставление innerHTML');
+                Y.assert(dom.element.html(node) == text, 'Неправильно отработало получение innerHTML');
+            },
+
+            testGetByClass: function () {
+                var dom = ymaps.util.dom.element,
+                        context = document.getElementById('test2');
+
+                Y.assert(dom.find(context, '.a') == document.getElementById('target1'),
+                        'Неправильно нашелся элемент по классу');
+                Y.assert(dom.find(context, '.a-b') == document.getElementById('target2'),
+                        'Неправильно нашелся элемент по классу с дефисом');
+                Y.assert(!dom.find(context, '.b'), 'Нашелся несуществующий элемент');
+            },
+
+            testSize: function () {
+                var weirdDiv = document.getElementById('weird'),
+                        size = ymaps.util.dom.style.getSize(weirdDiv),
+                // Замечательный наш MSIE QM имеет свою боксмодель, там размеры другие
+                        correctSize = navigator.userAgent.indexOf('MSIE') != -1 && document.compatMode == 'BackCompat' ?
+                                [210, 110] :
+                                [250, 150];
+
+                Y.assert(equals(size, correctSize), 'Неправильно определился размер дива');
+
+                ymaps.util.dom.style.setSize(weirdDiv, size);
+                var newSize = ymaps.util.dom.style.getSize(weirdDiv);
+                Y.assert(equals(size, newSize),
+                        'Неправильно задался размер ' + size[0] + ' != ' + newSize[0] + ' && ' + size[1] + ' != ' + newSize[1]);
+
+            },
+
+            testPosition: function () {
+                var weirdDiv = document.getElementById('weird');
+                ymaps.util.dom.style.css(weirdDiv, { position: 'absolute'});
+                var position = ymaps.util.dom.style.getOffset(weirdDiv);
+
+                Y.assert(equals(position, [5, 6]), 'Неправильно определось положение дива');
+
+                ymaps.util.dom.style.setPosition(weirdDiv, position);
+                var newSize = ymaps.util.dom.style.getOffset(weirdDiv);
+
+                Y.assert(equals(position, newSize), 'Неправильно задалась позиция');
+
+                ymaps.util.dom.style.css(weirdDiv, { position: 'static'});
+            },
+
+            testGetOffset: function () {
+                var style = ymaps.util.dom.style,
+                    isFF = navigator.userAgent.indexOf("Firefox") != -1,
+                    offset1Element = document.getElementById('offset1'),
+                    offset1 = style.getOffset(offset1Element, true),
+                    offset2 = style.getOffset(document.getElementById('offset2'), true),
+                    contentElement = document.getElementById('content'),
+                    offset3 = style.getOffset(document.getElementById('offset3'), true),
+                    offset4 = style.getOffset(document.getElementById('offset4'), true),
+                    offset5 = style.getOffset(document.getElementById('offset5'), true),
+                    offset6Element = document.getElementById('offset6'),
+                    testElement = document.getElementById('test');
+
+                offset6Element.scrollIntoView();
+
+                var offset6 = style.getOffset(offset6Element, true);
+                testElement.scrollIntoView();
+
+                var validOffset = [0, 0];
+
+                // Смещение из-за элемента weird
+                Y.assert(equals(offset1, validOffset),
+                        'Неверное значение (' + offset1[0] + ',' + offset1[1] + ') смещения от начала документа элемента #offset1');
+
+                validOffset[0] = validOffset[1] = 100;
+
+                // Абсолютное позиционирование
+                Y.assert(equals(offset2, validOffset),
+                        'Неверное значение (' + offset2[0] + ',' + offset2[1] + ') смещения от начала документа элемента #offset2');
+
+                validOffset[0] = validOffset[1] = 110;
+                // margin
+                Y.assert(equals(offset3, validOffset),
+                        'Неверное значение (' + offset3[0] + ',' + offset3[1] + ') смещения от начала документа элемента #offset3');
+
+                var contentElementSize = style.getSize(contentElement);
+                validOffset[0] += contentElementSize[0];
+
+                // В FF добавляет пол пикселя, которые при округлении становятся пикселем.
+                if (isFF) {
+                    validOffset[1] = 111;
+                }
+
+                // display: inline-block + padding от offset3
+                Y.assert(equals(offset4, validOffset),
+                        'Неверное значение (' + offset4[0] + ',' + offset4[1] + ') смещения от начала документа элемента #offset4');
+
+                Y.assert(equals(offset5, validOffset),
+                        'Неверное значение (' + offset5[0] + ',' + offset5[1] + ') смещения от начала документа элемента #offset5');
+
+                validOffset[0] = 0;
+                validOffset[1] = 2600;
+                // смещение видимой области
+                Y.assert(equals(offset6, [0, 2600]),
+                        'Неверное значение (' + offset6[0] + ',' + offset6[1] + ') смещения от начала документа элемента #offset6');
+            },
+
+            testClassName: function () {
+                var weirdDiv = document.getElementById('weird');
+                Y.assert(weirdDiv.className == '', 'У дива уже есть класс');
+                ymaps.util.dom.className.add(weirdDiv, 'test');
+                Y.assert(weirdDiv.className == 'test', 'Не сработало добавление класса');
+                Y.assert(ymaps.util.dom.className.has(weirdDiv, 'test'), 'Не сработало определение класса');
+                ymaps.util.dom.className.add(weirdDiv, 'test');
+                Y.assert(weirdDiv.className == 'test', 'Не сработало второе добавление класса');
+                ymaps.util.dom.className.add(weirdDiv, 'test2');
+                ymaps.util.dom.className.add(weirdDiv, 'test3');
+                ymaps.util.dom.className.remove(weirdDiv, 'test2');
+                Y.assert(weirdDiv.className == 'test test3', 'Не сработало добавление класса');
+                Y.assert(ymaps.util.dom.className.has(weirdDiv, 'test3'), 'Не сработало определение класса');
+                ymaps.util.dom.className.remove(weirdDiv, 'test3');
+                Y.assert(weirdDiv.className == 'test', 'Не сработало удаление последнего класса');
+                ymaps.util.dom.className.remove(weirdDiv, 'test');
+                Y.assert(weirdDiv.className == '', 'Не сработало полное удаление классов');
+                ymaps.util.dom.className.remove(weirdDiv, 'test');
+                ymaps.util.dom.className.remove(weirdDiv, 'test3');
+                Y.assert(weirdDiv.className == '', 'У дива уже есть класс');
+            }
+        }
+    }
+    ymaps.ready(runTestCase);
+</script>
+
+<div id='loadBreaker'>
+    <script src='http://kashey.ru/metatest.php?sleep'></script>
+    loaded
+</div>
+
+</body>
+
+</html>

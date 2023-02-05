@@ -1,0 +1,197 @@
+<!doctype html>
+<html>
+<head>
+    <title>controls</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <!-- YUI -->
+    <script type="text/javascript" src="../../../test/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../../test/yui3combo/combo.css"/>
+    <script type="text/javascript" src="../../../test/run-test-case.js"></script>
+    <!-- Code -->
+    <script type="text/javascript">
+        initAPI({
+            lang: "ru-RU",
+            load: "package.full,util.dom.element",
+            mode: "debug"
+        });
+    </script>
+</head>
+<style>
+    html, html body {
+        width: 100%;
+        height: 100%;
+    }
+</style>
+<body class="yui3-skin-sam" style="width: 100%; heigth: 100%"></body>
+
+<script type="text/javascript">
+
+    function getTestCase (Y) {
+
+        var map = new ymaps.Map('map', {
+            center: [55.777153093859496, 37.639130078124964],
+            zoom: 10
+        });
+        mapElement = document.getElementById('map');
+
+        return {
+            name: "controls",
+
+            testTrivial: function () {
+                var typeSelector = new ymaps.control.TypeSelector({mapTypes: ['yandex#map']});
+                map.controls.add(typeSelector);
+                map.controls.remove(typeSelector);
+                map.controls.add(typeSelector);
+                map.controls.remove(typeSelector);
+            },
+
+            testTypeSelector: function () {
+                map.setType('yandex#map');
+                var typeControl = new ymaps.control.TypeSelector({mapTypes: ['yandex#map', 'yandex#publicMap']});
+                map.controls.add(typeControl);
+                typeControl.addMapType('yandex#hybrid');
+                typeControl.removeMapType('yandex#hybrid');
+                Y.assert(typeControl.state.get('title') == ymaps.mapType.storage.get(map.getType()).getName(), 'TypeControl. не обновил заголовок');
+                var currentElement = ymaps.util.dom.element.find(mapElement, '.ymaps-b-listbox-panel__item');
+                var mapType = map.getType();
+                map.setType('yandex#hybrid');
+                Y.assert(
+                        typeControl.state.get('title') != ymaps.mapType.storage.get(map.getType()).getName(),
+                        'TypeControl. обновился заголовок для неизвестного типа карты'
+                );
+                Y.Event.simulate(currentElement, 'click');
+                Y.assert(map.getType() != mapType, 'TypeControl: не сменил карту');
+
+                var typeControlListener = typeControl.events.group().add('expand', function (e) {
+                    Y.assert(e.get('target') == typeControl, 'Неверное выставился target у события.');
+                    typeControlListener.removeAll();
+                });
+                typeControl.expand();
+            },
+
+            testItemsOrder: function () {
+
+                function each (object, callback) {
+                    var it = object.getIterator && object.getIterator();
+                    if (it) {
+                        var obj;
+                        while (obj = it.getNext()) {
+                            each(obj, callback);
+                        }
+                    } else {
+                        callback(object);
+                    }
+                }
+
+                function getControlItems(control) {
+                    var res = '';
+                    each(control, function (obj) {
+                        res += obj.data.get('content', '') + '_';
+                    });
+
+                    return res;
+                }
+
+                var typeControl2 = new ymaps.control.TypeSelector({mapTypes: ['yandex#map']});
+                map.controls.add(typeControl2, {left: 5, top: 5});
+                typeControl2.addMapType('yandex#publicMap', 0);
+                var item2 = new ymaps.control.ListBoxItem('Второй пункт'),
+                        item1 = new ymaps.control.ListBoxItem('Первый пункт');
+                typeControl2.add(item2);
+                typeControl2.add(item1, 1);
+
+                Y.assert(
+                        getControlItems(typeControl2) == 'Народная карта_Схема_Первый пункт_Второй пункт_',
+                        "Неверный порядок добавленных элементов."
+                );
+
+                typeControl2.addMapType('yandex#satellite');
+                Y.assert(
+                        getControlItems(typeControl2) == 'Народная карта_Схема_Спутник_Первый пункт_Второй пункт_',
+                        "Неверный порядок добавленных элементов."
+                );
+
+                typeControl2.remove(item1);
+                typeControl2.remove(item2);
+                Y.assert(getControlItems(typeControl2) == 'Народная карта_Схема_Спутник_', "Не удалились дополнительные элементы.");
+
+                typeControl2.removeMapType('yandex#map');
+                Y.assert(getControlItems(typeControl2) == 'Народная карта_Спутник_', "Не удалилась 'yandex#map'.");
+
+                var ts2 = new ymaps.control.TypeSelector(['yandex#hybrid']);
+                ts2.addMapType('yandex#publicMap', 3);
+                ts2.addMapType('yandex#map', 3);
+                ts2.removeMapType('yandex#publicMap');
+                ts2.removeMapType('yandex#hybrid');
+                ts2.removeMapType('yandex#map');
+                ts2.addMapType('yandex#publicMap', 0);
+                map.controls.add(ts2, {bottom: 50, left: 10});
+                Y.assert(getControlItems(ts2) == 'Народная карта_', "Неверно отработало добавление-удаление.");
+            },
+
+            testStaticTitle: function () {
+                map.setType('yandex#map');
+                var typeControl = new ymaps.control.TypeSelector(['yandex#publicMap', 'yandex#map']);
+                typeControl.setTitle('static');
+                typeControl.options.set({
+                    fixTitle: true,
+                    maximizeWidth: true
+                });
+                map.controls.add(typeControl, {right: 200, top: 5});
+                var titleElement = ymaps.util.dom.element.find(typeControl.getLayout().getParentElement(), '.ymaps-b-select__title');
+                Y.assert(titleElement.innerHTML == 'static', 'TypeControl. обновил заголовок');
+            },
+
+            testExpandMapTypeAdding: function () {
+                var typeControl = new ymaps.control.TypeSelector(['yandex#map']);
+                map.controls.add(typeControl, {top: 100, left: 200});
+                typeControl.expand();
+                var previousSize = typeControl.state.get('contentWidth');
+                typeControl.addMapType('yandex#publicMap');
+                var currentSize = typeControl.state.get('contentWidth');
+                Y.assert(currentSize > previousSize, "Не обновилась ширина при добавлении элемента в контрол.");
+                map.controls.remove(typeControl);
+            },
+
+            testExpandItemAdding: function () {
+                var typeControl = new ymaps.control.TypeSelector(['yandex#map']);
+                map.controls.add(typeControl, {top: 100, left: 200});
+                typeControl.expand();
+                var previousSize = typeControl.state.get('contentWidth');
+                typeControl.add(new ymaps.control.ListBoxItem('Длииииииииинннная наааадпись.', {checkbox: true, selectOnClick: true}));
+                var currentSize = typeControl.state.get('contentWidth');
+                Y.assert(currentSize > previousSize, "Не обновилась ширина при добавлении элемента в контрол.");
+                map.controls.remove(typeControl);
+            },
+
+            testAddRemoveView: function () {
+                var typeControl3 = new ymaps.control.TypeSelector();
+                map.controls.add(typeControl3);
+                map.controls.remove(typeControl3);
+                map.controls.add(typeControl3);
+                map.controls.add(typeControl3, {right: 500, top: 5});
+                var item3 = new ymaps.control.ListBoxItem('Дополнительный элемент длииииииинный.');
+                typeControl3.add(item3, 1);
+                typeControl3.expand();
+                typeControl3.remove(item3);
+                typeControl3.getMapTypeItemsGroup().get(4).select();
+            },
+
+            testDeselectWithoutMap: function () {
+                var typeSelector4 = new ymaps.control.TypeSelector();
+                map.controls.add(typeSelector4);
+                var mapTypeItem = typeSelector4.getMapTypeItemsGroup().get(0);
+                map.controls.remove(typeSelector4);
+                mapTypeItem.deselect();
+                Y.assert(!mapTypeItem.isSelected(), "Неверно отработал deselect типа карты.");
+            }
+        };
+    }
+    ymaps.ready(runTestCase);
+
+</script>
+
+<div id='map' style="width: 70%; height: 60%;"></div>
+
+</body>
+</html>

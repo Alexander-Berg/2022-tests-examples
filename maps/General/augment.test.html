@@ -1,0 +1,99 @@
+<!doctype html>
+<html>
+<head>
+    <title>util.augment</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <!-- YUI -->
+    <script type="text/javascript" src="../../../test/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../../test/yui3combo/combo.css" />
+    <script type="text/javascript" src="../../../test/run-test-case.js"></script>
+    <!-- Code -->
+    <script type="text/javascript">
+        initAPI({
+            lang: "ru-RU",
+            load: "util.augment",
+            mode: "debug",
+            ns: "ym"
+        });
+    </script>
+</head>
+
+<body class="yui3-skin-sam"></body>
+
+<script type="text/javascript">
+    function getTestCase (Y) {
+        return {
+            name: "util.augment",
+
+            testSuperClass: function () {
+                var parent = function () {};
+                var child = function () {};
+                ym.util.augment(child, parent);
+
+                Y.assert(child.superclass == parent.prototype, "неверноe значение superclass")
+            },
+
+            testModifyParentPrototype: function () {
+                var parent = function () {};
+                var child = function () {};
+                ym.util.augment(child, parent);
+
+                var instance = new child();
+                parent.prototype.method = function () {return 42};
+                Y.assert(instance.method == parent.prototype.method, "На потомке не отразились изменения прототипа родителя");
+            },
+
+            testSimpleAugment: function () {
+                var parent = function (value) {
+                    this.prop = value;
+                };
+                parent.prototype = {
+                    get: function () {
+                        return this.prop;
+                    }
+                };
+
+                var child = function (val) {
+                    child.superclass.constructor.call(this, val);
+                };
+
+                ym.util.augment(child, parent);
+
+                var instance = new child(42);
+                Y.assert(instance.get() === 42, "Нет доступа к методу родителя");
+            },
+
+            testGrandParent: function () {
+                var grandParent = function (value) {
+                    this.prop = value;
+                };
+                grandParent.prototype = {
+                    get: function () {
+                        return this.prop;
+                    }
+                };
+
+                var parent = function (value) {
+                    parent.superclass.constructor.call(this, value);
+
+                };
+                ym.util.augment(parent, grandParent, {
+                    get: function () {
+                        return parent.superclass.get.call(this) + 1;
+                    }
+                });
+
+                var child = function (val) {
+                    child.superclass.constructor.call(this, val);
+                };
+
+                ym.util.augment(child, parent);
+
+                var instance = new child(42);
+                Y.assert(instance.get() === 43, "Нет доступа к методу родителя");
+            }
+        }
+    }
+    ym.ready(runTestCase);
+</script>
+</html>

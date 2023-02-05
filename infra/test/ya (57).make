@@ -1,5 +1,0 @@
-OWNER(g:hostman)
-SET(ENV_VIRT_MODE vm)
-SET_APPEND(ENV_VAR dev=t)
-INCLUDE(../../script/config/config.inc)
-INCLUDE(${ARCADIA_ROOT}/infra/environments/lib/layer-test.inc)

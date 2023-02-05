@@ -1,0 +1,251 @@
+<!doctype html>
+<html>
+<head>
+    <title>jsutil.scheduler</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script type="text/javascript" src="../../../test/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../../test/yui3combo/combo.css" />
+    <script type="text/javascript" src="../../../test/run-test-case.js"></script>
+    <!-- Code -->
+    <script type="text/javascript">
+        initAPI({
+            load: "util.scheduler,package.map" 
+        });
+    </script>
+</head>
+
+<body class="yui3-skin-sam">
+    <div id="outer">
+        <div id="inner"></div>
+    </div>
+</body>
+
+<script type="text/javascript">
+var testStrategies = [
+        'asap',
+        'background',
+        'now',
+        'processing',
+        'quantum',
+        'scheduled'
+    ],
+    loadSEQ = [];
+
+for (var i = 0, l = testStrategies.length; i < l; i++) {
+    loadSEQ.push('util.scheduler.strategy.' + testStrategies[i]);
+}
+ymaps.ready(function () {
+    ymaps.load(loadSEQ, function() {
+        var schedule = ymaps.util.scheduler.Manager.schedule;
+        var unschedule = ymaps.util.scheduler.Manager.unschedule;
+        var schGroup = ymaps.util.scheduler.Group;
+
+        var startTime ,endTime = 0, activeTest, YY, hasError = 0;
+
+        function scheduleF (str) {
+            endTime = +(new Date());
+            YY.log('trigger ' + (str ? str : ''));
+            if (activeTest) {
+                activeTest.resume();
+            }
+        }
+
+        function scheduleError () {
+            YY.log('генерация ошибки...');
+            hasError = true;
+            setTimeout(function() {
+                        throw new Error('не должно было выполниться');
+                    }, 1);
+        }
+
+        function runScheduleTest (name, test, params) {
+            startTime = +(new Date());
+            endTime = 0;
+            activeTest = test;
+            YY.log('run for ' + name);
+            schedule(name, function() {
+                        scheduleF(name)
+                    }, null, params);
+        }
+
+        window.getTestCase = function (Y) {
+            YY = Y;
+            return {
+                name: "jsutil.deferred",
+
+                // тесты базовых команд
+                testSchedule100ms: function () {
+                    YY.log("\n-------");
+                    runScheduleTest('timeout', this, 1);
+                    this.wait(function () {
+                                var deltaTime = endTime - startTime;
+                                Y.Assert.isFalse(deltaTime < 0, "Не отработало " + deltaTime + " et:" + endTime + " st:" + startTime);
+                                Y.Assert.isFalse(deltaTime < 90, "Отработало раньше");
+                                Y.Assert.isFalse(deltaTime > 150, "Отработало позже");
+                            }, 1000);
+                },
+
+                testScheduleNow: function () {
+                    YY.log("\n-------");
+                    runScheduleTest("now");
+
+                    var deltaTime = endTime - startTime;
+                    Y.Assert.isFalse(deltaTime < 0, "Не отработало" + deltaTime);
+                    Y.Assert.isFalse(deltaTime > 5, "Отработало позже");
+
+                },
+
+                testScheduleASAP: function () {
+                    YY.log("\n-------");
+                    runScheduleTest("asap", this, 1);
+                    this.wait(function () {
+                                var deltaTime = endTime - startTime;
+                                Y.Assert.isFalse(deltaTime < 0, "Не отработало");
+                                Y.Assert.isFalse(deltaTime > 10, "Отработало позже");
+                            }, 200);
+                },
+
+                testScheduleASAPCancel: function () {
+                    YY.log("\n-------");
+                    hasError = false;
+                    schedule('asap', scheduleError, null, 1);
+                    unschedule('asap', scheduleError, null);
+                    this.wait(function () {
+                                Y.Assert.isFalse(hasError, 'Функция 1 создала ошибку');
+                            }, 100);
+                },
+
+                testScheduleBackground: function () {
+                    YY.log("\n-------");
+                    runScheduleTest("background", this, 1);
+                    this.wait(function () {
+                                var deltaTime = endTime - startTime;
+                                Y.Assert.isFalse(deltaTime < 0, "Не отработало");
+                                Y.Assert.isFalse(deltaTime > 100, "Отработало позже");
+                            }, 200);
+                },
+
+                // тесты замыканий
+
+                testUnbind: function () {
+                    YY.log("\n-------");
+                    hasError = false;
+                    schedule('timeout', scheduleError, null, 1);
+                    unschedule('timeout', scheduleError, null);
+                    schedule('timeout', scheduleError, this, 1);
+                    unschedule('timeout', scheduleError, this);
+
+                    schedule('timeout', scheduleF, this, 1);
+                    unschedule('timeout', scheduleF, {});
+                    this.wait(function () {
+                                Y.Assert.isFalse(hasError, 'Функция 1 создала ошибку');
+                                Y.Assert.isFalse(endTime == 0, 'Не все должно было стереться');
+                            }, 100);
+                },
+
+                // группы
+                testGroup: function () {
+                    YY.log("\n-------");
+                    var group = new schGroup();
+                    YY.log('run for asap');
+                    group.schedule('asap', scheduleF);
+                    this.wait(function () {
+                                Y.Assert.isFalse(endTime == 0, 'Функция не отработала');
+                            }, 200);
+                },
+
+
+
+                testGroupHalfUnbind: function () {
+                    var pass = 0;
+                    hasError = false;
+                    YY.log("\n-------");
+                    var group = new schGroup();
+                    YY.log('run 2 timeouts');
+
+                    group.schedule('timeout', scheduleError, null, 10);
+                    group.schedule('timeout', function () {
+                                Y.log('function2');
+                                pass = 1;
+                            }, null, 10);
+                    group.unschedule('timeout', scheduleError);
+
+                    this.wait(function () {
+                                Y.Assert.isFalse(hasError, 'Функция 1 создала ошибку');
+                                Y.Assert.isTrue(pass == 1, 'Функция 2 не отработала ' + pass);
+                            }, 200);
+                },
+
+                testGroupUnbind: function () {
+                    YY.log("\n-------");
+                    var group = new schGroup();
+                    var errors = [];
+                    group.schedule('timeout', function() {
+                                errors.push(10);
+                            }, null, 10);
+                    group.schedule('asap', function() {
+                                errors.push('asap');
+                            });
+                    group.schedule('background', function() {
+                                errors.push('background');
+                            });
+                    group.removeAll();
+
+                    this.wait(function () {
+                                Y.log(errors);
+                                Y.Assert.isTrue(errors.length == 0, 'Функция всетаки отработала ' + errors.join('|'));
+                            }, 200);
+                },
+
+
+
+                //анимации
+
+                testProcessesing: function () {
+                    var ticks = 0, succ = 0, _this = this;
+                    schedule('processing', function() {
+                                ticks++;
+                            }, null, {
+                                onComplete:function() {
+                                    succ = 1;
+                                },
+                                duration: 1000
+                            });
+                    //.events.add('complete', );
+
+                    this.wait(function() {
+                                Y.log('активных тиков ' + ticks + 'RPS - ' + Math.ceil(1000 / ticks) + " ms per tick");
+                                Y.assert(ticks > 0, 'Не выполнялось');
+                                Y.assert(succ, 'Не выполнено завершение');
+                            }, 1200);
+                },
+
+                testProcessesingAbort: function () {
+                    var ticks = 0, succ = 0, _this = this;
+                    schedule('processing',
+                            function() {
+                                ticks++;
+                            }, null, {
+                                onComplete:function() {
+                                    succ = 1;
+                                },
+                                duration: 1000
+                            }).stop();
+
+
+                    this.wait(function() {
+                        Y.log('тиков ' + ticks);
+                        Y.assert(ticks == 0, 'Выполнялось');
+                        Y.assert(succ == 0, 'Выполнено завершение');
+                    }, 100);
+                }
+            }
+        };
+
+        runTestCase();
+    });
+});
+
+</script>
+</html>

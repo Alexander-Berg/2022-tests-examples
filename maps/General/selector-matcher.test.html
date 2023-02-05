@@ -1,0 +1,145 @@
+<!doctype html>
+<html>
+<head>
+    <title>util.css.selectorMatcher</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <!-- YUI -->
+    <script type="text/javascript" src="../../../../tests/yui3combo/combo.js"></script>
+    <link rel="stylesheet" href="../../../../tests/yui3combo/combo.css" />
+    <script type="text/javascript" src="../../../../tests/run-test-case.js"></script>
+    <!-- Code -->
+    <script type="text/javascript">
+        initAPI({
+            lang: "ru-RU",
+            load: "util.css.selectorParser,util.css.selectorMatcher",
+            mode: "debug",
+            ns: "ym"
+        });
+    </script>
+</head>
+
+<body class="yui3-skin-sam"></body>
+
+<script type="text/javascript">
+    function getTestCase(Y) { return {
+        name: "util.css.selectorMatcher",
+        testMatches: function () {
+            var Parser = ym.util.css.selectorParser,
+                Matcher = ym.util.css.selectorMatcher,
+                pseudoClassCallbacks = {
+                    'hasattr': function(item, attrName) {
+                        return item.attrs.hasOwnProperty(attrName);
+                    }
+                },
+                context = {
+                    getParent: function(item) { return item.parent; },
+                    getId: function(item) { return item.attrs['id']; },
+                    getClass: function(item) { return item.attrs['class']; },
+                    getName: function(item) { return item.attrs['name']; },
+                    getAttrValue: function(item, attrName) { return item.attrs[attrName]; },
+                    getPseudoClassCallback: function(pseudoClassName) {
+                        return pseudoClassCallbacks[pseudoClassName];
+                    }
+                };
+
+            var obj = {
+                attrs: {
+                    'class': 'ObjClass',
+                    name: 'Obj',
+                    id: 'obj',
+                    a: '1',
+                    b: '2',
+                    c: '3'
+                },
+                parent: {
+                    attrs: {
+                        x: "y"
+                    },
+                    parent: {
+                        attrs: {
+                            id: "parentOfParent"
+                        },
+                        parent: {
+                            attrs: {
+                                "propName": "propValue"
+                            }
+                        }
+                    }
+                }
+            };
+
+            var expr;
+
+            expr = Parser.parse("[a=1]");
+            Y.assert(Matcher.matches(expr, obj, [], context));
+
+            expr = Parser.parse("[a=2]");
+            Y.assert(!Matcher.matches(expr, obj, [], context));
+
+            expr = Parser.parse("[a=?]");
+            Y.assert(Matcher.matches(expr, obj, ['1'], context));
+
+            expr = Parser.parse("[a=?]");
+            Y.assert(!Matcher.matches(expr, obj, ['2'], context));
+
+            expr = Parser.parse("[a=1][b=2]");
+            Y.assert(Matcher.matches(expr, obj, [], context));
+
+            expr = Parser.parse("[a=2][b=2]");
+            Y.assert(!Matcher.matches(expr, obj, [], context));
+
+            expr = Parser.parse("#obj[a=1][b=2]");
+            Y.assert(Matcher.matches(expr, obj, [], context));
+
+            expr = Parser.parse("#obj1[a=1][b=2]");
+            Y.assert(!Matcher.matches(expr, obj, [], context));
+
+            expr = Parser.parse("Obj#obj[a=1][b=2]");
+            Y.assert(Matcher.matches(expr, obj, [], context));
+
+            expr = Parser.parse("NewObj#obj[a=1][b=2]");
+            Y.assert(!Matcher.matches(expr, obj, [], context));
+
+            expr = Parser.parse("Obj.ObjClass#obj[a=1][b=2]");
+            Y.assert(Matcher.matches(expr, obj, [], context));
+
+            expr = Parser.parse("Obj.AnotherObjClass#obj[a=1][b=2]");
+            Y.assert(!Matcher.matches(expr, obj, [], context));
+
+            expr = Parser.parse("Obj#obj[a=1][b=2]:hasattr(a)");
+            Y.assert(Matcher.matches(expr, obj, [], context));
+
+            expr = Parser.parse("Obj#obj[a=1][b=2]:hasattr(z)");
+            Y.assert(!Matcher.matches(expr, obj, [], context));
+
+            expr = Parser.parse("Obj#obj[a=1][b=2]:hasattr(?)");
+            Y.assert(Matcher.matches(expr, obj, ["a"], context));
+
+            expr = Parser.parse("Obj#obj[a=1][b=2]:hasattr(?)");
+            Y.assert(!Matcher.matches(expr, obj, ["z"], context));
+
+            expr = Parser.parse("[x=y] #obj");
+            Y.assert(Matcher.matches(expr, obj, [], context));
+
+            expr = Parser.parse("[x=z] #obj");
+            Y.assert(!Matcher.matches(expr, obj, [], context));
+
+            expr = Parser.parse("#parentOfParent [x=y] #obj");
+            Y.assert(Matcher.matches(expr, obj, [], context));
+
+            expr = Parser.parse("#wrongId [x=y] #obj");
+            Y.assert(!Matcher.matches(expr, obj, [], context));
+
+            expr = Parser.parse(":hasattr(propName) #parentOfParent [x=y] #obj");
+            Y.assert(Matcher.matches(expr, obj, [], context));
+
+            expr = Parser.parse(":hasattr(wrongPropName) #parentOfParent [x=y] #obj");
+            Y.assert(!Matcher.matches(expr, obj, [], context));
+
+            expr = Parser.parse("#parentOfParent #obj");
+            Y.assert(Matcher.matches(expr, obj, [], context));
+        }
+    }}
+    ym.ready(runTestCase);
+</script>
+</html>
